@@ -2,7 +2,7 @@
 // Inputs and outputs: a FrameSource, an optional AudioPlan and an output path -> an mp4 file (written to a .partial file and renamed on success) and an EncodeReport.
 // Used by: src/main.rs, tests/encode.rs, and the native renderer's final stage (R2 and R4).
 
-use crate::audio::{mix_plan, write_wav_f32, AudioError, AudioPlan, SAMPLE_RATE};
+use crate::audio::{mix_plan_cancellable, write_wav_f32, AudioError, AudioPlan, SAMPLE_RATE};
 use crate::frames::{FrameSource, FrameSpec, Pattern, PixelFormat, SourceError, SyntheticSource, Fps};
 use crate::probe::probe;
 use crate::profile::{Backend, BackendChoice, Profile, VAAPI_QP};
@@ -148,7 +148,10 @@ impl From<SourceError> for EncodeError {
 impl From<AudioError> for EncodeError {
     /// Wraps an audio mix error.
     fn from(e: AudioError) -> Self {
-        EncodeError::Audio(e)
+        match e {
+            AudioError::Cancelled => EncodeError::Cancelled,
+            other => EncodeError::Audio(other),
+        }
     }
 }
 
@@ -364,7 +367,13 @@ pub fn encode(source: &mut dyn FrameSource, audio: Option<&AudioPlan>, out: &Pat
     let started = Instant::now();
     let spec = source.spec();
     spec.validate()?;
+    if opts.cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err(EncodeError::Cancelled);
+    }
     let (backend, fallback_reason) = resolve_backend(&opts.tools, opts.profile, opts.backend)?;
+    if opts.cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err(EncodeError::Cancelled);
+    }
     if let Some(parent) = out.parent().filter(|p| !p.as_os_str().is_empty()) {
         fs::create_dir_all(parent)?;
     }
@@ -376,10 +385,7 @@ pub fn encode(source: &mut dyn FrameSource, audio: Option<&AudioPlan>, out: &Pat
     let mut audio_report = None;
     let mut wav_path: Option<PathBuf> = None;
     if let Some(plan) = audio {
-        if opts.cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed)) {
-            return Err(EncodeError::Cancelled);
-        }
-        let mixed = mix_plan(&opts.tools, plan, spec.duration_sec(), &opts.audio_base_dir)?;
+        let mixed = mix_plan_cancellable(&opts.tools, plan, spec.duration_sec(), &opts.audio_base_dir, opts.cancel.as_deref())?;
         let wav = reserve_scratch(dir, &name, "audio.wav")?;
         cleanup.0.push(wav.clone());
         write_wav_f32(&wav, &mixed.samples)?;

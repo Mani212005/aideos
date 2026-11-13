@@ -746,6 +746,59 @@ fn cancelling_stops_the_encode_and_cleans_up() {
     assert!(dir.listing().is_empty());
 }
 
+/// Cancellation interrupts an in-progress audio decoder and returns the encode cancellation result.
+#[cfg(unix)]
+#[test]
+fn cancelling_interrupts_audio_decode() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = TempDir::new("cancel-audio");
+    let voice = dir.join("voice.wav");
+    let decoder = dir.join("slow-ffmpeg");
+    write_pcm16(&voice, SAMPLE_RATE, &tone(440.0, 0.5, 1.0, &[]));
+    fs::write(&decoder, "#!/bin/sh\nexec sleep 20\n").unwrap();
+    let mut permissions = fs::metadata(&decoder).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&decoder, permissions).unwrap();
+
+    let already_cancelled = Arc::new(AtomicBool::new(true));
+    let mut pre_cancelled = EncodeOptions::new(Profile::Draft);
+    pre_cancelled.backend = BackendChoice::Exactly(Backend::Vaapi);
+    pre_cancelled.cancel = Some(already_cancelled);
+    let pre_cancel_error = encode_synthetic(
+        &dir.join("pre-cancelled.mp4"),
+        spec(128, 72, 3, PixelFormat::Rgba8),
+        Pattern::Moving,
+        &mut pre_cancelled,
+        None,
+    )
+    .unwrap_err();
+    assert!(matches!(pre_cancel_error, EncodeError::Cancelled), "{pre_cancel_error}");
+
+    let flag = Arc::new(AtomicBool::new(false));
+    let cancel = flag.clone();
+    let canceller = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        cancel.store(true, Ordering::Relaxed);
+    });
+    let mut opts = EncodeOptions::new(Profile::Final);
+    opts.tools.ffmpeg = decoder;
+    opts.cancel = Some(flag);
+    let started = std::time::Instant::now();
+    let err = encode_synthetic(
+        &dir.join("cancelled.mp4"),
+        spec(128, 72, 3, PixelFormat::Rgba8),
+        Pattern::Moving,
+        &mut opts,
+        Some(&one_clip(AudioClip::new(&voice, Role::Voice))),
+    )
+    .unwrap_err();
+    canceller.join().unwrap();
+    assert!(matches!(err, EncodeError::Cancelled), "{err}");
+    assert!(started.elapsed().as_secs() < 3, "audio decoding should stop promptly");
+    assert!(!dir.join("cancelled.mp4").exists());
+}
+
 /// The progress callback sees every frame once, in order.
 #[test]
 fn progress_reports_every_frame_in_order() {

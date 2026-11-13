@@ -9,7 +9,10 @@ use std::fmt;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+use std::time::Duration;
 
 /// The mix sample rate: every clip is resampled to it, and the muxed AAC track uses it.
 pub const SAMPLE_RATE: u32 = 48_000;
@@ -156,6 +159,8 @@ pub enum AudioError {
     Plan(String),
     /// A source file could not be probed or decoded.
     Source { path: PathBuf, message: String },
+    /// The mix was cancelled.
+    Cancelled,
     /// Writing the mix failed.
     Io(io::Error),
 }
@@ -166,6 +171,7 @@ impl fmt::Display for AudioError {
         match self {
             AudioError::Plan(m) => write!(f, "audio plan: {m}"),
             AudioError::Source { path, message } => write!(f, "audio source {}: {message}", path.display()),
+            AudioError::Cancelled => write!(f, "audio mix cancelled"),
             AudioError::Io(e) => write!(f, "writing the audio mix failed: {e}"),
         }
     }
@@ -289,9 +295,61 @@ fn validate_plan(plan: &AudioPlan, total_sec: f64) -> Result<(), AudioError> {
 }
 
 /// Decodes one clip to interleaved stereo f32 at 48 kHz. Mono sources are copied to both channels at unity, as the Chrome-based pipeline does; more than two channels are downmixed by ffmpeg.
-fn decode_clip(tools: &Tools, clip: &AudioClip, path: &Path) -> Result<Vec<f32>, AudioError> {
+fn command_output(command: &mut Command, cancel: Option<&AtomicBool>) -> io::Result<Option<Output>> {
+    let Some(cancel) = cancel else { return command.output().map(Some) };
+    if cancel.load(Ordering::Relaxed) {
+        return Ok(None);
+    }
+    let mut child = command.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+    let mut stdout = child.stdout.take().expect("stdout was piped");
+    let mut stderr = child.stderr.take().expect("stderr was piped");
+    let stdout_reader = thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = io::Read::read_to_end(&mut stdout, &mut bytes);
+        (result, bytes)
+    });
+    let stderr_reader = thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = io::Read::read_to_end(&mut stderr, &mut bytes);
+        (result, bytes)
+    });
+    let status = loop {
+        if cancel.load(Ordering::Relaxed) {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = stdout_reader.join();
+            let _ = stderr_reader.join();
+            return Ok(None);
+        }
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => thread::sleep(Duration::from_millis(10)),
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = stdout_reader.join();
+                let _ = stderr_reader.join();
+                return Err(error);
+            }
+        }
+    };
+    let (stdout_result, stdout) = stdout_reader.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "reading audio decoder output panicked"))?;
+    let (stderr_result, stderr) = stderr_reader.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "reading audio decoder errors panicked"))?;
+    stdout_result?;
+    stderr_result?;
+    Ok(Some(Output { status, stdout, stderr }))
+}
+
+/// Decodes one clip to interleaved stereo f32 at 48 kHz. Mono sources are copied to both channels at unity, as the Chrome-based pipeline does; more than two channels are downmixed by ffmpeg.
+fn decode_clip(tools: &Tools, clip: &AudioClip, path: &Path, cancel: Option<&AtomicBool>) -> Result<Vec<f32>, AudioError> {
     let fail = |message: String| AudioError::Source { path: path.to_path_buf(), message };
+    if cancel.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err(AudioError::Cancelled);
+    }
     let facts = probe(&tools.ffprobe, path).map_err(&fail)?;
+    if cancel.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err(AudioError::Cancelled);
+    }
     let channels = facts.audio().ok_or_else(|| fail("has no audio stream".to_string()))?.channels.unwrap_or(2);
     let mut command = Command::new(&tools.ffmpeg);
     command.args(["-v", "error", "-nostdin", "-ss"]).arg(format!("{:.6}", clip.source_start_sec)).arg("-i").arg(path);
@@ -300,7 +358,8 @@ fn decode_clip(tools: &Tools, clip: &AudioClip, path: &Path) -> Result<Vec<f32>,
     }
     command.args(["-vn", "-map", "0:a:0", "-ar"]).arg(SAMPLE_RATE.to_string());
     command.args(["-ac", if channels == 1 { "1" } else { "2" }, "-f", "f32le", "pipe:1"]);
-    let output = command.stdin(Stdio::null()).output().map_err(|e| fail(format!("cannot run {}: {e}", tools.ffmpeg.display())))?;
+    command.stdin(Stdio::null());
+    let output = command_output(&mut command, cancel).map_err(|e| fail(format!("cannot run {}: {e}", tools.ffmpeg.display())))?.ok_or(AudioError::Cancelled)?;
     if !output.status.success() {
         return Err(fail(format!("ffmpeg could not decode it: {}", String::from_utf8_lossy(&output.stderr).trim())));
     }
@@ -330,21 +389,35 @@ fn envelope_at(points: &[EnvelopePoint], time_sec: f64, cursor: &mut usize) -> f
 
 /// Mixes the whole plan into a stereo bed exactly `total_sec` long. Relative clip paths resolve against `base_dir`.
 pub fn mix_plan(tools: &Tools, plan: &AudioPlan, total_sec: f64, base_dir: &Path) -> Result<MixedAudio, AudioError> {
+    mix_plan_cancellable(tools, plan, total_sec, base_dir, None)
+}
+
+/// Mixes an audio plan while honoring an optional cancellation flag.
+pub(crate) fn mix_plan_cancellable(tools: &Tools, plan: &AudioPlan, total_sec: f64, base_dir: &Path, cancel: Option<&AtomicBool>) -> Result<MixedAudio, AudioError> {
     if !total_sec.is_finite() || total_sec <= 0.0 {
         return Err(AudioError::Plan("the film duration must be above 0".to_string()));
+    }
+    if cancel.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err(AudioError::Cancelled);
     }
     validate_plan(plan, total_sec)?;
     let total_samples = (total_sec * SAMPLE_RATE as f64).round() as usize;
     let mut decoded: Vec<(usize, Vec<f32>)> = Vec::with_capacity(plan.clips.len());
     for clip in &plan.clips {
+        if cancel.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+            return Err(AudioError::Cancelled);
+        }
         let start = (clip.start_sec * SAMPLE_RATE as f64).round() as usize;
         if clip.start_sec >= total_sec {
             decoded.push((start, Vec::new()));
             continue;
         }
         let path = if clip.path.is_absolute() { clip.path.clone() } else { base_dir.join(&clip.path) };
-        let samples = decode_clip(tools, clip, &path)?;
+        let samples = decode_clip(tools, clip, &path, cancel)?;
         decoded.push((start, samples));
+    }
+    if cancel.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+        return Err(AudioError::Cancelled);
     }
     let speech = match &plan.speech {
         Some(given) => merge_speech(given),
