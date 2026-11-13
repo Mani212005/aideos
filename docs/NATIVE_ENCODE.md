@@ -36,9 +36,8 @@ already installs ffmpeg; the cargo cache step it gained keys on `native/Cargo.lo
 ## The delivery format
 
 Every profile writes H.264 High, `yuv420p`, **limited range**, tagged BT.709 on all four tags (primaries, transfer,
-matrix, range), in an mp4 with `+faststart`, plus AAC-LC stereo 48 kHz at 320 kbps when there is audio. The values are
-the `RENDER_PROFILES` table of `backend/renderJob.ts` (task aideos-m1-render-job): CRF 16, `yuv420p`, limited range,
-AAC 320k.
+matrix, range), in an mp4 with `+faststart`, plus AAC-LC stereo 48 kHz at 320 kbps when there is audio. This crate
+defines the output policy: CRF 16, `yuv420p`, limited range, BT.709 tags, and AAC-LC stereo at 320 kbps.
 
 | Profile | Encoder | Settings |
 | --- | --- | --- |
@@ -67,10 +66,11 @@ and compare bytes. x264's output depends on its thread count, so a different `--
 default differs) gives a different, equally valid file. Pin `threads` when byte identity across machines matters.
 The container carries no creation time or ffmpeg version tag; the stream's own encoder SEI still names the x264 build (or VAAPI driver), so files from different builds differ.
 
-**Failure behaviour.** The mp4 is written to `<name>.partial` and renamed on success, so a file at the output path is
-always complete. A failing source, a failing ffmpeg, a cancel (`EncodeOptions::cancel`, an `AtomicBool` another thread
-raises) and a missing ffmpeg all leave no partial or scratch file. Errors name the cause (the frame file, the audio
-file, the backend, ffmpeg's last messages).
+**Failure behaviour.** The mp4 is written to a uniquely reserved hidden scratch file beside the requested output and
+renamed on success, so a file at the output path is always complete and existing files cannot be clobbered as scratch.
+A failing source, a failing ffmpeg, a cancel (`EncodeOptions::cancel`, an `AtomicBool` another thread raises) and a
+missing ffmpeg all leave no partial or scratch file. Errors name the cause (the frame file, the audio file, the
+backend, ffmpeg's last messages).
 
 ## Plugging R2's evaluator in
 
@@ -119,9 +119,11 @@ loudness mastering stays with the render job. A sum past full scale is clamped a
 the detector of `backend/soundtrack.ts`): narration is the 10 ms windows with RMS above -40 dBFS in the `voice` clips
 (measured before gain), phrases closer than 0.6 s merge, and music with `duckUnderVoice` sits at `duckDb` (-18) during
 speech with a 0.25 s attack and 0.6 s release, `pauseGainDb` (-10) in pauses and `musicOnlyGainDb` (-8) before the first
-and after the last phrase, rising to the music-only level around `storyEndSec`. Pass `speech` when the TypeScript
-pipeline already measured it (`soundtrack.speech`); the mixer then measures nothing. The tests hold these levels to
-0.3 dB.
+and after the last phrase, rising to the music-only level around `storyEndSec`. A supplied `storyEndSec` must be within
+the film duration, and each supplied speech interval must have positive duration within the film timeline. If speech
+is measured from voice clips, portions beyond the film end are clipped away and clips starting after the film are
+ignored. Pass `speech` when the TypeScript pipeline already measured it (`soundtrack.speech`); the mixer then measures
+nothing. The tests hold these levels to 0.3 dB.
 
 Not carried over: the library-section manifest, per-effect peak caps and the legacy `ducking.ts` curve. The emitter
 (R4) resolves those into clips, gains and envelopes before they reach this crate.
@@ -148,8 +150,7 @@ numbers are a loaded-machine floor, not a ceiling. And `rgba` input is bound by 
 
 The evaluator and raster (R2), the TypeScript emitter and Still Talking acceptance (R4), captions burn-in, loudness
 mastering and incremental shot-level re-encode. No Remotion code or type is imported and the Remotion render path is
-untouched. The render job (`backend/renderJob.ts`) can call the binary or the library behind its `Renderer` interface;
-wiring it is R4.
+untouched. R4 will connect this binary or library to the render job through its renderer interface.
 
 Dependencies: `serde`, `serde_json` and `png` (pure Rust), 23 packages in all in `native/Cargo.lock`, this crate included, built into
 `native/target` (gitignored).

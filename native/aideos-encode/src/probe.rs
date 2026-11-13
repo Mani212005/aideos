@@ -1,6 +1,6 @@
 // File Description: Reads container and stream facts from a media file by running ffprobe, so the encoder can verify what it produced and the audio mixer can learn a source's channel layout.
 // Inputs and outputs: a media file path -> MediaFacts (per-stream codec, pixel format, range, colour tags, size, rate, channels, duration).
-// Used by: src/encode.rs (hardware backend conformance check), src/audio.rs (source channels), src/main.rs (`probe`), tests/encode.rs.
+// Used by: src/encode.rs (hardware backend conformance check), src/audio.rs (source channels), tests/encode.rs.
 
 use serde::Serialize;
 use serde_json::Value;

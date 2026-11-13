@@ -172,7 +172,7 @@ pub enum Pattern {
     Moving,
 }
 
-/// Generates deterministic frames with no input files, for tests, smoke runs and the CLI's `--synthetic` mode.
+/// Generates deterministic frames with no input files, for tests, smoke runs and library callers.
 pub struct SyntheticSource {
     spec: FrameSpec,
     pattern: Pattern,

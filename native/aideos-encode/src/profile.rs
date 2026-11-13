@@ -1,11 +1,11 @@
-// File Description: The encode policy: the draft, review and final profiles (the values of RENDER_PROFILES in backend/renderJob.ts) and the encoder backends (x264, VAAPI, VideoToolbox) with how each is chosen.
+// File Description: The encode policy: draft, review and final profiles, plus software and hardware backends and how each is chosen.
 // Inputs and outputs: a profile name and a backend preference -> the settings the encoder passes to ffmpeg.
 // Used by: src/encode.rs, src/main.rs, tests/encode.rs, docs/NATIVE_ENCODE.md.
 
 use serde::Serialize;
 use std::fmt;
 
-/// A render profile. The three share one quality policy (RENDER_PROFILES in backend/renderJob.ts); they differ in which encoder is allowed.
+/// A render profile. The three share one quality policy and differ in which encoder is allowed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Profile {
@@ -58,7 +58,7 @@ impl fmt::Display for Profile {
     }
 }
 
-/// The values RENDER_PROFILES fixes: H.264, yuv420p, limited range, BT.709 tags, AAC.
+/// The shared output policy: H.264, yuv420p, limited range, BT.709 tags, AAC.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub struct Policy {
     /// x264 constant rate factor.
