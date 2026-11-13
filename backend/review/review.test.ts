@@ -774,3 +774,22 @@ test("review: burned-in captions at the bottom are read by OCR end to end", { sk
   spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=0x0a0a0b:s=1920x1080:r=10:d=12", "-c:v", "libx264", "-pix_fmt", "yuv420p", bare]);
   assert.equal(byKey((await reviewVideo({ target: bare, noWrite: true })).criteria, "captions").status, "skipped", "a silent video with no narration has nothing to caption");
 });
+
+// Reproduces the end-card pacing false positive through the public video review interface.
+test("review: a synthetic held end card is excluded from story freezes", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-m2-review-"));
+  try {
+    const video = path.join(dir, "tail.mp4");
+    const encoded = spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=320x180:r=10:d=12", "-vf", "tpad=stop_mode=clone:stop_duration=6", "-c:v", "libx264", "-pix_fmt", "yuv420p", video]);
+    assert.equal(encoded.status, 0, encoded.stderr?.toString());
+    const film = nodeFilm([{ look: "a" }, { look: "b" }]);
+    const file = path.join(dir, "film.json");
+    fs.writeFileSync(file, JSON.stringify(film));
+    const result = await reviewVideo({ target: video, film: file, skipOcr: true, noWrite: true });
+    const pacing = byKey(result.criteria, "pacing");
+    assert.equal(pacing.status, "pass", pacing.summary);
+    assert.equal(pacing.metrics.longestStaticSec, 0);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
