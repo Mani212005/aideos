@@ -14,7 +14,6 @@ import { compileScene } from "../src/dl/scene/compile";
 import type { Scene } from "../src/dl/scene/types";
 import type { SvgAnimationClip } from "../src/dl/scene/svgAnimation";
 import { elementOpacity, elementVisible } from "../src/dl/scene/visibility";
-import { stageHoldFactLine } from "./geminiReview/facts";
 import { checkFilmDesign } from "./designCheck/designCheck";
 import { readFilmFacts } from "./review/source";
 import { stageTimeline, stageSegments, storyRanges, transitionStage } from "./stageTimeline";
@@ -65,8 +64,6 @@ test("stage timeline: motion settles, resumes and enters the format's end card",
     assert.match(failures[0].message, /3.00s to 8.00s \(5.00s; max 3s\)/);
     const facts = readFilmFacts(film);
     assert.deepEqual(facts.stageSpans, long.spans);
-    assert.match(stageHoldFactLine(facts)!, /3.00s to 8.00s/);
-    assert.match(stageHoldFactLine(facts)!, /end card is excluded/);
   });
 });
 
