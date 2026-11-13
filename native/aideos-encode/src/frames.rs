@@ -38,7 +38,7 @@ impl PixelFormat {
     pub fn parse(text: &str) -> Option<PixelFormat> {
         match text {
             "rgba" => Some(PixelFormat::Rgba8),
-            "i420" | "yuv420p" => Some(PixelFormat::I420),
+            "i420" => Some(PixelFormat::I420),
             _ => None,
         }
     }

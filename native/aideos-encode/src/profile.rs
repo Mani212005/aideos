@@ -134,7 +134,7 @@ impl BackendChoice {
     pub fn parse(text: &str) -> Option<BackendChoice> {
         match text {
             "auto" => Some(BackendChoice::Auto),
-            "software" | "x264" => Some(BackendChoice::Exactly(Backend::Software)),
+            "software" => Some(BackendChoice::Exactly(Backend::Software)),
             "vaapi" => Some(BackendChoice::Exactly(Backend::Vaapi)),
             "videotoolbox" => Some(BackendChoice::Exactly(Backend::VideoToolbox)),
             _ => None,

@@ -10,11 +10,11 @@ use crate::tools::Tools;
 use serde::Serialize;
 use std::ffi::OsString;
 use std::fmt;
-use std::fs;
+use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -166,6 +166,23 @@ impl Drop for Cleanup {
 
 /// The scale filter that turns RGBA into limited-range BT.709 (accurate rounding and full chroma interpolation keep hairlines and small type clean).
 const RGBA_TO_709: &str = "scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int";
+
+/// Creates an exclusively reserved scratch file beside the requested output.
+fn reserve_scratch(dir: &Path, name: &str, suffix: &str) -> io::Result<PathBuf> {
+    static NEXT_SCRATCH_ID: AtomicU64 = AtomicU64::new(0);
+    loop {
+        let id = NEXT_SCRATCH_ID.fetch_add(1, Ordering::Relaxed);
+        let path = dir.join(format!(".{name}.{}.{id}.{suffix}", std::process::id()));
+        match OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(file) => {
+                drop(file);
+                return Ok(path);
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
+}
 
 /// Builds the ffmpeg argument list for one encode.
 fn build_args(spec: &FrameSpec, profile: Profile, backend: Backend, audio: Option<&Path>, partial: &Path, threads: Option<u32>) -> Vec<OsString> {
@@ -353,24 +370,24 @@ pub fn encode(source: &mut dyn FrameSource, audio: Option<&AudioPlan>, out: &Pat
     }
     let name = out.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "out.mp4".to_string());
     let dir = out.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
-    let partial = dir.join(format!("{name}.partial"));
-    let wav = dir.join(format!(".{name}.audio.wav"));
+    let partial = reserve_scratch(dir, &name, "partial.mp4")?;
     let mut cleanup = Cleanup(vec![partial.clone()]);
 
     let mut audio_report = None;
-    let mut wav_path: Option<&Path> = None;
+    let mut wav_path: Option<PathBuf> = None;
     if let Some(plan) = audio {
         if opts.cancel.as_ref().is_some_and(|flag| flag.load(Ordering::Relaxed)) {
             return Err(EncodeError::Cancelled);
         }
         let mixed = mix_plan(&opts.tools, plan, spec.duration_sec(), &opts.audio_base_dir)?;
+        let wav = reserve_scratch(dir, &name, "audio.wav")?;
         cleanup.0.push(wav.clone());
         write_wav_f32(&wav, &mixed.samples)?;
         audio_report = Some(AudioReport { peak: mixed.peak, clipped_samples: mixed.clipped_samples, speech_intervals: mixed.speech.len() });
-        wav_path = Some(&wav);
+        wav_path = Some(wav);
     }
 
-    let args = build_args(&spec, opts.profile, backend, wav_path, &partial, opts.threads);
+    let args = build_args(&spec, opts.profile, backend, wav_path.as_deref(), &partial, opts.threads);
     run_ffmpeg(source, &spec, &args, opts)?;
     fs::rename(&partial, out)?;
     Ok(EncodeReport {

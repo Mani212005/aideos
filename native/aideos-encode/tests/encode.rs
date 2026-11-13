@@ -473,6 +473,7 @@ fn audio_plan_rejects_out_of_timeline_ducking_times() {
     let invalid_plans = [
         AudioPlan { speech: Some(vec![SpeechInterval { start_sec: -2.0, end_sec: 0.5 }]), ..AudioPlan::default() },
         AudioPlan { speech: Some(vec![SpeechInterval { start_sec: 1.0, end_sec: 5.1 }]), ..AudioPlan::default() },
+        AudioPlan { speech: Some(vec![SpeechInterval { start_sec: 4.0, end_sec: 1.0 }]), ..AudioPlan::default() },
         AudioPlan { mix: MixSettings { story_end_sec: Some(-1.0), ..MixSettings::default() }, ..AudioPlan::default() },
         AudioPlan { mix: MixSettings { story_end_sec: Some(5.1), ..MixSettings::default() }, ..AudioPlan::default() },
     ];
@@ -640,22 +641,37 @@ fn odd_sizes_and_empty_videos_are_refused() {
     assert!(Fps::parse("0").is_err() && Fps::parse("30/0").is_err() && Fps::parse("abc").is_err());
 }
 
+/// The CLI value parsers accept only the documented names for pixel formats and backends.
+#[test]
+fn cli_value_parsers_reject_extra_aliases() {
+    assert_eq!(PixelFormat::parse("i420"), Some(PixelFormat::I420));
+    assert_eq!(PixelFormat::parse("yuv420p"), None);
+    assert_eq!(BackendChoice::parse("software"), Some(BackendChoice::Exactly(Backend::Software)));
+    assert_eq!(BackendChoice::parse("x264"), None);
+}
+
 // ---------------------------------------------------------------------------------------------
 // Failure, cancellation, progress
 // ---------------------------------------------------------------------------------------------
 
-/// A source that fails mid-stream stops the encode with its own error and leaves no partial video or audio scratch file.
+/// A source failure cleans up owned scratch files without changing pre-existing user files.
 #[test]
 fn a_failing_source_leaves_nothing_behind() {
     let dir = TempDir::new("fail");
     let voice = dir.join("voice.wav");
     write_pcm16(&voice, SAMPLE_RATE, &tone(300.0, 0.3, 1.0, &[]));
+    let old_partial = dir.join("out.mp4.partial");
+    let old_audio = dir.join(".out.mp4.audio.wav");
+    fs::write(&old_partial, b"existing partial").unwrap();
+    fs::write(&old_audio, b"existing audio scratch").unwrap();
     let keep = dir.listing();
     let mut source = FailingSource { spec: spec(128, 72, 30, PixelFormat::Rgba8), delivered: 0, fail_at: 3 };
     let out = dir.join("out.mp4");
     let err = encode(&mut source, Some(&one_clip(AudioClip::new(&voice, Role::Voice))), &out, &mut EncodeOptions::new(Profile::Final)).unwrap_err();
     assert!(matches!(&err, EncodeError::Source(SourceError::Frame { message, .. }) if message == "evaluator exploded"), "{err}");
-    assert_eq!(dir.listing(), keep, "only the input audio remains");
+    assert_eq!(dir.listing(), keep, "pre-existing files remain and owned scratch files are removed");
+    assert_eq!(fs::read(old_partial).unwrap(), b"existing partial");
+    assert_eq!(fs::read(old_audio).unwrap(), b"existing audio scratch");
 }
 
 /// Raising the cancel flag stops a long encode promptly, kills ffmpeg and removes every partial file.

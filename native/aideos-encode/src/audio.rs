@@ -280,8 +280,8 @@ fn validate_plan(plan: &AudioPlan, total_sec: f64) -> Result<(), AudioError> {
     }
     if let Some(speech) = &plan.speech {
         for (n, interval) in speech.iter().enumerate() {
-            if !interval.start_sec.is_finite() || !interval.end_sec.is_finite() || interval.start_sec < 0.0 || interval.start_sec > total_sec || interval.end_sec < 0.0 || interval.end_sec > total_sec {
-                return bad(format!("speech[{}] times must be within 0 to the film duration ({total_sec})", n));
+            if !interval.start_sec.is_finite() || !interval.end_sec.is_finite() || interval.start_sec < 0.0 || interval.start_sec > total_sec || interval.end_sec < interval.start_sec || interval.end_sec > total_sec {
+                return bad(format!("speech[{}] must be ordered within 0 to the film duration ({total_sec})", n));
             }
         }
     }

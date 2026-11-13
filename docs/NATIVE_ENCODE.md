@@ -7,7 +7,7 @@ captions. It is a Rust crate with a library API and a CLI, driving `ffmpeg` and 
 | Piece | File |
 | --- | --- |
 | Frame-source interface, synthetic, PNG sequence and raw stream sources (the CLI accepts PNG sequences and raw streams) | `native/aideos-encode/src/frames.rs` |
-| Profiles (draft, review, final) and backends (x264, VAAPI, VideoToolbox) | `native/aideos-encode/src/profile.rs` |
+| Profiles (draft, review, final) and backends (software, VAAPI, VideoToolbox) | `native/aideos-encode/src/profile.rs` |
 | Encoder: ffmpeg subprocess, backend probe, cancellation, atomic output | `native/aideos-encode/src/encode.rs` |
 | Audio mixer: clips, gain, envelope, fades, speech ducking, float WAV | `native/aideos-encode/src/audio.rs` |
 | ffprobe facts | `native/aideos-encode/src/probe.rs` |
