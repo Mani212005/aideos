@@ -44,6 +44,15 @@
   ],
   "camera": [
     {
+      "id": "establish",
+      "at": "approach",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1
+    },
+    {
       "id": "settled",
       "at": "catch:\"catches\"+105",
       "center": [

@@ -26,7 +26,7 @@ import path from "path";
 import type { Film } from "../../src/dl/schema";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { DEFAULT_KOKORO_SPEED } from "../tts";
-import { DELIVERY_CONFIG, deliveryTimeline } from "../../src/dl/delivery";
+import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../endCard/voice";
 import { readRecordedNarration } from "./recordedNarration";
 import { deliverReel } from "../reelCut/writer";
