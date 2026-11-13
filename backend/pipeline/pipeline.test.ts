@@ -633,8 +633,10 @@ test("verify: a render is the narration plus its end card, and a quiet card is n
   assert.deepEqual(verify("long", 26, [{ startSec: 22.4, durationSec: 3.6 }]), []);
   assert.deepEqual(verify("long", 26, [{ startSec: 19.5, durationSec: 6.5 }]), [], "only 0.5 s of it is in the story");
   assert.match(verify("long", 26, [{ startSec: 10, durationSec: 3 }]).join(), /3.0s of silence at 10.0s/);
-  // A partial render is held to its own window.
   assert.deepEqual(deliveredOutputWarnings({ film, format: "long", durationSec: 1, narrationSec: 20, silences: [], renderFrames: [0, 29] }), []);
+  assert.deepEqual(deliveredOutputWarnings({ film, format: "long", durationSec: 6, narrationSec: 20, silences: [{ startSec: 0, durationSec: 3 }], renderFrames: [600, 779] }), [], "an end-card-only range has no story time");
+  assert.deepEqual(deliveredOutputWarnings({ film, format: "long", durationSec: 3, narrationSec: 20, silences: [{ startSec: 0, durationSec: 3 }], renderFrames: [570, 659] }), [], "only one second of a crossing range is inside the story");
+  assert.match(deliveredOutputWarnings({ film, format: "long", durationSec: 3, narrationSec: 20, silences: [{ startSec: 0, durationSec: 3 }], renderFrames: [300, 389] }).join(), /3.0s of silence at 0.0s/, "genuine partial story silence remains a warning");
 });
 
 test("runProduction: narration records its voice and speed; the end card line is spoken in it and survives a design rebuild", async () => {
