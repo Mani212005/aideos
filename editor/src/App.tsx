@@ -213,6 +213,7 @@ export default function App() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
+      if (project.isLoading) return;
       const typing =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
@@ -294,7 +295,8 @@ export default function App() {
 
   return (
     <FilmSaveContext.Provider value={project.saveFilm}>
-    <div className="flex h-screen flex-col overflow-hidden bg-paper text-ink">
+    <fieldset disabled={project.isLoading} className="contents">
+    <div inert={project.isLoading} className="flex h-screen flex-col overflow-hidden bg-paper text-ink">
       {/* Header */}
       <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b-2 border-ink bg-paper-2 px-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -555,9 +557,11 @@ export default function App() {
         film={film}
         activeMode={stage}
         activeSelectionId={selection && selection.kind !== "history" ? selection.id : undefined}
+        isLoading={project.isLoading}
         onUpdateFilm={(next) => commit(next, "AI assistant edit")}
       />
     </div>
+    </fieldset>
     </FilmSaveContext.Provider>
   );
 }

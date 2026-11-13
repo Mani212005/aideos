@@ -32,7 +32,7 @@ import { carryCaptionPlacement } from '../src/dl/captionPlacement.ts';
 import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
 import { newProjectFilmTheme } from '../src/projectTheme.ts';
 import type { Film } from '../src/dl/schema.ts'
-import { decideSave, filmRevision } from '../backend/filmRevision.ts';
+import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
@@ -158,9 +158,19 @@ function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; ag
 function diskFilmRevision(filmId: string): string | null {
   const pkgFilmPath = path.join(resolvePackageDir(filmId), 'film.json');
   try {
-    return fs.existsSync(pkgFilmPath) ? filmRevision(fs.readFileSync(pkgFilmPath, 'utf8')) : null;
-  } catch {
-    return null;
+    return filmRevision(fs.readFileSync(pkgFilmPath, 'utf8'));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+  const generatedPath = path.join(filmsDir, `${filmId}.ts`);
+  try {
+    const content = fs.readFileSync(generatedPath, 'utf8');
+    const jsonMatch = content.match(/=\s*(\{[\s\S]*\})\s*;/);
+    if (!jsonMatch) throw new Error(`Invalid film module format for ${filmId}`);
+    return revisionOfFilm(dropLegacyFilmBlocks(JSON.parse(jsonMatch[1])));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
   }
 }
 
@@ -2583,7 +2593,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           if (jsonMatch) {
             try {
               const film = dropLegacyFilmBlocks(JSON.parse(jsonMatch[1]));
-              sendJson(res, 200, { ok: true, film });
+              sendJson(res, 200, { ok: true, film, rev: revisionOfFilm(film) });
               return;
             } catch (err) {
               sendJson(res, 500, { error: `Failed to parse film JSON: ${String(err)}` });
@@ -2622,7 +2632,13 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const file = path.join(filmsDir, `${id}.ts`);
             // A save names the revision it started from; a stale one is refused with the film now on
             // disk so the studio can keep both versions instead of the last writer silently winning.
-            const currentRev = diskFilmRevision(id);
+            let currentRev: string | null;
+            try {
+              currentRev = diskFilmRevision(id);
+            } catch (error) {
+              sendJson(res, 500, { error: `Could not read current film revision: ${String(error)}` });
+              return;
+            }
             if (decideSave(raw?.baseRev, currentRev) === 'stale') {
               sendJson(res, 409, { error: 'conflict', code: 'stale_revision', rev: currentRev, film: readFilm(id) });
               return;

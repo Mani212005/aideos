@@ -21,6 +21,11 @@ const QUICK_PROMPTS = [
   "Set the actor facing direction to left",
 ];
 
+/** Whether the assistant may submit a prompt for the currently open film. */
+export function canSubmitFeedback(isLoading: boolean): boolean {
+  return !isLoading;
+}
+
 interface FeedbackMessage {
   id: string;
   sender: "user" | "assistant";
@@ -33,6 +38,7 @@ interface GlobalFeedbackWidgetProps {
   film: Film;
   activeMode: string;
   activeSelectionId?: string;
+  isLoading?: boolean;
   onUpdateFilm?: (updated: Film) => void;
 }
 
@@ -41,6 +47,7 @@ export function GlobalFeedbackWidget({
   film,
   activeMode,
   activeSelectionId,
+  isLoading = false,
   onUpdateFilm,
 }: GlobalFeedbackWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -103,6 +110,7 @@ export function GlobalFeedbackWidget({
 
   // Handles sending user feedback and executing AI critique engine updates
   const handleSendMessage = async (textToSend?: string) => {
+    if (!canSubmitFeedback(isLoading)) return;
     const messageContent = (textToSend || inputText).trim();
     if (!messageContent) return;
 
@@ -255,6 +263,8 @@ export function GlobalFeedbackWidget({
                   key={prompt}
                   interactive
                   onClick={() => handleChipClick(prompt)}
+                  aria-disabled={!canSubmitFeedback(isLoading)}
+                  tabIndex={canSubmitFeedback(isLoading) ? 0 : -1}
                   className="px-1.5 py-0.5 font-sans text-[10px] font-bold"
                 >
                   {prompt}
@@ -274,8 +284,9 @@ export function GlobalFeedbackWidget({
                 placeholder="Ask for a change to this film"
                 aria-label="Message the AI assistant"
                 className="h-8 py-0"
+                disabled={!canSubmitFeedback(isLoading)}
               />
-              <Button type="submit" size="sm" tone="primary" iconOnly disabled={isTyping || !inputText.trim()}>
+              <Button type="submit" size="sm" tone="primary" iconOnly disabled={!canSubmitFeedback(isLoading) || isTyping || !inputText.trim()}>
                 <Send className="h-3.5 w-3.5" />
               </Button>
             </form>
@@ -291,6 +302,7 @@ export function GlobalFeedbackWidget({
           iconOnly={!isOpen}
           tone={isOpen ? "default" : "select"}
           onClick={() => setIsOpen(!isOpen)}
+          disabled={!canSubmitFeedback(isLoading)}
           className="shadow-nb"
           aria-label={isOpen ? "Close the AI assistant" : "Open the AI assistant"}
           title={isOpen ? "Close the AI assistant" : "Open the AI assistant"}

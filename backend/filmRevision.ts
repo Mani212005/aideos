@@ -36,12 +36,11 @@ export function revisionOfFilm(film: unknown): string {
 export type SaveDecision = "write" | "stale";
 
 /**
- * Decide whether a save may overwrite what is on disk. A save that names no base revision (a
- * script or an older caller) and a save to a film that has no file yet are unconditional; a save
- * that names a base must match the current revision exactly, otherwise someone else wrote since.
+ * Decide whether a save may overwrite what is on disk. An unbased save may create a missing film,
+ * but any existing film requires the exact revision the editor loaded.
  */
 export function decideSave(baseRev: string | null | undefined, currentRev: string | null): SaveDecision {
-  if (typeof baseRev !== "string" || baseRev === "") return "write";
-  if (currentRev === null) return "write";
+  if (currentRev === null) return baseRev == null || baseRev === "" ? "write" : "stale";
+  if (typeof baseRev !== "string" || baseRev === "") return "stale";
   return baseRev === currentRev ? "write" : "stale";
 }

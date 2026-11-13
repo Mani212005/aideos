@@ -18,6 +18,7 @@ import {
   type SyncState,
 } from "../editor/src/state/filmSyncMachine";
 import { decideSave, filmRevision, revisionOfFilm } from "./filmRevision";
+import { canSubmitFeedback } from "../editor/src/components/GlobalFeedbackWidget";
 
 type F = { id: string; n: number };
 
@@ -55,6 +56,17 @@ test("input is refused while loading, for every kind of edit and for saving", ()
   assert.match(edited.rejected ?? "", /disabled while the film loads/);
   assert.equal(edited.state, loading);
   assert.match(transition(loading, { type: "save_started", seq: 1 }).rejected ?? "", /loads/);
+});
+
+test("the assistant prompt cannot submit during loading and is available after loading", () => {
+  let commits = 0;
+  const submit = (isLoading: boolean) => {
+    if (canSubmitFeedback(isLoading)) commits++;
+  };
+  submit(true);
+  assert.equal(commits, 0);
+  submit(false);
+  assert.equal(commits, 1);
 });
 
 test("an edit makes the film dirty, a save started from dirty is saving, and success settles clean on the new revision", () => {
@@ -238,7 +250,15 @@ test("the revision is the hash of the film.json bytes, so any writer produces on
 test("the save endpoint rule: a save from the revision on disk writes, a stale one is refused, and an unconditional one writes", () => {
   assert.equal(decideSave("r1", "r1"), "write");
   assert.equal(decideSave("r1", "r2"), "stale");
-  assert.equal(decideSave(undefined, "r2"), "write");
-  assert.equal(decideSave(null, "r2"), "write");
-  assert.equal(decideSave("r1", null), "write");
+  assert.equal(decideSave(undefined, "r2"), "stale");
+  assert.equal(decideSave(null, "r2"), "stale");
+  assert.equal(decideSave("r1", null), "stale");
+  assert.equal(decideSave(undefined, null), "write");
+});
+
+test("a generated fallback has a base revision that detects a package created after it was loaded", () => {
+  const fallbackRev = revisionOfFilm({ id: "demo", n: 1 });
+  assert.equal(decideSave(fallbackRev, fallbackRev), "write");
+  assert.equal(decideSave(fallbackRev, null), "stale");
+  assert.equal(decideSave(fallbackRev, revisionOfFilm({ id: "demo", n: 2 })), "stale");
 });
