@@ -147,6 +147,32 @@ fn the_reel_shows_the_captions_in_its_own_placement() {
     );
 }
 
+/// Checks that an oversized spoken word wraps inside the caption card when painted.
+#[test]
+fn an_oversized_caption_word_stays_inside_its_card() {
+    let mut ir = common::tiny_scene();
+    for node in &mut ir.overlay {
+        if let Node::Captions(captions) = node {
+            captions.words[0].text = "W".repeat(120);
+        }
+    }
+    let long_word = Renderer::new(ir, &common::package_dir())
+        .expect("mutated caption IR loads")
+        .render_frame(Format::Long, 3)
+        .expect("oversized caption renders");
+    let ordinary = renderer()
+        .render_frame(Format::Long, 3)
+        .expect("ordinary caption renders");
+    for y in 820..960 {
+        for x in 0..288 {
+            assert!(close(pixel(&long_word, x, y), pixel(&ordinary, x, y), 1));
+        }
+        for x in 1632..1920 {
+            assert!(close(pixel(&long_word, x, y), pixel(&ordinary, x, y), 1));
+        }
+    }
+}
+
 /// Checks that a format the ir does not declare is refused.
 #[test]
 fn a_format_the_ir_does_not_declare_is_refused() {

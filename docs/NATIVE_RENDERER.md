@@ -117,11 +117,17 @@ Medium (release 2.304), both SIL Open Font License 1.1 (`fixtures/package/fonts/
 
 Static scene artwork: `g`, `rect` (with `rx`/`ry`), `circle`, `ellipse`, `line`, `polyline`, `polygon`,
 `path`, single-run `text`, `defs`, `linearGradient` and `radialGradient` (bounding-box or user-space units,
-`gradientTransform`, spread methods, focal point, stops inherited through `href`), `clipPath` (user-space
+`gradientTransform`, spread methods, focal point, and geometry, units, transform, spread and stops inherited
+through same-type `href` chains), `clipPath` (user-space
 units), presentation attributes and `style` declarations (fill, stroke and their opacities, stroke width,
 caps, joins, miter limit, dash array and offset, fill rule, `color`/`currentColor`, opacity, display,
 visibility, font family, size and weight, text anchor, letter spacing), `transform` lists, CSS colours
 (hex, `rgb()`/`rgba()`, named). `title`, `desc` and `metadata` are skipped.
+
+Rendering attributes whose behavior is not implemented are **refused at load with the attribute named**,
+including `vector-effect`, `paint-order`, `mix-blend-mode`, `isolation`, `transform-origin`,
+`transform-box`, `shape-rendering`, `text-rendering`, unsupported baseline and font style properties,
+`text-decoration`, `writing-mode` and `direction`. Inert metadata attributes remain ignored.
 
 Anything else is **refused at load with the element or attribute named**: filters, masks, markers, `use`,
 `image`, `pattern`, `symbol`, `tspan`, SMIL, stylesheets, percentage geometry. Silently dropping part of an

@@ -356,12 +356,20 @@ fn the_rail_and_end_card_states_follow_the_frame() {
             end_frame: Whole(90),
         },
     ];
-    let r = eval::rail_state(&chapters, 30, 60);
+    let r = eval::rail_state(&chapters, 30, 60, 90);
     assert_eq!(
         (r.chapter_index, r.label.as_str(), r.stamp.as_str()),
         (1, "CHAPTER 02: PAYOFF", "00:02")
     );
     assert_near(r.progress, 60.0 / 90.0, 1e-12, "progress");
+
+    let short_chapters = [Chapter {
+        title: "Short chapter span".into(),
+        start_frame: Whole(0),
+        end_frame: Whole(80),
+    }];
+    let reel = eval::rail_state(&short_chapters, 30, 80, 100);
+    assert_near(reel.progress, 0.8, 1e-12, "film duration progress");
 
     let before = eval::end_card_state(66, 80, 30, 66);
     assert_eq!(

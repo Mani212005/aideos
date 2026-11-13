@@ -57,7 +57,7 @@ pub fn draw_rail(canvas: &Canvas, ctx: &OverlayCtx, node: &RailNode) {
     let Some(b) = ctx.format.pick(&node.placement) else {
         return;
     };
-    let state = eval::rail_state(&node.chapters, ctx.fps(), ctx.frame);
+    let state = eval::rail_state(&node.chapters, ctx.fps(), ctx.frame, ctx.dur());
     let (w, h) = (f64::from(ctx.width), f64::from(ctx.height));
     let k = ctx.k();
     super::with_opacity(canvas, node.opacity.unwrap_or(1.0), || {
@@ -236,10 +236,15 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
         }
         .with_text(text)
     };
-    let word_widths: Vec<f64> = cf
+    let natural_word_widths: Vec<f64> = cf
         .words
         .iter()
         .map(|wf| ctx.l.fonts.measure(&spec_for(&node.words[wf.index].text)))
+        .collect();
+    let max_word_width = (card.inner_width - captions::WORD_MARGIN_X).max(0.0);
+    let word_widths: Vec<f64> = natural_word_widths
+        .iter()
+        .map(|width| width.min(max_word_width))
         .collect();
     let boxes: Vec<f64> = word_widths
         .iter()
@@ -305,6 +310,17 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
         );
         let content_left = left + 1.0 + CAPTION_PAD_X;
         let content_w = card_w - 2.0 - 2.0 * CAPTION_PAD_X;
+        canvas.save();
+        canvas.clip_rect(
+            Rect::from_xywh(
+                content_left as f32,
+                top as f32,
+                content_w as f32,
+                card_h as f32,
+            ),
+            ClipOp::Intersect,
+            false,
+        );
         for (r, (a, b)) in rows.iter().enumerate() {
             let mut x = content_left + (content_w - row_widths[r]) / 2.0;
             let y = top + 1.0 + CAPTION_PAD_Y + r as f64 * row_h + 4.0;
@@ -349,12 +365,26 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
                     ),
                     captions::WordRole::Future => (Rgba { a: 0.38, ..primary }, Vec::new()),
                 };
-                let spec = TextSpec {
-                    color,
-                    shadows,
-                    ..spec_for(&node.words[wf.index].text)
+                let original_text = &node.words[wf.index].text;
+                let wrapped_text = if natural_word_widths[i] > max_word_width {
+                    original_text
+                        .chars()
+                        .map(|character| format!("{character}\u{200b}"))
+                        .collect::<String>()
+                } else {
+                    original_text.clone()
                 };
-                let paragraph = ctx.l.fonts.paragraph(&spec, f32::INFINITY);
+                let spec = TextSpec {
+                    text: &wrapped_text,
+                    font: &node.font,
+                    size,
+                    color,
+                    letter_spacing: 0.0,
+                    line_height: Some(CAPTION_LINE_HEIGHT),
+                    align: TextAlign::Left,
+                    shadows,
+                };
+                let paragraph = ctx.l.fonts.paragraph(&spec, word_widths[i] as f32);
                 let (wx, ww) = (x + captions::WORD_MARGIN_X / 2.0, word_widths[i]);
                 canvas.save();
                 // The word scales about its own centre, as a CSS transform on an inline block does.
@@ -370,6 +400,7 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
                 x += boxes[i];
             }
         }
+        canvas.restore();
     });
 }
 

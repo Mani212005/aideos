@@ -373,6 +373,22 @@ const UNSUPPORTED_ATTRS: &[&str] = &[
     "marker-mid",
     "marker-end",
     "marker",
+    "vector-effect",
+    "paint-order",
+    "mix-blend-mode",
+    "isolation",
+    "transform-origin",
+    "transform-box",
+    "shape-rendering",
+    "text-rendering",
+    "dominant-baseline",
+    "alignment-baseline",
+    "baseline-shift",
+    "font-style",
+    "font-stretch",
+    "text-decoration",
+    "writing-mode",
+    "direction",
 ];
 
 /// The attributes of one element, with `style` declarations folded in (a declaration beats the attribute).
@@ -635,58 +651,105 @@ fn gradient_stops(node: roxmltree::Node) -> Result<Vec<Stop>, SvgError> {
     Ok(stops)
 }
 
-/// A gradient as parsed, before `href` stop inheritance is resolved.
+/// A gradient as parsed, before `href` attribute inheritance is resolved.
 struct RawGradient {
-    gradient: Gradient,
+    attrs: BTreeMap<String, String>,
+    stops: Vec<Stop>,
+    linear: bool,
     href: Option<String>,
 }
 
-/// Parses a linearGradient or radialGradient element.
+/// Parses a linearGradient or radialGradient element without applying defaults before inheritance.
 fn parse_gradient(node: roxmltree::Node, linear: bool) -> Result<RawGradient, SvgError> {
     let attrs = attributes(node);
-    let bbox_units = attrs
-        .get("gradientUnits")
-        .is_none_or(|u| u.trim() != "userSpaceOnUse");
-    let c = |name: &str, default: f64| gradient_coord(&attrs, name, default, bbox_units);
-    let geometry = if linear {
-        GradientGeometry::Linear {
-            x1: c("x1", 0.0)?,
-            y1: c("y1", 0.0)?,
-            x2: c("x2", 1.0)?,
-            y2: c("y2", 0.0)?,
-        }
-    } else {
-        let (cx, cy) = (c("cx", 0.5)?, c("cy", 0.5)?);
-        GradientGeometry::Radial {
-            cx,
-            cy,
-            r: c("r", 0.5)?,
-            fx: c("fx", cx)?,
-            fy: c("fy", cy)?,
-        }
-    };
-    let spread = match attrs.get("spreadMethod").map(|s| s.trim()) {
-        Some("reflect") => Spread::Reflect,
-        Some("repeat") => Spread::Repeat,
-        _ => Spread::Pad,
-    };
-    let transform = match attrs.get("gradientTransform") {
-        Some(t) => parse_transform(t)?,
-        None => Matrix::new_identity(),
-    };
     let href = attrs
         .get("href")
         .map(|h| h.trim().trim_start_matches('#').to_string());
     Ok(RawGradient {
-        gradient: Gradient {
-            geometry,
-            bbox_units,
-            transform,
-            spread,
-            stops: gradient_stops(node)?,
-        },
+        attrs,
+        stops: gradient_stops(node)?,
+        linear,
         href,
     })
+}
+
+/// Resolves one gradient and every supported attribute and stop inherited through its href chain.
+fn resolve_gradient(
+    id: &str,
+    gradients: &BTreeMap<String, RawGradient>,
+    visiting: &mut BTreeSet<String>,
+) -> Result<(Gradient, BTreeMap<String, String>), SvgError> {
+    if !visiting.insert(id.to_string()) {
+        return err(format!("gradient {id:?} has a reference cycle"));
+    }
+    let raw = gradients
+        .get(id)
+        .ok_or_else(|| SvgError(format!("unknown gradient {id:?}")))?;
+    let mut attrs = BTreeMap::new();
+    let mut stops = Vec::new();
+    if let Some(target) = &raw.href {
+        let parent = gradients.get(target).ok_or_else(|| {
+            SvgError(format!(
+                "gradient {id:?} references unknown gradient {target:?}"
+            ))
+        })?;
+        if parent.linear != raw.linear {
+            return err(format!(
+                "gradient {id:?} references a different gradient type"
+            ));
+        }
+        let (inherited, inherited_attrs) = resolve_gradient(target, gradients, visiting)?;
+        attrs = inherited_attrs;
+        stops = inherited.stops;
+    }
+    for (name, value) in &raw.attrs {
+        attrs.insert(name.clone(), value.clone());
+    }
+    visiting.remove(id);
+    stops = if raw.stops.is_empty() {
+        stops
+    } else {
+        raw.stops.clone()
+    };
+    let bbox_units = attrs
+        .get("gradientUnits")
+        .is_none_or(|units| units.trim() != "userSpaceOnUse");
+    let coord = |name: &str, default: f64| gradient_coord(&attrs, name, default, bbox_units);
+    let geometry = if raw.linear {
+        GradientGeometry::Linear {
+            x1: coord("x1", 0.0)?,
+            y1: coord("y1", 0.0)?,
+            x2: coord("x2", 1.0)?,
+            y2: coord("y2", 0.0)?,
+        }
+    } else {
+        let (cx, cy) = (coord("cx", 0.5)?, coord("cy", 0.5)?);
+        GradientGeometry::Radial {
+            cx,
+            cy,
+            r: coord("r", 0.5)?,
+            fx: coord("fx", cx)?,
+            fy: coord("fy", cy)?,
+        }
+    };
+    let spread = match attrs.get("spreadMethod").map(|value| value.trim()) {
+        Some("reflect") => Spread::Reflect,
+        Some("repeat") => Spread::Repeat,
+        Some("pad") | None => Spread::Pad,
+        Some(other) => return err(format!("spreadMethod: unsupported value {other:?}")),
+    };
+    let transform = attrs.get("gradientTransform").map_or_else(
+        || Ok(Matrix::new_identity()),
+        |value| parse_transform(value),
+    )?;
+    let gradient = Gradient {
+        geometry,
+        bbox_units,
+        transform,
+        spread,
+        stops,
+    };
+    Ok((gradient, attrs))
 }
 
 /// Reads `clip-path="url(#id)"` into the id.
@@ -892,7 +955,10 @@ impl Parse {
             transform,
             opacity,
             clip_path: clip_ref(&attrs)?,
-            hidden: attrs.get("display").is_some_and(|d| d.trim() == "none"),
+            hidden: attrs.get("display").is_some_and(|d| d.trim() == "none")
+                || attrs
+                    .get("visibility")
+                    .is_some_and(|v| v.trim() == "hidden"),
             children,
         }))
     }
@@ -902,6 +968,9 @@ impl Parse {
 fn clip_path_union(transform: &Matrix, kids: &[Element]) -> Result<Path, SvgError> {
     let mut union: Option<Path> = None;
     for kid in kids {
+        if kid.hidden || kid.style.visible == Some(false) {
+            continue;
+        }
         let Kind::Shape(s) = &kid.kind else {
             return err("clipPath may only contain shapes");
         };
@@ -938,27 +1007,13 @@ pub fn parse(source: &str) -> Result<SvgDocument, SvgError> {
     }
     let mut p = Parse::default();
     let elements = p.children(root)?;
-    // A gradient without stops takes them from the gradient its href names.
+    // Resolve gradients through the same href chain for geometry, units, transform, spread and stops.
     let mut gradients: BTreeMap<String, Gradient> = BTreeMap::new();
-    for (id, raw) in &p.gradients {
-        let mut g = raw.gradient.clone();
-        let mut href = raw.href.clone();
-        let mut hops = 0;
-        while g.stops.is_empty() {
-            let Some(target) = href.take() else { break };
-            let Some(next) = p.gradients.get(&target) else {
-                return err(format!(
-                    "gradient {id:?} references unknown gradient {target:?}"
-                ));
-            };
-            g.stops = next.gradient.stops.clone();
-            href = next.href.clone();
-            hops += 1;
-            if hops > 16 {
-                return err(format!("gradient {id:?} has a reference cycle"));
-            }
-        }
-        gradients.insert(id.clone(), g);
+    for id in p.gradients.keys() {
+        gradients.insert(
+            id.clone(),
+            resolve_gradient(id, &p.gradients, &mut BTreeSet::new())?.0,
+        );
     }
     let mut clip_paths = BTreeMap::new();
     for (id, transform, kids) in &p.clip_nodes {

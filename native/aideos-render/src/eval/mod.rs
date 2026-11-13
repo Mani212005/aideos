@@ -263,12 +263,12 @@ pub struct RailState {
     pub label: String,
     /// "MM:SS" of the frame.
     pub stamp: String,
-    /// Fraction of the chaptered span played, 0 to 1 (the reel's continuous bar).
+    /// Fraction of the film duration played, 0 to 1 (the reel's continuous bar).
     pub progress: f64,
 }
 
 /// Evaluates the rail's chapter, label, timestamp and progress at a frame.
-pub fn rail_state(chapters: &[Chapter], fps: u32, frame: u32) -> RailState {
+pub fn rail_state(chapters: &[Chapter], fps: u32, frame: u32, duration_frames: u32) -> RailState {
     let chapter_index = chapters
         .iter()
         .rposition(|c| c.start_frame.0 <= frame)
@@ -277,7 +277,7 @@ pub fn rail_state(chapters: &[Chapter], fps: u32, frame: u32) -> RailState {
         .get(chapter_index)
         .map(|c| c.title.as_str())
         .unwrap_or("");
-    let total = chapters.last().map(|c| c.end_frame.0).unwrap_or(1).max(1);
+    let total = duration_frames.max(1);
     let seconds = frame / fps.max(1);
     RailState {
         chapter_index,
