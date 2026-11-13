@@ -8,6 +8,7 @@
  */
 
 import React from "react";
+import { animatedElementOpacity } from "./visibility";
 import type { SvgNode } from "./svgDocument";
 import type { SvgElementState } from "./svgAnimation";
 import { svgElementStateToTransform } from "./svgAnimation";
@@ -115,9 +116,8 @@ function buildProps(
     // from the value instead would break both directions: an element authored opacity="0" and
     // faded in would snap back to invisible on the frame its fade reached 1, and an element
     // authored faint and merely translated would be forced to full opacity.
-    if (state.opacityDriven || state.opacity !== 1) {
-      props.opacity = state.opacity;
-    }
+    const opacity = animatedElementOpacity(state);
+    if (opacity !== undefined) props.opacity = opacity;
     if (state.x1 !== undefined) props.x1 = state.x1;
     if (state.y1 !== undefined) props.y1 = state.y1;
     if (state.x2 !== undefined) props.x2 = state.x2;

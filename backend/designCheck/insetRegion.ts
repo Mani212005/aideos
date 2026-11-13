@@ -9,6 +9,7 @@
  */
 
 import fs from "node:fs";
+import { elementOpacity } from "../../src/dl/scene/visibility";
 import path from "node:path";
 import { buildTimeline } from "../../src/dl/camera";
 import type { Film } from "../../src/dl/schema";
@@ -164,7 +165,7 @@ export function projectedSvgParts(
   entity: CompiledEntity,
   frameToPx: Affine,
   packageSlug?: string,
-  options: { includeAncestry?: boolean; minOpacity?: number } = {},
+  options: { includeAncestry?: boolean; minOpacity?: number; targets?: ReadonlySet<string> } = {},
 ): Array<{ name: string; bounds: Box; ancestors?: string[] }> {
   const minOpacity = options.minOpacity ?? INSET_ART_MIN_OPACITY;
   if (!entity.svgSource || entity.transform.opacity <= minOpacity) return [];
@@ -175,6 +176,7 @@ export function projectedSvgParts(
   );
   const states = entity.elementStates ?? {};
   for (const leaf of collectLeaves(entity.svgSource, packageSlug)) {
+    if (options.targets && !leaf.chain.some((link) => link.id && options.targets!.has(link.id))) continue;
     let m = placed;
     let opacity = entity.transform.opacity;
     let drawn = true;
@@ -183,7 +185,7 @@ export function projectedSvgParts(
       m = multiply(m, link.transform);
       if (state) {
         m = multiply(m, stateMatrix(state));
-        opacity *= state.opacityDriven || state.opacity !== 1 ? state.opacity : link.opacity;
+        opacity *= elementOpacity(state, link.opacity);
         // A stroke-only element with nothing drawn on yet has no ink to occupy the region with.
         if (leaf.strokeOnly && state.drawOn <= 0.02) drawn = false;
       } else {
