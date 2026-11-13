@@ -10,6 +10,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import type { Film, ThemeConfig } from "../../src/dl/schema";
 import { applyPatch, type PatchOp, type PatchResult } from "../../src/dl/scene/patch";
 import { validateFilmAudioAndAssets } from "../../src/dl/validateFilm";
+import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
 
 export type FilmPatchOp =
   | { op: "update_shot_dur"; shotId: string; deltaSec: number }
@@ -161,7 +162,7 @@ export function analyzeCritiqueIntent(critique: string, film?: Film): {
     lower.includes("theme suggestions")
   ) {
     const currentTheme = film?.theme?.background || "smooth-dark";
-    const currentAccent = film?.accent || "#635BFF";
+    const currentAccent = film?.accent || DEFAULT_PROJECT_ACCENT;
     return {
       target: "film",
       inferredOps: [],

@@ -14,6 +14,7 @@ import { renderLookMd, writeLookMd } from "./render";
 import { parseLookPlan, safeParseLookPlan } from "./schema";
 import { readCheckedLookPlan } from "../designSpec/build";
 import { parseFilm } from "../../src/dl/schema";
+import { filmAccent } from "../../src/projectTheme";
 import { characterHash } from "../../src/dl/characters/hash";
 import { characterSpecSchema } from "../../src/dl/characters/schema";
 import { rawSpec } from "../testSupport/characters";
@@ -243,7 +244,7 @@ test("J10: the look brief explains performances, lists every character with id, 
   assert.match(brief, /the hand meets the glider exactly on the decisive word/i);
   assert.match(brief, /Face appeal, finger contact and final on-screen occlusion are not measured/);
   // The worked example in the brief is itself a valid plan that pins a real character.
-  const example = exampleStageLookPlan(iona());
+  const example = exampleStageLookPlan(iona(), filmAccent(film));
   const report = checkLookPlan(example, "example", {
     resolveCharacter: packageCharacterResolver(SOURCE),
     cues: createCues({ totalDurationSec: 3, segments: [

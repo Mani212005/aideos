@@ -99,7 +99,7 @@ to a checked spec at that version; a changed hash within the version is a warnin
 render rebuild), its decisive shot and its one-to-one match with a design performance, and cast ids against `design.json` asset ids or SVG element ids when those inputs
 exist. It reports which checks are waiting on inputs that are not available yet. Cast ids use
 lowercase letters, digits, and hyphens, and one id can be represented by elements across several
-design assets. The palette allows the locked colours plus the film's one accent.
+design assets. The palette allows the locked colours plus the film's one accent: when a project carries a theme the user chose at creation (`theme.accentChosen: true`), `aideos design check` rejects assets drawing in the default purple or any other chromatic colour, and rejects a `look.json` or `design.json` that replaces the chosen accent.
 
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
 changing SVG clips on carried objects inside scene shots starting within 0.4s of their spoken cue,
@@ -122,7 +122,7 @@ render. The [workflow soundtrack overview](WORKFLOW.md#2-soundtrack-mixing) link
 hashes to lock asset identity. The reference covers the manifest, mix behavior, chapter breath timing,
 and speech measurements.
 
-The look and design stages rebuild the film from the screenplay, and each carries the existing film's authored `soundtrack` (unless it is a generated default score), `music` and legacy `sfx` onto the rebuilt film when the rebuild has none, so a film with only legacy effects still passes the delivery check.
+The look and design stages rebuild the film from the screenplay, and each carries the existing film's bound theme and accent (`film.theme`), authored `soundtrack` (unless it is a generated default score), `music` and legacy `sfx` onto the rebuilt film when the rebuild has none, so a film with only legacy effects still passes the delivery check and the project's chosen theme remains binding across recompiles.
 
 The `soundtrack` block in `design/design.json` authors cue-based music sections and effects; where it is absent or incomplete, the default score and default effects fill in the music and the effects separately.
 `aideos design check` validates the authored soundtrack; Studio edits are checked before they are
@@ -311,7 +311,7 @@ Tools:
 | `aideos_read_file`       | Read a film look plan, design spec, SVG visual, or status JSON file.        |
 | `aideos_write_file`      | Write design/look.json, design.json or visuals SVG in a film package.      |
 | `aideos_design_build`    | Compile design.json, run design checks, and write the passing film.        |
-| `aideos_design_check`    | Run design checks (schema, palette, typography, pacing, honest numbers).   |
+| `aideos_design_check`    | Run design checks (schema, palette, accent, typography, pacing, honest numbers). |
 | `aideos_frame_stills`    | Fetch sampled 1920x1080 review stills as images with frame metadata.       |
 | `aideos_submit_frame_review` | Submit notes, suggestions, and image-text similarity scores.           |
 | `aideos_wait_for_task`   | Wait for and receive the next studio task (remote agent-link sessions).    |

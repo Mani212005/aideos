@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
+import { boundTheme, boundThemeName, DEFAULT_PROJECT_ACCENT, filmAccent } from "../../src/projectTheme";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { CHARACTER_LIBRARY, loadCharacterFile } from "../characters/library";
 
@@ -41,8 +42,8 @@ export function availableCharacters(pkgDir?: string): AvailableCharacter[] {
   return [...found.values()];
 }
 
-// Builds a worked aideos.look/2 plan for a receive performance, pinned to a real character's identity.
-export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | "version" | "hash">) {
+// Builds a worked aideos.look/2 plan for a receive performance, pinned to a real character's identity and drawn in the film's accent.
+export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | "version" | "hash">, accent: string) {
   const shot = (id: string, cue: string) => ({ id, treatment: "scene", carries: ["receiver", "glider"], performances: ["receive-message"], cue, criterion: "1-mechanism", why: "the catch is the claim" });
   return {
     schema: "aideos.look/2",
@@ -60,7 +61,7 @@ export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | 
         start: "beat-01", decisive: { shotId: "beat-02", phrase: "catches", edge: "start", event: "contact" }, afterState: "holding the message", carries: ["beat-01", "beat-02", "beat-03"],
       }],
       camera: [{ at: "beat-01", pose: "wide establishing view of the stage", why: "show where the message comes from" }, { at: "beat-03", pose: "wide payoff with the held glider", why: "the receipt is the payoff" }],
-      palette: { bg: "#0A0A0B", accent: "#635BFF" },
+      palette: { bg: "#0A0A0B", accent },
       captions: { position: "bottom", kineticColumn: false },
       headlines: "none",
     },
@@ -68,12 +69,17 @@ export function exampleStageLookPlan(character: Pick<AvailableCharacter, "id" | 
   };
 }
 
+// The worked look plan with the film's own accent in its palette.
+function exampleLookPlanFor(accent: string): typeof EXAMPLE_LOOK_PLAN {
+  return { ...EXAMPLE_LOOK_PLAN, film: { ...EXAMPLE_LOOK_PLAN.film, palette: { ...EXAMPLE_LOOK_PLAN.film.palette, accent } } };
+}
+
 // Renders the character-film section: what a performance is, which characters exist and how to make a new one.
-export function renderCharacterSection(characters: AvailableCharacter[]): string {
+export function renderCharacterSection(characters: AvailableCharacter[], accent: string): string {
   const rows = characters.length
     ? characters.map((c) => `| \`${c.id}\` | ${c.version} | \`${c.hash}\` | ${c.source} | ${c.name}: ${c.description.split(/(?<=\.)\s/)[0] ?? ""} |`).join("\n")
     : "| (none found) | | | | |";
-  const example = characters[0] ? `\n\`\`\`json\n${JSON.stringify(exampleStageLookPlan(characters[0]), null, 2)}\n\`\`\`\n` : "";
+  const example = characters[0] ? `\n\`\`\`json\n${JSON.stringify(exampleStageLookPlan(characters[0], accent), null, 2)}\n\`\`\`\n` : "";
   return `## Character films (\`aideos.look/2\`, renderer \`three\`)
 
 Use this when a character acts out the mechanism on a persistent cel-shaded stage. Everything else in this brief still applies.
@@ -151,7 +157,7 @@ export const EXAMPLE_LOOK_PLAN = {
     ],
     palette: {
       bg: "#0A0A0B",
-      accent: "#635BFF",
+      accent: DEFAULT_PROJECT_ACCENT,
     },
     captions: {
       position: "bottom",
@@ -194,6 +200,11 @@ export function renderLookBrief(film: Film, characters: AvailableCharacter[] = a
     })
     .join("\n");
 
+  const chosen = boundTheme(film);
+  const accent = filmAccent(film);
+  const accentLine = chosen
+    ? `\`${chosen.accent}\`, fixed by the user with the theme they chose ("${boundThemeName(chosen.background)}"); \`palette.accent\` in look.json must be exactly this. Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel`
+    : `\`${accent}\``;
   return `# Look Brief: ${film.title} (\`${film.id}\`)
 
 Every explainer video gets a written look plan before any visual assets or animation clips are created.
@@ -209,7 +220,7 @@ Write \`videos/${film.id}/design/look.json\` and run \`aideos look check ${film.
 3. **The camera.**
    Must start wide (establishing view) and end wide (payoff view). Use move-then-hold: make each move a short, deliberate turn toward the object the narration is about to discuss, arrive about one beat before its cue word, then hold that subject for about 3 to 5 seconds. Name the focused cast object on each close pose. Do not let the camera drift continuously between subjects. Keep moves under 20% of frame width per second.
 4. **The palette.**
-   Background (e.g. \`#0A0A0B\`), ink/text, and the film's one primary accent (e.g. \`#635BFF\`). Use only the locked palette and this accent; do not declare extra colours.
+   Background (e.g. \`#0A0A0B\`), ink/text, and the film's one primary accent: ${accentLine}. Use only the locked greys and this accent; do not declare extra colours, and do not default to purple.
 5. **Captions.**
    Burned-in at the bottom band (\`position: "bottom"\`, \`kineticColumn: false\`). Never use kinetic text columns over the artwork.
 6. **Headlines.**
@@ -233,10 +244,10 @@ Each \`film.cast[].id\` must be a lowercase id using letters, digits, and hyphen
 ## Look Plan Schema (look.json)
 
 \`\`\`json
-${JSON.stringify(EXAMPLE_LOOK_PLAN, null, 2)}
+${JSON.stringify(exampleLookPlanFor(accent), null, 2)}
 \`\`\`
 
-${renderCharacterSection(characters)}
+${renderCharacterSection(characters, accent)}
 ## Script Beats
 
 ${shotList}

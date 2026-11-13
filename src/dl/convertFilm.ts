@@ -27,6 +27,7 @@ import type {
 } from "./layeredSchema";
 import { computeShotStartTimes } from "../../backend/timeline/timeline";
 import { generateWordsFromFilm } from "./captionsParser";
+import { DEFAULT_PROJECT_ACCENT } from "../projectTheme";
 
 /** Ids that forward conversion synthesizes from the legacy summary fields. */
 const SPINE_CLIP_ID = "clip-voiceover-spine";
@@ -416,7 +417,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
     captionPlacement: film.captionPlacement,
     title: film.title,
     fps: film.fps,
-    accent: film.accent ?? (typeof film.theme === "object" ? film.theme?.accent : undefined) ?? "#635BFF",
+    accent: film.accent ?? (typeof film.theme === "object" ? film.theme?.accent : undefined) ?? DEFAULT_PROJECT_ACCENT,
     theme: film.theme,
     canvas: film.canvas,
     chapters: film.chapters,

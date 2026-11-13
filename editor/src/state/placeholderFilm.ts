@@ -7,6 +7,7 @@
  */
 
 import type { Film } from "../../../src/dl/schema";
+import { DEFAULT_PROJECT_ACCENT } from "../../../src/projectTheme";
 
 /** A minimal valid film: two canvas nodes, one edge and a single text shot. */
 export const PLACEHOLDER_FILM: Film = {
@@ -14,7 +15,7 @@ export const PLACEHOLDER_FILM: Film = {
   id: "untitled",
   title: "Untitled",
   fps: 30,
-  accent: "#635BFF",
+  accent: DEFAULT_PROJECT_ACCENT,
   chapters: ["Start"],
   canvas: {
     nodes: [

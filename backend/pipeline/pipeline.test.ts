@@ -188,7 +188,7 @@ test("compileFilmFromScreenplayAsync: honours maxFootageShots of zero", async ()
 test("compileFilmFromScreenplayAsync: sets the design language's accent on the film", async () => {
   const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
   const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film" });
-  assert.equal(film.accent, "#635BFF");
+  assert.equal(film.accent, "#FF6B00");
   assert.equal(film.theme?.background, "smooth-dark");
 });
 

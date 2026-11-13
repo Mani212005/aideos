@@ -38,6 +38,7 @@ import type {
   Shot,
 } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
+import { savedAccent } from "../../../src/projectTheme";
 
 export interface CustomizationEditorProps {
   film: Film;
@@ -245,7 +246,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
     try {
       const filmToSave = {
         ...film,
-        accent: accent === "#635BFF" ? film.theme?.accent || undefined : accent,
+        accent: savedAccent(film, accent),
         theme: {
           ...(film.theme || {}),
           background: currentBg,
@@ -253,8 +254,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
           videoType: currentVideoType,
           storyStyle: currentStoryStyle,
           cameraAngle: currentCameraAngle,
-          accent:
-            accent === "#635BFF" ? film.theme?.accent || undefined : accent,
+          accent: savedAccent(film, accent),
         },
       };
 
@@ -751,7 +751,6 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               key={a.hex}
               onClick={() => {
                 onAccentChange(a.hex);
-                updateTheme({ accent: a.hex });
               }}
               className={`flex items-center gap-2 px-3 py-1.5 border text-xs font-medium transition-all ${
                 accent === a.hex

@@ -49,6 +49,7 @@ import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { AgentConnect } from "./components/AgentConnect";
 import { ReleaseBadge } from "./components/ReleaseBadge";
+import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
 
 /** How the header names who made the open film's design; "templates" is flagged as a fallback. */
 const DESIGN_SOURCE_LABEL = {
@@ -141,7 +142,7 @@ export default function App() {
 
   const timelineApi = useLayeredTimeline({ film, commit, onReject: handleReject });
 
-  const accent = film.accent || film.theme?.accent || "#635BFF";
+  const accent = film.accent || film.theme?.accent || DEFAULT_PROJECT_ACCENT;
 
   /** Change the accent colour on the film itself rather than holding a parallel copy in the shell. */
   const setAccent = useCallback(

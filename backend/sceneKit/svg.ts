@@ -11,6 +11,7 @@
 import { escapeXmlText } from "../../src/dl/scene/svgDocument";
 import { FPS, FORMAT_WINDOWS } from "./stage";
 import type { Face } from "./typeMetrics";
+import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
 
 /** The locked neutral palette (src/dl/README.md). A film adds exactly one accent of its own. */
 export const PAL = {
@@ -23,7 +24,7 @@ export const PAL = {
 } as const;
 
 /** The design system's accent, used when a film does not pick its own. */
-export const DEFAULT_ACCENT = "#635BFF";
+export const DEFAULT_ACCENT = DEFAULT_PROJECT_ACCENT;
 
 /** Faint and medium ink for hairlines and quiet fills. */
 export const HAIR = "rgba(245,245,245,0.10)";
