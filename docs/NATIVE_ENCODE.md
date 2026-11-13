@@ -109,7 +109,8 @@ first and last), equal-power `fadeInSec` and `fadeOutSec`, and `duckUnderVoice`.
 audio clip (`startFrame`, `sourceStartMs`, `gain`, `gainEnvelope`) in seconds.
 
 Mixing happens in the sample domain, as `backend/pcm.ts` does for narration: each clip is decoded by ffmpeg to 48 kHz
-float, mono sources are copied to both channels at unity (the same upmix the Chrome pipeline does), everything is
+float (only the part that can sound inside the film; a clip starting at or after the film end is skipped without being
+read), mono sources are copied to both channels at unity (the same upmix the Chrome pipeline does), everything is
 summed into one stereo bed exactly as long as the picture, written as a float WAV and muxed. Nothing is normalized or
 limited here: gains, including loudness normalization of music, arrive already resolved from the TypeScript side, and
 loudness mastering stays with the render job. A sum past full scale is clamped and reported (`audio.clipped_samples`,
@@ -121,8 +122,7 @@ the detector of `backend/soundtrack.ts`): narration is the 10 ms windows with RM
 speech with a 0.25 s attack and 0.6 s release, `pauseGainDb` (-10) in pauses and `musicOnlyGainDb` (-8) before the first
 and after the last phrase, rising to the music-only level around `storyEndSec`. A supplied `storyEndSec` must be within
 the film duration, and each supplied speech interval must have positive duration within the film timeline. If speech
-is measured from voice clips, portions beyond the film end are clipped away and clips starting after the film are
-ignored. Pass `speech` when the TypeScript pipeline already measured it (`soundtrack.speech`); the mixer then measures
+is measured from voice clips, portions beyond the film end are clipped away. Pass `speech` when the TypeScript pipeline already measured it (`soundtrack.speech`); the mixer then measures
 nothing. The tests hold these levels to 0.3 dB.
 
 Not carried over: the library-section manifest, per-effect peak caps and the legacy `ducking.ts` curve. The emitter
