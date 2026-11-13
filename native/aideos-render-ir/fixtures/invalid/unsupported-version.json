@@ -1,0 +1,24 @@
+{
+  "schema": "aideos.render/2",
+  "film": {
+    "id": "minimal",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "reel": {
+      "width": 1080,
+      "height": 1920
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [],
+  "stage": [],
+  "overlay": [],
+  "audio": [],
+  "somethingNew": true
+}

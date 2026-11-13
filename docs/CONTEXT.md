@@ -655,3 +655,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`Panel.tsx`**: Bordered containers and sections with hard shadows.
 * **`Tabs.tsx`**: Segmented switches and tab lists.
 * **`Toolbar.tsx`**: Grouped action strips and icon button bars.
+
+---
+
+## 8. Render IR for the native renderer (`backend/renderIr/`, `native/aideos-render-ir/`)
+
+* **`aideos.render/1`**: the versioned, data-only document the TypeScript pipeline hands to the native renderer (stage element tracks, camera, text cards, kinetic captions, rail, end card, audio, in both formats). One zod schema (`backend/renderIr/schema.ts`) generates the committed JSON Schema that the Rust loader embeds; `parseRenderIr`/`validateRenderIr` (TypeScript) and `load_from_path`/`load_from_str` (Rust crate `aideos-render-ir`) refuse unknown versions and invalid documents with the same issue codes and are tested against the same fixtures. Model, rules, issue codes and commands: [RENDER_IR.md](RENDER_IR.md).

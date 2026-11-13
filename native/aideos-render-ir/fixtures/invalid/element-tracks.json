@@ -1,0 +1,121 @@
+{
+  "schema": "aideos.render/1",
+  "film": {
+    "id": "minimal",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "orbit",
+      "path": "visuals/orbit.svg",
+      "elementIds": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "kind": "font",
+      "id": "sans",
+      "path": "fonts/Geist-SemiBold.ttf",
+      "family": "Geist",
+      "weight": 600
+    },
+    {
+      "kind": "audio",
+      "id": "voice",
+      "path": "voice.wav"
+    }
+  ],
+  "stage": [
+    {
+      "kind": "svg",
+      "id": "d",
+      "asset": "orbit",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "tracks": [],
+      "elementTracks": [
+        {
+          "target": "missing",
+          "property": "opacity",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 0
+            }
+          ]
+        },
+        {
+          "target": "a",
+          "property": "scale",
+          "origin": {
+            "x": 1,
+            "y": 1
+          },
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 1
+            }
+          ]
+        },
+        {
+          "target": "a",
+          "property": "rotate",
+          "origin": {
+            "x": 2,
+            "y": 2
+          },
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 0
+            }
+          ]
+        },
+        {
+          "target": "b",
+          "property": "translateX",
+          "origin": {
+            "x": 1,
+            "y": 1
+          },
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 0
+            }
+          ]
+        },
+        {
+          "target": "b",
+          "property": "translateX",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "overlay": [],
+  "audio": []
+}
