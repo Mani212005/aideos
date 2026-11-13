@@ -73,7 +73,9 @@ test("the assistant prompt cannot submit during loading and is available after l
     onSend: commit,
   };
   const loadingForm = AssistantPromptForm(loadingProps);
-  const [loadingInput, loadingButton] = loadingForm.props.children as React.ReactElement[];
+  const [loadingInput, loadingButton] = React.Children.toArray(loadingForm.props.children);
+  assert(React.isValidElement<{ disabled?: boolean }>(loadingInput));
+  assert(React.isValidElement<{ disabled?: boolean }>(loadingButton));
   assert.equal(loadingInput.props.disabled, true);
   assert.equal(loadingButton.props.disabled, true);
   loadingForm.props.onSubmit({ preventDefault() {} } as never);
@@ -81,7 +83,9 @@ test("the assistant prompt cannot submit during loading and is available after l
 
   const readyProps = { ...loadingProps, disabled: false };
   const readyForm = AssistantPromptForm(readyProps);
-  const [readyInput, readyButton] = readyForm.props.children as React.ReactElement[];
+  const [readyInput, readyButton] = React.Children.toArray(readyForm.props.children);
+  assert(React.isValidElement<{ disabled?: boolean }>(readyInput));
+  assert(React.isValidElement<{ disabled?: boolean }>(readyButton));
   assert.equal(readyInput.props.disabled, false);
   assert.equal(readyButton.props.disabled, false);
   readyForm.props.onSubmit({ preventDefault() {} } as never);

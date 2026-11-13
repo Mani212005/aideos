@@ -117,7 +117,7 @@ function applyExternal<F>(state: SyncState<F>, remote: RemoteFilm<F>): Transitio
     return { state: { ...state, order: remote.order }, effects: [{ kind: "absorb", film: remote.film }] };
   }
   if (remote.rev !== null && remote.rev === state.rev) return { state: { ...state, order: remote.order }, effects: [] };
-  if (remote.sameAsLocal && state.phase !== "saving") {
+  if (remote.sameAsLocal) {
     // The disk already holds what the studio holds (a server step wrote the film the studio also committed): just follow the revision.
     return {
       state: { phase: "clean", rev: remote.rev, order: remote.order, ownRev: state.ownRev },
