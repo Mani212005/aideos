@@ -341,7 +341,8 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
 
   /** Send one film through the sync machine: one request in flight at a time, based on the revision it started from. */
   const runSave = useCallback(
-    (target: Film, announce: boolean): Promise<SaveOutcome> => {
+    (announce: boolean): Promise<SaveOutcome> => {
+      const target = filmRef.current;
       const base = baseRevision(syncRef.current);
       const seq = ++saveSeq.current;
       const started = dispatchSync({ type: "save_started", seq });
@@ -374,7 +375,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
 
   /** Save the film the machine is ready to save, after any request in flight has settled. */
   const saveWhenReady = useCallback(
-    async (target: Film, announce: boolean): Promise<SaveOutcome> => {
+    async (announce: boolean): Promise<SaveOutcome> => {
       if (inFlightSave.current) await inFlightSave.current;
       const phase = syncRef.current.phase;
       if (phase === "conflict") {
@@ -383,14 +384,14 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
         return { ok: false, reason };
       }
       if (phase === "loading") return { ok: false, reason: "The film is still loading." };
-      return runSave(target, announce);
+      return runSave(announce);
     },
     [notify, runSave],
   );
 
   /** Write the current film to disk through the dev server. */
   const save = useCallback(async () => {
-    await saveWhenReady(filmRef.current, true);
+    await saveWhenReady(true);
   }, [saveWhenReady]);
 
   /** Commit a film (unless it is already the open one) and save exactly that film. */
@@ -398,7 +399,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
     async (next: Film, label: string): Promise<SaveOutcome> => {
       if (syncRef.current.phase === "loading") return { ok: false, reason: "The film is still loading." };
       if (next !== filmRef.current && JSON.stringify(next) !== JSON.stringify(filmRef.current)) commit(next, label);
-      return saveWhenReady(next, false);
+      return saveWhenReady(false);
     },
     [commit, saveWhenReady],
   );
@@ -438,7 +439,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
   /** Get the open film into a state it can be left in: finish any save, save pending edits, and say why if it cannot. */
   const settleBeforeLeaving = useCallback(async (): Promise<boolean> => {
     if (inFlightSave.current) await inFlightSave.current;
-    if (syncRef.current.phase === "dirty") await saveWhenReady(filmRef.current, false);
+    if (syncRef.current.phase === "dirty") await saveWhenReady(false);
     if (!hasUnsavedEdits(syncRef.current)) return true;
     notify(
       "danger",
@@ -534,7 +535,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
   useEffect(() => {
     if (sync.phase !== "dirty" || sync.failed) return;
     const timer = window.setTimeout(() => {
-      void saveWhenReady(filmRef.current, false);
+      void saveWhenReady(false);
     }, AUTOSAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [sync, film, saveWhenReady]);

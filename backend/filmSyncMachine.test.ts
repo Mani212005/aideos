@@ -113,6 +113,16 @@ test("an edit made while a save is in flight leaves the film dirty on the saved 
   assert.deepEqual(state, { phase: "dirty", failed: false, rev: "r2", order: 2, ownRev: "r2" });
 });
 
+test("edits arriving while a queued save waits remain dirty until that later save succeeds", () => {
+  let state = run(
+    [{ type: "edited" }, { type: "save_started", seq: 1 }, { type: "edited" }, { type: "edited" }, { type: "save_succeeded", seq: 1, rev: "r2", order: 2 }],
+    loaded("r1"),
+  );
+  assert.deepEqual(state, { phase: "dirty", failed: false, rev: "r2", order: 2, ownRev: "r2" });
+  state = run([{ type: "save_started", seq: 2 }, { type: "save_succeeded", seq: 2, rev: "r3", order: 3 }], state);
+  assert.deepEqual(state, { phase: "clean", rev: "r3", order: 3, ownRev: "r3" });
+});
+
 test("a failed save keeps the film dirty on the same base and is not retried until the next edit", () => {
   let state = run([{ type: "edited" }, { type: "save_started", seq: 1 }, { type: "save_failed", seq: 1 }], loaded("r1"));
   assert.deepEqual(state, { phase: "dirty", failed: true, rev: "r1", order: 1, ownRev: null });
