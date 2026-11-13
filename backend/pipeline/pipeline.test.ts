@@ -269,6 +269,24 @@ test("packageDir refuses a slug that could escape the videos directory", async (
   assert.ok(os.tmpdir().length > 0);
 });
 
+// Resolve each package against the current environment even after filmStore was imported.
+test("packageDir follows directory changes between production runs", async () => {
+  const { packageDir } = await import("./filmStore");
+  const previous = process.env.AIDEOS_VIDEOS_DIR;
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-package-dir-"));
+  try {
+    for (const directory of ["first", "second", "third"]) {
+      const videosDirectory = path.join(temporary, directory);
+      process.env.AIDEOS_VIDEOS_DIR = videosDirectory;
+      assert.equal(packageDir("same-film"), path.join(videosDirectory, "same-film"));
+    }
+  } finally {
+    if (previous === undefined) delete process.env.AIDEOS_VIDEOS_DIR;
+    else process.env.AIDEOS_VIDEOS_DIR = previous;
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 // Regression test for the defect that hung a validation run: B-roll is opt-in, and a caller
 // that does not ask for it must never reach the GPU engine. The engine name here is deliberately
 // one createEngine() rejects, so if the stage ever runs the test fails loudly instead of
