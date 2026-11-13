@@ -713,7 +713,7 @@ test("runProduction: valid look without a design stops at needs_design and never
     assert.equal(readFilm(slug)?.design?.source, "agent");
     const approved = { ...readFilm(slug)!, title: "Approved pipeline fix" };
     fs.writeFileSync(path.join(VIDEOS_DIR, slug, "film.json"), JSON.stringify(approved, null, 2));
-    await runProduction({ ...request, force: ["design"] });
+    await assert.rejects(runProduction({ ...request, force: ["design"] }), /refusing to overwrite hand-edited film\.json/);
     assert.equal(readFilm(slug)?.title, "Approved pipeline fix", "a resumed design stage must preserve an approved hand edit");
   } finally { cleanProbe(slug); }
 });
@@ -763,7 +763,7 @@ test("runProduction: changed narration refreshes base-film; forced upstream work
     assert.ok(forced.some((e) => e.stage === "assemble" && e.status === "running"));
     const handEdit = { ...readFilm(slug)!, title: "Approved before look rebuild" };
     fs.writeFileSync(path.join(VIDEOS_DIR, slug, "film.json"), JSON.stringify(handEdit, null, 2));
-    await runProduction({ ...request, force: ["look"] });
+    await assert.rejects(runProduction({ ...request, force: ["look"] }), /refusing to overwrite hand-edited film\.json/);
     assert.equal(readFilm(slug)?.title, "Approved before look rebuild", "the look-stage skeleton write must preserve a hand edit");
   } finally { cleanProbe(slug); }
 });

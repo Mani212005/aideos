@@ -113,8 +113,10 @@ test("machine: review history is append-only beyond fifty draws", () => {
     record = transition(record, { type: "judged", draw: draw(`round-${i}`, i % 2 === 0) });
   }
   assert.equal(record.judged.length, 60);
+  assert.equal(record.judged[0].key, "round-0", "the first draw remains in the append-only history");
+  assert.equal(record.judged[59].key, "round-59", "the newest draw remains in the history");
   assert.equal(record.drawsDisagree, true);
-  assert.equal(record.state, "judged", "the newest passing draw still controls the existing verdict rule");
+  assert.equal(record.state, "revise", "the newest REVISE draw controls the existing verdict rule");
 });
 
 test("machine: new bytes start without evidence, and draws of the old bytes stay as history but do not decide", () => {
@@ -154,7 +156,7 @@ test("machine: hand edits are told apart from tool writes, and an unknown histor
   assert.equal(classifyFilmEdit(["h1", "h2"], "h2"), "clean");
   assert.equal(classifyFilmEdit(["h1", "h2"], "h3"), "hand-edited");
   assert.equal(classifyFilmEdit(["h1"], null), "untracked");
-  assert.deepEqual(filmDifferences({ title: "a", shots: [{ id: "s1", dur: 1 }, { id: "s2", dur: 2 }] }, { title: "b", shots: [{ id: "s1", dur: 1 }, { id: "s2", dur: 3 }, { id: "s3" }] }), ['field "title"', 'shot "s2"', 'shot "s3"']);
+  assert.deepEqual(filmDifferences({ title: "a", shots: [{ id: "s1", dur: 1 }, { id: "s2", dur: 2 }] }, { title: "b", shots: [{ id: "s1", dur: 1 }, { id: "s2", dur: 3 }, { id: "s3" }] }), ['field "title"', "shot order", 'shot "s2"', 'shot "s3"']);
   assert.deepEqual(filmDifferences({ title: "a", shots: [] }, { title: "a", shots: [] }), []);
   assert.deepEqual(filmDifferences({ shots: [{ id: "a" }, { id: "b" }] }, { shots: [{ id: "b" }, { id: "a" }] }), ["shot order"]);
 });
@@ -293,7 +295,7 @@ test("export acceptance: status follows the posted film when it differs from fil
       { type: "rendered", filmHash: postedHash, mp4Hash: MP4, at: AT },
       { type: "measured", mp4Hash: MP4, passed: true, gateFailures: [], at: AT },
       { type: "judged", draw: draw("posted", true), at: AT },
-      { type: "frame-checked", mp4Hash: MP4, passed: true, issues: [], at: AT },
+      { type: "approved", mp4Hash: MP4, at: AT },
     ]);
     const beforeFilm = fs.readFileSync(path.join(dir, "film.json"), "utf8");
     const beforeAcceptance = fs.readFileSync(acceptancePath(dir), "utf8");
