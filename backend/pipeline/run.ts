@@ -44,7 +44,6 @@ import {
   restoreActiveFilmSource,
   setActiveFilm,
   slugify,
-  wireFootageIntoFilm,
   writeFilm,
   withFootage,
 } from "./filmStore";
@@ -315,6 +314,7 @@ export async function runProduction(
     cached: () => T | null,
     work: () => Promise<T | InputNeeded>,
     completedFingerprint?: () => string,
+    refreshedFingerprints?: () => Array<{ stage: ProductionStage; fingerprint: string }>,
   ): Promise<T | InputNeeded> => {
     current = stage;
     const record = machine.record(stage);
@@ -340,7 +340,7 @@ export async function runProduction(
         emit(stage, "needs_input", result.message);
         return result;
       }
-      machine.complete(stage, completedFingerprint?.() ?? inputFingerprint);
+      machine.complete(stage, completedFingerprint?.() ?? inputFingerprint, refreshedFingerprints?.());
       emit(stage, "done", `${stage} complete`);
       return result;
     } catch (err) {
@@ -353,9 +353,14 @@ export async function runProduction(
 
   /** Runs a stage that can never ask for authoring input (its work returns a plain value). */
   const runPlainStage = async <T>(
-    stage: ProductionStage, inputFingerprint: string, cached: () => T | null, work: () => Promise<T>,
+    stage: ProductionStage,
+    inputFingerprint: string,
+    cached: () => T | null,
+    work: () => Promise<T>,
+    completedFingerprint?: () => string,
+    refreshedFingerprints?: () => Array<{ stage: ProductionStage; fingerprint: string }>,
   ): Promise<T> => {
-    const result = await runStage<T>(stage, inputFingerprint, cached, work);
+    const result = await runStage<T>(stage, inputFingerprint, cached, work, completedFingerprint, refreshedFingerprints);
     if (isInputNeeded(result)) throw new ProductionError(stage, "stage returned an input request but cannot accept one");
     return result;
   };
@@ -558,6 +563,16 @@ export async function runProduction(
     filmResult = design.film;
     if (shouldStop("design")) return buildResult("design");
 
+    // The reel fingerprint includes film.json, so finish its end-card input before recording the
+    // reel stage. Assembly reuses this same value when it writes the long and reel films.
+    try {
+      const endCardLine = await ensureEndCardVoice(slug, { film: design.film });
+      design.film = endCardLine.film;
+      if (endCardLine.notice) warnings.push(`end card: ${endCardLine.notice}`);
+    } catch (err) {
+      warnings.push(`end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`);
+    }
+
     // ---- reel: same picture and voice, separate condensed narration when the long does not fit.
     const reelFingerprint = () => fingerprint(reelSourceFingerprint(slug), request.reel ?? mode, formats.includes("reel"));
     const reelRun = await runStage<Film | false>("reel", reelFingerprint(), () => {
@@ -642,20 +657,26 @@ export async function runProduction(
     if (shouldStop("broll")) return buildResult("broll");
 
     // ---- assemble: wire footage in, install as the active film, validate ---------------------
+    // Predict the deterministic wired output so a completed assembly is compared by its final films on resume.
+    const footageForAssembly = (film: Film): Film => brollClips.reduce((current, clip) => {
+      const shot = current.shots.find((candidate) => candidate.id === clip.shotId);
+      if (!shot || clip.durationSec + 0.05 < shot.dur) return current;
+      const inset = shot.blocks.find((block) => block.c === "AnalogyInset");
+      const caption = inset && "caption" in inset ? inset.caption : shot.ch ?? "";
+      return withFootage(current, clip.shotId, clip.staticPath, caption);
+    }, film);
+    const expectedAssembled = footageForAssembly(design.film);
+    const expectedReel = reelFilm ? footageForAssembly(reelFilm) : false;
+    const assemblyFingerprint = (long: Film, reel: Film | false) => fingerprint(
+      withoutEndCardVoice(long), reel && withoutEndCardVoice(reel), brollClips.map((clip) => clip.staticPath),
+    );
     let assembled = await runPlainStage<Film>(
       "assemble",
-      // Fingerprinted on the compiled film itself, not on the inputs that produced it: a
-      // change to the design compiler produces a different film from identical inputs, and
-      // hashing the inputs alone let a stale assembly survive the change. The end card line is
-      // attached after assembly from the narration, so it is not part of the design's identity.
-      fingerprint(withoutEndCardVoice(design.film), reelFilm && withoutEndCardVoice(reelFilm), brollClips.map((c) => c.staticPath)),
+      assemblyFingerprint(expectedAssembled, expectedReel),
       () => readFilm(slug),
       async () => {
-        let film = readFilm(slug);
-        if (!film) throw new Error(`design produced no film for "${slug}"`);
-
         for (const clip of brollClips) {
-          const shot = film.shots.find((s) => s.id === clip.shotId);
+          const shot = design.film.shots.find((s) => s.id === clip.shotId);
           if (!shot) {
             warnings.push(`clip for "${clip.shotId}" has no matching shot and was not wired in`);
             continue;
@@ -667,38 +688,18 @@ export async function runProduction(
             );
             continue;
           }
-          // The caption the design stage already put on the placeholder inset came from the
-          // screenplay's on-screen copy. The visual direction is an instruction to the
-          // generator, and printing it under the plate puts a stage direction on screen.
-          const existing = shot.blocks.find((b) => b.c === "AnalogyInset");
-          const caption = existing && "caption" in existing ? existing.caption : shot.ch ?? "";
-          film = wireFootageIntoFilm(slug, clip.shotId, clip.staticPath, caption);
         }
 
+        const film = writeFilm(slug, expectedAssembled);
+        if (expectedReel) reelFilm = writeReelFilm(slug, { ...expectedReel, endCardVoice: film.endCardVoice });
         const wired = film.shots.filter((s) => s.blocks.some((b) => b.c === "AnalogyInset" && Boolean(b.src))).length;
         emit("assemble", "running", `${wired} shot(s) carry B-roll`);
         return film;
       },
+      () => assemblyFingerprint(readFilm(slug)!, reelFilm || false),
+      () => [{ stage: "reel", fingerprint: reelFingerprint() }],
     );
-    // The end card speaks in the film's own voice: attach its line (synthesizing it when missing),
-    // so the studio preview and the render both carry it. A failure leaves the card silent.
-    try {
-      const endCardLine = await ensureEndCardVoice(slug, { film: assembled });
-      assembled = endCardLine.film;
-      if (endCardLine.notice) warnings.push(`end card: ${endCardLine.notice}`);
-    } catch (err) {
-      warnings.push(`end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`);
-    }
     filmResult = assembled;
-    if (reelFilm) {
-      for (const clip of brollClips) {
-        const shot = reelFilm.shots.find((s) => s.id === clip.shotId);
-        if (!shot || clip.durationSec + 0.05 < shot.dur) continue;
-        const block = shot.blocks.find((b) => b.c === "AnalogyInset");
-        reelFilm = withFootage(reelFilm, shot.id, clip.staticPath, block?.caption ?? shot.ch ?? "");
-      }
-      reelFilm = writeReelFilm(slug, { ...reelFilm, endCardVoice: assembled.endCardVoice });
-    }
     if (shouldStop("assemble")) return buildResult("assemble");
 
     // ---- render: produce the deliverables ----------------------------------------------------

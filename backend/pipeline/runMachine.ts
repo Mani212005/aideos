@@ -140,7 +140,7 @@ export interface RunMachine {
   record(stage: ProductionStage): StageRecord;
   /** Starts a stage: every later stage becomes pending (and render outputs are dropped), then this one runs. */
   begin(stage: ProductionStage, fingerprint: string, owner: RunOwner): void;
-  complete(stage: ProductionStage, fingerprint?: string): void;
+  complete(stage: ProductionStage, fingerprint?: string, refreshed?: Array<{ stage: ProductionStage; fingerprint: string }>): void;
   fail(stage: ProductionStage, error: string): void;
   needInput(stage: ProductionStage, message: string): void;
   /** A done stage whose fingerprint still matches is reused as is. */
@@ -182,7 +182,16 @@ export function createRunMachine(state: RunState, persist: (state: RunState) => 
       if (index < PRODUCTION_STAGES.indexOf("render")) state.outputs = [];
       persist(state);
     },
-    complete: (stage, fingerprint) => apply(stage, { type: "complete", ...(fingerprint !== undefined ? { fingerprint } : {}) }),
+    complete(stage, fingerprint, refreshed = []) {
+      const completed = applyStageEvent(find(stage) ?? pending(stage), { type: "complete", ...(fingerprint !== undefined ? { fingerprint } : {}) });
+      const updates = refreshed.map(({ stage: refreshedStage, fingerprint: refreshedFingerprint }) => {
+        const record = find(refreshedStage) ?? pending(refreshedStage);
+        return applyStageEvent(record, { type: "restamp", fingerprint: refreshedFingerprint });
+      });
+      put(completed);
+      updates.forEach(put);
+      persist(state);
+    },
     fail: (stage, error) => apply(stage, { type: "fail", error }),
     needInput: (stage, message) => apply(stage, { type: "need_input", message }),
     reuse: (stage) => apply(stage, { type: "reuse" }),
