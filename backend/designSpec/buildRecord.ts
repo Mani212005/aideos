@@ -1,11 +1,8 @@
 /**
- * File Description: The design build record. A build is attributed to the request that asked for it
- * by an explicit id, and to the inputs it was made from by a content hash, instead of by comparing
- * file timestamps. A request (a studio motion request or a pipeline design/look task) is opened as
- * design/request.json before the agent is asked; a build run on the agent's behalf stamps that id
- * into design/status.json, so a build from any other cause can never satisfy the waiter. Files that
- * an agent writes (look.json, reel/cut.json) are recognised as new by their content digest.
- * Inputs and outputs: film id and request kind -> request pointer, input hash, content digests.
+ * File Description: Tracks open design requests, hashes design inputs and records request attribution.
+ * Design waiters compare the recorded request id and current input hash; a build on identical inputs
+ * can retain the previous request attribution. Look-plan delivery uses content digests for detection.
+ * Inputs and outputs: film id and request kind -> request pointer, input hash, content digest.
  * Used by: backend/designSpec/build.ts, backend/designSpec/designer.ts, backend/designSpec/motionRequests.ts, backend/reelCut/writer.ts.
  */
 
