@@ -21,14 +21,15 @@ const result = await runProduction(
 result.outputs; // [{ format: "long", path: "videos/speculative-decoding/renders/long.mp4", ... }, ...]
 ```
 
-The same thing from a terminal:
+The same thing from a terminal (without `--final-export` the CLI stops after `assemble` with a draft;
+pass it only when the user explicitly asked for the final mp4s):
 
 ```bash
 npm run backend -- film \
   --script-file videos/my-video/script.md \
   --title "My Video" \
   --slug my-video \
-  --broll --formats long,reel
+  --broll --formats long,reel --final-export
 ```
 
 `runProduction` is the only entry point that needs to be called. Everything below it is an
@@ -164,9 +165,10 @@ aideos reel check <slug> [--max-sec 179] [--target-sec 170] [--json]
 # Build an identity reel or compile a checked cut.
 aideos reel build <slug> [--delivery inline|agent|server]
 
-# Run production through both output formats. The film CLI uses inline reel delivery by default.
+# Run production through both output formats. The film CLI uses inline reel delivery by default
+# and stops at a draft after assemble; --final-export (only on the user's explicit ask) renders them.
 npm run backend -- film --script-file videos/<slug>/script.md \
-  --title "<title>" --slug <slug> --formats long,reel
+  --title "<title>" --slug <slug> --formats long,reel --final-export
 
 # Review every rendered format, or request the Reel alone.
 aideos review <slug>
@@ -225,7 +227,8 @@ model, and hands a passing draft to `runProduction` unchanged:
 npm run backend -- direct "Why attention scales quadratically" --broll --formats long,reel
 ```
 
-`aideos direct "<prompt>"` does the same from the CLI launcher. See docs/DIRECTOR_GUIDE.md section 4
+`aideos direct "<prompt>"` does the same from the CLI launcher. Both stop at a draft after `assemble`;
+add `--final-export` only when the user explicitly asked for the final mp4s. See docs/DIRECTOR_GUIDE.md section 4
 for the details; the plan is always model-driven, so there is no canned screenplay in the path.
 
 ## Narration
@@ -312,6 +315,8 @@ Tools:
 | `aideos_frame_stills`    | Fetch sampled 1920x1080 review stills as images with frame metadata.       |
 | `aideos_submit_frame_review` | Submit notes, suggestions, and image-text similarity scores.           |
 | `aideos_wait_for_task`   | Wait for and receive the next studio task (remote agent-link sessions).    |
+
+`aideos_produce_film` (and its CLI forms `aideos film` and `aideos direct`, whose flag is `--final-export`) is a draft by default: without `finalExport: true` the run stops after the `assemble` stage, and the agent checks its work with stills. Set `finalExport` only when the user explicitly asked for the final export in the terminal; the user otherwise exports from the studio (Export, then Start, with Cancel available at any time and an explicit Download button when it finishes).
 
 A full render takes tens of minutes, so `aideos_produce_film` never blocks: it starts the run in
 the background and hands back a `runId` for the caller to poll. The design mode defaults to `inline`.

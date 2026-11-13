@@ -24,7 +24,7 @@ import react from '@vitejs/plugin-react'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { applyCaptionPlacementDraft } from '../backend/designCheck/captionPlacement.ts';
 import { checkCaptionPlacementDraftAsync } from '../backend/designCheck/captionPlacementDraft.ts';
 import type { Scene } from '../src/dl/scene/types.ts';
@@ -37,6 +37,7 @@ import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSil
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { assertDeliverable } from '../backend/deliveryGate.ts'
+import { createExportJobs } from '../backend/exportJobs.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { transcribe, writeImportWords } from '../backend/transcribe.ts'
@@ -78,6 +79,16 @@ const captionCheckRequest = z.object({ film: filmSchema, previewFilm: filmSchema
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 // The owner's personal, gitignored videos (AIDEOS_VIDEOS_DIR moves it); examples/ is the read-only fallback.
 const videosDir = getVideosDir();
+// Studio exports run as cancellable jobs; a render still going when the dev server exits is killed with it.
+const exportJobs = createExportJobs();
+process.on('exit', () => exportJobs.killAll());
+// The render runs in its own process group, so Ctrl+C on the dev server never reaches it: stop it here.
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+  process.once(signal, () => {
+    exportJobs.killAll();
+    process.kill(process.pid, signal);
+  });
+}
 
 // The voice the studio narrates with when a request does not name one.
 const DEFAULT_VOICE_KEY = 'aura-helios-en';
@@ -855,125 +866,112 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        // Handle /api/export endpoint for 1-click video rendering
+        // Export jobs: nothing renders until the studio posts the Start click here. Progress is the
+        // renderer's own frame counts, cancel kills the render and deletes the partial video, and a
+        // finished job only reports a download URL (the studio waits for the user to click Download).
         if (url === '/api/export' && req.method === 'POST') {
           void readBody(req)
-            .then(async (body) => {
+            .then((body) => {
               const { film: postedFilm, format } = (body as { film: Film; format?: string }) || {};
               if (!postedFilm || !postedFilm.id || !FILM_ID.test(postedFilm.id)) {
                 sendJson(res, 400, { error: 'Valid film with a valid film.id is required' });
                 return;
               }
-
-              // The end card speaks in the film's own voice: attach its line (synthesizing it when the
-              // narration voice is known) before rendering. A failure leaves the card silent.
-              let film = postedFilm;
-              let endCardNotice: string | undefined;
-              try {
-                const endCard = await ensureEndCardVoice(postedFilm.id, { film: postedFilm });
-                film = endCard.film;
-                endCardNotice = endCard.notice;
-              } catch (err) {
-                endCardNotice = `end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`;
-              }
-
-              // Every delivered video carries music, sound effects and the end card: refuse before rendering.
-              try {
-                assertDeliverable([{ film, format: format === 'reel' ? 'reel' : 'long' }]);
-              } catch (err) {
-                sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) });
-                return;
-              }
-
-              // Enforce rule: Don't render video till B-roll is complete and footage is retrieved
-              const pendingBroll = (film.shots || []).filter((s) => {
-                if (!s.needsFootage) return false;
-                const fullPath = path.join(videosDir, film.id, 'footage', `${s.id}.mp4`);
-                return !fs.existsSync(fullPath);
-              });
-              if (pendingBroll.length > 0) {
-                sendJson(res, 400, {
-                  error: `Cannot render video: GPU B-Roll footage is still pending for ${pendingBroll.length} shot(s) (${pendingBroll.map(s => s.id).join(', ')}). Please complete B-roll generation first.`,
-                  pendingShotIds: pendingBroll.map((s) => s.id),
-                });
-                return;
-              }
-
-              const rendersDir = path.join(videosDir, film.id, 'renders');
-              if (!fs.existsSync(rendersDir)) fs.mkdirSync(rendersDir, { recursive: true });
-
-              const composition = format === 'reel' ? 'Reel' : 'Long';
-              const filename = `aideos_${film.id}_${format || 'long'}_${Date.now()}.mp4`;
+              const outFormat = format === 'reel' ? 'reel' : 'long';
+              const filename = `aideos_${postedFilm.id}_${outFormat}_${Date.now()}.mp4`;
+              const rendersDir = path.join(videosDir, postedFilm.id, 'renders');
               const outPath = path.join(rendersDir, filename);
+              let publicDir: ReturnType<typeof stagePublicDir> = null;
+              let renderedFilm: Film = postedFilm;
+              let endCardNotice: string | undefined;
 
-              // Ensure retimed audio is pre-rendered for Remotion CLI
-              ensureRetimedAudio(film);
-
-              // Save active film first so remotion bundles it
-              const filmFile = path.join(filmsDir, `${film.id}.ts`);
-              fs.writeFileSync(filmFile, filmModule(film), 'utf8');
-
-              // Ensure activeFilm.ts is synced to this exported film
-              setActiveFilm(film.id);
-
-              const publicDir = stagePublicDir();
-              const renderArgs = ['remotion', 'render', 'src/index.ts', composition, outPath];
-              if (publicDir) renderArgs.push(`--public-dir=${publicDir.dir}`);
-
-              const child = spawn(
-                'npx',
-                renderArgs,
-                {
-                  cwd: path.resolve(__dirname, '..'),
-                  stdio: 'pipe',
-                }
-              );
-
-              let renderLogs = '';
-              child.stdout?.on('data', (d) => {
-                const text = d.toString();
-                renderLogs = (renderLogs + text).slice(-4000);
-                process.stdout.write(text);
-              });
-              child.stderr?.on('data', (d) => {
-                const text = d.toString();
-                renderLogs = (renderLogs + text).slice(-4000);
-                process.stderr.write(text);
-              });
-
-              child.on('close', (code) => {
-                publicDir?.cleanup();
-                if (res.headersSent) return;
-                if (code === 0) {
+              const { job, busy } = exportJobs.start({
+                filmId: postedFilm.id,
+                format: outFormat,
+                filmTitle: postedFilm.title,
+                fps: postedFilm.fps || 30,
+                durationInFrames: deliveryTimeline(postedFilm, outFormat).totalFrames,
+                filename,
+                outPath,
+                downloadUrl: `/api/downloads/${filename}`,
+                prepare: async () => {
+                  // The end card speaks in the film's own voice: attach its line (synthesizing it when the
+                  // narration voice is known) before rendering. A failure leaves the card silent.
                   try {
-                    const master = masterAudio(outPath);
-                    writeDescriptionCredits(rendersDir, [film]);
-                    if (master.status === 'skipped') endCardNotice = [endCardNotice, `Master skipped: ${master.reason}`].filter(Boolean).join('; ');
-                  } catch (error) {
-                    sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
-                    return;
+                    const endCard = await ensureEndCardVoice(postedFilm.id, { film: postedFilm });
+                    renderedFilm = endCard.film;
+                    endCardNotice = endCard.notice;
+                  } catch (err) {
+                    endCardNotice = `end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`;
                   }
-                  sendJson(res, 200, {
-                    ok: true,
-                    filename,
-                    downloadUrl: `/api/downloads/${filename}`,
-                    ...(endCardNotice ? { notice: endCardNotice } : {}),
+                  const film = renderedFilm;
+
+                  // Every delivered video carries music, sound effects and the end card: refuse before rendering.
+                  assertDeliverable([{ film, format: outFormat }]);
+
+                  // Enforce rule: Don't render video till B-roll is complete and footage is retrieved
+                  const pendingBroll = (film.shots || []).filter((s) => {
+                    if (!s.needsFootage) return false;
+                    return !fs.existsSync(path.join(videosDir, film.id, 'footage', `${s.id}.mp4`));
                   });
-                } else {
-                  sendJson(res, 500, {
-                    error: `Remotion render exited with code ${code}: ${renderLogs.trim()}`,
-                  });
-                }
+                  if (pendingBroll.length > 0) {
+                    throw new Error(
+                      `Cannot render video: GPU B-Roll footage is still pending for ${pendingBroll.length} shot(s) (${pendingBroll.map((s) => s.id).join(', ')}). Please complete B-roll generation first.`,
+                    );
+                  }
+
+                  fs.mkdirSync(rendersDir, { recursive: true });
+                  // Ensure retimed audio is pre-rendered for Remotion CLI
+                  ensureRetimedAudio(film);
+                  // Save active film first so remotion bundles it
+                  fs.writeFileSync(path.join(filmsDir, `${film.id}.ts`), filmModule(film), 'utf8');
+                  // Ensure activeFilm.ts is synced to this exported film
+                  setActiveFilm(film.id);
+
+                  publicDir = stagePublicDir();
+                  const renderArgs = ['remotion', 'render', 'src/index.ts', outFormat === 'reel' ? 'Reel' : 'Long', outPath];
+                  if (publicDir) renderArgs.push(`--public-dir=${publicDir.dir}`);
+                  return { command: 'npx', args: renderArgs, cwd: path.resolve(__dirname, '..') };
+                },
+                finalize: (finished) => {
+                  const master = masterAudio(finished);
+                  writeDescriptionCredits(rendersDir, [renderedFilm]);
+                  if (master.status === 'skipped') endCardNotice = [endCardNotice, `Master skipped: ${master.reason}`].filter(Boolean).join('; ');
+                  return endCardNotice;
+                },
+                cleanup: () => publicDir?.cleanup(),
               });
-              child.on('error', (error) => {
-                publicDir?.cleanup();
-                sendJson(res, 500, { error: `Remotion render could not start: ${error.message}` });
-              });
+              sendJson(res, busy ? 409 : 202, busy ? { error: 'Another export is already running.', job } : { job });
             })
             .catch((err) => {
               sendJson(res, 500, { error: String(err) });
             });
           return;
+        }
+
+        // The export still in flight, so a reloaded page can pick the dialog and header chip back up.
+        if (url === '/api/export/current' && req.method === 'GET') {
+          sendJson(res, 200, { job: exportJobs.current() ?? null });
+          return;
+        }
+
+        // One export job's live state, or a cancel that kills the render and deletes the partial video.
+        const exportJobMatch = /^\/api\/export\/([a-z0-9-]+)(\/cancel)?$/.exec(url);
+        if (exportJobMatch) {
+          const [, jobId, cancel] = exportJobMatch;
+          if (cancel && req.method === 'POST') {
+            void exportJobs.cancel(jobId).then((job) => {
+              if (!job) sendJson(res, 404, { error: 'Unknown export' });
+              else sendJson(res, 200, { job });
+            });
+            return;
+          }
+          if (!cancel && req.method === 'GET') {
+            const job = exportJobs.get(jobId);
+            if (!job) sendJson(res, 404, { error: 'Unknown export' });
+            else sendJson(res, 200, { job });
+            return;
+          }
         }
 
         // Handle /api/downloads/:filename (Serve rendered video exports from package renders/ with fallback to out/)
@@ -1313,6 +1311,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               filmTitle,
               customInstruction,
               scriptText: script,
+              // A second click (or a client retry) while this task is open reuses it instead of adding another.
+              idempotent: true,
             });
             sendJson(res, 200, { ok: true, dispatch, prompt: dispatch.prompt });
           }).catch(err => sendJson(res, 500, { error: String(err) }));

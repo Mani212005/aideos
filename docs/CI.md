@@ -24,7 +24,7 @@ GitHub job summary), so one run reports every problem.
 | Job | Steps | Runs |
 | --- | --- | --- |
 | `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy, and reports shadow PR risk rating | every PR and push to main |
-| `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root, oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
+| `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
 | `journeys` | `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply and new-project script save; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
@@ -71,6 +71,12 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
   stays `angle`. The legacy golden job also pins Fontconfig to RGB subpixel text antialiasing
   (`FONTCONFIG_FILE=scripts/golden-fonts.conf`) so Linux machines with differing default font setups
   rasterize text identically.
+* The journey frame harness uses Remotion's view capture (`DISABLE_FROM_SURFACE=1`). Chromium's
+  fractional-device-pixel-ratio surface capture produced two raster variants of Still Talking
+  frame 2773, including in a frozen SVG with no fonts, external assets, scripts or animation. More paint
+  delays and software rasterization did not remove the variation. View capture keeps device pixel
+  ratio at 1 and scales through viewport emulation instead. J9 still requires four independent cold
+  renders at 480x270 to have exactly zero changed pixels; no retry or tolerance is involved.
 * `ruff` is pinned (`RUFF_VERSION` in `scripts/ci.ts` and in `ci.yml`); locally the step uses an
   installed `ruff`, `python3 -m ruff` or `uvx ruff@<pinned>`, and is skipped with a reason (never
   silently passed) when none exists. CI always runs it.

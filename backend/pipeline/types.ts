@@ -24,6 +24,11 @@ export const PRODUCTION_STAGES = [
 
 export type ProductionStage = (typeof PRODUCTION_STAGES)[number];
 
+/** Where an agent-facing run stops: a draft after assemble, unless the user asked for the final export or named a stage. */
+export function draftStopAfter(stopAfter: ProductionStage | undefined, finalExport: boolean | undefined): ProductionStage | undefined {
+  return stopAfter ?? (finalExport ? undefined : "assemble");
+}
+
 /** Which deliverable formats a run can produce. */
 export type ProductionFormat = "long" | "reel";
 

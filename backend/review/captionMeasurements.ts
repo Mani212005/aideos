@@ -1,5 +1,5 @@
 /**
- * File Description: Measures caption words with the render's pinned font and layout utility for exact review phrase boundaries.
+ * File Description: Measures caption words with the render's pinned font (vendored in ./fonts, never fetched) and layout utility for exact review phrase boundaries.
  * Inputs and outputs: words and font size -> measured widths, using one bounded Chrome batch when needed.
  * Used by: prepareCaptionReview for films with owner caption placement.
  */
@@ -14,6 +14,7 @@ import { findChromeBinary } from "../scene/renderStill";
 const requirePackage = createRequire(
   path.resolve(__dirname, "../../package.json"),
 );
+const FONT_DIR = path.resolve(__dirname, "fonts");
 const widthsSchema = z.record(z.string(), z.number().finite().nonnegative());
 const cache = new Map<number, Record<string, number>>();
 
@@ -29,6 +30,25 @@ type MeasurementPlan =
       file: string;
     };
 
+// Builds the Geist 700 @font-face rules from the vendored files so measuring never waits on the font CDN.
+function geistFontFaceCss(): string {
+  const info = getInfo();
+  return Object.entries(info.fonts.normal["700"])
+    .map(([subset, url]) => {
+      const file = path.join(
+        FONT_DIR,
+        `${subset}-${path.basename(new URL(url).pathname)}`,
+      );
+      if (!fs.existsSync(file))
+        throw new Error(
+          `Vendored Geist font missing for subset "${subset}": expected ${file} (upstream ${url}). See backend/review/fonts/README.md.`,
+        );
+      const data = fs.readFileSync(file).toString("base64");
+      return `@font-face{font-family:Geist;font-style:normal;font-weight:700;src:url(data:font/woff2;base64,${data}) format("woff2");unicode-range:${info.unicodeRanges[subset as keyof typeof info.unicodeRanges]}}`;
+    })
+    .join("");
+}
+
 // Creates the common page for the pinned Geist measurement utility.
 function prepareMeasurement(words: string[], fontSize: number): MeasurementPlan {
   const known = cache.get(fontSize) ?? {};
@@ -41,13 +61,7 @@ function prepareMeasurement(words: string[], fontSize: number): MeasurementPlan 
     throw new Error(
       "Chrome is required to measure owner-placed caption phrases for review.",
     );
-  const info = getInfo();
-  const css = Object.entries(info.fonts.normal["700"])
-    .map(
-      ([subset, url]) =>
-        `@font-face{font-family:Geist;font-style:normal;font-weight:700;src:url(${JSON.stringify(url)});unicode-range:${info.unicodeRanges[subset as keyof typeof info.unicodeRanges]}}`,
-    )
-    .join("");
+  const css = geistFontFaceCss();
   const utility = fs.readFileSync(
     path.join(
       path.dirname(requirePackage.resolve("@remotion/layout-utils")),
