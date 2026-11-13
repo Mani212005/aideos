@@ -60,6 +60,7 @@ import {
   screenplayFromFilmShots,
 } from '../backend/scriptIntake.ts'
 import { narrationLines } from '../backend/storyScript.ts'
+import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
 import { recordedStatus, synthesizeLines, resampleLinear, type LineAudio } from '../backend/voiceLines.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
@@ -1503,10 +1504,14 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const shotTexts: string[] = film.shots?.map((s: any) => (s.scriptText || s.id || '').trim()).filter(Boolean) || [];
             const scriptInput = scriptText ? splitScriptIntoSegments(scriptText) : shotTexts.length > 0 ? shotTexts : [film.title];
             const pkgDir = path.join(videosDir, film.id);
-            const intakeNotices: string[] = [];
+            const intake = checkVoiceoverIntake(scriptText || '');
+            if (!intake.ok) {
+              sendJson(res, intake.status, { error: intake.error, intakeNotices: intake.intakeNotices });
+              return;
+            }
             const audioResult = await produceAudioPipeline(scriptInput, pkgDir, {
               ...(scriptText ? { intakeSource: scriptText } : {}),
-              onIntakeNotice: (issue) => intakeNotices.push(issue.message),
+              onIntakeNotice: () => {},
             });
 
             // Update shot durations to match audio segments accurately (1:1 shot-level mapping)
@@ -1550,7 +1555,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               ],
             });
 
-            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult, intakeNotices });
+            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult, intakeNotices: intake.intakeNotices });
           }).catch(err => {
             console.error('[API voiceover error]:', err);
             sendJson(res, err instanceof ScriptIntakeError ? 400 : 500, { error: err instanceof Error ? err.message : String(err) });

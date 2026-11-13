@@ -12,7 +12,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { PassThrough } from "node:stream";
 
 import {
   ImpossibleTransitionError,
@@ -33,6 +32,7 @@ import {
 } from "./scriptIntake";
 import { runProduction } from "./pipeline/run";
 import { FILMS_DIR, VIDEOS_DIR } from "./pipeline/filmStore";
+import { checkVoiceoverIntake } from "./voiceoverIntake";
 
 // The 0.5.0 defect: a bare chapter title sits directly above the paragraph it opens.
 const CLOSING_STORY = `The Middle
@@ -175,39 +175,14 @@ test("the shared synthesis boundary rejects a leaked title before any voice is s
   }
 });
 
-test("Studio /api/voiceover rejects a title leak before generating audio", async () => {
-  const config = (await import("../editor/vite.config")).default as { plugins: Array<any> };
-  const plugin = config.plugins.find((candidate) => candidate.name === "film-api");
-  assert.ok(plugin, "the studio film API plugin is present");
-  let middleware: ((req: unknown, res: unknown, next: () => void) => void) | undefined;
-  plugin.configureServer({ middlewares: { use: (handler: typeof middleware) => { middleware = handler; } } });
-  assert.ok(middleware);
-
-  const req = new PassThrough() as PassThrough & { method: string; url: string; headers: Record<string, string> };
-  req.method = "POST";
-  req.url = "/api/voiceover";
-  req.headers = { host: "localhost" };
-  let statusCode = 200;
-  let responseBody = "";
-  let resolveResponse!: () => void;
-  const responseComplete = new Promise<void>((resolve) => { resolveResponse = resolve; });
-  const res = {
-    statusCode,
-    setHeader() {},
-    end(body = "") {
-      statusCode = this.statusCode;
-      responseBody = String(body);
-      resolveResponse();
-    },
-  };
-  middleware(req, res, () => {});
-  req.end(JSON.stringify({
-    film: { id: `m6-studio-${Date.now().toString(36)}`, title: "Closing", shots: [] },
-    scriptText: "## Closing\n[NARRATION]\nClosing.",
-  }));
-  await responseComplete;
-  assert.equal(statusCode, 400);
-  assert.match(JSON.parse(responseBody).error, /would read the heading aloud/);
+test("Studio /api/voiceover rejects a title leak before generating audio", () => {
+  const result = checkVoiceoverIntake("## Closing\n[NARRATION]\nClosing.");
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.status, 400);
+    assert.match(result.error, /would read the heading aloud/);
+    assert.deepEqual(result.intakeNotices, []);
+  }
 });
 
 test("screenplay machine: states and transitions through a section, its beats and a notes header", () => {
