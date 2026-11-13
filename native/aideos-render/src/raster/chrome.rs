@@ -246,6 +246,44 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
         .iter()
         .map(|width| width.min(max_word_width))
         .collect();
+    let wrapped_words: Vec<String> = cf
+        .words
+        .iter()
+        .enumerate()
+        .map(|(i, wf)| {
+            let text = &node.words[wf.index].text;
+            if natural_word_widths[i] > max_word_width {
+                text.chars()
+                    .map(|character| format!("{character}\u{200b}"))
+                    .collect::<Vec<_>>()
+                    .concat()
+            } else {
+                text.clone()
+            }
+        })
+        .collect();
+    let word_heights: Vec<f64> = wrapped_words
+        .iter()
+        .enumerate()
+        .map(|(i, text)| {
+            let spec = TextSpec {
+                text,
+                font: &node.font,
+                size,
+                color: primary,
+                letter_spacing: 0.0,
+                line_height: Some(CAPTION_LINE_HEIGHT),
+                align: TextAlign::Left,
+                shadows: Vec::new(),
+            };
+            f64::from(
+                ctx.l
+                    .fonts
+                    .paragraph(&spec, word_widths[i].max(1.0) as f32)
+                    .height(),
+            )
+        })
+        .collect();
     let boxes: Vec<f64> = word_widths
         .iter()
         .map(|ww| ww + captions::WORD_MARGIN_X)
@@ -257,13 +295,22 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
         .map(|(a, b)| boxes[*a..*b].iter().sum())
         .collect();
     let text_w = row_widths.iter().copied().fold(0.0, f64::max);
-    let row_h = size * CAPTION_LINE_HEIGHT + 8.0;
+    let base_row_h = size * CAPTION_LINE_HEIGHT + 8.0;
+    let row_heights: Vec<f64> = rows
+        .iter()
+        .map(|(a, b)| {
+            word_heights[*a..*b]
+                .iter()
+                .map(|height| height + 8.0)
+                .fold(base_row_h, f64::max)
+        })
+        .collect();
     let card_w = if card.fixed {
         card.width
     } else {
         (text_w + 2.0 * CAPTION_PAD_X + 2.0).min(card.width * 0.92)
     };
-    let card_h = 2.0 * CAPTION_PAD_Y + 2.0 + rows.len() as f64 * row_h;
+    let card_h = 2.0 * CAPTION_PAD_Y + 2.0 + row_heights.iter().sum::<f64>();
     let left = span.x * w - card_w / 2.0;
     let top = span.y * h;
     let rr = RRect::new_rect_xy(
@@ -321,9 +368,22 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
             ClipOp::Intersect,
             false,
         );
+        let mut row_top = top + 1.0 + CAPTION_PAD_Y;
         for (r, (a, b)) in rows.iter().enumerate() {
             let mut x = content_left + (content_w - row_widths[r]) / 2.0;
-            let y = top + 1.0 + CAPTION_PAD_Y + r as f64 * row_h + 4.0;
+            let row_h = row_heights[r];
+            let y = row_top + 4.0;
+            canvas.save();
+            canvas.clip_rect(
+                Rect::from_xywh(
+                    content_left as f32,
+                    row_top as f32,
+                    content_w as f32,
+                    row_h as f32,
+                ),
+                ClipOp::Intersect,
+                false,
+            );
             for i in *a..*b {
                 let wf = cf.words[i];
                 let (color, shadows) = match wf.role {
@@ -365,17 +425,8 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
                     ),
                     captions::WordRole::Future => (Rgba { a: 0.38, ..primary }, Vec::new()),
                 };
-                let original_text = &node.words[wf.index].text;
-                let wrapped_text = if natural_word_widths[i] > max_word_width {
-                    original_text
-                        .chars()
-                        .map(|character| format!("{character}\u{200b}"))
-                        .collect::<String>()
-                } else {
-                    original_text.clone()
-                };
                 let spec = TextSpec {
-                    text: &wrapped_text,
+                    text: &wrapped_words[i],
                     font: &node.font,
                     size,
                     color,
@@ -399,6 +450,8 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
                 canvas.restore();
                 x += boxes[i];
             }
+            canvas.restore();
+            row_top += row_h;
         }
         canvas.restore();
     });

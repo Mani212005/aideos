@@ -69,6 +69,7 @@ pub struct Style {
     pub fill: Option<Paint>,
     pub fill_opacity: Option<f64>,
     pub fill_rule_even_odd: Option<bool>,
+    pub clip_rule_even_odd: Option<bool>,
     pub stroke: Option<Paint>,
     pub stroke_width: Option<f64>,
     pub stroke_opacity: Option<f64>,
@@ -93,6 +94,7 @@ pub struct ComputedStyle {
     pub fill: Paint,
     pub fill_opacity: f64,
     pub fill_rule_even_odd: bool,
+    pub clip_rule_even_odd: Option<bool>,
     pub stroke: Paint,
     pub stroke_width: f64,
     pub stroke_opacity: f64,
@@ -122,6 +124,7 @@ impl Default for ComputedStyle {
             }),
             fill_opacity: 1.0,
             fill_rule_even_odd: false,
+            clip_rule_even_odd: None,
             stroke: Paint::None,
             stroke_width: 1.0,
             stroke_opacity: 1.0,
@@ -173,6 +176,9 @@ impl ComputedStyle {
             letter_spacing,
             visible
         );
+        if let Some(value) = own.clip_rule_even_odd {
+            s.clip_rule_even_odd = Some(value);
+        }
         s
     }
 }
@@ -498,6 +504,7 @@ fn style(attrs: &BTreeMap<String, String>) -> Result<Style, SvgError> {
             "fill" => s.fill = Some(paint(v, "fill")?),
             "fill-opacity" => s.fill_opacity = Some(opacity_value(v, k)?),
             "fill-rule" => s.fill_rule_even_odd = Some(v.trim() == "evenodd"),
+            "clip-rule" => s.clip_rule_even_odd = Some(v.trim() == "evenodd"),
             "stroke" => s.stroke = Some(paint(v, "stroke")?),
             "stroke-width" => s.stroke_width = Some(number(v, k)?.max(0.0)),
             "stroke-opacity" => s.stroke_opacity = Some(opacity_value(v, k)?),
@@ -847,7 +854,7 @@ fn collapse_whitespace(text: &str) -> String {
 #[derive(Default)]
 struct Parse {
     gradients: BTreeMap<String, RawGradient>,
-    clip_nodes: Vec<(String, Matrix, Vec<Element>)>,
+    clip_nodes: Vec<(String, Matrix, Style, Vec<Element>)>,
     ids: BTreeSet<String>,
 }
 
@@ -911,7 +918,13 @@ impl Parse {
                 };
                 let kids = self.children(node)?;
                 if let Some(id) = id {
-                    self.clip_nodes.push((id, transform, kids));
+                    let parent_style = style(&attrs)?;
+                    let kids = if attrs.get("display").is_some_and(|d| d.trim() == "none") {
+                        Vec::new()
+                    } else {
+                        kids
+                    };
+                    self.clip_nodes.push((id, transform, parent_style, kids));
                 }
                 return Ok(None);
             }
@@ -955,20 +968,26 @@ impl Parse {
             transform,
             opacity,
             clip_path: clip_ref(&attrs)?,
-            hidden: attrs.get("display").is_some_and(|d| d.trim() == "none")
-                || attrs
-                    .get("visibility")
-                    .is_some_and(|v| v.trim() == "hidden"),
+            hidden: attrs.get("display").is_some_and(|d| d.trim() == "none"),
             children,
         }))
     }
 }
 
 /// Combines the shapes of a clipPath into one path in the clipped element's user space.
-fn clip_path_union(transform: &Matrix, kids: &[Element]) -> Result<Path, SvgError> {
+fn clip_path_union(
+    transform: &Matrix,
+    parent_style: &Style,
+    kids: &[Element],
+) -> Result<Path, SvgError> {
     let mut union: Option<Path> = None;
+    let inherited = ComputedStyle::default().inherit(parent_style);
     for kid in kids {
-        if kid.hidden || kid.style.visible == Some(false) {
+        if kid.hidden {
+            continue;
+        }
+        let style = inherited.inherit(&kid.style);
+        if !style.visible {
             continue;
         }
         let Kind::Shape(s) = &kid.kind else {
@@ -977,7 +996,7 @@ fn clip_path_union(transform: &Matrix, kids: &[Element]) -> Result<Path, SvgErro
         let Some(mut path) = s.to_path(LineOverride::default()) else {
             continue;
         };
-        if kid.style.fill_rule_even_odd == Some(true) {
+        if style.clip_rule_even_odd.unwrap_or(style.fill_rule_even_odd) {
             path = path.with_fill_type(PathFillType::EvenOdd);
         }
         let placed = path.with_transform(&Matrix::concat(transform, &kid.transform));
@@ -1016,8 +1035,8 @@ pub fn parse(source: &str) -> Result<SvgDocument, SvgError> {
         );
     }
     let mut clip_paths = BTreeMap::new();
-    for (id, transform, kids) in &p.clip_nodes {
-        clip_paths.insert(id.clone(), clip_path_union(transform, kids)?);
+    for (id, transform, style, kids) in &p.clip_nodes {
+        clip_paths.insert(id.clone(), clip_path_union(transform, style, kids)?);
     }
     let svg_doc = SvgDocument {
         elements,

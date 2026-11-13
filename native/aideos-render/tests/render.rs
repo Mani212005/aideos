@@ -7,12 +7,50 @@ mod common;
 use std::process::Command;
 
 use aideos_render::{eval, Format, RenderError, Renderer};
-use aideos_render_ir::types::{Asset, Node};
+use aideos_render_ir::types::{Asset, Node, SvgNode};
 use common::{close, pixel, png_size};
 
 /// The fixture renderer.
 fn renderer() -> Renderer {
     Renderer::new(common::tiny_scene(), &common::package_dir()).expect("the fixture package loads")
+}
+
+/// Builds a public Renderer around one supplied SVG and the fixture's vendored fonts.
+fn renderer_with_svg(source: &str) -> Renderer {
+    let dir = common::scratch_dir("svg-render");
+    std::fs::create_dir_all(dir.join("visuals")).expect("create visuals directory");
+    std::fs::write(dir.join("visuals/orbit.svg"), source).expect("write SVG asset");
+    let mut ir = common::tiny_scene();
+    for asset in &mut ir.assets {
+        match asset {
+            Asset::Font(font) => {
+                let source = common::package_dir().join(&font.path);
+                let target = dir.join(&font.path);
+                std::fs::create_dir_all(target.parent().expect("font parent"))
+                    .expect("create font directory");
+                std::fs::copy(source, target).expect("copy vendored font");
+            }
+            Asset::Svg(svg) if svg.id == "orbit" => {
+                svg.element_ids = vec!["painted".into()];
+            }
+            _ => {}
+        }
+    }
+    ir.stage = vec![Node::Svg(SvgNode {
+        id: "svg-test".into(),
+        visible: None,
+        opacity: None,
+        asset: "orbit".into(),
+        x: 0.0,
+        y: 0.0,
+        scale: 1.0,
+        rotation: 0.0,
+        layer: 0,
+        tracks: Vec::new(),
+        element_tracks: Vec::new(),
+    })];
+    ir.overlay.clear();
+    Renderer::new(ir, &dir).expect("custom SVG package loads")
 }
 
 /// The colour of the fixture's background, #0B0D10.
@@ -153,24 +191,90 @@ fn an_oversized_caption_word_stays_inside_its_card() {
     let mut ir = common::tiny_scene();
     for node in &mut ir.overlay {
         if let Node::Captions(captions) = node {
-            captions.words[0].text = "W".repeat(120);
+            captions.words[0].text = "W".repeat(48);
+        }
+    }
+    let mut no_ink_ir = ir.clone();
+    for node in &mut no_ink_ir.overlay {
+        if let Node::Captions(captions) = node {
+            captions.color = "#0B0D10".into();
+            captions.highlight_color = "#0B0D10".into();
         }
     }
     let long_word = Renderer::new(ir, &common::package_dir())
         .expect("mutated caption IR loads")
         .render_frame(Format::Long, 3)
         .expect("oversized caption renders");
+    let no_ink = Renderer::new(no_ink_ir, &common::package_dir())
+        .expect("no-ink caption IR loads")
+        .render_frame(Format::Long, 3)
+        .expect("no-ink caption renders");
     let ordinary = renderer()
         .render_frame(Format::Long, 3)
         .expect("ordinary caption renders");
+    assert!(
+        !close(pixel(&no_ink, 300, 940), pixel(&ordinary, 300, 940), 1),
+        "the card grows to contain wrapped caption lines"
+    );
+    for x in 288..1632 {
+        assert!(
+            close(pixel(&long_word, x, 1070), pixel(&no_ink, x, 1070), 1),
+            "caption pixels escaped the expanded card at x={x}"
+        );
+    }
     for y in 820..960 {
         for x in 0..288 {
-            assert!(close(pixel(&long_word, x, y), pixel(&ordinary, x, y), 1));
+            assert!(close(pixel(&long_word, x, y), pixel(&no_ink, x, y), 1));
         }
         for x in 1632..1920 {
-            assert!(close(pixel(&long_word, x, y), pixel(&ordinary, x, y), 1));
+            assert!(close(pixel(&long_word, x, y), pixel(&no_ink, x, y), 1));
         }
     }
+}
+
+/// Checks that a visible SVG child can override its hidden group's inherited visibility.
+#[test]
+fn visible_svg_child_overrides_hidden_group() {
+    let r = renderer_with_svg(
+        r##"<svg><g visibility="hidden"><rect id="painted" width="1920" height="1920" fill="#ff0000" visibility="visible"/></g></svg>"##,
+    );
+    let frame = r.render_frame(Format::Long, 0).expect("render frame");
+    assert_eq!(pixel(&frame, 960, 540), [255, 0, 0, 255]);
+}
+
+/// Checks that hidden clip children are omitted and clip-rule cuts a hole from the clip mask.
+#[test]
+fn clip_union_uses_visible_children_and_clip_rule() {
+    let hidden = renderer_with_svg(
+        r##"<svg><defs><clipPath id="clip"><rect width="1920" height="1920" display="none"/><rect width="1920" height="1920" visibility="hidden"/><rect x="800" y="800" width="320" height="320"/></clipPath></defs><rect id="painted" width="1920" height="1920" fill="#ff0000" clip-path="url(#clip)"/></svg>"##,
+    )
+    .render_frame(Format::Long, 0)
+    .expect("render hidden-child clip");
+    assert_eq!(pixel(&hidden, 960, 540), [255, 0, 0, 255]);
+    assert_eq!(pixel(&hidden, 600, 540), BACKGROUND);
+
+    let hole = renderer_with_svg(
+        r##"<svg><defs><clipPath id="clip"><path clip-rule="evenodd" d="M0 0H1920V1920H0Z M700 700H1220V1220H700Z"/></clipPath></defs><rect id="painted" width="1920" height="1920" fill="#ff0000" clip-path="url(#clip)"/></svg>"##,
+    )
+    .render_frame(Format::Long, 0)
+    .expect("render clip-rule path");
+    assert_eq!(pixel(&hole, 960, 540), BACKGROUND);
+    assert_eq!(pixel(&hole, 500, 540), [255, 0, 0, 255]);
+}
+
+/// Checks that a derived gradient renders with the diagonal geometry inherited from its base.
+#[test]
+fn derived_gradient_renders_with_inherited_diagonal_geometry() {
+    let r = renderer_with_svg(
+        r##"<svg><defs><linearGradient id="base" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0" stop-color="#000000"/><stop offset="1" stop-color="#ffffff"/></linearGradient><linearGradient id="derived" href="#base"/></defs><rect id="painted" width="1920" height="1920" fill="url(#derived)"/></svg>"##,
+    );
+    let frame = r.render_frame(Format::Long, 0).expect("render gradient");
+    let upper = pixel(&frame, 480, 180);
+    let lower = pixel(&frame, 480, 880);
+    assert!(
+        lower[0] > upper[0] + 20,
+        "inherited diagonal gradient should vary vertically at a fixed x: {upper:?} -> {lower:?}"
+    );
 }
 
 /// Checks that a format the ir does not declare is refused.

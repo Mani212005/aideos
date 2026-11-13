@@ -120,8 +120,8 @@ Static scene artwork: `g`, `rect` (with `rx`/`ry`), `circle`, `ellipse`, `line`,
 `gradientTransform`, spread methods, focal point, and geometry, units, transform, spread and stops inherited
 through same-type `href` chains), `clipPath` (user-space
 units), presentation attributes and `style` declarations (fill, stroke and their opacities, stroke width,
-caps, joins, miter limit, dash array and offset, fill rule, `color`/`currentColor`, opacity, display,
-visibility, font family, size and weight, text anchor, letter spacing), `transform` lists, CSS colours
+caps, joins, miter limit, dash array and offset, fill and clip rule, `color`/`currentColor`, opacity, display,
+inherited visibility, font family, size and weight, text anchor, letter spacing), `transform` lists, CSS colours
 (hex, `rgb()`/`rgba()`, named). `title`, `desc` and `metadata` are skipped.
 
 Rendering attributes whose behavior is not implemented are **refused at load with the attribute named**,

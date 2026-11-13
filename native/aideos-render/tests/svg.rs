@@ -62,18 +62,30 @@ fn clip_paths_exclude_non_rendered_children() {
         (bounds.left, bounds.top, bounds.right, bounds.bottom),
         (10.0, 20.0, 40.0, 60.0)
     );
+    let ordinary = parse(r##"<svg><rect width="10" height="10" clip-rule="evenodd"/></svg>"##)
+        .expect("clip-rule remains accepted on ordinary shapes");
+    assert_eq!(ordinary.elements[0].style.clip_rule_even_odd, Some(true));
 }
 
 /// Names unsupported rendering declarations while permitting inert root and metadata attributes.
 #[test]
 fn unsupported_rendering_attributes_and_styles_are_refused() {
-    for source in [
-        r##"<svg><rect width="10" height="10" vector-effect="non-scaling-stroke"/></svg>"##,
-        r##"<svg><rect width="10" height="10" style="paint-order: stroke; fill: red"/></svg>"##,
-        r##"<svg><text font-style="italic">text</text></svg>"##,
+    for (source, unsupported) in [
+        (
+            r##"<svg><rect width="10" height="10" vector-effect="non-scaling-stroke"/></svg>"##,
+            "vector-effect",
+        ),
+        (
+            r##"<svg><rect width="10" height="10" style="paint-order: stroke; fill: red"/></svg>"##,
+            "paint-order",
+        ),
+        (
+            r##"<svg><text font-style="italic">text</text></svg>"##,
+            "font-style",
+        ),
     ] {
         let error = parse(source).expect_err("unsupported rendering declaration was accepted");
-        assert!(error.to_string().contains("unsupported attribute"));
+        assert!(error.to_string().contains(unsupported), "{error}");
     }
     parse(r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" preserveAspectRatio="none" id="root" class="asset" data-note="x" aria-label="art"><rect width="10" height="10" id="shape"/></svg>"##)
         .expect("inert attributes remain accepted");
