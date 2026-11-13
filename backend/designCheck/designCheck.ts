@@ -33,6 +33,7 @@ import type { ShotVisual } from "../jev";
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { checkInsetRegions, prepareSvgProjection } from "./insetRegion";
 import { safeParseLookPlan, type LookPlan } from "../lookPlan/schema";
+import { matchCameraPose } from "../lookPlan/contract";
 import { createCues, FPS, CAPTION_SAFE_SQUARE } from "../sceneKit";
 import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
@@ -600,9 +601,7 @@ export function checkFilmDesignById(filmId: string): DesignReport {
     }));
     cameraTargets = parsed.data.film.camera.map((pose) => {
       const frame = resolveCue(pose.at, cues);
-      const authoredPose = authoredPoses.length ? authoredPoses.reduce((nearest, candidate) =>
-        Math.abs(candidate.frame - frame) < Math.abs(nearest.frame - frame) ? candidate : nearest,
-      ) : undefined;
+      const authoredPose = matchCameraPose({ frame, focus: pose.focus }, authoredPoses, CAMERA_CUE_LANDING_TOLERANCE_SECONDS * film.fps);
       return { frame, focus: pose.focus, authoredFocus: authoredPose?.focus };
     });
   } catch {

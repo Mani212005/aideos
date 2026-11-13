@@ -16,6 +16,7 @@ import { DOT_RESOURCES, STAGE_RESOURCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } fr
 import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { characterCandidates } from "../characters/library";
 import type { LookPlan } from "../lookPlan/schema";
+import { designAcceptance } from "../lookPlan/contract";
 import { writeLookMd } from "../lookPlan/render";
 import crypto from "crypto";
 import fs from "fs";
@@ -265,6 +266,7 @@ export async function runProduction(
   const delivery = {
     mode, skipAgent: request.skipAgent ?? Boolean(process.env.NODE_TEST_CONTEXT),
     agentTimeoutMs: request.designAgentTimeoutMs, llmCaller: request.designLlmCaller,
+    judgeRunner: request.designJudgeRunner,
     ...(request.ownerKey ? { ownerKey: request.ownerKey } : {}),
   };
 
@@ -301,6 +303,7 @@ export async function runProduction(
     outputs: outputResults,
     stages: state.stages,
     warnings,
+    ...(state.designJudge ? { designJudge: state.designJudge } : {}),
     ...(stoppedAfter ? { stoppedAfter } : {}),
   });
 
@@ -368,6 +371,8 @@ export async function runProduction(
         return reused;
       }
     }
+
+    if (PRODUCTION_STAGES.indexOf(stage) <= PRODUCTION_STAGES.indexOf("design")) state.designJudge = undefined;
 
     // A stage that runs again invalidates every later stage, even if its output hashes identically.
     // Forced narration/design must not leave a completed assembly or render attached to old inputs.
@@ -517,12 +522,13 @@ export async function runProduction(
     // ---- design: the accepted plan controls treatments and invalidates changed designs -------
     const lookHash = look ? lookPlanFingerprint(slug) : null;
     const designFingerprint = () => fingerprint(script, narration.shotDurations, request.music ?? null,
-      wantsBroll, mode, lookHash, "default-soundtrack-v1", mode === "templates" ? null : designFilesFingerprint(slug));
+      wantsBroll, mode, lookHash, "look-contract-v1", "default-soundtrack-v1", mode === "templates" ? null : designFilesFingerprint(slug));
 
     const design = await runStage(
       "design",
       designFingerprint(),
       () => {
+        if (!state.designJudge || designAcceptance(state.designJudge) === "needs_design") return null;
         if (mode !== "templates") {
           try {
             // Rebuild under the source that made the film, so an unchanged design writes an identical film and later stages stay reused.
@@ -549,9 +555,6 @@ export async function runProduction(
         fs.mkdirSync(designDir(slug), { recursive: true });
         fs.writeFileSync(path.join(designDir(slug), "base-film.json"), JSON.stringify(compiled.film, null, 2) + "\n");
         writeVisualChoices(slug, compiled.film, compiled.shotVisuals, compiled.deviceReports);
-        for (const [shotId, report] of compiled.deviceReports) {
-          if (look && report.state !== "authored") warnings.push(`${shotId}: ${report.reason}`);
-        }
         emit(
           "design",
           "running",
@@ -561,8 +564,10 @@ export async function runProduction(
         const outcome = await designFilm(slug, {
           ...delivery, onProgress: (message) => emit("design", "running", message),
         });
+        state.designJudge = outcome.judge;
         emit("design", "running", `design: ${outcome.note}`);
-        if (outcome.source === "needs_design") {
+        if (outcome.judge === "skipped") warnings.push(outcome.note);
+        if (outcome.source === "needs_design" || outcome.judge && designAcceptance(outcome.judge) === "needs_design") {
           warnings.push(outcome.note);
           if (outcome.status) warnings.push(formatBuildStatus(slug, outcome.status));
           throw new NeedsInput("needs_design", [

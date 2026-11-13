@@ -103,11 +103,23 @@ design assets. The palette allows the locked colours plus the film's one accent.
 
 `aideos design build` checks a package's look when one exists: shot coverage, declared cast in artwork,
 changing SVG clips on carried objects inside scene shots starting within 0.4s of their spoken cue,
-matching inset device overrides and camera keyframes. For a declared Three performance, anticipation
+matching inset device overrides and camera keyframes within the existing 1.5-second cue tolerance. For a declared Three performance, anticipation
 must start before its decisive word and the evaluated contact must land on that word; no clip at the
 cue is required. Builds record provenance in `design/status.json`,
 defaulting CLI builds to `hand-built` (`--source <who>` overrides). Older packages without a look can
 still build directly; new production runs require one before design.
+
+Each build with a valid look records `design/plan-ledger.json` (also returned as `status.ledger`):
+cast, carried changes, camera poses, performances, device shots and scene cue motion move from
+`planned` to `bound`, then `realized`, or to `dropped` with an actionable reason. A dropped item
+fails the build without replacing the film. An honesty-refused device must be authored honestly
+or removed from the look plan; its text fallback no longer fulfills a planned device.
+
+Design delivery exposes `judge: passed | failed | skipped` separately from structural build status.
+Failed visual judgment returns `needs_design`. Skipped judgment remains unjudged and is reported
+in production results as `designJudge: skipped`, including resumed runs; it does not claim a visual
+pass. The pure contract in `backend/lookPlan/contract.ts` consumes evidence without capturing or
+rendering frames, so another renderer can use the same acceptance policy.
 
 ## Soundtrack
 
