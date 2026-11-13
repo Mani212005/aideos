@@ -58,8 +58,9 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 `backend/stageTimeline.ts` owns `moving` / `holding` spans inside `story` / `end-card`
 segments. It reads compiled scene and camera data in each output crop, so no video render is needed.
 Design checks reject a story hold longer than three seconds with its times, format and shot ids.
-Hidden or off-frame SVG animation does not count as motion. SVG rendering, continuity and review
-share authored/animated opacity resolution and the 0.05 visibility cutoff.
+Hidden or off-frame SVG animation does not count as motion. SVG rendering uses the shared
+authored/animated opacity resolver; continuity and stage/review visibility use that resolver with
+the shared 0.05 cutoff.
 
 Measured pacing combines these scene spans with pixel freeze measurements. Both are clipped to the
 story before applying the same three-second limit. A run crossing into the end card keeps only its
@@ -326,7 +327,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 6 | **readability** | Yes | High contrast (>= 4.5:1), clear font hierarchy (>= 24px), sufficient reading duration (>= 0.35s per word). |
 | 7 | **no_overlap_clipping** | Yes | No text-text or text-artwork overlapping; all essential elements stay within the 96px safe margin. |
 | 8 | **audio_sync** | Yes | Story cues synchronize with voiceover within 120ms; the audio and delivered picture durations agree within 100ms, including the end card. |
-| 9 | pacing | No | Dynamic progression with no static holds > 3s, mean beat length 5-12s, no dead air > 0.7s, speech 130-170 wpm. |
+| 9 | pacing | No | Dynamic progression (see [Stage timeline and stillness](#stage-timeline-and-stillness)), mean beat length 5-12s, no dead air > 0.7s, speech 130-170 wpm. |
 | 10 | storyline | No | Clear problem statement, logical progression where beats build on previous content, satisfying payoff beat. |
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
