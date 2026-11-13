@@ -566,7 +566,6 @@ export async function runProduction(
         });
         state.designJudge = outcome.judge;
         emit("design", "running", `design: ${outcome.note}`);
-        if (outcome.judge === "skipped") warnings.push(outcome.note);
         if (outcome.source === "needs_design" || outcome.judge && designAcceptance(outcome.judge) === "needs_design") {
           warnings.push(outcome.note);
           if (outcome.status) warnings.push(formatBuildStatus(slug, outcome.status));

@@ -1221,7 +1221,6 @@ test("runProduction: failed judgment stops design; skipped and passing judgment 
         assert.equal(resumed.designJudge, result.designJudge);
         assert.equal(calls, 1, "a valid cached design retains the explicit judgment");
       }
-      if (ruling === null) assert.match(result.warnings.join("\n"), /test renderer has no image evidence/);
     } finally { cleanProbe(slug); }
   }
 });
