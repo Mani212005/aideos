@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
+import type { DispatchResult } from "../agentBridge/types";
 import { buildSvgSources } from "../scene/buildSvgSources";
 import { buildDesign, readDesignStatus } from "./build";
 import { designInputHash, fileDigest, openBuildRequest, readOpenBuildRequest, closeBuildRequest } from "./buildRecord";
@@ -55,7 +56,16 @@ async function designWithFakeAgent(agentWork: (spec: string) => void, spec: stri
       dispatch: async () => {
         // The agent answers a moment after the task is delivered.
         setTimeout(() => { fs.writeFileSync(path.join(PKG, "design/design.json"), spec); agentWork(spec); }, 40);
-        return { taskId: "t-1", channels: ["agent_link"] };
+        return {
+          ok: true,
+          taskId: "t-1",
+          task: {} as DispatchResult["task"],
+          channels: ["agent_link"],
+          prompt: "",
+          fallbackScheduled: false,
+          fallbackTimeoutMs: 0,
+          message: "",
+        };
       },
     });
   } finally {
