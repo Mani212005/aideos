@@ -49,6 +49,11 @@ export function unionPartBounds(parts: ProjectedPart[]): SceneRect | null {
   return { x0: Math.min(...parts.map((p) => p.bounds.x0)), y0: Math.min(...parts.map((p) => p.bounds.y0)), x1: Math.max(...parts.map((p) => p.bounds.x1)), y1: Math.max(...parts.map((p) => p.bounds.y1)) };
 }
 
+// Returns projected parts whose rendered extent intersects the selected output crop.
+export function partsInViewport(parts: ProjectedPart[], width: number, height: number): ProjectedPart[] {
+  return parts.filter(({ bounds }) => bounds.x1 > 0 && bounds.y1 > 0 && bounds.x0 < width && bounds.y0 < height);
+}
+
 // Tests reproducible surface samples against the actual shared depth geometry; this is weaker than raster evidence.
 export function sampleMeshDepth(subject: Mesh[], stageMeshes: Mesh[]): DepthEvidence {
   const own = new Set(subject);

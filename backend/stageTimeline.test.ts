@@ -8,6 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial } from "three";
 import { parseFilm, type Film } from "../src/dl/schema";
 import { compileScene } from "../src/dl/scene/compile";
 import type { Scene } from "../src/dl/scene/types";
@@ -17,6 +18,7 @@ import { stageHoldFactLine } from "./geminiReview/facts";
 import { checkFilmDesign } from "./designCheck/designCheck";
 import { readFilmFacts } from "./review/source";
 import { stageTimeline, stageSegments, storyRanges, transitionStage } from "./stageTimeline";
+import { partsInViewport, projectMeshParts } from "../src/dl/scene/stageGeometry";
 
 // Runs one synthetic scene with private static artwork and cleans up its public asset input.
 function withFilm(svg: string, clips: SvgAnimationClip[], run: (film: Film) => void): void {
@@ -96,6 +98,33 @@ test("stage timeline: off-frame animation only counts in the format that sees it
     assert.equal(stageTimeline(film, "long").holds.length, 0);
     assert.equal(stageTimeline(film, "reel").holds.length, 1);
   });
+});
+
+// Projects full drawable mesh extent to prove crop visibility does not depend on endpoint anchors.
+test("stage geometry: rendered extent crossing the crop counts when endpoints are off-screen", () => {
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute([-1100, 0, 0, 1100, 0, 0, 0, 20, 0], 3));
+  const mesh = new Mesh(geometry, new MeshBasicMaterial());
+  mesh.updateMatrixWorld(true);
+  const pose = { center: { x: 960, y: 960 }, zoom: 1, rotation: 0 };
+  const projected = projectMeshParts([mesh], pose, 1920, 1080, { w: 1920, h: 1920 }, 0);
+  assert.equal(projected[0].bounds.x0 < 0 && projected[0].bounds.x1 > 1920, true);
+  assert.equal(partsInViewport(projected, 1920, 1080).length, 1);
+  geometry.dispose();
+  mesh.material.dispose();
+});
+
+// Exercises the real character and prop performance path with the actor outside the output crop.
+test("stage timeline: wholly off-frame Three performance remains a hold", () => {
+  const file = path.join(process.cwd(), "test_fixtures/packages/legacy-iona-p0/film.json");
+  const film = parseFilm(JSON.parse(fs.readFileSync(file, "utf8")));
+  const scene = film.scene as Scene;
+  const actor = scene.cast!.find((member) => member.id === "iona");
+  assert.equal(actor?.kind, "character");
+  if (actor?.kind === "character") actor.position = [-10000, -10000];
+  const timeline = stageTimeline(film, "long");
+  assert.equal(timeline.spans.some((span) => span.motion === "moving"), false);
+  assert.ok(timeline.holds.length > 0);
 });
 
 test("stage policy: exactly three seconds is allowed, a longer story hold blocks", () => {
