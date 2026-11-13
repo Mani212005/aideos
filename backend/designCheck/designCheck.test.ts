@@ -400,7 +400,7 @@ function continuityAtPositions(before: { x: number; y: number }, after: { x: num
 }
 
 test("DesignCheck: continuity visibility must overlap in the same output format", () => {
-  const crossFormat = continuityAtPositions({ x: 200, y: 960 }, { x: 960, y: 200 });
+  const crossFormat = continuityAtPositions({ x: -100, y: 960 }, { x: 960, y: 100 });
   assert.equal(crossFormat.findings.some((finding) => finding.rule === "continuity" && finding.where.includes("probe-body")), false);
   const sameFormat = continuityAtPositions({ x: 960, y: 960 }, { x: 1060, y: 960 });
   assert.ok(sameFormat.findings.some((finding) => finding.rule === "continuity" && finding.where.includes("probe-body")));
