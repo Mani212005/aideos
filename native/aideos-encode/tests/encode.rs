@@ -474,6 +474,7 @@ fn audio_plan_rejects_out_of_timeline_ducking_times() {
         AudioPlan { speech: Some(vec![SpeechInterval { start_sec: -2.0, end_sec: 0.5 }]), ..AudioPlan::default() },
         AudioPlan { speech: Some(vec![SpeechInterval { start_sec: 1.0, end_sec: 5.1 }]), ..AudioPlan::default() },
         AudioPlan { speech: Some(vec![SpeechInterval { start_sec: 4.0, end_sec: 1.0 }]), ..AudioPlan::default() },
+        AudioPlan { speech: Some(vec![SpeechInterval { start_sec: 0.5, end_sec: 0.5 }]), ..AudioPlan::default() },
         AudioPlan { mix: MixSettings { story_end_sec: Some(-1.0), ..MixSettings::default() }, ..AudioPlan::default() },
         AudioPlan { mix: MixSettings { story_end_sec: Some(5.1), ..MixSettings::default() }, ..AudioPlan::default() },
     ];
