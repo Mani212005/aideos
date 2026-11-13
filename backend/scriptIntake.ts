@@ -344,7 +344,18 @@ function readPlainStory(raw: string): { sections: PlainStorySection[]; issues: S
     for (const effect of step.effects) {
       if (effect === "flush-paragraph") flushParagraph();
       else if (effect === "set-tag") tag = line.storyTag;
-      else if (effect === "append-line") lines.push(line.text);
+      else if (effect === "append-line") {
+        lines.push(line.text);
+        if (line.continuation) {
+          issues.push({
+            kind: "continued-fragment",
+            severity: "notice",
+            line: index + 1,
+            text: line.text,
+            message: `line ${index + 1} "${line.text}" may be a fragment continued by line ${index + 2} "${line.continuation}"; both lines remain prose`,
+          });
+        }
+      }
       else if (effect === "report-heading") {
         issues.push({
           kind: "heading-line",
@@ -367,7 +378,7 @@ function splitPlainStory(raw: string): PlainStorySection[] {
 
 /**
  * Checks a script at intake, before any voice is synthesized. A tagged screenplay whose narration begins
- * with its own multi-word section title is an error (the heading leaked into the spoken text); a plain
+ * with its own section title is an error (the heading leaked into the spoken text); a plain
  * story's heading lines are reported as notices saying they became section titles instead of narration.
  */
 export function checkScriptIntake(raw: string): ScriptIssue[] {

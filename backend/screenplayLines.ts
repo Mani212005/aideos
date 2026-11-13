@@ -41,6 +41,8 @@ export interface ClassifiedLine {
   note?: NoteKind;
   /** prose: true when the line starts with `#` but is not a section header or story tag. */
   hashed?: boolean;
+  /** prose: the immediately following line that makes this a likely sentence fragment. */
+  continuation?: string;
 }
 
 /** Which grammar a script is read with. */
@@ -52,6 +54,15 @@ export interface LineContext {
   paragraphStart?: boolean;
   /** Story only: the raw line that follows, if any. */
   next?: string;
+}
+
+/** A fragment is at most six words, has no end punctuation, and is followed by lowercase prose continuing the sentence. */
+function continuedFragment(text: string, nextLine: string | undefined): string | undefined {
+  const line = text.trim();
+  const next = (nextLine ?? "").trim();
+  if (!line || !next || /[.!?;:,…]["'”’)}\]]*$/.test(line) || line.split(/\s+/).length > 6) return undefined;
+  if (!/^[a-z]/.test(next)) return undefined;
+  return next;
 }
 
 /** Thrown when a (state, class) pair has no row in the transition table. */
@@ -225,7 +236,7 @@ export function classifyStoryLine(rawLine: string, ctx: LineContext = {}): Class
     const next = (ctx.next ?? "").trim();
     if (next && !isStoryTimestamp(next) && matchStoryTag(next) === null) return { cls: "heading", text, storyTag: text.replace(/\s+/g, " ") };
   }
-  return { cls: "prose", text };
+  return { cls: "prose", text, continuation: continuedFragment(text, ctx.next) };
 }
 
 /** Where the screenplay reader is: before any section, inside one, inside a beat, or past a notes header. */
@@ -347,7 +358,7 @@ export function stepStory(phase: StoryPhase, line: ClassifiedLine): { phase: Sto
 
 /** One problem the classifier found in a script, named so the user can fix it at intake. */
 export interface ScriptIssue {
-  kind: "heading-line" | "narration-starts-with-title";
+  kind: "heading-line" | "continued-fragment" | "narration-starts-with-title";
   /** "error" stops intake; "notice" says what was done with the line. */
   severity: "error" | "notice";
   /** 1-based line number in the script, when the issue has one. */
@@ -361,11 +372,11 @@ function wordsOf(text: string): string[] {
   return text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
 }
 
-/** True when a narration begins with its own multi-word section title, i.e. the heading leaked into the spoken text. */
+/** True when a narration begins with its own section title, including a single-word or title-only opening. */
 export function narrationStartsWithTitle(title: string, narration: string): boolean {
   const titleWords = wordsOf(title);
-  if (titleWords.length < 2 || /^(?:segment|scene|shot|act)\s+\d+$/i.test(title.trim())) return false;
+  if (titleWords.length === 0 || /^(?:segment|scene|shot|act)\s+\d+$/i.test(title.trim())) return false;
   const narrationWords = wordsOf(narration);
-  if (narrationWords.length <= titleWords.length) return false;
+  if (narrationWords.length < titleWords.length) return false;
   return titleWords.every((word, i) => narrationWords[i] === word);
 }

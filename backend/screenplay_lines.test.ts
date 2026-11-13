@@ -107,6 +107,20 @@ test("ordinary story paragraphs are unchanged: sentence lines of one paragraph s
   );
 });
 
+test("intake reports a short lowercase fragment continued on the next line without changing narration", () => {
+  const story = "the closing\nprocess is expensive";
+  const issues = checkScriptIntake(story);
+  assert.deepEqual(issues.map((issue) => [issue.kind, issue.severity, issue.line, issue.text]), [
+    ["continued-fragment", "notice", 1, "the closing"],
+  ]);
+  assert.match(issues[0].message, /line 1.*the closing.*line 2.*process is expensive/);
+  assert.deepEqual(
+    plainTextToSegments(story).map((segment) => segment.beats.find((beat) => beat.type === "narration")?.text),
+    ["the closing process is expensive"],
+  );
+  assert.deepEqual(checkScriptIntake("A short sentence.\nThis starts a new sentence."), []);
+});
+
 test("tagged screenplay: narration that begins with its own chapter title is an intake error", () => {
   const leaked = "## 3:00-3:20 - The Closing\n\n[NARRATION]\nThe Closing does this mean harnesses are useless?\n";
   const issues = checkScriptIntake(leaked);
@@ -118,7 +132,9 @@ test("tagged screenplay: narration that begins with its own chapter title is an 
   const clean = "## 3:00-3:20 - The Closing\n\n[NARRATION]\nDoes this mean harnesses are useless?\n";
   assert.deepEqual(checkScriptIntake(clean), []);
   const oneWord = "## 3:00-3:20 - Closing\n\n[NARRATION]\nClosing the loop is the whole job.\n";
-  assert.deepEqual(checkScriptIntake(oneWord), [], "a one-word title that opens a real sentence is not flagged");
+  assert.equal(checkScriptIntake(oneWord)[0]?.kind, "narration-starts-with-title", "a one-word title at the start is flagged");
+  const titleOnly = "## Closing\n[NARRATION]\nClosing.\n";
+  assert.equal(checkScriptIntake(titleOnly)[0]?.kind, "narration-starts-with-title", "narration consisting only of its title is flagged");
 });
 
 test("intake stage: a leaked title stops the run before any voice is synthesized, and a story heading is reported", async () => {
