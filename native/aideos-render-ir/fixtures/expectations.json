@@ -147,6 +147,14 @@
     "invalid/not-json.json": {
       "kind": "not_json"
     },
+    "invalid/out-of-range-layer.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
     "invalid/spans.json": {
       "kind": "invalid_document",
       "issues": [

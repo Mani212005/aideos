@@ -551,8 +551,8 @@
             },
             "layer": {
               "type": "integer",
-              "minimum": -9007199254740991,
-              "maximum": 9007199254740991
+              "minimum": -2147483648,
+              "maximum": 2147483647
             },
             "tracks": {
               "type": "array",

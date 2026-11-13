@@ -82,7 +82,7 @@ export const svgNodeSchema = z.strictObject({
   y: z.number(),
   scale: z.number().gt(0),
   rotation: z.number(),
-  layer: z.number().int(),
+  layer: z.number().int().min(-2147483648).max(2147483647),
   tracks: z.array(nodeTrackSchema),
   elementTracks: z.array(elementTrackSchema),
 });
