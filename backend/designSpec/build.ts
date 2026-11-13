@@ -4,7 +4,7 @@
  * writes film.json (through filmStore, so its shadow module lands with it) when the check passes,
  * so a broken design never replaces a working film. The first build saves the undesigned film as
  * design/base-film.json and every build starts from it. Every outcome is recorded in
- * videos/<id>/design/status.json, which is how the pipeline learns an agent has finished.
+ * videos/<id>/design/status.json, with the hash of its inputs and the id of the request that asked for it.
  * Inputs and outputs: film slug and design specification -> built video package with assets and film.json.
  * Used by: backend/designSpec/designer.ts.
  */
@@ -35,6 +35,7 @@ import { filmEditState } from "../filmAcceptance/store";
 import { writeReelFilm } from "../reelCut/store";
 import { bindLookContract, contractErrors, matchCameraPose, realizeLookContract, type PlanItem } from "../lookPlan/contract";
 import { CAMERA_CUE_LANDING_TOLERANCE_SECONDS } from "../../src/dl/scene/cameraTrack";
+import { designInputHash, readOpenBuildRequest, writeJsonAtomic } from "./buildRecord";
 
 
 /** The outcome of one build, as written to design/status.json. */
@@ -45,7 +46,14 @@ export interface DesignBuildStatus {
   errors: string[];
   findings: DesignFinding[];
   ledger?: PlanItem[];
+  /** Hash of what this build was made from (spec, look plan, narration timing, svgs). Absent in records written before it existed. */
+  inputHash?: string;
+  /** The request this build answers, or null when nothing asked for it (a pipeline rebuild, a hand build). */
+  requestId?: string | null;
 }
+
+/** Who a build is attributed to: the film's open request ("open-request", for a build run on an agent's behalf) or nobody. */
+export interface BuildDesignOptions { requestId?: string }
 
 /** The plain canvas-colour backdrop used when a spec names none. */
 const DEFAULT_BACKGROUND_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
@@ -142,17 +150,25 @@ function record(filmId: string, status: DesignBuildStatus): DesignBuildStatus {
   fs.mkdirSync(designDir(filmId), { recursive: true });
   if (status.ledger) fs.writeFileSync(path.join(designDir(filmId), "plan-ledger.json"), JSON.stringify(status.ledger, null, 2) + "\n");
   else fs.rmSync(path.join(designDir(filmId), "plan-ledger.json"), { force: true });
-  fs.writeFileSync(path.join(designDir(filmId), "status.json"), JSON.stringify(status, null, 2) + "\n");
+  writeJsonAtomic(path.join(designDir(filmId), "status.json"), status);
   return status;
 }
 
 // Builds a film's design from its spec and writes the film only when the design check passes.
-export function buildDesign(filmId: string, source: DesignSource = "agent"): DesignBuildStatus {
+export function buildDesign(filmId: string, source: DesignSource = "agent", options: BuildDesignOptions = {}): DesignBuildStatus {
   const at = new Date().toISOString();
   let ledger: PlanItem[] | undefined;
   const pkg = resolvePackageDir(filmId);
+  // The record names only a request explicitly supplied by its caller and still open for this film.
+  const inputHash = designInputHash(filmId);
+  const previous = readDesignStatus(filmId);
+  const carried = previous?.inputHash === inputHash ? previous.requestId ?? null : null;
+  const openRequestId = readOpenBuildRequest(filmId)?.requestId;
+  const requestId = options.requestId === undefined
+    ? carried
+    : options.requestId === openRequestId ? options.requestId : null;
   const fail = (errors: string[], findings: DesignFinding[] = []) =>
-    record(filmId, { state: "failed", source, at, errors, findings, ...(ledger ? { ledger } : {}) });
+    record(filmId, { state: "failed", source, at, errors, findings, ...(ledger ? { ledger } : {}), inputHash, requestId });
 
   const specFile = path.join(pkg, "design", "design.json");
   if (!fs.existsSync(specFile)) return fail([`no design spec at videos/${filmId}/design/design.json`]);
@@ -287,7 +303,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
     if (lost.length > 0) {
       return fail([
         `film.json was edited by hand after the last tool write, and this rebuild (which starts from design/base-film.json) would drop: ${lost.slice(0, 12).join(", ")}${lost.length > 12 ? `, and ${lost.length - 12} more` : ""}. ` +
-          `Move the fix into design/design.json (or the builder script), or restore film.json from design/base-film.json before running aideos design-build ${filmId} to knowingly start over.`,
+          `Move the fix into design/design.json (or the builder script), or restore film.json from design/base-film.json before running aideos design build ${filmId} to knowingly start over.`,
       ]);
     }
   }
@@ -318,7 +334,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
     }
   }
 
-  return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings], ...(ledger ? { ledger } : {}) });
+  return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings], ...(ledger ? { ledger } : {}), inputHash, requestId });
 }
 
 // Formats a build status for the terminal (and for an agent to read and act on).
