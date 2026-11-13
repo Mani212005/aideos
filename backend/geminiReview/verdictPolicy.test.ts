@@ -117,7 +117,7 @@ test("policy: both draws and the call count are visible in the report and the su
   const result = await review([{ mean: 9.2, overall: 9.2 }, { mean: 8.6, overall: 8.6 }]);
   assert.equal(result.report.draws?.[0].draw, 1);
   assert.equal(result.report.draws?.[1].draw, 2);
-  assert.match(result.report.drawNote ?? "", /2 reviewer draws of the same video \(9\.20 and 8\.60\)/);
+  assert.match(result.report.drawNote ?? "", /2 reviewer draws of the same video \(9\.2 and 8\.6\)/);
   const text = formatReviewSummary(result.report);
   assert.match(text, /Draws: 2 reviewer draws/);
   assert.match(text, /does not decide/);
@@ -145,7 +145,7 @@ test("policy: the hard gates and the timestamps rule are unchanged, and a doomed
 test("policy: a second draw that cannot run leaves the review unfinished, never a pass on one in-band draw", async () => {
   await assert.rejects(
     review([{ mean: 9.2, overall: 9.2 }], { failAfter: 1 }),
-    /first review draw scored 9\.20, within 0\.5 of the 9\.0 bar, and the second draw that settles it could not run: agy quota exceeded/,
+    /first review draw scored 9\.2, within 0\.5 of the 9\.0 bar, and the second draw that settles it could not run: agy quota exceeded/,
   );
 });
 
@@ -161,4 +161,9 @@ test("policy: pure rules, the band edges and score display", () => {
   // A failing score never displays as the bar it missed.
   assert.equal(formatScore(8.999), "8.99");
   assert.equal(formatScore(9.005), "9.00");
+  assert.equal(formatScore(8.97), "8.97");
+  assert.equal(formatScore(8.6), "8.6");
+  assert.equal(formatScore(9.3), "9.3");
+  assert.equal(formatScore(8.999999999999998), "9.0", "float noise under an exact tenth reads as that tenth, as the bar check treats it");
+  assert.equal(formatScore(8.99999999), "8.99");
 });

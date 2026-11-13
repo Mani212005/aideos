@@ -13,7 +13,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
-import { reviewVideo as geminiReviewVideo, type GeminiReviewReport, type PairwiseRunReport } from "../geminiReview";
+import { formatReviewSummary, reviewVideo as geminiReviewVideo, type GeminiReviewReport, type PairwiseRunReport } from "../geminiReview";
 import { RUBRIC_CRITERIA } from "../geminiReview/rubric";
 import type { AgyRunner } from "../geminiReview/types";
 import type { ReviewReport } from "../review/types";
@@ -317,7 +317,7 @@ test("all-check: a two-draw review appends both draws to the same acceptance rec
     assert.equal(record.drawsDisagree, false, "the two draws of one review are settled by the policy, not a disagreement");
     const message = summarize(record, record.filmHash).message;
     assert.match(message, /reviewer score 9\.00/);
-    assert.match(message, /asked 2 times about these exact bytes \(scores 9\.20 and 8\.81\) because the first was within 0\.5 of the 9\.0 bar; their mean, 9\.00, decided/);
+    assert.match(message, /asked 2 times about these exact bytes \(scores 9\.2 and 8\.81\) because the first was within 0\.5 of the 9\.0 bar; their mean, 9\.00, decided/);
     // Replaying the same round never counts a draw twice.
     const after = readRecord(dir, "long").judged.length;
     const { recordRoundAcceptance } = await import("../allCheck/round");
@@ -336,11 +336,11 @@ test("all-check: a two-draw review whose combined score misses the bar is a revi
     // Same first draw, second draw 8.6: combined 8.9 is under 9.0.
     const [long] = await runRound({ slug, format: "long" }, stubRound({ report: twoDrawReport(9.2, 8.6, "REVISE") }));
     assert.equal(long.passed, false);
-    assert.match(long.failing.join("\n"), /reviewer score 8\.90 is under the 9\.0 target/);
+    assert.match(long.failing.join("\n"), /reviewer score 8\.9 is under the 9\.0 target/);
     const record = readRecord(dir, "long");
     assert.equal(currentDraws(record).length, 2);
     assert.equal(record.state, "revise");
-    assert.match(summarize(record, record.filmHash).message, /asked for revisions \(reviewer score 8\.90\)\. Fix the findings and run aideos all-check again\. The reviewer was asked 2 times/);
+    assert.match(summarize(record, record.filmHash).message, /asked for revisions \(reviewer score 8\.9\)\. Fix the findings and run aideos all-check again\. The reviewer was asked 2 times/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
@@ -348,12 +348,12 @@ test("all-check: a two-draw review whose combined score misses the bar is a revi
 });
 
 // Reviews a stand-in video with a reviewer that scores the twelve criteria as given, through the real verdict policy.
-async function reviewWithCriteria(scores: number[]): Promise<GeminiReviewReport> {
+async function reviewWithCriteria(scores: number[], untimed: number = -1): Promise<GeminiReviewReport> {
   assert.equal(scores.length, RUBRIC_CRITERIA.length);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "acceptance-criteria-"));
   const video = path.join(dir, "video.mp4");
   fs.writeFileSync(video, Buffer.alloc(256, 3));
-  const criteria = RUBRIC_CRITERIA.map((def, i) => ({ name: def.name, title: def.title, isGate: def.isGate, score: scores[i], passed: true, evidenceTimestamps: ["0:05"], reason: `Seen at 0:05: ${def.title}` }));
+  const criteria = RUBRIC_CRITERIA.map((def, i) => ({ name: def.name, title: def.title, isGate: def.isGate, score: scores[i], passed: true, evidenceTimestamps: i === untimed ? [] : ["0:05"], reason: i === untimed ? "Looks fine." : `Seen at 0:05: ${def.title}` }));
   const runner: AgyRunner = async () => JSON.stringify({ overallScore: 9, verdict: "ACCEPT", summary: "s", criteria, feedback: [] });
   try {
     return await geminiReviewVideo(video, { runner, skipFacts: true, maxValidationAttempts: 1 });
@@ -377,6 +377,7 @@ test("all-check: a criteria mean a float hair under 9.0 passes the round exactly
     const record = readRecord(dir, "long");
     assert.equal(record.state, "accepted", "the round agrees with the ACCEPT verdict");
     assert.ok(currentDraws(record).every((d) => d.passed && d.verdict === "ACCEPT"));
+    assert.match(summarize(record, record.filmHash).message, /accepted.*reviewer score 9\.0\)/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
@@ -394,6 +395,34 @@ test("all-check: a criteria mean a float hair under 9.0 passes the round exactly
   } finally {
     fs.rmSync(belowDir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(belowSlug), { recursive: true, force: true });
+  }
+});
+
+test("all-check: a criteria mean of 8.97 shows as 8.97, never 9.0, and fails the verdict, the round and the acceptance record", async () => {
+  // Decision (captain, review round 2): a computed mean is never displayed as reaching the bar when it is under it.
+  // One non-gate criterion carries no timestamp, so the draw cannot accept, no second draw runs, and 8.97 decides alone.
+  const untimed = RUBRIC_CRITERIA.findIndex((def) => !def.isGate);
+  const report = await reviewWithCriteria(RUBRIC_CRITERIA.map((_, i) => (i === untimed ? 8.64 : 9)), untimed);
+  assert.ok(Math.abs((report.criteriaMeanScore ?? 0) - 8.97) < 1e-9);
+  assert.equal(report.draws?.length ?? 1, 1);
+  assert.equal(report.verdict, "REVISE");
+  assert.match(formatReviewSummary(report), /Score: 8\.97 \/ 10\.0/);
+  const slug = "acc-float-bar-897";
+  const dir = makeRunPackage(slug);
+  try {
+    const [long] = await runRound({ slug, format: "long" }, stubRound({ report }));
+    assert.equal(long.passed, false);
+    const failing = long.failing.join("\n");
+    assert.match(failing, /reviewer score 8\.97 is under the 9\.0 target/);
+    assert.doesNotMatch(failing, /score 9\.0/);
+    const record = readRecord(dir, "long");
+    assert.equal(record.state, "revise");
+    const message = summarize(record, record.filmHash).message;
+    assert.match(message, /asked for revisions \(reviewer score 8\.97\)/);
+    assert.doesNotMatch(message, /score 9\.0/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
   }
 });
 

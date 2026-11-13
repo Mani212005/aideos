@@ -164,8 +164,7 @@ export function evaluateRecord(
     failing.push(`the Gemini review could not run: ${rec.review.error}`);
   } else {
     if (rec.review.score === null || !reachesBar(rec.review.score, target)) {
-      // A score settled by two draws is cut to two decimals so it never reads as the bar it missed.
-      const shown = rec.review.score === null ? "n/a" : (rec.review.draws?.length ?? 0) > 1 ? formatScore(rec.review.score) : rec.review.score.toFixed(1);
+      const shown = rec.review.score === null ? "n/a" : formatScore(rec.review.score);
       failing.push(`reviewer score ${shown} is under the ${target.toFixed(1)} target`);
     }
     if (rec.review.gatesPassed === false) {

@@ -119,9 +119,9 @@ export function drawsDisagree(draws: readonly JudgeDraw[]): boolean {
   return new Set(decidingDraws(draws).map((draw) => draw.verdict)).size > 1;
 }
 
-// A draw's score as shown to a person: the combined score of a two-draw review cut to two decimals (never rounded up to the bar), else the one-decimal score the sentences always showed.
+// A draw's score as shown to a person: the combined score of a two-draw review, else the draw's own score, never rounded up to the bar.
 function shownScore(draw: JudgeDraw): string {
-  return draw.combinedScore === undefined ? draw.score.toFixed(1) : formatScore(draw.combinedScore);
+  return formatScore(draw.combinedScore ?? draw.score);
 }
 
 // Adds the current byte set's disagreement summary without changing its state or verdict.

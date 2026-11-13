@@ -16,7 +16,8 @@
  * ACCEPT alone, and one that averages 8.4 is REVISE alone, in both cases with a single scored draw.
  * Inputs and outputs: criteria evaluations or per-draw scores -> a draw score, whether a second draw is needed, the
  * combined score and verdict, and the plain-words description of how many draws ran.
- * Used by: backend/geminiReview/geminiReview.ts, backend/allCheck/round.ts, backend/filmAcceptance/machine.ts.
+ * Used by: backend/geminiReview/geminiReview.ts, backend/allCheck/round.ts, backend/allCheck/cli.ts, backend/allCheck/index.ts,
+ * backend/allCheck/finish.ts, backend/filmAcceptance/machine.ts.
  */
 
 import type { CriterionEvaluation } from "./types";
@@ -92,9 +93,11 @@ export function decideReview(draws: readonly DrawScore[]): ReviewDecision {
   return { score, verdict: reachesBar(score) && gatesPassed && timestampsValid ? "ACCEPT" : "REVISE", gatesPassed, timestampsValid };
 }
 
-// Shows a score to two decimals, cut rather than rounded, so a failing score never reads as 9.00 and a passing one never reads below it.
+// Shows a review score, never rounded up: one decimal when the score is exact at one decimal (9.3, 8.6), else cut to two (8.97), so a score under the bar never reads as reaching it.
 export function formatScore(score: number): string {
-  return (Math.floor(score * 100 + 1e-6) / 100).toFixed(2);
+  const tenths = Math.round(score * 10);
+  if (Math.abs(score - tenths / 10) <= EPSILON) return (tenths / 10).toFixed(1);
+  return (Math.floor((score + EPSILON) * 100) / 100).toFixed(2);
 }
 
 // The score a report was decided on: the criteria mean, or the reviewer's own number for a report written before the verdict policy.

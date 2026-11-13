@@ -795,7 +795,7 @@ export function formatReviewSummary(report: GeminiReviewReport): string {
   const lines: string[] = [
     `=== Gemini 3.8 Flash Video Review ===`,
     report.criteriaMeanScore === undefined
-      ? `Overall Score: ${report.overallScore.toFixed(1)} / 10.0`
+      ? `Overall Score: ${formatScore(report.overallScore)} / 10.0`
       : `Score: ${formatScore(report.criteriaMeanScore)} / 10.0 (mean of the individual criteria scores; the reviewer's own overall number, ${report.overallScore.toFixed(1)}, does not decide)`,
     ...(report.drawNote ? [`Draws: ${report.drawNote}`] : []),
     `Verdict: ${report.verdict}`,
