@@ -136,6 +136,7 @@ export function foreignAccentColours(svgText: string, accent: string): string[] 
   const found = new Set<string>();
   for (const m of svgText.matchAll(/#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b/g)) if (hexChannels(m[0]).join(",") === target) found.add(m[0]);
   for (const m of svgText.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)[^)]*\)/g)) if ([m[1], m[2], m[3]].join(",") === target) found.add(m[0]);
+  for (const m of svgText.matchAll(/(?:fill|stroke|color|stop-color|flood-color|lighting-color)\s*[:=]\s*["']?purple\b/gi)) found.add(m[0].match(/purple$/i)?.[0] ?? "purple");
   return [...found];
 }
 

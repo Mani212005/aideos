@@ -12,7 +12,9 @@ import path from "node:path";
 import test from "node:test";
 import { deliveryTimeline } from "../../src/dl/delivery";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
-import { checkFilmDesign, checkFilmDesignById, offPaletteColours, type DesignRule } from "./designCheck";
+import { checkFilmDesign, checkFilmDesignById, foreignAccentColours, offPaletteColours, type DesignRule } from "./designCheck";
+import { Mesh, MeshBasicMaterial, BoxGeometry, Color } from "three";
+import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 
 const ROOT = path.resolve(__dirname, "../..");
 const TMP = path.join(ROOT, ".tmp_design_check");
@@ -103,6 +105,15 @@ test("DesignCheck: palette allows neutrals and the film accent, and flags other 
   assert.deepEqual(offPaletteColours(`<rect fill="#141416"/><rect fill="#635BFF"/><rect fill="rgba(245,245,245,0.2)"/>`), []);
   assert.deepEqual(offPaletteColours(`<rect fill="#00C2A8"/>`), ["#00C2A8"]);
   assert.deepEqual(offPaletteColours(`<rect fill="#00C2A8"/>`, "#00C2A8"), []);
+});
+
+test("DesignCheck: bound accents reject named purple SVG and palette-declared Three colours", () => {
+  assert.deepEqual(foreignAccentColours('<path fill="purple"/>', "#FF6B00"), ["purple"]);
+  assert.deepEqual(foreignAccentColours('<path style="fill: purple"/>', "#FF6B00"), ["purple"]);
+  assert.deepEqual(foreignAccentColours('<path fill="purple"/>', "#635BFF"), []);
+  const mesh = new Mesh(new BoxGeometry(), new MeshBasicMaterial({ color: new Color("#635BFF") }));
+  assert.deepEqual(undeclaredMaterialColours([mesh], ["#635BFF"], ["#635BFF"]), [": #635bff"]);
+  assert.deepEqual(undeclaredMaterialColours([mesh], ["#635BFF"]), []);
 });
 
 test("DesignCheck: camera moves must be present and speed-capped", () => {
