@@ -670,7 +670,7 @@ export async function runProduction(
     const assemblyFingerprint = (long: Film, reel: Film | false) => fingerprint(
       withoutEndCardVoice(long), reel && withoutEndCardVoice(reel), brollClips.map((clip) => clip.staticPath),
     );
-    let assembled = await runPlainStage<Film>(
+    const assembled = await runPlainStage<Film>(
       "assemble",
       assemblyFingerprint(expectedAssembled, expectedReel),
       () => readFilm(slug),
