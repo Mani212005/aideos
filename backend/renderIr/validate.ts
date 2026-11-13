@@ -1,5 +1,5 @@
 /**
- * File Description: Loads and checks a Render IR document (`aideos.render/1`): rejects bad JSON, an unknown version or a structurally invalid document, then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files.
+ * File Description: Loads and checks a Render IR document (`aideos.render/1`): rejects bad JSON, an unknown version or a structurally invalid document, then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files. The pipeline emitter is planned for R4.
  * Inputs and outputs: JSON text or an already parsed value -> a typed RenderIr, or a failure of kind not_json, unsupported_version or invalid_document with every issue found.
  * Used by: the TypeScript Render IR emitter (R4), backend/renderIr/renderIr.test.ts.
  */

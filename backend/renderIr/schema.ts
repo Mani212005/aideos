@@ -1,5 +1,5 @@
 /**
- * File Description: The structural contract of the Render IR `aideos.render/1`, the versioned, data-only document the TypeScript pipeline hands to the native renderer. This zod schema is the single source: `npm run render-ir:schema` turns it into the committed JSON Schema the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
+ * File Description: The structural contract of the Render IR `aideos.render/1`, the versioned, data-only document planned between the TypeScript pipeline and native renderer. This zod schema is the single source: `npm run render-ir:schema` turns it into the committed JSON Schema the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
  * Inputs and outputs: nothing at import time -> zod schemas and the TypeScript types inferred from them.
  * Used by: backend/renderIr/validate.ts, backend/renderIr/jsonSchema.ts, backend/renderIr/renderIr.test.ts.
  */

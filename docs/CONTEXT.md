@@ -660,4 +660,4 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ## 8. Render IR for the native renderer (`backend/renderIr/`, `native/aideos-render-ir/`)
 
-* **`aideos.render/1`**: the versioned, data-only document the TypeScript pipeline hands to the native renderer (stage element tracks, camera, text cards, kinetic captions, rail, end card, audio, in both formats). One zod schema (`backend/renderIr/schema.ts`) generates the committed JSON Schema that the Rust loader embeds; `parseRenderIr`/`validateRenderIr` (TypeScript) and `load_from_path`/`load_from_str` (Rust crate `aideos-render-ir`) refuse unknown versions and invalid documents with the same issue codes and are tested against the same fixtures. Model, rules, issue codes and commands: [RENDER_IR.md](RENDER_IR.md).
+* **`aideos.render/1`**: the planned versioned, data-only boundary for the native renderer. R1 provides its schema and validators; the pipeline emitter and renderer integration are later Phase 1 work. See [RENDER_IR.md](RENDER_IR.md) for the contract, issue codes and commands.

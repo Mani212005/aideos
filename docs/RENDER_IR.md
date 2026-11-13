@@ -1,18 +1,19 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1`: the versioned, data-only document the TypeScript pipeline hands to the native renderer - its model, versioning and rejection rules, issue codes, the shared fixtures, and the exact commands that build and test both the TypeScript and the Rust side.
+File Description: Reference for the Render IR `aideos.render/1`: the planned versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
 # Render IR (`aideos.render/1`)
 
-The Render IR is the one document between the authoring layer (`film.json`, `design.json`, the scene
-compiler, the layout modules) and the native renderer `aideos-render` (Rust, Skia). It carries
-everything a frame depends on and nothing else: no scripts, no clocks, no random seeds. A frame is a
-pure function of `(IR, frame number, format)`, so any frame can be rendered in any order.
+The Render IR is the planned document boundary between the authoring layer (`film.json`, `design.json`,
+the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
+on and nothing else: no scripts, no clocks, no random seeds. A frame is a pure function of `(IR, frame
+number, format)`, so any frame can be rendered in any order. R1 provides its schema and loader; the
+pipeline emitter and renderer integration are later Phase 1 work.
 
 This is **R1** of Phase 1 of the native renderer plan: the schema, the TypeScript validator and the
 Rust loader. The evaluator and raster (R2), encode and audio mux (R3) and the film.json emitter plus
 Still Talking acceptance (R4) are separate ships. The IR is not coupled to Remotion or to the
-`RenderJob` state machine: a job hands a renderer an IR path and a format, whichever renderer that is.
+`RenderJob` state machine; later integration will hand a renderer an IR path and a format.
 
 **Status: unfrozen.** `/1` may still change shape until R4 passes on Still Talking. After that, any
 change to the document shape is a new version number (see below), never a quiet edit.
@@ -60,7 +61,7 @@ RenderIr
   background  colour
   assets[]    svg | font | image | audio       by id, path relative to the package directory
   camera?     { centerX[], centerY[], zoom[], rotation[] }       keyframes in scene space
-  stage[]     nodes drawn in scene space under the camera   (svg, group)
+  stage[]     nodes drawn in scene space under the camera   (svg, group; SVG layer is signed 32-bit)
   overlay[]   nodes drawn in frame space, no camera          (group, rect, text, rail, captions, endCard)
   audio[]     clips on the film timeline with a gain envelope
 ```
@@ -86,9 +87,10 @@ of motion: `tracks` on the whole node (`x`, `y`, `scale`, `rotation`, `opacity`)
 on elements inside the asset's document (`translateX`, `translateY`, `scale`, `scaleX`, `scaleY`,
 `rotate`, `opacity`, `drawOn`, `x1`, `y1`, `x2`, `y2`: the scene engine's clip properties, see
 `src/dl/scene/README.md`). An element track may carry an `origin` in the asset's own coordinates,
-only for scale and rotate, and one element has one origin. The asset lists its `elementIds`, so a
-target is checked without parsing the SVG. Element `scale` keyframes must stay above zero; `scaleX`
-and `scaleY` may be negative to mirror an element. `group` holds children with a transform and opacity.
+only for scale, scaleX, scaleY and rotate, and one element has one origin. The asset lists its
+`elementIds`, so a target is checked without parsing the SVG. Element `scale` keyframes must stay
+above zero; `scaleX` and `scaleY` may be negative to mirror an element. `group` holds children with a
+transform and opacity.
 
 **Overlay nodes.** Layout stays in TypeScript (`camera.ts`, `endCardLayout.ts`, `captionPlacement.ts`),
 so overlay nodes carry geometry already resolved per format, in render pixels, under `placement` or
@@ -99,7 +101,8 @@ fonts), `endCard` (copy, colours, per-format layout, the frame the subscribe pil
 Every `placement` or `layout` must have exactly the formats the document declares.
 
 **Visibility.** `visible: { fromFrame, toFrame }` is a half-open span of frames in which a node is drawn.
-Absent means the whole film. `opacity` is a static multiplier, absent meaning 1.
+Its end may not exceed the film duration. Absent means the whole film. `opacity` is a static multiplier,
+absent meaning 1. SVG `layer` is a signed 32-bit integer to match the Rust loader's representation.
 
 **Assets.** `svg` (`elementIds`), `font` (`family`, `weight`), `image` (`width`, `height`) and `audio`,
 each with an optional `sha256` for caching and incremental rendering. A path is relative to the package
@@ -126,7 +129,7 @@ cross-reference rules, identical in both languages:
 | `unknown_element` | an element track targets an id the SVG asset does not declare |
 | `duplicate_track` | one property (of one element) driven by two tracks |
 | `origin_misplaced`, `origin_conflict` | an origin on a property that takes none, or two origins for one element |
-| `keyframes_unordered`, `ease_missing`, `ease_on_last`, `frame_out_of_range` | keyframe frames must strictly increase, every keyframe but the last has an ease, frames and caption placement starts stay inside the film |
+| `keyframes_unordered`, `ease_missing`, `ease_on_last`, `frame_out_of_range` | keyframe frames must strictly increase and may not exceed the film duration, every keyframe but the last has an ease, caption placement starts must be before the film duration |
 | `value_out_of_range` | opacity and drawOn outside 0 to 1, element scale or camera zoom not above 0, gain outside 0 to 4 |
 | `invalid_span` | a span that ends before it starts or runs past the film |
 | `chapters_unordered`, `words_unordered`, `spans_unordered` | rail chapters, caption words or placement spans out of order |
