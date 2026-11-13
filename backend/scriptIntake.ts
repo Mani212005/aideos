@@ -18,9 +18,21 @@ import {
   prefetchPrimitiveAnswers,
   resolvePrimitive,
 } from "./jev";
+import {
+  type BeatType,
+  type ScriptIssue,
+  type SegmentHeaderInfo,
+  SCREENPLAY_START,
+  STORY_START,
+  classifyScreenplayLine,
+  classifyStoryLine,
+  narrationStartsWithTitle,
+  stepScreenplay,
+  stepStory,
+} from "./screenplayLines";
 
-/** The three beat kinds a Claude screenplay segment can repeat in any order. */
-export type BeatType = "visual" | "narration" | "onscreen";
+/** The three beat kinds a Claude screenplay segment can repeat in any order (defined by the line classifier). */
+export type { BeatType };
 
 /** One direction/dialogue/overlay beat inside a segment, in document order. */
 export interface ScriptBeat {
@@ -122,102 +134,6 @@ function cleanBeatText(text: string): string {
     .trim();
 }
 
-/** Detects a notes or fact-check section header that ends screenplay parsing. */
-function isProductionNotesHeader(line: string): boolean {
-  return /^#{1,4}\s+(production notes?|notes?|fact check|source notes?|sources?|references?)\b/i.test(line) ||
-    /^\*\*(production notes?|notes?|fact check|source notes?|sources?|references?)\*\*/i.test(line);
-}
-
-/** Detects a standalone closing word-count note, e.g. "*(Narration word count: ~450 words)*". */
-function isWordCountNote(line: string): boolean {
-  return /^\*{0,2}[([\\(]?(?:Narration\s*)?word count.*[)\\]]?\*{0,2}$/i.test(line);
-}
-
-/** Parsed pieces of a `## [timestamp] - Title (id)` style segment header line. */
-interface SegmentHeaderInfo {
-  title: string;
-  timeStart?: string;
-  timeEnd?: string;
-  explicitId?: string;
-}
-
-/** Matches a segment header line (with or without # markdown hashes) and extracts its timestamp range, title, and optional explicit id. */
-function matchSegmentHeader(line: string): SegmentHeaderInfo | null {
-  let headerText = line.trim();
-  if (!headerText) return null;
-
-  const hashMatch = headerText.match(/^#{1,4}\s+(.*)$/);
-  if (hashMatch) {
-    headerText = hashMatch[1].trim();
-  } else {
-    const isBareTimestamp = /^(\d{1,2}:\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2})\b/.test(headerText);
-    const isBareScene = /^(?:Scene|Shot|Segment|Act)\s+\d+\b/i.test(headerText);
-    if (!isBareTimestamp && !isBareScene) return null;
-  }
-
-  let timeStart: string | undefined;
-  let timeEnd: string | undefined;
-  const tm = headerText.match(/^(\d{1,2}:\d{2})\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2})(.*)$/);
-  if (tm) {
-    timeStart = tm[1];
-    timeEnd = tm[2];
-    headerText = tm[3].replace(/^\s*[-\u2013\u2014:]\s*/, "").trim();
-  }
-
-  let explicitId: string | undefined;
-  const idMatch = headerText.match(/\(([a-z0-9][a-z0-9-]*)\)\s*$/i);
-  if (idMatch && idMatch.index !== undefined) {
-    explicitId = idMatch[1].toLowerCase();
-    headerText = headerText.slice(0, idMatch.index).trim();
-  }
-
-  return { title: headerText, timeStart, timeEnd, explicitId };
-}
-
-/** Matches a `[VISUAL]`, `[NARRATION]`, or `[ON SCREEN]` bracket tag, supporting inline text on the same line. */
-function matchBracketTag(line: string): { type: BeatType; inline?: string } | null {
-  const m = line.match(
-    /^\[(VISUAL(?:S|\s+DIRECTION|\s+CUE)?|NARRATION|NARRATOR|VOICEOVER|VO|ON[-\s]*SCREEN(?:\s+TEXT)?|TEXT\s+OVERLAY)\s*(?::\s*|\s*\]\s*:?\s*|\s*\])(.*)$/i
-  );
-  if (!m) return null;
-
-  const rawTag = m[1].toUpperCase().replace(/[-\s]+/g, " ");
-  let type: BeatType;
-  if (rawTag.startsWith("VISUAL")) {
-    type = "visual";
-  } else if (rawTag.startsWith("NARRATION") || rawTag.startsWith("NARRATOR") || rawTag.startsWith("VO")) {
-    type = "narration";
-  } else {
-    type = "onscreen";
-  }
-
-  let inline = m[2] ? m[2].trim() : "";
-  if (inline.endsWith("]")) {
-    inline = inline.slice(0, -1).trim();
-  }
-
-  return { type, inline: inline || undefined };
-}
-
-/** Matches legacy screenplay tag conventions (VO:, Voiceover:, Narrator:, VISUAL:, ON-SCREEN TEXT:). */
-function matchLegacyTag(line: string): { type: BeatType; inline?: string } | null {
-  let m = line.match(/^\*{0,2}(?:VO|Voiceover|Narrator)\s*(?:\([^)]*\))?\s*:\*{0,2}\s*(.*)$/i);
-  if (m) return { type: "narration", inline: m[1].trim() || undefined };
-
-  m = line.match(/^\*{0,2}ON-SCREEN TEXT\s*:\*{0,2}\s*(.*)$/i);
-  if (m) return { type: "onscreen", inline: m[1].trim() || undefined };
-
-  m = line.match(/^\*{0,2}VISUAL\s*:\*{0,2}\s*(.*)$/i);
-  if (m) return { type: "visual", inline: m[1].trim() || undefined };
-
-  return null;
-}
-
-/** Matches legacy stage-direction prefixes (SCREEN:, GRAPHICS:, AUDIO:, SFX:) that just close the current beat. */
-function isLegacyBoundaryTag(line: string): boolean {
-  return /^\*{0,2}(SCREEN|GRAPHICS|AUDIO|SFX)\s*:\*{0,2}/i.test(line);
-}
-
 /**
  * Parses a raw Claude/legacy screenplay into an ordered list of segments, each holding its
  * VISUAL / NARRATION / ON SCREEN beats in document order. Roundtrips cleanly with
@@ -266,58 +182,21 @@ export function parseClaudeScript(raw: string): ScriptSegment[] {
     };
   };
 
+  let state = SCREENPLAY_START;
   for (const rawLine of lines) {
-    const line = rawLine.trim();
-
-    if (isProductionNotesHeader(line)) {
-      flushSegment();
-      break;
-    }
-
-    if (isWordCountNote(line)) {
-      flushBeat();
-      continue;
-    }
-
-    const header = matchSegmentHeader(line);
-    if (header) {
-      openSegment(header);
-      continue;
-    }
-
-    if (line === "---" || line === "***" || line.startsWith("```")) {
-      flushBeat();
-      continue;
-    }
-
-    if (!current) {
-      if (!line || line.startsWith("#")) continue;
-      openSegment({ title: "Segment 1" });
-    }
-
-    const bracket = matchBracketTag(line);
-    if (bracket) {
-      flushBeat();
-      currentBeatType = bracket.type;
-      if (bracket.inline) bodyLines.push(bracket.inline);
-      continue;
-    }
-
-    const legacy = matchLegacyTag(line);
-    if (legacy) {
-      flushBeat();
-      currentBeatType = legacy.type;
-      if (legacy.inline) bodyLines.push(legacy.inline);
-      continue;
-    }
-
-    if (isLegacyBoundaryTag(line)) {
-      flushBeat();
-      continue;
-    }
-
-    if (currentBeatType && line) {
-      bodyLines.push(line);
+    if (state.phase === "ended") break;
+    const line = classifyScreenplayLine(rawLine);
+    const step = stepScreenplay(state, line);
+    state = step.state;
+    for (const effect of step.effects) {
+      if (effect === "flush-beat") flushBeat();
+      else if (effect === "open-section") openSegment(line.header as SegmentHeaderInfo);
+      else if (effect === "open-implicit-section") openSegment({ title: "Segment 1" });
+      else if (effect === "start-beat") {
+        currentBeatType = line.beat ?? null;
+        if (line.inline) bodyLines.push(line.inline);
+      } else if (effect === "append-line") bodyLines.push(line.text);
+      else if (effect === "end") flushSegment();
     }
   }
   flushSegment();
@@ -428,13 +307,6 @@ interface PlainStorySection {
   paragraphs: string[];
 }
 
-/** Matches a `#Start` / `# Conclusion` style section marker in a plain-text story. */
-function matchStoryTag(line: string): string | null {
-  // "#1 reason" is a sentence that starts with a hashtag-style number, not a section marker.
-  const m = line.match(/^#{1,6}(?!\d)\s*(\S.*)$/) ?? line.match(/^#{1,6}\s+(\d.*)$/);
-  return m ? m[1].replace(/\s+/g, " ").trim() : null;
-}
-
 /** Normalizes one story paragraph for speech: links, code ticks, emphasis, quotes and long dashes go; the words stay. */
 function cleanStoryParagraph(text: string): string {
   return cleanBeatText(text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/`([^`]+)`/g, "$1"));
@@ -444,9 +316,13 @@ function cleanStoryParagraph(text: string): string {
  * Splits a plain-text story into its `#Tag` sections and blank-line paragraph groups, keeping each
  * paragraph's own words (lines of one paragraph are joined with single spaces). A paragraph that
  * follows a `#Tag` belongs to that tag's section; a paragraph with no tag is a section of its own.
+ * A bare title line directly above a paragraph is a heading (the line classifier decides), so it
+ * becomes that paragraph's section tag instead of being joined into the narration; each such line
+ * is returned in `issues` so the caller can tell the user.
  */
-function splitPlainStory(raw: string): PlainStorySection[] {
+function readPlainStory(raw: string): { sections: PlainStorySection[]; issues: ScriptIssue[] } {
   const sections: PlainStorySection[] = [];
+  const issues: ScriptIssue[] = [];
   let tag: string | undefined;
   let lines: string[] = [];
 
@@ -459,23 +335,59 @@ function splitPlainStory(raw: string): PlainStorySection[] {
     else sections.push({ tag, paragraphs: [text] });
   };
 
-  for (const rawLine of (raw || "").split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line) {
-      flushParagraph();
-      continue;
+  const rawLines = (raw || "").split(/\r?\n/);
+  let phase = STORY_START;
+  rawLines.forEach((rawLine, index) => {
+    const line = classifyStoryLine(rawLine, { paragraphStart: phase === STORY_START, next: rawLines[index + 1] });
+    const step = stepStory(phase, line);
+    phase = step.phase;
+    for (const effect of step.effects) {
+      if (effect === "flush-paragraph") flushParagraph();
+      else if (effect === "set-tag") tag = line.storyTag;
+      else if (effect === "append-line") lines.push(line.text);
+      else if (effect === "report-heading") {
+        issues.push({
+          kind: "heading-line",
+          severity: "notice",
+          line: index + 1,
+          text: line.text,
+          message: `line ${index + 1} "${line.text}" is a chapter heading directly above its paragraph, so it is used as the section title and is not narrated or captioned`,
+        });
+      }
     }
-    if (/^\d{1,2}:\d{2}\s*[-\u2013\u2014]\s*\d{1,2}:\d{2}/.test(line)) continue;
-    const heading = matchStoryTag(line);
-    if (heading !== null) {
-      flushParagraph();
-      tag = heading;
-      continue;
-    }
-    lines.push(line);
-  }
+  });
   flushParagraph();
-  return sections;
+  return { sections, issues };
+}
+
+/** The sections of a plain-text story; see `readPlainStory`. */
+function splitPlainStory(raw: string): PlainStorySection[] {
+  return readPlainStory(raw).sections;
+}
+
+/**
+ * Checks a script at intake, before any voice is synthesized. A tagged screenplay whose narration begins
+ * with its own multi-word section title is an error (the heading leaked into the spoken text); a plain
+ * story's heading lines are reported as notices saying they became section titles instead of narration.
+ */
+export function checkScriptIntake(raw: string): ScriptIssue[] {
+  if (!raw || !raw.trim()) return [];
+  const segments = parseClaudeScript(raw);
+  if (!segments.some((seg) => seg.beats.length > 0)) return readPlainStory(raw).issues;
+  const issues: ScriptIssue[] = [];
+  for (const seg of segments) {
+    for (const beat of seg.beats) {
+      if (beat.type === "narration" && narrationStartsWithTitle(seg.title, beat.text)) {
+        issues.push({
+          kind: "narration-starts-with-title",
+          severity: "error",
+          text: beat.text,
+          message: `the narration of section "${seg.title}" begins with its own title, so the narrator would read the heading aloud: "${beat.text.slice(0, 60)}"; remove the title from the narration`,
+        });
+      }
+    }
+  }
+  return issues;
 }
 
 /**

@@ -31,7 +31,7 @@ import { readRecordedNarration } from "./recordedNarration";
 import { deliverReel } from "../reelCut/writer";
 import { reelForRender, reelSourceFingerprint, writeReelFilm } from "../reelCut/store";
 import { recordReelStatus, type ReelBuildStatus } from "../reelCut/build";
-import { parseClaudeScript, plainTextToTaggedScript } from "../scriptIntake";
+import { checkScriptIntake, parseClaudeScript, plainTextToTaggedScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
 import { compileFilmFromScreenplayAsync, FOOTAGE_HEADROOM_SEC, type FootageRequest } from "./design";
@@ -414,6 +414,11 @@ export async function runProduction(
         if (!script.trim()) throw new Error("no script was provided; the pipeline has nothing to narrate");
         const sections = parseClaudeScript(script);
         if (sections.length === 0) throw new Error("the script parsed into zero sections");
+        // The line classifier's checks stop a leaked heading here, before any voice is synthesized.
+        const issues = checkScriptIntake(request.script ?? "");
+        const blocking = issues.filter((issue) => issue.severity === "error");
+        if (blocking.length > 0) throw new Error(blocking.map((issue) => issue.message).join("; "));
+        for (const issue of issues) emit("intake", "running", issue.message);
         await fsp.mkdir(pkgDir, { recursive: true });
         await fsp.writeFile(path.join(pkgDir, "script.md"), script, "utf8");
         emit("intake", "running", `${sections.length} section(s) parsed`);
