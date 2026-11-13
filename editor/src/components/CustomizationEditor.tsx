@@ -39,6 +39,7 @@ import type {
 } from "../../../src/dl/schema";
 import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 import { savedAccent } from "../../../src/projectTheme";
+import { useFilmSave } from "../state/FilmSaveContext";
 
 export interface CustomizationEditorProps {
   film: Film;
@@ -219,6 +220,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
   accent,
   onAccentChange,
 }) => {
+  const saveFilm = useFilmSave();
   const [isSaving, setIsSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<string | null>(null);
 
@@ -258,17 +260,8 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
         },
       };
 
-      const res = await fetch(`/api/films/${film.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ film: filmToSave }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data.error || `HTTP ${res.status}: Failed to save film theme to disk`,
-        );
-      }
+      const outcome = await saveFilm(filmToSave, "Save theme");
+      if (!outcome.ok) throw new Error(outcome.reason || "Failed to save film theme to disk");
       setSaveToast(`Saved theme & visual directions to ${film.id}.ts`);
       setTimeout(() => setSaveToast(null), 4000);
     } catch (err: any) {

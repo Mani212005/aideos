@@ -32,6 +32,7 @@ import { carryCaptionPlacement } from '../src/dl/captionPlacement.ts';
 import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
 import { newProjectFilmTheme } from '../src/projectTheme.ts';
 import type { Film } from '../src/dl/schema.ts'
+import { decideSave, filmRevision } from '../backend/filmRevision.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
@@ -134,7 +135,7 @@ const studioFilmWrites = new Map<string, string>();
 // Persists a film to both the video package (authoritative, read by the editor Player)
 // and the generated src/dl/films/<id>.ts module (read by Remotion's CLI render/activeFilm
 // bundle), so the two never drift the way they did when B-roll auto-wiring only touched one.
-function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): void {
+function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): string {
   const film = prepareSoundtrack(filmSchema.parse(carryCaptionPlacement(readFilm(filmId), incoming, options)));
   if (options.owner) persistStudioSoundtrack(film);
   const pkgDir = path.join(videosDir, filmId);
@@ -147,7 +148,20 @@ function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; ag
   if (fs.existsSync(filmPath)) {
     fs.writeFileSync(filmPath, filmModule(film), 'utf8');
   }
-  traceBus.notifyFilmUpdated(filmId, film);
+  const rev = filmRevision(contents);
+  traceBus.notifyFilmUpdated(filmId, film, rev);
+  return rev;
+}
+
+// The revision of the film.json on disk (the exact bytes every writer produced), or null when the
+// film has no package file yet. A studio save names the revision it started from; see decideSave.
+function diskFilmRevision(filmId: string): string | null {
+  const pkgFilmPath = path.join(resolvePackageDir(filmId), 'film.json');
+  try {
+    return fs.existsSync(pkgFilmPath) ? filmRevision(fs.readFileSync(pkgFilmPath, 'utf8')) : null;
+  } catch {
+    return null;
+  }
 }
 
 // Wires a finished B-roll clip into a shot's blocks as an AnalogyInset, replacing any
@@ -460,7 +474,7 @@ function startFilmWatcher(): void {
           const parsedJson = JSON.parse(raw);
           const parsed = filmSchema.safeParse(parsedJson);
           if (parsed.success) {
-            traceBus.notifyFilmUpdated(slug, parsed.data);
+            traceBus.notifyFilmUpdated(slug, parsed.data, filmRevision(raw));
           }
         } catch (_) {}
       }, 100);
@@ -2550,8 +2564,9 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           const videoPkgFilmPath = path.join(resolvePackageDir(id), 'film.json');
           if (fs.existsSync(videoPkgFilmPath)) {
             try {
-              const film = dropLegacyFilmBlocks(JSON.parse(fs.readFileSync(videoPkgFilmPath, 'utf8')));
-              sendJson(res, 200, { ok: true, film });
+              const raw = fs.readFileSync(videoPkgFilmPath, 'utf8');
+              const film = dropLegacyFilmBlocks(JSON.parse(raw));
+              sendJson(res, 200, { ok: true, film, rev: filmRevision(raw) });
               return;
             } catch (err) {
               console.warn(`Failed to parse ${videoPkgFilmPath}, falling back to .ts:`, err);
@@ -2605,12 +2620,19 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
             const file = path.join(filmsDir, `${id}.ts`);
+            // A save names the revision it started from; a stale one is refused with the film now on
+            // disk so the studio can keep both versions instead of the last writer silently winning.
+            const currentRev = diskFilmRevision(id);
+            if (decideSave(raw?.baseRev, currentRev) === 'stale') {
+              sendJson(res, 409, { error: 'conflict', code: 'stale_revision', rev: currentRev, film: readFilm(id) });
+              return;
+            }
             // This studio save endpoint is the trusted owner path; placement locks bind agents and rebuilds.
-            writeFilm(id, parsed.data, { owner: true });
+            const rev = writeFilm(id, parsed.data, { owner: true });
 
             setActiveFilm(id);
 
-            sendJson(res, 200, { ok: true, file: path.relative(path.resolve(__dirname, '..'), file), film: parsed.data });
+            sendJson(res, 200, { ok: true, file: path.relative(path.resolve(__dirname, '..'), file), film: parsed.data, rev });
           })
           .catch((e: unknown) => {
             sendJson(res, 400, { error: e instanceof Error ? e.message : String(e) });

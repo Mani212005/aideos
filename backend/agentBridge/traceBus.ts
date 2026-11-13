@@ -7,6 +7,7 @@
  */
 
 import type { Film } from "../../src/dl/schema";
+import { revisionOfFilm } from "../filmRevision";
 
 export type TracePhase =
   | "grounding"
@@ -74,6 +75,8 @@ export type TraceStepListener = (step: TraceStep) => void;
 export interface FilmUpdateEvent {
   filmId: string;
   film: Film;
+  /** Revision of the film.json this event describes, so a studio can tell its own echo from another writer. */
+  rev: string;
   timestamp: string;
 }
 
@@ -210,9 +213,9 @@ export class TraceBus {
   }
 
   /** Notifies all registered subscribers of a film change and records an authoring trace step. */
-  notifyFilmUpdated(filmId: string, film: Film): void {
+  notifyFilmUpdated(filmId: string, film: Film, rev: string = revisionOfFilm(film)): void {
     const timestamp = new Date().toISOString();
-    const event: FilmUpdateEvent = { filmId, film, timestamp };
+    const event: FilmUpdateEvent = { filmId, film, rev, timestamp };
     for (const listener of this.filmListeners) {
       try {
         listener(event);
