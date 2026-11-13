@@ -380,8 +380,8 @@ for (const phase of [
     if (phase === "backend-prepare") f.renderer.prepare = fail;
     else if (phase === "disk") f.renderer.checkDiskBudget = async () => fail();
     else if (phase === "encode")
-      f.renderer.render = async () => {
-        fs.writeFileSync(f.outPath, "partial");
+      f.renderer.render = async (request) => {
+        fs.writeFileSync(request.outPath, "partial");
         fail();
       };
     else if (phase === "cleanup") f.renderer.cleanup = fail;
