@@ -66,7 +66,10 @@ async function designWithFakeAgent(agentWork: (spec: string) => void, spec: stri
 test("BuildRecord: the wait ends on a build for its own request", async () => {
   const spec = setup();
   try {
-    const outcome = await designWithFakeAgent(() => { buildDesign(ID, "agent", { attribute: "open-request" }); }, spec, 4000);
+    const outcome = await designWithFakeAgent(() => {
+      const requestId = readOpenBuildRequest(ID)?.requestId;
+      buildDesign(ID, "agent", requestId ? { requestId } : {});
+    }, spec, 4000);
     assert.equal(outcome.source, "agent");
     assert.equal(outcome.status?.state, "passed");
     assert.ok(outcome.status?.requestId, "the build is attributed to the request");
@@ -97,6 +100,19 @@ test("BuildRecord: the input hash follows what a build is made from, and request
     assert.equal(designInputHash(ID), before, "the same inputs hash the same");
     fs.writeFileSync(path.join(PKG, "design/design.json"), spec + " ");
     assert.notEqual(designInputHash(ID), before);
+
+    const designFile = path.join(PKG, "design/design.json");
+    const design = JSON.parse(fs.readFileSync(designFile, "utf8"));
+    design.assets ??= [];
+    design.assets.push({ kind: "character", character: "hash-probe" });
+    fs.writeFileSync(designFile, JSON.stringify(design));
+    const packageCharacters = path.join(PKG, "characters");
+    fs.mkdirSync(packageCharacters, { recursive: true });
+    const characterFile = path.join(packageCharacters, "hash-probe.character.json");
+    fs.writeFileSync(characterFile, "first character specification");
+    const withCharacter = designInputHash(ID);
+    fs.writeFileSync(characterFile, "changed character specification");
+    assert.notEqual(designInputHash(ID), withCharacter, "referenced character specs are build inputs");
 
     const a = openBuildRequest(ID, "design");
     const b = openBuildRequest(ID, "motion", "m-b");
