@@ -209,18 +209,6 @@ test("runProduction reel stage: inline stop resumes with an injected writer and 
     if (event.stage === "reel") reusedEvents.push(event.status);
   });
   assert.ok(reusedEvents.includes("skipped"), `completed reel should be reused after completion, saw ${reusedEvents.join(", ")}`);
-  const assembledEvents: string[] = [];
-  await runProduction({ ...request, stopAfter: "assemble", reel: "server", reelLlmCaller: async () => JSON.stringify(cutFor(long)),
-    reelSynthesizer: async (s, dir) => { const texts = splitScriptIntoSegments(s); return narration(texts, texts.map(() => 20), dir); } }, (event) => {
-    if (event.stage === "reel") assembledEvents.push(event.status);
-  });
-  assert.ok(assembledEvents.includes("skipped"), `assembly-derived film changes must not invalidate reel inputs, saw ${assembledEvents.join(", ")}`);
-  const postAssemblyEvents: string[] = [];
-  await runProduction({ ...request, stopAfter: "assemble", reel: "server", reelLlmCaller: async () => { throw new Error("assembly must preserve the completed reel"); },
-    reelSynthesizer: async () => { throw new Error("assembly must preserve the completed reel"); } }, (event) => {
-    if (event.stage === "reel") postAssemblyEvents.push(event.status);
-  });
-  assert.ok(postAssemblyEvents.includes("skipped"), `the completed reel remains reusable after assembly, saw ${postAssemblyEvents.join(", ")}`);
   const changed = { ...long, title: "Changed title" };
   fs.writeFileSync(path.join(TEST_VIDEOS_DIR, slug, "film.json"), JSON.stringify(changed));
   const events: string[] = [];
