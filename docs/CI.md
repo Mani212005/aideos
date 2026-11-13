@@ -71,6 +71,14 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
   launch Chrome first failed its own startup deadline (caption measurement's 25 s `ETIMEDOUT`, the
   character browser's 30 s DevTools port wait). No test deadline was changed; the one-time cost now
   happens before any test runs.
+* The J13 caption journey (CI runs 43421951050, 43421991249, 43427291149) and the J3 Apply Edits
+  journey (run 43421951050) failed for a different cause: since #207 the studio header said Saved
+  while a save was still in flight, so a journey that waited for Saved then read the previous
+  `film.json` (or, in J3, a missing `edit_log.jsonl`). In CI J13 failed 0 of 59 runs before #207 and
+  3 of 22 after. Locally, holding each film save 600 ms server-side at probability 0.35, J13 failed
+  6 of 6 runs before the fix and passed 6 of 6 after; an unconditional 600 ms hold failed 1 of 1
+  before and passed 4 of 4 after. The header now says Saving until the save lands, and Apply Edits
+  confirms only after its save and edit-log record land. No journey assertion, timeout or wait changed.
 * Skipped tests in any test runner are captured and reported honestly as `NOT COVERED (skipped)` in
   the timing summary and job summary, not as passes.
 * Renders use **software GL** (`AIDEOS_GL=swangle`, read by `backend/pipeline/render.ts`'s `glFlag`).

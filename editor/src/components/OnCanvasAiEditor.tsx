@@ -202,7 +202,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
 
       // The save and the provenance record both finish before the edit is reported as applied, so the
       // confirmation never runs ahead of what is on disk.
-      const [saved] = await Promise.all([
+      const [saved, logFailure] = await Promise.all([
         saveFilm(updatedFilm, "On-canvas AI edit"),
         fetch("/api/edit-log", {
           method: "POST",
@@ -217,13 +217,18 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
             source: "studio",
             warnings: plannedState.warnings,
           }),
-        }).catch(() => undefined),
+        }).then(
+          (res) => (res.ok ? null : `edit log returned ${res.status}`),
+          (err: unknown) => (err instanceof Error ? err.message : String(err)),
+        ),
       ]);
 
       setStatusMessage(
-        saved.ok
-          ? { text: "Applied AI edit successfully!", isError: false }
-          : { text: `Applied AI edit, but it is not saved yet: ${saved.reason}`, isError: true },
+        !saved.ok
+          ? { text: `Applied AI edit, but it is not saved yet: ${saved.reason}`, isError: true }
+          : logFailure
+            ? { text: `Applied AI edit, but it was not recorded in the edit log: ${logFailure}`, isError: true }
+            : { text: "Applied AI edit successfully!", isError: false },
       );
       setPlannedState(null);
       setPromptInput("");
