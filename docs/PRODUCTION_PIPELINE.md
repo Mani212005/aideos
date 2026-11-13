@@ -231,7 +231,7 @@ that needs authoring input ends in `needs_input`; it is a state, not an exceptio
 
 An agent's design answer is checked against the build record, not the status file's modification
 time. A design task (pipeline or studio motion request) is opened as `design/request.json` before the
-agent is asked. The agent answers it with `aideos design build --request <id>` or the
+agent is asked. The agent answers it with `aideos design build <film> --request <id>` or the
 `aideos_design_build` tool's `requestId`; the build records that id and a hash of its inputs in
 `design/status.json`. A waiter accepts a passing build that carries its request id; the input hash
 is recorded as information (authored inputs only) and is not compared. A
