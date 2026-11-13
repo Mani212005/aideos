@@ -10,12 +10,11 @@ import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import type { Film } from "../src/dl/schema";
 import { compileScene, type CompiledScene, type CompiledEntity } from "../src/dl/scene/compile";
 import type { Scene } from "../src/dl/scene/types";
-import { projectStagePoint, stageProjection } from "../src/dl/scene/projection";
+import { stageProjection } from "../src/dl/scene/projection";
 import { elementVisible, VISIBLE_OPACITY_MIN } from "../src/dl/scene/visibility";
 import { projectedSvgParts } from "./designCheck/insetRegion";
-import { createPerformanceEvaluator } from "../src/dl/performance/evaluate";
-import { rigFromCharacter } from "../src/dl/characters/rig";
-import { resolveStageCharacter } from "../src/dl/characters/resolve";
+import { prepareStageFacts } from "../src/dl/scene/stageFacts";
+import { partsInViewport } from "../src/dl/scene/stageGeometry";
 
 export type StageState = { motion: "moving" | "holding"; segment: "story" | "end-card" };
 export interface StageSpan extends StageState { from: number; to: number }
@@ -50,12 +49,7 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
   const scene = film.scene as Scene | undefined;
   const compiled = scene ? options.compiled ?? compileScene(scene, { clockMs: 0 }) : undefined;
   const width = format === "long" ? 1920 : 1080, height = format === "long" ? 1080 : 1920;
-  const performers = (scene?.performances ?? []).map((p) => {
-    const actor = scene!.cast?.find((c) => c.id === p.actor);
-    const character = actor?.kind === "character" ? resolveStageCharacter(actor) : undefined;
-    if (!character) throw new Error(`stage timeline: missing character ${p.actor}`);
-    return { actor: actor.kind === "character" ? actor : undefined, evaluate: createPerformanceEvaluator(rigFromCharacter(character.spec), p.data) };
-  });
+  const performanceGeometry = scene?.performances?.length ? prepareStageFacts(scene, width, height) : undefined;
   // Projects only changed targets, preserving ancestor opacity and this output's crop.
   const inkAt = (entity: CompiledEntity, frame: number, targets?: ReadonlySet<string>) => {
     const current = compiled!.frames[frame];
@@ -106,18 +100,14 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
       if (!transformed && !targets.size) continue;
       moving = JSON.stringify(inkAt(before, f, transformed ? undefined : targets)) !== JSON.stringify(inkAt(after, n, transformed ? undefined : targets));
     }
-    for (const p of performers) {
-      if (moving) break;
-      const before = p.evaluate(f), after = p.evaluate(n);
-      const visibleGeometry = (pose: typeof before, frame: number) => {
-        const camera = compiled!.frames[frame].camera ?? { center: { x: scene!.sceneSize.w / 2, y: scene!.sceneSize.h / 2 }, zoom: 1, rotation: 0 };
-        const cast = p.actor!;
-        const project = (point: { x: number; y: number }) => projectStagePoint({ x: cast.position[0] + point.x * cast.unitsToStage, y: cast.position[1] - point.y * cast.unitsToStage }, camera, width, height, scene!.sceneSize);
-        return [...Object.entries(pose.joints).map(([id, joint]) => [id, project({ x: joint.position[0], y: joint.position[1] })] as const), ["prop", project({ x: pose.prop.position[0], y: pose.prop.position[1] })] as const]
-          .filter(([, point]) => point.x >= 0 && point.x <= width && point.y >= 0 && point.y <= height);
-      };
-      const beforeVisible = visibleGeometry(before, f), afterVisible = visibleGeometry(after, n);
-      moving = JSON.stringify(beforeVisible) !== JSON.stringify(afterVisible) && (beforeVisible.length > 0 || afterVisible.length > 0);
+    if (!moving && performanceGeometry) {
+      // Returns changed geometry only when its projected rendered bounds intersect the output crop.
+      const visibleParts = (frame: number) => performanceGeometry.at(frame).map((performance) => [
+        ...partsInViewport(performance.actorParts, width, height).map((part) => ["actor", part.name, part.bounds] as const),
+        ...partsInViewport(performance.propParts, width, height).map((part) => ["prop", part.name, part.bounds] as const),
+      ]);
+      const before = visibleParts(f), after = visibleParts(n);
+      moving = (before.length > 0 || after.length > 0) && JSON.stringify(before) !== JSON.stringify(after);
     }
     const state: StageState = { segment: "story", motion: moving ? "moving" : "holding" };
     const last = spans[spans.length - 1];
@@ -133,5 +123,6 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
   const shots = buildTimeline(film, film.voiceover?.durationSec);
   const holds = spans.filter((span) => span.segment === "story" && span.motion === "holding" && span.to - span.from > STORY_HOLD_MAX_SEC * film.fps)
     .map((span) => ({ start: span.from / film.fps, end: span.to / film.fps, shots: shots.filter((shot) => shot.to > span.from && shot.from < span.to).map((shot) => shot.shot.id) }));
+  performanceGeometry?.dispose();
   return { ...delivery, spans, holds, visibleAt };
 }
