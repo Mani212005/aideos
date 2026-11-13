@@ -39,7 +39,7 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 
 | Stage      | What it does                                                                        | What it writes                                     |
 | ---------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `intake`   | Classifies each script line once, then uses screenplay or story transition tables to convert plain-text stories or parse screenplays; rejects an empty script | `videos/<slug>/script.md`                           |
+| `intake`   | Converts plain-text stories or parses screenplays; rejects an empty script           | `videos/<slug>/script.md`                           |
 | `narrate`  | Synthesizes narration and derives the timing spine every later stage is locked to     | `voiceover.wav`, `captions.vtt`, `voiceover_words.json`, `narration.json`, `voiceover_lines/` |
 | `look`     | Writes the measured look brief and validates the plan through the selected delivery mode | `design/LOOK_BRIEF.md`, `look.json`, `LOOK.md` |
 | `design`   | Compiles treatments from the accepted look and builds a checked scene design | `design/BRIEF.md`, `base-film.json`, `status.json`, `film.json` and its shadow |
@@ -49,14 +49,14 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `render`   | Installs the film as active, drives Remotion for each requested format, then measures and masters each MP4 audio track | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4`, `<format>.mp4.master.json`, `description-credits.txt` by default |
 | `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `videos/<slug>/review/<format>-sheet.jpg`          |
 
-Before synthesis, intake classifies every line as a marker, timestamp, tag, heading, prose, blank, or note,
-then applies the corresponding screenplay or story transition table. A short prose line of at most six words
-with no ending punctuation followed by lowercase prose is reported as a possible continued fragment in either
+At the synthesis boundary, the shared line classifier assigns every line a marker, timestamp, tag, heading,
+prose, blank, or note class, then applies the corresponding screenplay or story transition table. A short prose
+line of at most six words with no ending punctuation followed by lowercase prose is reported as a possible continued fragment in either
 dialect; it stays prose and its narration is unchanged. A bare story heading above a paragraph is reported and
 used as the section title, while screenplay narration that begins with its section title is an error.
-`assertScriptReadyForSynthesis` is the shared guard: `produceAudioPipeline` calls it before preparing audio,
-including on resumed forced narration, and Studio voiceover routes check through the same intake assertion
-before invoking TTS. Title leaks stop with an error; notices travel through progress or response data.
+`assertScriptReadyForSynthesis` is the shared guard: `produceAudioPipeline` calls it at the start of the
+pipeline's narrate stage, including on resumed forced narration, and Studio voiceover routes check through the
+same assertion before invoking TTS. Title leaks stop with an error; notices travel through progress or response data.
 
 Progress arrives through the second argument to `runProduction`: one `ProductionProgress` per
 event, carrying the stage, its status, a human-readable message, an optional 0..1 fraction within
