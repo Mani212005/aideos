@@ -194,6 +194,26 @@ test("MotionRequests: only a build that carries the request's id settles it", as
   }
 });
 
+test("MotionRequests: a request does not settle when the design changed after its build", async () => {
+  const film = setup();
+  try {
+    const r = await requestMotion(film, "beat-02", "drop a tile per word", { dispatch: agentDispatch });
+    const spec = path.join(PKG, "design/design.json");
+    const original = fs.readFileSync(spec, "utf8");
+    const built = buildDesign(ID, "agent", { requestId: r.id });
+    assert.equal(built.state, "passed");
+    const changed = JSON.parse(original);
+    changed.clips = changed.clips.slice(0, -1);
+    fs.writeFileSync(spec, JSON.stringify(changed));
+    assert.equal(listMotionRequests(ID)[0].state, "sent", "the build no longer matches current design inputs");
+
+    fs.writeFileSync(spec, original);
+    assert.equal(listMotionRequests(ID)[0].state, "passed", "restoring the built inputs makes the recorded answer current again");
+  } finally {
+    teardown();
+  }
+});
+
 test("MotionRequests: a newer request supersedes the open one, and a build answers only the newest", async () => {
   const film = setup();
   try {

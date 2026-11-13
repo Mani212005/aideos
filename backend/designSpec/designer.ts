@@ -13,7 +13,7 @@ import { parseFilm } from "../../src/dl/schema";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { dispatchTask } from "../agentBridge/dispatcher";
 import { buildDesign, designDir, formatBuildStatus, readDesignStatus, readCheckedLookPlan, type DesignBuildStatus } from "./build";
-import { closeBuildRequest, fileDigest, openBuildRequest } from "./buildRecord";
+import { closeBuildRequest, designInputHash, fileDigest, openBuildRequest } from "./buildRecord";
 import { renderDesignBrief, writeDesignBrief } from "./brief";
 import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJudge/judge";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
@@ -77,9 +77,11 @@ async function tryAgent<T>(
   const lookFile = path.join(designDir(filmId), "look.json");
   const lookBefore = kind === "look" ? fileDigest(lookFile) : null;
   const request = kind === "design" ? openBuildRequest(filmId, "design") : null;
-  const answered = (): boolean => request
-    ? readDesignStatus(filmId)?.requestId === request.requestId
-    : fileDigest(lookFile) !== null && fileDigest(lookFile) !== lookBefore;
+  const answered = (): boolean => {
+    if (!request) return fileDigest(lookFile) !== null && fileDigest(lookFile) !== lookBefore;
+    const status = readDesignStatus(filmId);
+    return status?.requestId === request.requestId && status.inputHash === designInputHash(filmId);
+  };
   const finish = (): void => { if (request) closeBuildRequest(filmId, request.requestId); };
   const task = kind === "look"
     ? `Plan the look before making any picture. Read ${path.join(designDir(filmId), "LOOK_BRIEF.md")}, write design/look.json, and run aideos look check ${filmId}. For a character film, name a character the brief lists; a new character is authored first with aideos character check <file> --stamp and drawn with aideos character sheet <file>. Do not build the design yet.`
@@ -284,7 +286,7 @@ async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignF
   const repair = async (errors: string): Promise<boolean> => {
     if (outcome.source === "agent") return (await tryAgent(filmId, opts, "design", () => {
       const status = readDesignStatus(filmId);
-      return status?.state === "passed" ? status : null;
+      return status?.state === "passed" && status.inputHash === designInputHash(filmId) ? status : null;
     }, errors)) !== null;
     if (!opts.llmCaller) return false;
     return (await tryServerModel(filmId, opts.llmCaller, opts, `The vision judge ruled these frames wrong. Fix each one, exactly as reported:\n${errors}`)).state === "passed";
@@ -323,7 +325,7 @@ export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): 
   if (mode !== "server") {
     const status = await tryAgent(filmId, opts, "design", () => {
       const built = readDesignStatus(filmId);
-      return built?.state === "passed" ? built : null;
+      return built?.state === "passed" && built.inputHash === designInputHash(filmId) ? built : null;
     });
     if (status) return judgeDesign(filmId, { source: "agent", note: "designed by the connected coding agent", status }, opts);
   } else {

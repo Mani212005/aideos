@@ -13,7 +13,6 @@ import { DELIVERY_CONFIG, deliveryTimeline, type DeliveryConfig, type DeliveryFo
 import { FILMS_DIR, filmModule } from "../pipeline/generatedFiles";
 import { ProductionError } from "../pipeline/types";
 import { parseReelBudget, type ReelBudget } from "./schema";
-import { designInputHash } from "../designSpec/buildRecord";
 
 // Derives the writer's card reserve from the same rounded span Remotion delivers.
 export function reelBudgetFor(film: Film, config: DeliveryConfig = DELIVERY_CONFIG): ReelBudget {
@@ -24,19 +23,11 @@ export function reelBudgetFor(film: Film, config: DeliveryConfig = DELIVERY_CONF
 // Hashes the source bytes and delivery settings that can change a reel's narration or picture.
 export function reelSourceFingerprint(slug: string): string {
   const pkg = resolvePackageDir(slug);
-  const filmSource = fs.existsSync(path.join(pkg, "design/base-film.json")) ? "design/base-film.json" : "film.json";
-  const files = [filmSource, "narration.json", "voiceover_words.json", "reel/cut.json", "design/design.json", "design/look.json"];
+  const files = ["film.json", "narration.json", "voiceover_words.json", "reel/cut.json", "design/base-film.json", "design/design.json", "design/look.json"];
   // Shared artwork can change without a manifest edit, so its bytes belong to the source identity.
   const visuals = path.join(pkg, "visuals");
   if (fs.existsSync(visuals)) files.push(...fs.readdirSync(visuals).filter((f) => f.endsWith(".svg")).sort().map((f) => `visuals/${f}`));
-  const hash = createHash("sha256").update(JSON.stringify(DELIVERY_CONFIG)).update(designInputHash(slug));
-  const activeFilm = path.join(pkg, "film.json");
-  if (fs.existsSync(activeFilm)) {
-    try {
-      const film = JSON.parse(fs.readFileSync(activeFilm, "utf8")) as { title?: unknown };
-      hash.update(`active-title:${String(film.title ?? "")}\n`);
-    } catch { hash.update("active-title:invalid\n"); }
-  }
+  const hash = createHash("sha256").update(JSON.stringify(DELIVERY_CONFIG));
   for (const file of files) {
     hash.update(file);
     const absolute = path.join(pkg, file);

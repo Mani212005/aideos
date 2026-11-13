@@ -20,7 +20,7 @@ import { taskQueue } from "../agentBridge/taskQueue";
 import { shotLookContext } from "../agentBridge/contextBuilder";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { buildDesign, designDir, readDesignStatus } from "./build";
-import { closeBuildRequest, openBuildRequest } from "./buildRecord";
+import { closeBuildRequest, designInputHash, openBuildRequest } from "./buildRecord";
 import { writeDesignBrief } from "./brief";
 import { designWithServerModel, type DesignLlmCaller } from "./designer";
 import type { DesignSource } from "./compile";
@@ -95,10 +95,11 @@ function taskEnded(taskId: string | undefined): boolean {
 export function listMotionRequests(filmId: string, now: () => number = Date.now): MotionRequest[] {
   const log = readLog(filmId);
   const status = readDesignStatus(filmId);
+  const currentInputHash = status ? designInputHash(filmId) : null;
   let changed = false;
   for (const r of log) {
     // A build answers a request only when it carries that request's id; a build from any other cause does not.
-    if (r.state !== "sent" || r.by !== "agent" || !status || status.requestId !== r.id) continue;
+    if (r.state !== "sent" || r.by !== "agent" || !status || status.requestId !== r.id || status.inputHash !== currentInputHash) continue;
     const error = status.errors[0] ?? status.findings.find((f) => f.severity === "error")?.message ?? "the build failed";
     if (status.state === "passed") {
       r.state = "passed";
