@@ -67,7 +67,7 @@ export interface RunOwner { pid: number; runId: string }
 /** One event with the data it carries. */
 export type StageEvent =
   | { type: "start"; fingerprint: string; owner: RunOwner; at?: string }
-  | { type: "complete"; at?: string }
+  | { type: "complete"; fingerprint?: string; at?: string }
   | { type: "fail"; error: string; at?: string }
   | { type: "need_input"; message: string; at?: string }
   | { type: "interrupt"; reason: string; at?: string }
@@ -94,6 +94,7 @@ export function applyStageEvent(record: StageRecord, event: StageEvent): StageRe
     case "complete":
       next.finishedAt = at;
       next.durationMs = record.startedAt ? Math.max(0, Date.parse(at) - Date.parse(record.startedAt)) : 0;
+      if (event.fingerprint !== undefined) next.fingerprint = event.fingerprint;
       delete next.owner;
       break;
     case "fail":
@@ -139,7 +140,7 @@ export interface RunMachine {
   record(stage: ProductionStage): StageRecord;
   /** Starts a stage: every later stage becomes pending (and render outputs are dropped), then this one runs. */
   begin(stage: ProductionStage, fingerprint: string, owner: RunOwner): void;
-  complete(stage: ProductionStage): void;
+  complete(stage: ProductionStage, fingerprint?: string): void;
   fail(stage: ProductionStage, error: string): void;
   needInput(stage: ProductionStage, message: string): void;
   /** A done stage whose fingerprint still matches is reused as is. */
@@ -181,7 +182,7 @@ export function createRunMachine(state: RunState, persist: (state: RunState) => 
       if (index < PRODUCTION_STAGES.indexOf("render")) state.outputs = [];
       persist(state);
     },
-    complete: (stage) => apply(stage, { type: "complete" }),
+    complete: (stage, fingerprint) => apply(stage, { type: "complete", ...(fingerprint !== undefined ? { fingerprint } : {}) }),
     fail: (stage, error) => apply(stage, { type: "fail", error }),
     needInput: (stage, message) => apply(stage, { type: "need_input", message }),
     reuse: (stage) => apply(stage, { type: "reuse" }),

@@ -96,6 +96,26 @@ export function designInputHash(filmId: string): string {
   for (const file of ["design/design.json", "design/look.json", "voiceover_words.json"]) {
     hash.update(`${file}:${fileDigest(path.join(pkg, file)) ?? "-"}\n`);
   }
+  const baseFilm = path.join(pkg, "design/base-film.json");
+  const activeFilm = path.join(pkg, "film.json");
+  hash.update(`base-film:${fileDigest(baseFilm) ?? fileDigest(activeFilm) ?? "-"}\n`);
+  const active = readJson(activeFilm) as {
+    theme?: unknown;
+    accent?: unknown;
+    soundtrack?: unknown;
+    music?: unknown;
+    captionPlacement?: unknown;
+    shots?: Array<{ id?: unknown; captionPlacement?: unknown }>;
+  } | null;
+  const activeSoundtrack = active?.soundtrack as { defaultScore?: boolean } | undefined;
+  hash.update(`active-build-inputs:${JSON.stringify(active ? {
+    theme: active.theme,
+    accent: active.accent,
+    soundtrack: activeSoundtrack?.defaultScore ? undefined : active.soundtrack,
+    music: active.music,
+    captionPlacement: active.captionPlacement,
+    shots: active.shots?.map(({ id, captionPlacement }) => ({ id, captionPlacement })),
+  } : null)}\n`);
   const visuals = path.join(pkg, "visuals");
   const svgs = fs.existsSync(visuals)
     ? fs.readdirSync(visuals).filter((f) => f.endsWith(".svg") && (f !== "canvas.svg" || assetFiles.has(`visuals/${f}`))).sort()

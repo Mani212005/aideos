@@ -462,6 +462,10 @@ test("runProduction: a recorded narration builds a design cued on each shot's fi
     assert.equal(result.status, "stopped", JSON.stringify(result.warnings));
     assert.equal(readFilm(slug)?.design?.source, "agent");
 
+    const resumedEvents: ProductionProgress[] = [];
+    await runProduction({ ...inlineRequest(slug), stopAfter: "design", resume: true }, (event) => resumedEvents.push(event));
+    assert.ok(resumedEvents.some((event) => event.stage === "design" && event.status === "skipped"), "a completed design is reused without dispatching design work again");
+
     // Every shot starts where its narration does, to the millisecond the word timings are written in.
     let startSec = 0;
     readFilm(slug)!.shots.forEach((shot, i) => {
