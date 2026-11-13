@@ -184,7 +184,15 @@ export function transition<F>(state: SyncState<F>, event: SyncEvent<F>): Transit
         case "dirty":
           return state.failed ? { state: { ...state, failed: false }, effects: [] } : ignore(state);
         case "saving":
-          return state.editedWhileSaving ? ignore(state) : { state: { ...state, editedWhileSaving: true }, effects: [] };
+          if (state.editedWhileSaving && !state.held.some((remote) => remote.sameAsLocal)) return ignore(state);
+          return {
+            state: {
+              ...state,
+              editedWhileSaving: true,
+              held: state.held.map((remote) => remote.sameAsLocal ? { ...remote, sameAsLocal: false } : remote),
+            },
+            effects: [],
+          };
         case "conflict":
           return ignore(state);
       }

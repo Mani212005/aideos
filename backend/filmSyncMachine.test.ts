@@ -298,3 +298,25 @@ test("same-content updates absorb the remote film in both live and conflict tran
   const conflict = transition(saving, { type: "save_conflicted", seq: 1, remote: remote("r2", 2, true) });
   assert.deepEqual(conflict.effects, [{ kind: "absorb", film: { id: "demo", n: 2 } }]);
 });
+
+test("an edit after a same-content event is held prevents that event from cleaning a later successful save", () => {
+  let saving = run([{ type: "edited" }, { type: "save_started", seq: 1 }], loaded("r1", 1));
+  saving = transition(saving, { type: "external_update", remote: remote("r3", 3, true) }).state;
+  saving = transition(saving, { type: "edited" }).state;
+
+  const settled = transition(saving, { type: "save_succeeded", seq: 1, rev: "r2", order: 2 });
+  assert.equal(settled.state.phase, "conflict");
+  assert.equal(hasUnsavedEdits(settled.state), true);
+  if (settled.state.phase === "conflict") assert.equal(settled.state.remote.rev, "r3");
+});
+
+test("an edit after a same-content event is held prevents that event from cleaning a failed save", () => {
+  let saving = run([{ type: "edited" }, { type: "save_started", seq: 1 }], loaded("r1", 1));
+  saving = transition(saving, { type: "external_update", remote: remote("r3", 3, true) }).state;
+  saving = transition(saving, { type: "edited" }).state;
+
+  const settled = transition(saving, { type: "save_failed", seq: 1 });
+  assert.equal(settled.state.phase, "conflict");
+  assert.equal(hasUnsavedEdits(settled.state), true);
+  if (settled.state.phase === "conflict") assert.equal(settled.state.remote.rev, "r3");
+});
