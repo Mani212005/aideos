@@ -203,6 +203,8 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   const words: TimedWord[] = fs.existsSync(wordsFile) ? (JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? []) : [];
 
   // Legacy packages without a plan still build; new production runs always require one first.
+  const resolved = resolveDesignCharacters(spec, pkg);
+  if (resolved.errors.length) return fail(resolved.errors);
   let lookPlan: LookPlan | undefined;
   const lookFindings: DesignFinding[] = [];
   if (fs.existsSync(path.join(designDir(filmId), "look.json"))) {
@@ -210,6 +212,11 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
     if (!look.plan) return fail(look.errors, (look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
     lookPlan = look.plan;
     lookFindings.push(...(look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
+  }
+
+  const compiled = compileDesign(buildFilm, spec, words, source, { characters: resolved.characters });
+  if (!compiled.film) return fail(compiled.errors);
+  if (lookPlan) {
     try {
       const binding = bindDesignLook(buildFilm, spec, words, pkg, lookPlan);
       ledger = binding.ledger;
@@ -218,11 +225,6 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
       return fail([`look/design check: ${err instanceof Error ? err.message : String(err)}`]);
     }
   }
-
-  const resolved = resolveDesignCharacters(spec, pkg);
-  if (resolved.errors.length) return fail(resolved.errors);
-  const compiled = compileDesign(buildFilm, spec, words, source, { characters: resolved.characters });
-  if (!compiled.film) return fail(compiled.errors);
   const builtFilm: Film = {
     ...compiled.film,
     shots: compiled.film.shots.flatMap((shot) => {

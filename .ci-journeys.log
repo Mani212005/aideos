@@ -1,0 +1,875 @@
+
+> aideos@1.0.0 pretest:journeys
+> npm run ensure:generated --silent
+
+[generated] 0 film shadow(s) written, 4 svg asset(s) bundled, active film: diagram-parts
+
+> aideos@1.0.0 test:journeys
+> node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 --test-reporter=tap "backend/journeys/**/*.journey.ts"
+
+TAP version 13
+# encoded held-pose maximum mean channel difference (0-255): {"dots":0.010964506172839505,"cel":0.009205246913580246}
+# Subtest: dots raster: no hidden-surface leaks, reverse seek/worker equality, phone features and encoded held-pose shimmer
+ok 1 - dots raster: no hidden-surface leaks, reverse seek/worker equality, phone features and encoded held-pose shimmer
+  ---
+  duration_ms: 68224.451246
+  type: 'test'
+  ...
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# Subtest: pixels: spec-built Iona matches legacy pixels and compiled Pip and Marlo stage stills in both crops
+ok 2 - pixels: spec-built Iona matches legacy pixels and compiled Pip and Marlo stage stills in both crops
+  ---
+  duration_ms: 31828.500309
+  type: 'test'
+  ...
+# Subtest: sheet: aideos character sheet writes model, expression and receive stills at the expected sizes
+ok 3 - sheet: aideos character sheet writes model, expression and receive stills at the expected sizes
+  ---
+  duration_ms: 11477.356559
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J6: a character spec edit reopens exactly design and the stages after it; an unchanged rerun reuses everything
+ok 4 - J6: a character spec edit reopens exactly design and the stages after it; an unchanged rerun reuses everything
+  ---
+  duration_ms: 39374.187516
+  type: 'test'
+  ...
+# Subtest: retargeting onto Iona is the identity, and the bound span equals the merged P0 binding
+ok 5 - retargeting onto Iona is the identity, and the bound span equals the merged P0 binding
+  ---
+  duration_ms: 829.470746
+  type: 'test'
+  ...
+# Subtest: the same receive runs on all three characters with every numerical obligation, including reach and joint limits
+ok 6 - the same receive runs on all three characters with every numerical obligation, including reach and joint limits
+  ---
+  duration_ms: 1671.381674
+  type: 'test'
+  ...
+# Subtest: a stiff character fails the receive under the fail policy with the field, joint and frame named
+ok 7 - a stiff character fails the receive under the fail policy with the field, joint and frame named
+  ---
+  duration_ms: 15.052048
+  type: 'test'
+  ...
+# Subtest: an unreachable hand target fails with a named error, or clamps smoothly with a warning, and never yields NaN or a pop
+ok 8 - an unreachable hand target fails with a named error, or clamps smoothly with a warning, and never yields NaN or a pop
+  ---
+  duration_ms: 655.887747
+  type: 'test'
+  ...
+# Subtest: a middle arm target key at contact is included in the clamp window for both arms
+ok 9 - a middle arm target key at contact is included in the clamp window for both arms
+  ---
+  duration_ms: 499.677496
+  type: 'test'
+  ...
+# Subtest: a free hand target at its shoulder is refused by clamp with a named bend limit
+ok 10 - a free hand target at its shoulder is refused by clamp with a named bend limit
+  ---
+  duration_ms: 76.507291
+  type: 'test'
+  ...
+# Subtest: a planted foot that cannot stay planted is refused even under clamp, naming the limit
+ok 11 - a planted foot that cannot stay planted is refused even under clamp, naming the limit
+  ---
+  duration_ms: 2.960456
+  type: 'test'
+  ...
+# Subtest: changed narration moves contact to the new cue on every character (J2)
+ok 12 - changed narration moves contact to the new cue on every character (J2)
+  ---
+  duration_ms: 844.761753
+  type: 'test'
+  ...
+# Subtest: regression: the approved receive's elbows roll smoothly; the original poles that snapped the left elbow fail pole clearance
+ok 13 - regression: the approved receive's elbows roll smoothly; the original poles that snapped the left elbow fail pole clearance
+  ---
+  duration_ms: 329.737752
+  type: 'test'
+  ...
+# Subtest: retargeting never mutates its inputs
+ok 14 - retargeting never mutates its inputs
+  ---
+  duration_ms: 95.338651
+  type: 'test'
+  ...
+# Subtest: property: over 120 random proportions the receive keeps bone lengths, planted soles, limits, cue contact and smooth seams
+ok 15 - property: over 120 random proportions the receive keeps bone lengths, planted soles, limits, cue contact and smooth seams
+  ---
+  duration_ms: 37692.135038
+  type: 'test'
+  ...
+# Subtest: property: under the fail policy every random character either passes every obligation or is refused with a named field
+ok 16 - property: under the fail policy every random character either passes every obligation or is refused with a named field
+  ---
+  duration_ms: 21402.280849
+  type: 'test'
+  ...
+# Subtest: J5: Pip and Marlo, defined only as data, run the same receive through the real design build in both crops
+ok 17 - J5: Pip and Marlo, defined only as data, run the same receive through the real design build in both crops
+  ---
+  duration_ms: 25313.669754
+  type: 'test'
+  ...
+# Subtest: J5: a stiff character under the default fail policy is refused with the limit named, not silently changed
+ok 18 - J5: a stiff character under the default fail policy is refused with the limit named, not silently changed
+  ---
+  duration_ms: 54.11332
+  type: 'test'
+  ...
+# Subtest: J5: look plan and design build carry two characters through the same receive
+ok 19 - J5: look plan and design build carry two characters through the same receive
+  ---
+  duration_ms: 16555.5013
+  type: 'test'
+  ...
+# Subtest: J5: nine performances across two character specs pass look check, design build and compile
+ok 20 - J5: nine performances across two character specs pass look check, design build and compile
+  ---
+  duration_ms: 69176.598469
+  type: 'test'
+  ...
+# Subtest: numeric frame starts match between the look plan and design build
+ok 21 - numeric frame starts match between the look plan and design build
+  ---
+  duration_ms: 4215.092414
+  type: 'test'
+  ...
+# Subtest: look check names a design performance with no id
+ok 22 - look check names a design performance with no id
+  ---
+  duration_ms: 8.875675
+  type: 'test'
+  ...
+# Subtest: look check refuses missing design performances named by the look plan
+ok 23 - look check refuses missing design performances named by the look plan
+  ---
+  duration_ms: 17.320106
+  type: 'test'
+  ...
+# Subtest: J7: stage facts name each character by id, version, rig and hash, never by pasting the whole spec into a prompt
+ok 24 - J7: stage facts name each character by id, version, rig and hash, never by pasting the whole spec into a prompt
+  ---
+  duration_ms: 7780.544602
+  type: 'test'
+  ...
+# Subtest: J8: a missing character, a tampered spec and an unknown field each fail the build with the file and field named
+not ok 25 - J8: a missing character, a tampered spec and an unknown field each fail the build with the file and field named
+  ---
+  duration_ms: 34.880288
+  type: 'test'
+  location: '/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/characters.journey.ts:2:13423'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /asset "iona" character nobody .* \(file\): no character "nobody"; looked for .*characters\/nobody\.character\.json/. Input:
+    
+    'look cast iona: design identity or treatment mismatch'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'look cast iona: design identity or treatment mismatch'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/characters.journey.ts:210:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: J8: design build refuses a character spec whose embedded id differs from the requested id
+not ok 26 - J8: design build refuses a character spec whose embedded id differs from the requested id
+  ---
+  duration_ms: 26.251978
+  type: 'test'
+  location: '/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/characters.journey.ts:2:14790'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /asset "iona" character iona .* id: the spec in .* is "marlo" but the design asks for character "iona"/. Input:
+    
+    'look.json film.performances.receive-message.character: character "iona" does not resolve to a checked spec: characters/iona.character.json id: the spec in /tmp/aideos-test-videos-3SHPhq/journey-iona-library-12/characters/iona.character.json is "marlo" but the design asks for character "iona"; rename the file or fix the id. Author it with aideos character check --stamp, or name a library character.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'look.json film.performances.receive-message.character: character "iona" does not resolve to a checked spec: characters/iona.character.json id: the spec in /tmp/aideos-test-videos-3SHPhq/journey-iona-library-12/characters/iona.character.json is "marlo" but the design asks for character "iona"; rename the file or fix the id. Author it with aideos character check --stamp, or name a library character.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/characters.journey.ts:227:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: J5: constructor is resolved as a package character id through design build
+ok 27 - J5: constructor is resolved as a package character id through design build
+  ---
+  duration_ms: 13959.225189
+  type: 'test'
+  ...
+# Subtest: J8 and J14: a hand-edited or stale embedded spec still opens but is refused before the stage draws it
+ok 28 - J8 and J14: a hand-edited or stale embedded spec still opens but is refused before the stage draws it
+  ---
+  duration_ms: 17020.95884
+  type: 'test'
+  ...
+# Subtest: J14: a restamped embedded proportion change invalidates the fitted receive
+ok 29 - J14: a restamped embedded proportion change invalidates the fitted receive
+  ---
+  duration_ms: 10146.594523
+  type: 'test'
+  ...
+# Subtest: J8: a P0 design that still names the Iona fixture asset builds unchanged through the character library
+ok 30 - J8: a P0 design that still names the Iona fixture asset builds unchanged through the character library
+  ---
+  duration_ms: 5942.807142
+  type: 'test'
+  ...
+# Subtest: J6: editing a film's character spec reopens design on resume; an unchanged package keeps its fingerprint
+ok 31 - J6: editing a film's character spec reopens design on resume; an unchanged package keeps its fingerprint
+  ---
+  duration_ms: 16.235005
+  type: 'test'
+  ...
+# Subtest: J6: editing Iona's receive source rig reopens a Marlo-only design
+ok 32 - J6: editing Iona's receive source rig reopens a Marlo-only design
+  ---
+  duration_ms: 13.588254
+  type: 'test'
+  ...
+# Subtest: J9: a compiled P0 Three film parses and validates through the legacy Iona alias
+ok 33 - J9: a compiled P0 Three film parses and validates through the legacy Iona alias
+  ---
+  duration_ms: 2960.296164
+  type: 'test'
+  ...
+# Subtest: J9: the legacy P0 resource hash is limited to Iona and its owned prop
+ok 34 - J9: the legacy P0 resource hash is limited to Iona and its owned prop
+  ---
+  duration_ms: 432.61578
+  type: 'test'
+  ...
+# Subtest: J3: the editor's layer conversion and save/reload keep a non-Iona character's embedded spec intact
+ok 35 - J3: the editor's layer conversion and save/reload keep a non-Iona character's embedded spec intact
+  ---
+  duration_ms: 5853.656445
+  type: 'test'
+  ...
+# Subtest: J10: the authoring guide's starter spec checks, stamps and performs exactly as documented
+ok 36 - J10: the authoring guide's starter spec checks, stamps and performs exactly as documented
+  ---
+  duration_ms: 210.005882
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# \# J12 31 frames: real peak 44.2 MiB, estimate 136.3 MiB (3.1x)
+# Subtest: J12 the measured disk estimate covers a real render's peak temp bytes and is not wildly above it
+ok 37 - J12 the measured disk estimate covers a real render's peak temp bytes and is not wildly above it
+  ---
+  duration_ms: 120326.010794
+  type: 'test'
+  ...
+# [narration] synthesizing 2 segment(s) with tone
+# [narration] 2 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# [caption-journey] controls long
+# [caption-journey] reload long
+# [caption-journey] controls passed long
+# [caption-journey] controls reel
+# [caption-journey] reload reel
+# [caption-journey] controls passed reel
+# [caption-journey] export comparison Long
+# [caption-journey] export comparison Reel
+# Subtest: J13 captions: move resize scope lock undo reset reload and preview/export in Wide and Reel
+ok 38 - J13 captions: move resize scope lock undo reset reload and preview/export in Wide and Reel
+  ---
+  duration_ms: 103760.365383
+  type: 'test'
+  ...
+# Subtest: decision D6: studio soundtrack journey covers narration retention, asset insertion lane, music ducking through end card, and multi-music persistence
+ok 39 - decision D6: studio soundtrack journey covers narration retention, asset insertion lane, music ducking through end card, and multi-music persistence
+  ---
+  duration_ms: 92359.030788
+  type: 'test'
+  ...
+# Subtest: legacy sfx with durationSec: the studio preview plays past more effects than the Player has audio tags
+ok 40 - legacy sfx with durationSec: the studio preview plays past more effects than the Player has audio tags
+  ---
+  duration_ms: 15944.938206
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J1 script to wide and reel mp4s through the real pipeline, with no model, key or GPU
+ok 41 - J1 script to wide and reel mp4s through the real pipeline, with no model, key or GPU
+  ---
+  duration_ms: 181249.81245
+  type: 'test'
+  ...
+# Subtest: J4 character and prop stay in frame and clear of the caption band in wide and reel
+ok 42 - J4 character and prop stay in frame and clear of the caption band in wide and reel
+  ---
+  duration_ms: 1994.935868
+  type: 'test'
+  ...
+# Subtest: J12 a render leaves no temp folders behind and stays small on disk
+ok 43 - J12 a render leaves no temp folders behind and stays small on disk
+  ---
+  duration_ms: 1.628151
+  type: 'test'
+  ...
+# [Tab 1, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 1, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# Subtest: J3 a frame is a pure function of its frame number: a concurrent out-of-order render equals each frame rendered cold
+not ok 44 - J3 a frame is a pure function of its frame number: a concurrent out-of-order render equals each frame rendered cold
+  ---
+  duration_ms: 302381.473171
+  type: 'test'
+  location: '/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/harness.ts:2:7973'
+  failureType: 'testCodeFailure'
+  error: 'Timeout (30000ms) exceeded rendering the component at frame 229. Open delayRender() handles: "1. Extracting audio for frame 229", "2. Extracting audio for frame 33", "3. SVG scene journey-iona frame 229 painted", "4. Waiting for R3F to render frame 229". You can increase the timeout using the "timeoutInMilliseconds" / "--timeout" option of the function or command you used to trigger this render.'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    /home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/node_modules/@remotion/renderer/dist/seek-to-frame.js:86:28
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 1 line(s) recorded, 2 reused
+# Subtest: J2 a narration change after design moves the contact to the new word and renders anew, reusing nothing stale
+ok 45 - J2 a narration change after design moves the contact to the new word and renders anew, reusing nothing stale
+  ---
+  duration_ms: 136504.518158
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 1, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 1, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# Subtest: J3/J4 dots: preview equals export including cold/reverse seeks and both crops retain the catch
+ok 46 - J3/J4 dots: preview equals export including cold/reverse seeks and both crops retain the catch
+  ---
+  duration_ms: 281998.255058
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J5 three distinct characters pass look, design, compile and short wide/reel production with the same action
+ok 47 - J5 three distinct characters pass look, design, compile and short wide/reel production with the same action
+  ---
+  duration_ms: 280242.804785
+  type: 'test'
+  ...
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# [Tab 0, node_modules/three/build/three.core.js:6257] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+# Subtest: J3 the real Remotion Player matches exported pixels at the same absolute frames in both formats
+ok 48 - J3 the real Remotion Player matches exported pixels at the same absolute frames in both formats
+  ---
+  duration_ms: 95028.210037
+  type: 'test'
+  ...
+# Subtest: J8 no WebGL gives a named export refusal and visible Player error, never a blank successful frame
+ok 49 - J8 no WebGL gives a named export refusal and visible Player error, never a blank successful frame
+  ---
+  duration_ms: 13541.370717
+  type: 'test'
+  ...
+# [narration] synthesizing 2 segment(s) with tone
+# [narration] 2 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# [soundtrack] Skipping default music and effects for "journey-ai-edit" (long): suitable tracks are not verified in the audio cache; run "aideos audio fetch". Delivery will refuse this film until it has both.
+# Subtest: J3 studio: Apply Edits on an AI edit plan applies, saves and survives a reload
+ok 50 - J3 studio: Apply Edits on an AI edit plan applies, saves and survives a reload
+  ---
+  duration_ms: 12038.979949
+  type: 'test'
+  ...
+# [narration] synthesizing 2 segment(s) with tone
+# [narration] 2 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# [soundtrack] Skipping default music and effects for "journey-ai-edit" (long): narration audio cannot be read (Audio source file not found: videos/journey-ai-edit/voiceover.wav). Delivery will refuse this film until it has both.
+# Subtest: J3 studio: a new project's script saves to disk and is still there after a reload
+ok 51 - J3 studio: a new project's script saves to disk and is still there after a reload
+  ---
+  duration_ms: 13587.531133
+  type: 'test'
+  ...
+# Subtest: J4 Iona, Pip and Marlo keep the full moving character and prop inside both caption-safe crops
+ok 52 - J4 Iona, Pip and Marlo keep the full moving character and prop inside both caption-safe crops
+  ---
+  duration_ms: 78058.367807
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J6 resume reuses everything when nothing changed, and a character edit reruns exactly design through verify
+ok 53 - J6 resume reuses everything when nothing changed, and a character edit reruns exactly design through verify
+  ---
+  duration_ms: 134648.947406
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J7 film-derived stage truth describes the whole film in wide and reel crops
+ok 54 - J7 film-derived stage truth describes the whole film in wide and reel crops
+  ---
+  duration_ms: 138667.97026
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J8 a cue phrase that is not spoken names the phrase and the shot, and writes no film
+not ok 55 - J8 a cue phrase that is not spoken names the phrase and the shot, and writes no film
+  ---
+  duration_ms: 971.010482
+  type: 'test'
+  location: '/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/harness.ts:2:7973'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /"never spoken here" is not spoken in shot "beat-02"/. Input:
+    
+    'look performance receive-message: design differs from action, actor, prop, start, decisive cue or after-state intention'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'look performance receive-message: design differs from action, actor, prop, start, decisive cue or after-state intention'
+  operator: 'match'
+  stack: |-
+    <anonymous> (/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/j8_failures.journey.ts:46:10)
+    async TestContext.<anonymous> (/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/harness.ts:200:7)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J8 a cue naming a shot that does not exist says which shot
+not ok 56 - J8 a cue naming a shot that does not exist says which shot
+  ---
+  duration_ms: 657.607169
+  type: 'test'
+  location: '/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/harness.ts:2:7973'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /No shot "no-such-shot"/. Input:
+    
+    'look change iona at beat-02: planned state "message-received" has no changing clip or performance\n' +
+      'look change glider at beat-02: planned state "message-received" has no changing clip or performance\n' +
+      'look performance receive-message: design differs from action, actor, prop, start, decisive cue or after-state intention'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    look change iona at beat-02: planned state "message-received" has no changing clip or performance
+    look change glider at beat-02: planned state "message-received" has no changing clip or performance
+    look performance receive-message: design differs from action, actor, prop, start, decisive cue or after-state intention
+  operator: 'match'
+  stack: |-
+    <anonymous> (/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/j8_failures.journey.ts:56:10)
+    async TestContext.<anonymous> (/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/harness.ts:200:7)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J8 artwork named in the design but missing on disk is reported by file name
+ok 57 - J8 artwork named in the design but missing on disk is reported by file name
+  ---
+  duration_ms: 595.686694
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J8 a failed design stops the run at needs_design and renders nothing
+ok 58 - J8 a failed design stops the run at needs_design and renders nothing
+  ---
+  duration_ms: 718.732209
+  type: 'test'
+  ...
+# Subtest: J8 a hand target that cannot be reached clamps without NaN and fails the grip critique by name
+ok 59 - J8 a hand target that cannot be reached clamps without NaN and fails the grip critique by name
+  ---
+  duration_ms: 456.227193
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J10 an unknown field in design.json is reported by field name
+ok 60 - J10 an unknown field in design.json is reported by field name
+  ---
+  duration_ms: 640.955435
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J8 a cue phrase spoken twice in one shot is rejected as ambiguous
+ok 61 - J8 a cue phrase spoken twice in one shot is rejected as ambiguous
+  ---
+  duration_ms: 647.417712
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J10 a bad design value names its field and expected value
+ok 62 - J10 a bad design value names its field and expected value
+  ---
+  duration_ms: 861.870744
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J10 a bad look value names its field and expected value
+ok 63 - J10 a bad look value names its field and expected value
+  ---
+  duration_ms: 1177.382233
+  type: 'test'
+  ...
+# Subtest: J10 a bad character spec names its field and expected value
+ok 64 - J10 a bad character spec names its field and expected value
+  ---
+  duration_ms: 20.879745
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J8 an unreachable hand target is refused before the film is written
+ok 65 - J8 an unreachable hand target is refused before the film is written
+  ---
+  duration_ms: 1779.110158
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J8 a missing character resource is named before the film is written
+not ok 66 - J8 a missing character resource is named before the film is written
+  ---
+  duration_ms: 786.507133
+  type: 'test'
+  location: '/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/harness.ts:2:7973'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /absent-courier.*characters\/absent-courier.character.json/. Input:
+    
+    'look.json film.performances.receive-message.character: names character "iona" but its actor cast "iona" is character "absent-courier"; one performance plans one character.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'look.json film.performances.receive-message.character: names character "iona" but its actor cast "iona" is character "absent-courier"; one performance plans one character.'
+  operator: 'match'
+  stack: |-
+    <anonymous> (/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/j8_failures.journey.ts:170:10)
+    async TestContext.<anonymous> (/home/mani/.no-mistakes/worktrees/ca5c20cae3fa/01M79M1Q9916YVF9J1PC1DA87B/backend/journeys/harness.ts:200:7)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: J9 Still Talking frame 2773 reproduces exactly across cold SVG renders
+ok 67 - J9 Still Talking frame 2773 reproduces exactly across cold SVG renders
+  ---
+  duration_ms: 64588.937847
+  type: 'test'
+  ...
+# [narration] synthesizing 3 segment(s) with tone
+# [narration] 3 line(s) recorded, 0 reused
+# [narration] synthesizing 1 segment(s) with tone
+# [narration] 1 line(s) recorded, 0 reused
+# Subtest: J9 an existing template film still renders through the real pipeline
+ok 68 - J9 an existing template film still renders through the real pipeline
+  ---
+  duration_ms: 82455.440356
+  type: 'test'
+  ...
+# Master long.mp4: -15.4 -> -16 LUFS, -1.4 -> -2.2 dBTP; gain -0.6 dB
+# Master reel.mp4: -15.4 -> -16 LUFS, -1.4 -> -2.2 dBTP; gain -0.6 dB
+# Subtest: D6 master: AAC overshoot is corrected in wide and reel delivered MP4s
+ok 69 - D6 master: AAC overshoot is corrected in wide and reel delivered MP4s
+  ---
+  duration_ms: 2098.239512
+  type: 'test'
+  ...
+# Subtest: late receive shifts every timed channel, keeps recovery, and holds outside its span
+ok 70 - late receive shifts every timed channel, keeps recovery, and holds outside its span
+  ---
+  duration_ms: 556.839052
+  type: 'test'
+  ...
+# Subtest: strict serialization preserves performance and rejects unknown v2 fields and legacy actors
+ok 71 - strict serialization preserves performance and rejects unknown v2 fields and legacy actors
+  ---
+  duration_ms: 812.447115
+  type: 'test'
+  ...
+# Subtest: missing or changed approved resources fail, and unsupported secondary channels never disappear silently
+ok 72 - missing or changed approved resources fail, and unsupported secondary channels never disappear silently
+  ---
+  duration_ms: 1958.252936
+  type: 'test'
+  ...
+# Subtest: fitting and critique source changes invalidate the frozen stage resources
+ok 73 - fitting and critique source changes invalidate the frozen stage resources
+  ---
+  duration_ms: 5.853714
+  type: 'test'
+  ...
+# Subtest: projection agrees with actual orthographic camera matrices in both crops, including rotation and zoom
+ok 74 - projection agrees with actual orthographic camera matrices in both crops, including rotation and zoom
+  ---
+  duration_ms: 4.852229
+  type: 'test'
+  ...
+# Subtest: cold, reverse and repeated contact geometry agrees, and cropped poses fail the design gate
+ok 75 - cold, reverse and repeated contact geometry agrees, and cropped poses fail the design gate
+  ---
+  duration_ms: 17226.879903
+  type: 'test'
+  ...
+# Subtest: editor layer conversion, save and reload retain the identical compiled performance
+ok 76 - editor layer conversion, save and reload retain the identical compiled performance
+  ---
+  duration_ms: 5029.828622
+  type: 'test'
+  ...
+# Subtest: hidden scene and muted narration flags survive save/reload without stripping the stage
+ok 77 - hidden scene and muted narration flags survive save/reload without stripping the stage
+  ---
+  duration_ms: 481.859365
+  type: 'test'
+  ...
+# Subtest: P2 production build refuses a reel margin violation and preserves the previous film byte for byte
+ok 78 - P2 production build refuses a reel margin violation and preserves the previous film byte for byte
+  ---
+  duration_ms: 3686.707756
+  type: 'test'
+  ...
+# Subtest: P2 full silhouettes reject wide captions and reel cropping, with shot and rule diagnostics
+ok 79 - P2 full silhouettes reject wide captions and reel cropping, with shot and rule diagnostics
+  ---
+  duration_ms: 7202.348075
+  type: 'test'
+  ...
+# Subtest: editor caption check reports a posed-character collision at the active frame
+ok 80 - editor caption check reports a posed-character collision at the active frame
+  ---
+  duration_ms: 3154.88839
+  type: 'test'
+  ...
+# Subtest: Three-stage default caption guard stays active when only the other format is placed
+ok 81 - Three-stage default caption guard stays active when only the other format is placed
+  ---
+  duration_ms: 18475.544325
+  type: 'test'
+  ...
+# Subtest: P2 clear Three insets pass and a one-frame moving silhouette intersection fails
+ok 82 - P2 clear Three insets pass and a one-frame moving silhouette intersection fails
+  ---
+  duration_ms: 15591.172311
+  type: 'test'
+  ...
+# Subtest: P2 camera speed is measured in each output crop and cast focus resolves evaluated geometry
+ok 83 - P2 camera speed is measured in each output crop and cast focus resolves evaluated geometry
+  ---
+  duration_ms: 17800.925249
+  type: 'test'
+  ...
+# Subtest: P2 after-state requires two seconds of clear carry and a camera hold
+ok 84 - P2 after-state requires two seconds of clear carry and a camera hold
+  ---
+  duration_ms: 8581.020856
+  type: 'test'
+  ...
+# Subtest: P2 duplicate writers and broken contact seams fail without inventing a second prop
+ok 85 - P2 duplicate writers and broken contact seams fail without inventing a second prop
+  ---
+  duration_ms: 15143.475709
+  type: 'test'
+  ...
+# Subtest: P2 geometry and depth queries are independent of character shape and retain honest provenance
+ok 86 - P2 geometry and depth queries are independent of character shape and retain honest provenance
+  ---
+  duration_ms: 9.743971
+  type: 'test'
+  ...
+# Subtest: P2 material palette rejects an undeclared base color and shader outline, including hidden meshes
+ok 87 - P2 material palette rejects an undeclared base color and shader outline, including hidden meshes
+  ---
+  duration_ms: 0.881132
+  type: 'test'
+  ...
+# Subtest: character-owned palette accepts its built materials and rejects an undeclared color
+ok 88 - character-owned palette accepts its built materials and rejects an undeclared color
+  ---
+  duration_ms: 833.818143
+  type: 'test'
+  ...
+# Subtest: P2 foreground obstruction blocks carry facts and honors exact element opacity
+ok 89 - P2 foreground obstruction blocks carry facts and honors exact element opacity
+  ---
+  duration_ms: 23367.591289
+  type: 'test'
+  ...
+# Subtest: P2 stage preparation failures return shot and rule diagnostics instead of throwing
+ok 90 - P2 stage preparation failures return shot and rule diagnostics instead of throwing
+  ---
+  duration_ms: 812.27561
+  type: 'test'
+  ...
+# Subtest: P2 missing mesh data and orthographic depth clipping fail with the mesh name
+ok 91 - P2 missing mesh data and orthographic depth clipping fail with the mesh name
+  ---
+  duration_ms: 1.698665
+  type: 'test'
+  ...
+# Subtest: J7: plan adherence passes a performance whose contact lands on its decisive word, with no clip starting at the cue
+ok 92 - J7: plan adherence passes a performance whose contact lands on its decisive word, with no clip starting at the cue
+  ---
+  duration_ms: 10506.155366
+  type: 'test'
+  ...
+# Subtest: J2 and J7: a contact that no longer lands on its word fails adherence and cue timing, whatever the recorded decisive frame says
+ok 93 - J2 and J7: a contact that no longer lands on its word fails adherence and cue timing, whatever the recorded decisive frame says
+  ---
+  duration_ms: 8584.086452
+  type: 'test'
+  ...
+# Subtest: J7: a scene+card shot with a listed performance still fails when contact misses its decisive cue
+ok 94 - J7: a scene+card shot with a listed performance still fails when contact misses its decisive cue
+  ---
+  duration_ms: 5570.034712
+  type: 'test'
+  ...
+# Subtest: J7: stage carry-over counts named identities only when evaluator ownership changes
+ok 95 - J7: stage carry-over counts named identities only when evaluator ownership changes
+  ---
+  duration_ms: 5775.004376
+  type: 'test'
+  ...
+# Subtest: J7: presence is measured in the reviewed crop; a character outside the reel column is present in the long output only
+ok 96 - J7: presence is measured in the reviewed crop; a character outside the reel column is present in the long output only
+  ---
+  duration_ms: 10876.035769
+  type: 'test'
+  ...
+# Subtest: J7: stage truth reports evaluator ownership at action start, contact and after-state
+ok 97 - J7: stage truth reports evaluator ownership at action start, contact and after-state
+  ---
+  duration_ms: 6835.451787
+  type: 'test'
+  ...
+# Subtest: J7: a cast member no performance draws is hidden, never counted present
+ok 98 - J7: a cast member no performance draws is hidden, never counted present
+  ---
+  duration_ms: 5415.435359
+  type: 'test'
+  ...
+# Subtest: J7: the stage camera is measured in each output; the same pan is a move in the reel but drift in the long cut
+ok 99 - J7: the stage camera is measured in each output; the same pan is a move in the reel but drift in the long cut
+  ---
+  duration_ms: 8430.68157
+  type: 'test'
+  ...
+# Subtest: J7: a there-and-back stage pan remains one projected camera move in the reel
+ok 100 - J7: a there-and-back stage pan remains one projected camera move in the reel
+  ---
+  duration_ms: 3356.429317
+  type: 'test'
+  ...
+# Subtest: J7: the stage facts for Gemini name the characters, the contact against the word and everything unmeasured, in plain words
+ok 101 - J7: the stage facts for Gemini name the characters, the contact against the word and everything unmeasured, in plain words
+  ---
+  duration_ms: 9815.151812
+  type: 'test'
+  ...
+# Subtest: J9: SVG scene facts do not depend on the reviewed output
+ok 102 - J9: SVG scene facts do not depend on the reviewed output
+  ---
+  duration_ms: 11.229637
+  type: 'test'
+  ...
+1..102
+# tests 102
+# suites 0
+# pass 96
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2822928.111638
