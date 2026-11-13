@@ -156,6 +156,20 @@ test("stage timeline: wholly off-frame Three performance remains a hold", () => 
   assert.ok(timeline.holds.length > 0);
 });
 
+// Holds the stage for four seconds inside one shot, with and without an inset counter drawn over it.
+test("stage policy: an inset counter over a held stage is motion, the bare hold still blocks", () => {
+  withFilm(ART, [move(0, 30, 0, 30), move(30, 60, 150, 30)], (film) => {
+    const holds = () => checkFilmDesign(film).findings.filter((f) => f.rule === "stage-hold");
+    assert.ok(holds().some((f) => /1.00s to 5.00s/.test(f.message)));
+    film.shots[0] = { ...film.shots[0], stage: "inset", blocks: [{ c: "StatCounter", to: 40, label: "tokens", format: "plain" }] };
+    assert.deepEqual(stageTimeline(film, "long").spans.slice(0, 2), [
+      { segment: "story", motion: "moving", from: 0, to: 180 },
+      { segment: "story", motion: "holding", from: 180, to: 360 },
+    ]);
+    assert.equal(holds().some((f) => /1.00s to 5.00s/.test(f.message)), false);
+  });
+});
+
 test("stage policy: exactly three seconds is allowed, a longer story hold blocks", () => {
   withFilm(ART, [move(0, 100, 90, 269)], (film) => {
     assert.equal(stageTimeline(film, "long").holds.length, 0);
