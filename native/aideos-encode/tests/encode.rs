@@ -485,6 +485,40 @@ fn measured_speech_is_limited_to_the_film_timeline() {
     assert!((level_db(&mixed.samples, 4.5, 4.9) - (full - 8.0)).abs() < 0.3, "music stays at the music-only gain at the film end");
 }
 
+/// Clips with no timeline overlap do not require readable source files.
+#[test]
+fn clips_starting_at_or_after_film_end_are_ignored() {
+    let dir = TempDir::new("out-of-range-clips");
+    let mut at_end = AudioClip::new("missing-at-end.wav", Role::Voice);
+    at_end.start_sec = 5.0;
+    let mut after_end = AudioClip::new("missing-after-end.wav", Role::Effect);
+    after_end.start_sec = 5.1;
+    let plan = AudioPlan { clips: vec![at_end, after_end], ..AudioPlan::default() };
+    let mixed = mix_plan(&tools(), &plan, 5.0, dir.0.as_path()).unwrap();
+    assert_eq!(mixed.samples.len(), 5 * SAMPLE_RATE as usize * 2);
+    assert!(mixed.samples.iter().all(|sample| *sample == 0.0));
+}
+
+/// The duck-under-voice option affects music clips only.
+#[test]
+fn non_music_clips_are_not_ducked() {
+    let dir = TempDir::new("non-music-duck");
+    let voice = dir.join("voice.wav");
+    write_pcm16(&voice, SAMPLE_RATE, &tone(440.0, 0.5, 2.0, &[]));
+    let full = 20.0 * (0.5f64 / 2f64.sqrt()).log10();
+    for role in [Role::Voice, Role::Effect] {
+        let mut clip = AudioClip::new(&voice, role);
+        clip.duck_under_voice = true;
+        let plan = AudioPlan {
+            clips: vec![clip],
+            speech: Some(vec![SpeechInterval { start_sec: 0.0, end_sec: 2.0 }]),
+            ..AudioPlan::default()
+        };
+        let mixed = mix_plan(&tools(), &plan, 2.0, dir.0.as_path()).unwrap();
+        assert!((level_db(&mixed.samples, 0.5, 1.5) - full).abs() < 0.3, "{role:?} clips retain their full gain");
+    }
+}
+
 /// Rejects speech and story-end times that would otherwise distort ducking outside the film timeline.
 #[test]
 fn audio_plan_rejects_out_of_timeline_ducking_times() {

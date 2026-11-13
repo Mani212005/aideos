@@ -337,9 +337,14 @@ pub fn mix_plan(tools: &Tools, plan: &AudioPlan, total_sec: f64, base_dir: &Path
     let total_samples = (total_sec * SAMPLE_RATE as f64).round() as usize;
     let mut decoded: Vec<(usize, Vec<f32>)> = Vec::with_capacity(plan.clips.len());
     for clip in &plan.clips {
+        let start = (clip.start_sec * SAMPLE_RATE as f64).round() as usize;
+        if clip.start_sec >= total_sec {
+            decoded.push((start, Vec::new()));
+            continue;
+        }
         let path = if clip.path.is_absolute() { clip.path.clone() } else { base_dir.join(&clip.path) };
         let samples = decode_clip(tools, clip, &path)?;
-        decoded.push(((clip.start_sec * SAMPLE_RATE as f64).round() as usize, samples));
+        decoded.push((start, samples));
     }
     let speech = match &plan.speech {
         Some(given) => merge_speech(given),
@@ -358,7 +363,7 @@ pub fn mix_plan(tools: &Tools, plan: &AudioPlan, total_sec: f64, base_dir: &Path
             merge_speech(&found)
         }
     };
-    let duck_grid: Vec<f32> = if plan.clips.iter().any(|c| c.duck_under_voice) {
+    let duck_grid: Vec<f32> = if plan.clips.iter().any(|c| c.role == Role::Music && c.duck_under_voice) {
         let points = (total_sec / DUCK_GRID_SEC).ceil() as usize + 2;
         (0..points).map(|k| speech_gain(k as f64 * DUCK_GRID_SEC, &speech, &plan.mix) as f32).collect()
     } else {
@@ -380,7 +385,7 @@ pub fn mix_plan(tools: &Tools, plan: &AudioPlan, total_sec: f64, base_dir: &Path
             if fade_out > 0 && frames - i < fade_out {
                 gain *= (progress((frames - i) as f64 / fade_out as f64) * std::f64::consts::FRAC_PI_2).sin();
             }
-            if clip.duck_under_voice {
+            if clip.role == Role::Music && clip.duck_under_voice {
                 let position = time / DUCK_GRID_SEC;
                 let lower = position.floor() as usize;
                 let t = position - lower as f64;
