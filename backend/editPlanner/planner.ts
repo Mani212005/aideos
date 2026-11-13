@@ -133,7 +133,7 @@ ${clipsSummary}
 
 ---
 ### DESIGN SYSTEM & QUALITY RULES
-1. Color Palette: Use 6-value palette (#0A0A0B canvas, #F5F5F5 text, #8A8A8E muted, #635BFF accent).
+1. Color Palette: Use the palette #0A0A0B canvas, #F5F5F5 text, #8A8A8E muted, and the film's accent above.
 2. Typography: Geist for narrative, JetBrains Mono for system/numbers.
 3. No Long Dashes: Never use em dashes or en dashes anywhere; use hyphens (-) or colons (:).
 4. Audio-Visual Sync: When removing fillers or dead air, use 'remove_fillers' or 'remove_dead_air' so video, audio, and overlay clips ripple together without desync.

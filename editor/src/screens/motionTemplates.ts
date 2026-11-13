@@ -3,6 +3,8 @@
  * Each template is self-contained, scrub-exact SMIL animation so the studio's scrubber shows the
  * frame that will actually render. They exist so a user never faces an empty code box: every one is
  * a working animation that can be edited into something specific.
+ * Templates carry an accent token instead of a colour, so a template drawn into a project always uses
+ * that project's chosen accent (see `motionTemplateSvg`).
  * Inputs and outputs: motion template parameters -> pre-built SVG animation clip definitions.
  * Used by: editor/src/screens/MotionStage.tsx.
  */
@@ -13,6 +15,14 @@ export interface MotionTemplate {
   description: string;
   durationSec: number;
   svg: string;
+}
+
+/** Placeholder for the project's accent inside template markup. */
+const ACCENT_TOKEN = /__ACCENT__/g;
+
+/** A template's markup drawn in the given accent. */
+export function motionTemplateSvg(template: MotionTemplate, accent: string): string {
+  return template.svg.replace(ACCENT_TOKEN, accent);
 }
 
 export const MOTION_TEMPLATES: MotionTemplate[] = [
@@ -26,11 +36,11 @@ export const MOTION_TEMPLATES: MotionTemplate[] = [
   <g stroke="#F5F5F5" stroke-opacity="0.1">
     <path d="M0 135H480M240 0V270"/>
   </g>
-  <circle cx="240" cy="135" r="28" fill="none" stroke="#635BFF" stroke-width="3">
+  <circle cx="240" cy="135" r="28" fill="none" stroke="__ACCENT__" stroke-width="3">
     <animate attributeName="r" values="28;54;28" dur="2.4s" repeatCount="indefinite"/>
     <animate attributeName="stroke-opacity" values="1;0.15;1" dur="2.4s" repeatCount="indefinite"/>
   </circle>
-  <circle cx="240" cy="135" r="10" fill="#635BFF"/>
+  <circle cx="240" cy="135" r="10" fill="__ACCENT__"/>
   <text x="240" y="200" fill="#F5F5F5" font-family="monospace" font-size="14" text-anchor="middle">node</text>
 </svg>`,
   },
@@ -42,7 +52,7 @@ export const MOTION_TEMPLATES: MotionTemplate[] = [
     svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 270">
   <rect width="480" height="270" fill="#0A0A0B"/>
   <path d="M60 210 C 160 210, 160 60, 240 60 S 320 210, 420 210"
-        fill="none" stroke="#635BFF" stroke-width="4" stroke-linecap="round"
+        fill="none" stroke="__ACCENT__" stroke-width="4" stroke-linecap="round"
         stroke-dasharray="620" stroke-dashoffset="620">
     <animate attributeName="stroke-dashoffset" from="620" to="0" dur="3s" fill="freeze"/>
   </path>
@@ -59,7 +69,7 @@ export const MOTION_TEMPLATES: MotionTemplate[] = [
     durationSec: 2,
     svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 270">
   <rect width="480" height="270" fill="#0A0A0B"/>
-  <g fill="#635BFF">
+  <g fill="__ACCENT__">
     <rect x="90" y="210" width="48" height="0">
       <animate attributeName="height" from="0" to="60" dur="0.6s" begin="0s" fill="freeze"/>
       <animate attributeName="y" from="210" to="150" dur="0.6s" begin="0s" fill="freeze"/>
@@ -88,7 +98,7 @@ export const MOTION_TEMPLATES: MotionTemplate[] = [
     svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 270">
   <rect width="480" height="270" fill="#0A0A0B"/>
   <circle cx="240" cy="135" r="90" fill="none" stroke="#F5F5F5" stroke-opacity="0.12" stroke-width="2"/>
-  <circle cx="240" cy="135" r="18" fill="#635BFF"/>
+  <circle cx="240" cy="135" r="18" fill="__ACCENT__"/>
   <g>
     <animateTransform attributeName="transform" type="rotate"
       from="0 240 135" to="360 240 135" dur="4s" repeatCount="indefinite"/>
@@ -118,7 +128,7 @@ export const MOTION_TEMPLATES: MotionTemplate[] = [
   <text x="60" y="145" fill="#F5F5F5" font-family="monospace" font-size="20" clip-path="url(#typeMask)">
     attention(q, k, v)
   </text>
-  <rect y="126" width="10" height="22" fill="#635BFF">
+  <rect y="126" width="10" height="22" fill="__ACCENT__">
     <animate attributeName="x" from="60" to="420" dur="2.4s" fill="freeze"/>
     <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
   </rect>
@@ -136,11 +146,11 @@ export const MOTION_TEMPLATES: MotionTemplate[] = [
     <animateTransform attributeName="transform" type="translate" from="0 0" to="-75 0" dur="1.2s" fill="freeze"/>
   </g>
   <g>
-    <rect x="210" y="60" width="150" height="150" fill="#101013" stroke="#635BFF" stroke-width="3"/>
+    <rect x="210" y="60" width="150" height="150" fill="#101013" stroke="__ACCENT__" stroke-width="3"/>
     <animateTransform attributeName="transform" type="translate" from="0 0" to="75 0" dur="1.2s" fill="freeze"/>
   </g>
   <text x="120" y="238" fill="#8A8A8E" font-family="monospace" font-size="13" text-anchor="middle">before</text>
-  <text x="360" y="238" fill="#635BFF" font-family="monospace" font-size="13" text-anchor="middle">after</text>
+  <text x="360" y="238" fill="__ACCENT__" font-family="monospace" font-size="13" text-anchor="middle">after</text>
 </svg>`,
   },
 ];

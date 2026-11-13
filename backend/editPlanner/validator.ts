@@ -13,6 +13,7 @@ import { shotSchema } from "../../src/dl/schema";
 import { editProgramSchema, type EditOp } from "./schema";
 import { applyEditProgram } from "./interpreter";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
+import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
 
 export interface EditProgramValidationResult {
   valid: boolean;
@@ -52,7 +53,7 @@ function createLayeredFilmFromContext(context: EditContext): LayeredFilm {
     id: "context-film",
     title: "Context Film",
     fps: (context.meta.fps as 24 | 30 | 60) || 30,
-    accent: context.meta.accent || "#635BFF",
+    accent: context.meta.accent || DEFAULT_PROJECT_ACCENT,
     theme: context.meta.theme,
     captionPlacement: context.meta.captionPlacement,
     canvas: { nodes: [{ id: "n1", label: "Scene", x: 0, y: 0, w: 190, h: 62 }], edges: [] },

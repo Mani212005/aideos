@@ -13,6 +13,7 @@ import { carryCaptionPlacement, splitCaptionDescendants } from "../../src/dl/cap
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
+import { boundTheme } from "../../src/projectTheme";
 import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { writeFilm } from "../pipeline/filmStore";
 import { buildSvgSources } from "../scene/buildSvgSources";
@@ -249,8 +250,11 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
     const activeFilm = parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8")));
     const baseFilm = parseFilm(JSON.parse(fs.readFileSync(baseFile, "utf8")));
     film = carryCaptionPlacement(activeFilm, baseFilm, { owner: false });
+    const chosen = boundTheme(activeFilm);
     buildFilm = {
       ...baseFilm,
+      theme: activeFilm.theme,
+      ...(chosen ? { accent: chosen.accent } : {}),
       soundtrack: baseFilm.soundtrack?.defaultScore ? undefined : baseFilm.soundtrack,
       ...(!spec.soundtrack && activeFilm.soundtrack && !activeFilm.soundtrack.defaultScore ? { soundtrack: activeFilm.soundtrack } : {}),
       ...(!spec.soundtrack && activeFilm.music ? { music: activeFilm.music } : {}),

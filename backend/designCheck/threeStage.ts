@@ -9,6 +9,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import { rectInside, projectStagePoint, SAFE_SQUARE, type SceneRect } from "../../src/dl/scene/projection";
 import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
+import { boundTheme } from "../../src/projectTheme";
 import { getInsetRegion, getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
 import { buildTimeline, shotAt } from "../../src/dl/camera";
 import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionPhrases";
@@ -81,7 +82,8 @@ export function checkThreeStage(
       const placementAtFrame = (frame: number) => captionPhraseAtFrame(phrases, frame)?.placement ??
         resolveCaptionPlacement(film, format, shotAt(timeline, frame)?.shot.id);
       for (const material of facts.materials) {
-        for (const colour of undeclaredMaterialColours(material.meshes, material.palette)) add("palette", 0, format, material.actor, `undeclared 3D material colour ${colour}; declare it in character ${material.character}'s palette`);
+        const chosenAccent = boundTheme(film)?.accent;
+        for (const colour of undeclaredMaterialColours(material.meshes, material.palette, chosenAccent)) add("palette", 0, format, material.actor, `undeclared 3D material colour ${colour}; declare it in character ${material.character}'s palette`);
       }
       const held = new Map((scene.performances ?? []).map((p) => [p.id, 0]));
       const starts = new Map((scene.performances ?? []).map((p) => [p.id, Math.ceil(p.data.holdFromFrame)]));

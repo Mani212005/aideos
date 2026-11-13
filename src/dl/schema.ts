@@ -403,6 +403,8 @@ export const themeSchema = z.object({
   storyStyle: storyStyleSchema.optional(),
   cameraAngle: cameraAngleSchema.optional(),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  /** True only when the user chose this theme and accent when creating the project; only then is the accent binding (src/projectTheme.ts). */
+  accentChosen: z.boolean().optional(),
 });
 
 /** An owner-controlled caption placement; absent w keeps the content-sized auto card. */

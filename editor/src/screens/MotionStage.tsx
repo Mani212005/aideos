@@ -49,7 +49,8 @@ import {
   ToolbarLabel,
   type NoteTone,
 } from "../components/ui";
-import { MOTION_TEMPLATES, type MotionTemplate } from "./motionTemplates";
+import { MOTION_TEMPLATES, motionTemplateSvg, type MotionTemplate } from "./motionTemplates";
+import { filmAccent } from "../../../src/projectTheme";
 
 export interface SavedVisual {
   name: string;
@@ -154,8 +155,9 @@ export function MotionStage(props: MotionStageProps) {
 /** Author, scrub, save and place custom SVG animations by hand. */
 function HandEditor({ film, commit, notify }: MotionStageProps) {
   const fps = film.fps || 30;
+  const accent = filmAccent(film);
   const [name, setName] = useState("my-animation");
-  const [markup, setMarkup] = useState<string>(MOTION_TEMPLATES[0].svg);
+  const [markup, setMarkup] = useState<string>(motionTemplateSvg(MOTION_TEMPLATES[0], accent));
   const [durationSec, setDurationSec] = useState(3);
   const [timeSec, setTimeSec] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -210,7 +212,7 @@ function HandEditor({ film, commit, notify }: MotionStageProps) {
 
   /** Load a starter template into the editor. */
   const applyTemplate = (template: MotionTemplate) => {
-    setMarkup(template.svg);
+    setMarkup(motionTemplateSvg(template, accent));
     setDurationSec(template.durationSec);
     setName(template.id);
     setTimeSec(0);
