@@ -279,8 +279,7 @@ for (const state of [
     fs.writeFileSync(f.outPath, "previous render");
     fs.writeFileSync(`${f.outPath}.render.json`, "previous sidecar");
     fs.writeFileSync(`${f.outPath}.master.json`, "previous master report");
-    let job: ReturnType<typeof createRenderJob>;
-    job = createRenderJob(
+    const job: ReturnType<typeof createRenderJob> = createRenderJob(
       { film: f.film, format: "reel", outPath: f.outPath, profile: "review" },
       f.renderer,
       {

@@ -205,8 +205,8 @@ test("shutdown force-kills a stubborn frame sampler during disk preflight", asyn
     { caller: "manual" },
     {
       ...deps,
-      checkDiskBudget: async ({ signal, forceSignal }) =>
-        runRenderCommand(
+      checkDiskBudget: async ({ signal, forceSignal }) => {
+        await runRenderCommand(
           {
             command: process.execPath,
             args: [
@@ -222,7 +222,9 @@ test("shutdown force-kills a stubborn frame sampler during disk preflight", asyn
           samplePath,
           { signal, forceSignal, requireOutput: false },
           deps,
-        ),
+        );
+        return assert.fail("the forced sampler must not finish preflight");
+      },
       run: async () => assert.fail("encoding must not start before preflight ends"),
     },
   );

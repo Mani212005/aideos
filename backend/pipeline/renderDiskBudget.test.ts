@@ -131,7 +131,7 @@ test("checkRenderDiskBudget samples the picked frames of the film through the in
 
 test("checkRenderDiskBudget forwards forced shutdown to the frame sampler", async () => {
   const film = loadFixtureFilm("fixture-canvas-a");
-  const total = buildTimeline(film).totalFrames;
+  const total = buildTimeline(film).slice(-1)[0].to;
   const forceController = new AbortController();
   let received: AbortSignal | undefined;
   await checkRenderDiskBudget({
