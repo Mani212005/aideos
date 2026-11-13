@@ -10,7 +10,7 @@ import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import type { Film } from "../src/dl/schema";
 import { compileScene, type CompiledScene, type CompiledEntity } from "../src/dl/scene/compile";
 import type { Scene } from "../src/dl/scene/types";
-import { stageProjection } from "../src/dl/scene/projection";
+import { projectStagePoint, stageProjection } from "../src/dl/scene/projection";
 import { elementVisible, VISIBLE_OPACITY_MIN } from "../src/dl/scene/visibility";
 import { projectedSvgParts } from "./designCheck/insetRegion";
 import { createPerformanceEvaluator } from "../src/dl/performance/evaluate";
@@ -54,7 +54,7 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
     const actor = scene!.cast?.find((c) => c.id === p.actor);
     const character = actor?.kind === "character" ? resolveStageCharacter(actor) : undefined;
     if (!character) throw new Error(`stage timeline: missing character ${p.actor}`);
-    return { id: p.id, evaluate: createPerformanceEvaluator(rigFromCharacter(character.spec), p.data) };
+    return { actor: actor.kind === "character" ? actor : undefined, evaluate: createPerformanceEvaluator(rigFromCharacter(character.spec), p.data) };
   });
   // Projects only changed targets, preserving ancestor opacity and this output's crop.
   const inkAt = (entity: CompiledEntity, frame: number, targets?: ReadonlySet<string>) => {
@@ -108,9 +108,16 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
     }
     for (const p of performers) {
       if (moving) break;
-      const { frame: _f, phase: _phase, ...before } = p.evaluate(f);
-      const { frame: _n, phase: _nextPhase, ...after } = p.evaluate(n);
-      moving = JSON.stringify(before) !== JSON.stringify(after);
+      const before = p.evaluate(f), after = p.evaluate(n);
+      const visibleGeometry = (pose: typeof before, frame: number) => {
+        const camera = compiled!.frames[frame].camera ?? { center: { x: scene!.sceneSize.w / 2, y: scene!.sceneSize.h / 2 }, zoom: 1, rotation: 0 };
+        const cast = p.actor!;
+        const project = (point: { x: number; y: number }) => projectStagePoint({ x: cast.position[0] + point.x * cast.unitsToStage, y: cast.position[1] - point.y * cast.unitsToStage }, camera, width, height, scene!.sceneSize);
+        return [...Object.entries(pose.joints).map(([id, joint]) => [id, project({ x: joint.position[0], y: joint.position[1] })] as const), ["prop", project({ x: pose.prop.position[0], y: pose.prop.position[1] })] as const]
+          .filter(([, point]) => point.x >= 0 && point.x <= width && point.y >= 0 && point.y <= height);
+      };
+      const beforeVisible = visibleGeometry(before, f), afterVisible = visibleGeometry(after, n);
+      moving = JSON.stringify(beforeVisible) !== JSON.stringify(afterVisible) && (beforeVisible.length > 0 || afterVisible.length > 0);
     }
     const state: StageState = { segment: "story", motion: moving ? "moving" : "holding" };
     const last = spans[spans.length - 1];

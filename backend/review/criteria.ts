@@ -483,7 +483,7 @@ function pacing(i: ReviewInputs, profile: PacingProfileName): CriterionResult {
   if (cutsPerMin > T.pacing.hardCutsPerMinMax) failures.push(`${render.hardCutTimes.length} hard cuts (${round(cutsPerMin, 1)} per minute, max ${T.pacing.hardCutsPerMinMax}): the film plays as separate panels`);
   let deadAir = 0;
   if (narration?.timed) deadAir = pauses(narration.words, T.pacing.deadAirMaxSec).length;
-  else if (video.audioDurationSec !== null) deadAir = silences.filter((s) => s.start > 1 && s.end < video.durationSec - 1 && s.end - s.start > T.pacing.deadAirMaxSec).length;
+  else if (video.audioDurationSec !== null) deadAir = storyRanges(silences, storyEnd).filter((s) => s.start > 1 && s.end < storyEnd - 1 && s.end - s.start > T.pacing.deadAirMaxSec).length;
   if (deadAir > 0) failures.push(`${deadAir} stretches of dead air longer than ${T.pacing.deadAirMaxSec} s inside the narration`);
   const wpm = narration?.timed ? wordsPerMinute(narration.words) : narration ? (narration.text.split(/\s+/).filter(Boolean).length / video.durationSec) * 60 : null;
   const band = T.pacingProfiles[profile];
