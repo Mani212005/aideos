@@ -18,7 +18,7 @@ import { stageHoldFactLine } from "./geminiReview/facts";
 import { checkFilmDesign } from "./designCheck/designCheck";
 import { readFilmFacts } from "./review/source";
 import { stageTimeline, stageSegments, storyRanges, transitionStage } from "./stageTimeline";
-import { partsInViewport, projectMeshParts } from "../src/dl/scene/stageGeometry";
+import { meshIsDrawn, partsInViewport, projectMeshParts } from "../src/dl/scene/stageGeometry";
 
 // Runs one synthetic scene with private static artwork and cleans up its public asset input.
 function withFilm(svg: string, clips: SvgAnimationClip[], run: (film: Film) => void): void {
@@ -112,6 +112,33 @@ test("stage geometry: rendered extent crossing the crop counts when endpoints ar
   assert.equal(partsInViewport(projected, 1920, 1080).length, 1);
   geometry.dispose();
   mesh.material.dispose();
+});
+
+// Distinguishes a visible rotation even when a symmetric mesh keeps the same projected bounds.
+test("stage geometry: projected vertex changes detect rotation with unchanged bounds", () => {
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute([-10, -10, 0, 10, -10, 0, 10, 10, 0, -10, -10, 0, 10, 10, 0, -10, 10, 0], 3));
+  const mesh = new Mesh(geometry, new MeshBasicMaterial());
+  const pose = { center: { x: 960, y: 960 }, zoom: 1, rotation: 0 };
+  const before = projectMeshParts([mesh], pose, 1920, 1080, { w: 1920, h: 1920 }, 0, true)[0];
+  mesh.rotation.z = Math.PI / 2;
+  mesh.updateMatrixWorld(true);
+  const after = projectMeshParts([mesh], pose, 1920, 1080, { w: 1920, h: 1920 }, 0, true)[0];
+  for (const axis of ["x0", "y0", "x1", "y1"] as const) assert.ok(Math.abs(before.bounds[axis] - after.bounds[axis]) < 1e-8);
+  assert.notEqual(before.signature, after.signature);
+  geometry.dispose();
+  mesh.material.dispose();
+});
+
+// Applies the shared opacity cutoff to transparent Three materials used by stage geometry checks.
+test("stage geometry: transparent meshes follow the shared visibility cutoff", () => {
+  const material = new MeshBasicMaterial({ transparent: true, opacity: 0.1 });
+  const mesh = new Mesh(new BufferGeometry(), material);
+  assert.equal(meshIsDrawn(mesh), true);
+  material.opacity = 0.04;
+  assert.equal(meshIsDrawn(mesh), false);
+  material.dispose();
+  mesh.geometry.dispose();
 });
 
 // Exercises the real character and prop performance path with the actor outside the output crop.

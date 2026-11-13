@@ -62,6 +62,10 @@ Hidden or off-frame SVG animation does not count as motion. SVG rendering uses t
 authored/animated opacity resolver; continuity and stage/review visibility use that resolver with
 the shared 0.05 cutoff.
 
+Inset checking uses the same 0.05 visibility cutoff. Before this change, an inset SVG element at
+opacity 0.1 was ignored as faint art; it now counts as visible and can fail when it overlaps the
+device inset region.
+
 Measured pacing combines these scene spans with pixel freeze measurements. Both are clipped to the
 story before applying the same three-second limit. A run crossing into the end card keeps only its
 story portion; the fixed end-card hold is intentional. Gemini receives these same timeline facts,
