@@ -18,7 +18,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildTimeline, lookBox, nodeBox, solveCam } from "../../src/dl/camera";
 import { stageSegments, stageTimeline, type StageSpan } from "../stageTimeline";
-import { compileScene } from "../../src/dl/scene/compile";
 import { MS } from "../../src/dl/motion";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
@@ -382,8 +381,7 @@ function readStoryFacts(film: Film, viewport: ReviewViewport): FilmFacts {
     shotBoundaries.push(acc);
   });
   if (scene) {
-    const compiled = compileScene(scene, { clockMs: 0 });
-    const stageTime = stageTimeline(film, formatOfViewport(viewport), { compiled });
+    const stageTime = stageTimeline(film, formatOfViewport(viewport));
     const boundaryFrames = shotBoundaries.map((t) => Math.round(t * fps));
     const { carry, clipStarts } = sceneBoundaries(scene, boundaryFrames, fps, stageTime.visibleAt);
     const three = scene.renderer === "three";
