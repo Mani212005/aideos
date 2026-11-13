@@ -1,5 +1,9 @@
 /**
  * File Description: Multi-channel outbound dispatcher and hybrid fallback manager for the Aideos Agent Bridge.
+ * Supports idempotent Auto-Prompt dispatch where an existing task counts as open only while younger than
+ * OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created or last sent) regardless of whether
+ * it is pending, claimed, or timed out with a sent pane; completed or failed tasks, or those whose pane delivery
+ * failed, are not open. After the window a click creates a new task. Non-idempotent dispatches are never merged.
  * Inputs and outputs: agent task events and dispatch requests -> dispatched tasks and logged events.
  * Used by: backend/agentBridge/index.ts, backend/designSpec/designer.ts.
  */
@@ -11,18 +15,23 @@ import { ROOT } from "../pipeline/filmStore";
 import { buildDirectingPrompt, buildTaskContext } from "./contextBuilder";
 import { taskQueue } from "./taskQueue";
 import { agentLink } from "../agentLink/store";
+import { OPEN_AFTER_TIMEOUT_MS, paneDelivery, type PaneDelivery, type PaneDeliveryDeps } from "./paneDelivery";
 import { remoteTaskPrompt } from "../agentLink/prompt";
 import type { AgentSessionInfo, AgentTask, DispatchChannel, DispatchOptions, DispatchResult } from "./types";
 
 /** Injectable tmux command effect; omitted under Node tests unless explicitly supplied. */
-export type DispatchTmuxRun = (args: string[]) => { status: number | null };
+export type DispatchTmuxRun = (args: string[]) => { status: number | null; stdout?: string };
 
 export interface DispatchDeps {
   tmux?: DispatchTmuxRun;
+  /** Pane delivery clock and timing, so tests run on virtual time. */
+  sleep?: PaneDeliveryDeps["sleep"];
+  now?: PaneDeliveryDeps["now"];
+  timing?: PaneDeliveryDeps["timing"];
 }
 
 /** Runs a tmux command for production dispatches. */
-function runTmux(args: string[]): { status: number | null } {
+function runTmux(args: string[]): { status: number | null; stdout?: string } {
   return spawnSync("tmux", args, { encoding: "utf8" });
 }
 
@@ -32,14 +41,18 @@ export const DEFAULT_AGENT_TIMEOUT_MS = 15000;
 const SESSION_FILE = path.join(ROOT, ".aideos_session.json");
 const EVENTS_LOG = path.join(ROOT, "state", "agent_events.jsonl");
 
+/** The equivalence key and dispatch time of each task created by an idempotent dispatch; weak, so it ends with the task. */
+const idempotencyKeys = new WeakMap<AgentTask, { key: string; atMs: number }>();
+
 /** Map storing active fallback timers by task identifier. */
 const activeFallbackTimers = new Map<string, NodeJS.Timeout>();
 
-// Automatically defuse fallback timers when a task is claimed or completed
+// Automatically defuse fallback timers when a task is claimed or completed, and let a settled task's prompt be sent again
 taskQueue.addListener((event, task) => {
   if (event === "claimed" || event === "completed" || event === "failed") {
     cancelFallbackTimer(task.id);
   }
+  if (event === "completed" || event === "failed") paneDelivery.release(task.id);
 });
 
 /** Reads the current active agent session configuration. */
@@ -163,14 +176,16 @@ Claim this task via MCP tool \`aideos_claim_task({ taskId: "${task.id}" })\` or 
   }
 }
 
-/** Writes local task files (.aideos_task.md) and attempts tmux dispatch. */
+/**
+ * Writes the local task file (.aideos_task.md) and hands the prompt to the agent's tmux pane. The pane
+ * queue sends it when the agent is idle at an empty prompt; `pane` says whether it is sending or queued.
+ */
 export function dispatchLocalAndTmux(
   prompt: string,
-  opts?: { sessionName?: string; pane?: string },
+  opts?: { sessionName?: string; pane?: string; taskId?: string; idempotent?: boolean },
   deps: DispatchDeps = {},
-): { tmuxSent: boolean; fileWritten: boolean } {
+): { fileWritten: boolean; pane?: PaneDelivery } {
   let fileWritten = false;
-  let tmuxSent = false;
 
   try {
     fs.writeFileSync(path.join(ROOT, ".aideos_task.md"), prompt, "utf8");
@@ -191,23 +206,63 @@ export function dispatchLocalAndTmux(
   const targetPane = opts?.pane || sessionInfo.tmuxPane;
   const tmux = deps.tmux ?? (process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === "test" ? undefined : runTmux);
   // Only stable pane IDs are safe: tmux also accepts session names as pane targets.
-  if (!targetPane || !/^%\d+$/.test(targetPane) || !tmux) return { tmuxSent, fileWritten };
+  if (!targetPane || !/^%\d+$/.test(targetPane) || !tmux) return { fileWritten };
 
   try {
-    const hasSess = tmux(["has-session", "-t", targetSession]);
-    if (hasSess.status === 0) {
-      const bufName = `aideos_${Date.now()}`;
-      const setBuf = tmux(["set-buffer", "-b", bufName, prompt]);
-      if (setBuf.status === 0) {
-        const pasted = tmux(["paste-buffer", "-b", bufName, "-t", targetPane, "-d"]);
-        if (pasted.status === 0) {
-          tmuxSent = tmux(["send-keys", "-t", targetPane, "Enter"]).status === 0;
-        }
-      }
-    }
-  } catch (_) {}
+    if (tmux(["has-session", "-t", targetSession]).status !== 0) return { fileWritten };
+    const pane = paneDelivery.enqueue(
+      { pane: targetPane, agent: sessionInfo.agent, prompt, taskId: opts?.taskId, idempotent: opts?.idempotent },
+      { tmux, sleep: deps.sleep, now: deps.now, timing: deps.timing },
+    );
+    return { fileWritten, pane };
+  } catch (_) {
+    return { fileWritten };
+  }
+}
 
-  return { tmuxSent, fileWritten };
+/** The key under which two dispatches count as the same request: owner, project, event and prompt text. */
+function idempotencyKey(opts: DispatchOptions, prompt: string): string {
+  return JSON.stringify([opts.ownerKey ?? null, opts.filmId, opts.eventType, prompt]);
+}
+
+/**
+ * The still-open task with this key and where its prompt stands in the agent's terminal, if there is one. An idempotent
+ * task counts as open only while younger than OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created
+ * or last sent) regardless of whether it is pending, claimed, or timed out with a sent pane; completed or failed tasks,
+ * or those whose pane delivery failed, are not open.
+ */
+function findOpenTask(key: string, nowMs: number): { task: AgentTask; pane?: PaneDelivery } | undefined {
+  const panes = paneDelivery.list();
+  for (const task of taskQueue.listAllTasks()) {
+    const record = idempotencyKeys.get(task);
+    if (record?.key !== key) continue;
+    if (task.status === "completed" || task.status === "failed") continue;
+    const pane = panes.find((p) => p.taskId === task.id);
+    if (pane?.state === "failed") continue;
+    if (task.status === "timed_out" && !pane && !task.inboxMessagePath) continue;
+    const age = nowMs - (pane?.sentAtMs ?? record.atMs);
+    const waiting = pane?.state === "queued" || pane?.state === "sending";
+    if (waiting || age <= OPEN_AFTER_TIMEOUT_MS) return { task, pane };
+  }
+  return undefined;
+}
+
+/** What an idempotent dispatch returns when it reuses the open task: nothing new is created or sent. */
+function reusedDispatch(task: AgentTask, pane: PaneDelivery | undefined): DispatchResult {
+  const standing = task.status === "claimed" ? "running" : pane?.state === "sent" ? "sent to your agent" : "queued";
+  return {
+    ok: true,
+    duplicate: true,
+    taskId: task.id,
+    task,
+    channels: [...task.dispatchedChannels],
+    inboxMessagePath: task.inboxMessagePath,
+    prompt: task.prompt,
+    fallbackScheduled: false,
+    fallbackTimeoutMs: task.timeoutMs,
+    pane: pane && { ...pane, duplicate: true },
+    message: `Task ${task.id} is already ${standing}, so it was not queued twice`,
+  };
 }
 
 /** Dispatches a rich task across all active channels with automatic hybrid fallback. */
@@ -217,6 +272,13 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
   const prompt = buildDirectingPrompt(opts, context);
 
   const channels: DispatchChannel[] = ["mcp_queue", "file_inbox"];
+
+  // 0. Idempotent callers reuse an equivalent open task. The lookup and the create below run with no await
+  // between them, so concurrent requests (a double click, a client retry) are serialized and one task results.
+  const nowMs = (deps.now ?? Date.now)();
+  const key = opts.idempotent ? idempotencyKey(opts, prompt) : undefined;
+  const open = key ? findOpenTask(key, nowMs) : undefined;
+  if (open) return reusedDispatch(open.task, open.pane);
 
   // 1. Channel B: Enqueue task in TaskQueue
   const task = taskQueue.createTask({
@@ -228,6 +290,7 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
     dispatchedChannels: channels,
     timeoutMs,
   });
+  if (key) idempotencyKeys.set(task, { key, atMs: nowMs });
 
   // 1b. The owner's connected agent (aideos connect). When it takes the task, the local channels
   // are skipped so a machine with both a connector and a tmux session never runs a task twice.
@@ -262,8 +325,11 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
   const localResult = dispatchLocalAndTmux(prompt, {
     sessionName: opts.sessionName,
     pane: opts.pane,
+    taskId: task.id,
+    idempotent: opts.idempotent,
   }, deps);
-  if (localResult.tmuxSent) {
+  const pane = localResult.pane;
+  if (pane && pane.state !== "failed") {
     channels.push("tmux");
     task.dispatchedChannels = [...channels];
   }
@@ -306,6 +372,14 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
     prompt,
     fallbackScheduled,
     fallbackTimeoutMs: timeoutMs,
-    message: `Dispatched task ${task.id} across channels: ${channels.join(", ")}`,
+    pane,
+    message: paneMessage(task.id, channels, pane),
   };
+}
+
+/** The one-line status the studio shows for a dispatch, saying when the prompt is queued behind a busy agent. */
+function paneMessage(taskId: string, channels: DispatchChannel[], pane?: PaneDelivery): string {
+  if (pane?.duplicate) return `Task ${taskId}: the same prompt is already waiting for your ${pane.agent} agent, so it was not queued twice`;
+  if (pane?.state === "queued") return `Task ${taskId} queued: your ${pane.agent} agent is busy, the prompt is sent when it is idle`;
+  return `Dispatched task ${taskId} across channels: ${channels.join(", ")}`;
 }

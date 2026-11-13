@@ -14,7 +14,7 @@ import { getVideosDir } from "../src/dl/videoPackageLoader";
 import { produceAudioPipeline, buildFilmFromAudioResult } from "./audio";
 import { createEngine } from "./engine";
 import { runProduction } from "./pipeline/run";
-import type { DesignMode, ProductionFormat, ProductionProgress, ProductionStage, ProductionRequest } from "./pipeline/types";
+import { draftStopAfter, type DesignMode, type ProductionFormat, type ProductionProgress, type ProductionStage, type ProductionRequest } from "./pipeline/types";
 import { runDirector, type DirectorRequest } from "./pipeline/director";
 import type { TtsBackendName } from "./tts";
 import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
@@ -207,6 +207,7 @@ export interface FilmCliOptions {
   resume: boolean;
   force?: string;
   stopAfter?: ProductionStage;
+  finalExport?: boolean;
   skipVerify?: boolean;
   bespoke?: boolean;
   design: DesignMode;
@@ -239,7 +240,7 @@ export function buildFilmProductionRequest(
     music: options.music,
     resume: options.resume,
     force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
-    stopAfter: options.stopAfter,
+    stopAfter: draftStopAfter(options.stopAfter, options.finalExport),
     skipVerify: options.skipVerify,
     bespoke: options.bespoke,
     design: options.design,
@@ -250,7 +251,7 @@ export function buildFilmProductionRequest(
 program
   .command("film")
   .description(
-    "One call from a script to finished, verified mp4s: narration, design, GPU b-roll, render, review",
+    "One call from a script to a draft film (narration, design, GPU b-roll); --final-export also renders and verifies the mp4s",
   )
   .option("--script <text>", "narration script or Claude screenplay as a literal string")
   .option("--script-file <path>", "path to a screenplay markdown file")
@@ -269,6 +270,7 @@ program
   .option("--no-resume", "ignore cached stage results and run everything again")
   .option("--force <stages>", "comma-separated stages to re-run even when resuming")
   .option("--stop-after <stage>", "stop cleanly after this stage")
+  .option("--final-export", "render and verify the final mp4s; without it the run stops after assemble (a draft)")
   .option("--skip-verify", "skip the closing frame and audio inspection pass")
   .option("--design <mode>", "look and design delivery: inline, agent, server, templates", "inline")
   .option("--no-bespoke", "alias for --design templates")
@@ -309,7 +311,11 @@ program
         console.log(`\n  ${result.warnings.length} warning(s):`);
         for (const warning of result.warnings) console.log(`    - ${warning}`);
       }
-      if (result.stoppedAfter) console.log(`\n  stopped after the ${result.stoppedAfter} stage, as requested`);
+      if (result.stoppedAfter && !options.stopAfter) {
+        console.log(`\n  draft only: stopped after the ${result.stoppedAfter} stage; pass --final-export to render the mp4s`);
+      } else if (result.stoppedAfter) {
+        console.log(`\n  stopped after the ${result.stoppedAfter} stage, as requested`);
+      }
     },
   );
 
@@ -350,6 +356,7 @@ export interface DirectCliOptions {
   resume: boolean;
   force?: string;
   stopAfter?: ProductionStage;
+  finalExport?: boolean;
   skipVerify?: boolean;
   bespoke?: boolean;
   design: DesignMode;
@@ -378,7 +385,7 @@ export function buildDirectorRequest(
     maxAttempts: Number(options.maxAttempts),
     resume: options.resume,
     force: options.force?.split(",").map((s) => s.trim()) as ProductionStage[] | undefined,
-    stopAfter: options.stopAfter,
+    stopAfter: draftStopAfter(options.stopAfter, options.finalExport),
     skipVerify: options.skipVerify,
     bespoke: options.bespoke,
     design: options.design,
@@ -389,7 +396,7 @@ export function buildDirectorRequest(
 program
   .command("direct")
   .description(
-    "Auto-prompt: an LLM director drafts a screenplay from your prompt, then produces it end to end",
+    "Auto-prompt: an LLM director drafts a screenplay from your prompt, then produces a draft film; --final-export also renders the mp4s",
   )
   .argument("<prompt>", "what the film should explain, as plain language")
   .option("--title <title>", "film title; overrides the one the director drafts for itself")
@@ -408,6 +415,7 @@ program
   .option("--no-resume", "ignore cached stage results and run everything again")
   .option("--force <stages>", "comma-separated stages to re-run even when resuming")
   .option("--stop-after <stage>", "stop cleanly after this stage")
+  .option("--final-export", "render and verify the final mp4s; without it the run stops after assemble (a draft)")
   .option("--skip-verify", "skip the closing frame and audio inspection pass")
   .option("--design <mode>", "look and design delivery: inline, agent, server, templates", "inline")
   .option("--no-bespoke", "alias for --design templates")
@@ -450,7 +458,11 @@ program
         console.log(`\n  ${result.warnings.length} warning(s):`);
         for (const warning of result.warnings) console.log(`    - ${warning}`);
       }
-      if (result.stoppedAfter) console.log(`\n  stopped after the ${result.stoppedAfter} stage, as requested`);
+      if (result.stoppedAfter && !options.stopAfter) {
+        console.log(`\n  draft only: stopped after the ${result.stoppedAfter} stage; pass --final-export to render the mp4s`);
+      } else if (result.stoppedAfter) {
+        console.log(`\n  stopped after the ${result.stoppedAfter} stage, as requested`);
+      }
     },
   );
 

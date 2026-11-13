@@ -269,6 +269,24 @@ test("packageDir refuses a slug that could escape the videos directory", async (
   assert.ok(os.tmpdir().length > 0);
 });
 
+// Resolve each package against the current environment even after filmStore was imported.
+test("packageDir follows directory changes between production runs", async () => {
+  const { packageDir } = await import("./filmStore");
+  const previous = process.env.AIDEOS_VIDEOS_DIR;
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-package-dir-"));
+  try {
+    for (const directory of ["first", "second", "third"]) {
+      const videosDirectory = path.join(temporary, directory);
+      process.env.AIDEOS_VIDEOS_DIR = videosDirectory;
+      assert.equal(packageDir("same-film"), path.join(videosDirectory, "same-film"));
+    }
+  } finally {
+    if (previous === undefined) delete process.env.AIDEOS_VIDEOS_DIR;
+    else process.env.AIDEOS_VIDEOS_DIR = previous;
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 // Regression test for the defect that hung a validation run: B-roll is opt-in, and a caller
 // that does not ask for it must never reach the GPU engine. The engine name here is deliberately
 // one createEngine() rejects, so if the stage ever runs the test fails loudly instead of
@@ -795,6 +813,43 @@ test("CLI: the direct executable and launcher preserve exit 3 and continuation i
       assert.match(resumed.stdout, /design\/BRIEF.md/);
       assert.match(resumed.stdout, /Run aideos design build/);
     } finally { cleanProbe(slug); }
+  }
+});
+
+test("CLI: aideos film stops at a draft by default and writes no final mp4", () => {
+  const root = path.resolve(__dirname, "../..");
+  const slug = `probe-cli-draft-${Date.now().toString(36)}`;
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-draft-out-"));
+  try {
+    const args = ["film", "--script", SCRIPT, "--title", "Probe Film", "--slug", slug, "--tts", "tone", "--design", "templates", "--out", out];
+    const env = { ...process.env, NODE_TEST_CONTEXT: "child-v8" };
+    const child = spawnSync(process.execPath, ["--import", "tsx", "backend/cli.ts", ...args], { cwd: root, env, encoding: "utf8" });
+    assert.equal(child.status, 0, child.stdout + child.stderr);
+    assert.match(child.stdout, /draft only: stopped after the assemble stage; pass --final-export/);
+    assert.ok(readFilm(slug), "the draft film must be written");
+    assert.deepEqual(fs.readdirSync(out), []);
+    const renders = path.join(VIDEOS_DIR, slug, "renders");
+    assert.deepEqual(fs.existsSync(renders) ? fs.readdirSync(renders).filter((f) => f.endsWith(".mp4")) : [], []);
+  } finally {
+    cleanProbe(slug);
+    fs.rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("CLI: --final-export on film and direct lifts the draft stop so the run renders the final mp4s", () => {
+  for (const name of ["film", "direct"] as const) {
+    const cmd = program.commands.find((c) => c.name() === name);
+    assert.ok(cmd);
+    const build = (argv: string[]) => {
+      for (const option of cmd.options) cmd.setOptionValue(option.attributeName(), option.defaultValue);
+      cmd.parseOptions(argv);
+      const options = cmd.opts() as Parameters<typeof buildFilmProductionRequest>[1] & Parameters<typeof buildDirectorRequest>[1];
+      return name === "film" ? buildFilmProductionRequest("## Title\n[NARRATION] Hello", options) : buildDirectorRequest("prompt", options);
+    };
+    assert.equal(build([]).stopAfter, "assemble", `${name} must default to a draft`);
+    assert.equal(build(["--final-export"]).stopAfter, undefined, `${name} --final-export must run render and verify`);
+    assert.equal(build(["--final-export", "--stop-after", "design"]).stopAfter, "design");
+    assert.equal(build(["--stop-after", "render"]).stopAfter, "render");
   }
 });
 

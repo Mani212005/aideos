@@ -1,5 +1,5 @@
 /**
- * File Description: Measures caption words with the render's pinned font and layout utility for exact review phrase boundaries.
+ * File Description: Measures caption words with the render's pinned font (vendored in ./fonts, never fetched) and layout utility for exact review phrase boundaries.
  * Inputs and outputs: words and font size -> measured widths, using one bounded Chrome batch when needed.
  * Used by: prepareCaptionReview for films with owner caption placement.
  */
@@ -14,6 +14,7 @@ import { findChromeBinary } from "../scene/renderStill";
 const requirePackage = createRequire(
   path.resolve(__dirname, "../../package.json"),
 );
+const FONT_DIR = path.resolve(__dirname, "fonts");
 const widthsSchema = z.record(z.string(), z.number().finite().nonnegative());
 const cache = new Map<number, Record<string, number>>();
 
@@ -29,6 +30,25 @@ type MeasurementPlan =
       file: string;
     };
 
+// Builds the Geist 700 @font-face rules from the vendored files so measuring never waits on the font CDN.
+function geistFontFaceCss(): string {
+  const info = getInfo();
+  return Object.entries(info.fonts.normal["700"])
+    .map(([subset, url]) => {
+      const file = path.join(
+        FONT_DIR,
+        `${subset}-${path.basename(new URL(url).pathname)}`,
+      );
+      if (!fs.existsSync(file))
+        throw new Error(
+          `Vendored Geist font missing for subset "${subset}": expected ${file} (upstream ${url}). See backend/review/fonts/README.md.`,
+        );
+      const data = fs.readFileSync(file).toString("base64");
+      return `@font-face{font-family:Geist;font-style:normal;font-weight:700;src:url(data:font/woff2;base64,${data}) format("woff2");unicode-range:${info.unicodeRanges[subset as keyof typeof info.unicodeRanges]}}`;
+    })
+    .join("");
+}
+
 // Creates the common page for the pinned Geist measurement utility.
 function prepareMeasurement(words: string[], fontSize: number): MeasurementPlan {
   const known = cache.get(fontSize) ?? {};
@@ -41,13 +61,7 @@ function prepareMeasurement(words: string[], fontSize: number): MeasurementPlan 
     throw new Error(
       "Chrome is required to measure owner-placed caption phrases for review.",
     );
-  const info = getInfo();
-  const css = Object.entries(info.fonts.normal["700"])
-    .map(
-      ([subset, url]) =>
-        `@font-face{font-family:Geist;font-style:normal;font-weight:700;src:url(${JSON.stringify(url)});unicode-range:${info.unicodeRanges[subset as keyof typeof info.unicodeRanges]}}`,
-    )
-    .join("");
+  const css = geistFontFaceCss();
   const utility = fs.readFileSync(
     path.join(
       path.dirname(requirePackage.resolve("@remotion/layout-utils")),
@@ -92,6 +106,18 @@ function collectMeasurements(
   return merged;
 }
 
+// Keeps Linux DOM measurement independent of desktop buses whose authentication can block Chrome startup.
+function captionChromeEnvironment(): NodeJS.ProcessEnv {
+  return process.platform === "linux"
+    ? {
+        ...process.env,
+        // An invalid address fails immediately instead of discovering or authenticating with a desktop service.
+        DBUS_SESSION_BUS_ADDRESS: "disabled:",
+        DBUS_SYSTEM_BUS_ADDRESS: "disabled:",
+      }
+    : process.env;
+}
+
 // Executes Chrome synchronously for blocking review and design-check callers.
 function runChromeSync(chrome: string, file: string) {
   return spawnSync(
@@ -106,7 +132,7 @@ function runChromeSync(chrome: string, file: string) {
       "--dump-dom",
       `file://${file}`,
     ],
-    { encoding: "utf8", timeout: 25000, maxBuffer: 16 * 1024 * 1024 },
+    { encoding: "utf8", timeout: 25000, maxBuffer: 16 * 1024 * 1024, env: captionChromeEnvironment() },
   );
 }
 
@@ -122,7 +148,7 @@ function runChromeAsync(chrome: string, file: string): Promise<string> {
       "--virtual-time-budget=15000",
       "--dump-dom",
       `file://${file}`,
-    ]);
+    ], { env: captionChromeEnvironment() });
     let stdout = "";
     let stderr = "";
     const timeout = setTimeout(() => child.kill("SIGKILL"), 25000);

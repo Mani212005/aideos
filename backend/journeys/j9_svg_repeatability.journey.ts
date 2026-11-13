@@ -1,5 +1,5 @@
 /**
- * File Description: Regression for the cold SVG paint race that made Still Talking's legacy golden vary between identical renders.
+ * File Description: Regression for fractional-DPR SVG surface captures that made Still Talking's legacy golden vary between identical renders.
  * Inputs and outputs: the committed still-talking fixture at Long frame 2773 -> independently rendered PNGs whose decoded pixels must match exactly.
  * Used by: npm run test:journeys and the journeys CI job.
  */
@@ -19,6 +19,8 @@ journey("J9 Still Talking frame 2773 reproduces exactly across cold SVG renders"
       ctx.keep(png);
       await film.still("Long", 2773, png, 0.25);
       const actual = decodeFrame(png);
+      assert.equal(actual.width, 480, "quarter-size long capture width");
+      assert.equal(actual.height, 270, "quarter-size long capture height");
       if (!reference) reference = actual;
       else assert.equal(frameDiff(reference, actual, 0).changedShare, 0, `still-talking/long-2773.png changed on cold render ${pass + 1}`);
     } finally {

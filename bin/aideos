@@ -265,7 +265,7 @@ if [ "$#" -gt 0 ]; then
       echo "Aideos: Autonomous Explainer Video Director"
       echo ""
       echo "Usage:"
-      echo "  aideos               Launch Studio (localhost:3001) and connect AI coding agent"
+      echo "  aideos               Pick a coding agent, then launch Studio (localhost:3001) and connect it"
       echo "  aideos version / which  Show channel, release, commit and checkout"
       echo "  aideos exit          Stop this channel editor dev server"
       echo "  aideos validate      Validate active film schema and print runsheet"
@@ -275,8 +275,8 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos frames        Render proof stills to .frames/"
       echo "  aideos test          Run full test suite"
       echo "  aideos produce       Audio-first timing spine generation"
-      echo "  aideos direct <prompt>  Auto-prompt: LLM director plans and produces a film from a prompt"
-      echo "  aideos film          One call from a screenplay to finished, verified mp4s"
+      echo "  aideos direct <prompt>  Auto-prompt: LLM director plans and produces a draft film (--final-export renders mp4s)"
+      echo "  aideos film          One call from a screenplay to a draft film (--final-export renders verified mp4s)"
       echo "  aideos gemini-review <mp4>  Gemini 3.8 Flash native video quality review"
       echo "  aideos all-check <slug>     Full check of long cut and reel in a background agent (see docs/REVIEW.md)"
       echo "  aideos review <slug|mp4>    Measured (deterministic) review of a rendered video"
@@ -299,37 +299,53 @@ if [ "$#" -gt 0 ]; then
   esac
 fi
 
-# 1. Start this checkout's editor on its channel's reserved port.
+# Launch order (the one place it is documented): channel banner, then the agent menu, and only after the
+# choice is resolved the Studio server, then the browser, then the chosen agent. Asking first keeps the
+# user in the terminal: opening the browser before the menu pulls them to Chrome and back.
 PORT="$AIDEOS_PORT"
-if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-  # Refuse another checkout's server instead of quietly attaching the wrong channel.
-  SERVER_ROOT="$(curl -fsS "http://localhost:$PORT/api/release-channel" 2>/dev/null | node -e 'let s="";process.stdin.on("data", c=>s+=c);process.stdin.on("end",()=>{try{process.stdout.write(JSON.parse(s).root)}catch{process.exit(1)}})' 2>/dev/null || true)"
-  if [ "$SERVER_ROOT" != "$AIDEOS_DIR" ]; then
-    echo "Port $PORT belongs to another checkout. Stop that server first." >&2
-    exit 1
-  fi
-else
+
+# Prints the checkout root that the server answering on the channel port reports (empty when unknown).
+studio_server_root() {
+  curl -fsS "http://localhost:$PORT/api/release-channel" 2>/dev/null | node -e 'let s="";process.stdin.on("data", c=>s+=c);process.stdin.on("end",()=>{try{process.stdout.write(JSON.parse(s).root)}catch{process.exit(1)}})' 2>/dev/null || true
+}
+
+# Starts this checkout's editor on its channel's reserved port and waits until it answers.
+start_studio() {
   echo "Starting Aideos Studio on http://localhost:$PORT..."
   ( cd "$AIDEOS_DIR/editor" && nohup npm run dev -- --port "$PORT" --strictPort > "/tmp/aideos-editor-$PORT.log" 2>&1 & )
-  READY=0
+  local ready=0 i
   for i in {1..40}; do
     if curl -fsS "http://localhost:$PORT/api/release-channel" >/dev/null 2>&1; then
-      READY=1
+      ready=1
       break
     fi
     sleep 0.5
   done
-  if [ "$READY" -ne 1 ]; then
+  if [ "$ready" -ne 1 ]; then
     echo "Studio did not start; see /tmp/aideos-editor-$PORT.log" >&2
     exit 1
   fi
+}
+
+# Ends the launch cleanly when the menu is cancelled (Ctrl-C or Ctrl-D): nothing has been started yet.
+cancel_launch() {
+  echo ""
+  echo "No agent selected. Nothing was started."
+  exit 130
+}
+
+# Preflight, with no side effects: refuse another checkout's server before asking anything, instead of
+# letting the user pick an agent and then quietly attaching the wrong channel.
+STUDIO_RUNNING=0
+if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  if [ "$(studio_server_root)" != "$AIDEOS_DIR" ]; then
+    echo "Port $PORT belongs to another checkout. Stop that server first." >&2
+    exit 1
+  fi
+  STUDIO_RUNNING=1
 fi
-echo "Aideos Studio: http://localhost:$PORT/"
 
-# Open in default browser
-open "http://localhost:$PORT/" 2>/dev/null || true
-
-# 2. Interactive agent selection menu (always prompts)
+# Interactive agent selection menu (always prompts, before the server or browser starts)
 SAVED_AGENT=""
 if [ -f "$CONFIG_FILE" ]; then
   SAVED_AGENT="$(cat "$CONFIG_FILE" | tr -d '[:space:]')"
@@ -357,6 +373,7 @@ fi
 TARGET_AGENT=""
 
 if [ -t 0 ]; then
+  trap cancel_launch INT
   while true; do
     echo ""
     echo "========================================================"
@@ -373,7 +390,7 @@ if [ -t 0 ]; then
       echo "  [c] Clear locked default"
     fi
     echo "========================================================"
-    read -rp "Select agent [1-5, p] (Enter for $DEFAULT_LABEL): " CHOICE < /dev/tty
+    read -rp "Select agent [1-5, p] (Enter for $DEFAULT_LABEL): " CHOICE < /dev/tty || cancel_launch
 
     case "$CHOICE" in
       1|claude)
@@ -404,7 +421,7 @@ if [ -t 0 ]; then
         echo "  3) Pi Coding Agent (pi)"
         echo "  4) Codex CLI (codex)"
         echo "  5) Web Studio only"
-        read -rp "Hard-lock choice [1-5]: " PCHOICE < /dev/tty
+        read -rp "Hard-lock choice [1-5]: " PCHOICE < /dev/tty || cancel_launch
         PAGENT="claude"
         case "$PCHOICE" in
           2) PAGENT="agy" ;;
@@ -435,6 +452,7 @@ if [ -t 0 ]; then
         ;;
     esac
   done
+  trap - INT
 fi
 
 # Fallback for non-interactive pipes
@@ -442,15 +460,15 @@ if [ -z "$TARGET_AGENT" ]; then
   TARGET_AGENT="claude"
 fi
 
-if [ "$TARGET_AGENT" = "none" ]; then
-  echo "🎬 Aideos Studio is active on http://localhost:$PORT/. Happy editing!"
-  exit 0
-fi
-
-# 3. Connect selected coding agent to Aideos Auto-Prompter
+# Pair the Studio server with the chosen agent before the server is reachable. The dispatcher reads
+# SESSION_FILE on every task, so recording it first means a click in the freshly opened browser can never be
+# pasted into a stale pane left by an earlier launch. Web Studio only drops any stale pairing instead.
 cd "$AIDEOS_DIR"
-
-if [ -n "$TMUX" ]; then
+LAUNCH_MODE="standalone"
+if [ "$TARGET_AGENT" = "none" ]; then
+  rm -f "$SESSION_FILE"
+elif [ -n "${TMUX:-}" ]; then
+  LAUNCH_MODE="tmux-current"
   CURRENT_PANE="$(tmux display-message -p '#{pane_id}' 2>/dev/null || echo '')"
   cat <<EOF > "$SESSION_FILE"
 {
@@ -461,11 +479,9 @@ if [ -n "$TMUX" ]; then
   "updatedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
 EOF
-  echo "✨ Connected to active tmux session ($TMUX_SESSION, pane $CURRENT_PANE). Auto-prompter is active!"
-  exec "$TARGET_AGENT"
-else
-  if command -v tmux >/dev/null 2>&1; then
-    cat <<EOF > "$SESSION_FILE"
+elif command -v tmux >/dev/null 2>&1; then
+  LAUNCH_MODE="tmux-new"
+  cat <<EOF > "$SESSION_FILE"
 {
   "agent": "$TARGET_AGENT",
   "sessionType": "tmux",
@@ -473,6 +489,37 @@ else
   "updatedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
 EOF
+else
+  cat <<EOF > "$SESSION_FILE"
+{
+  "agent": "$TARGET_AGENT",
+  "sessionType": "standalone",
+  "updatedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+fi
+
+# Only now that the choice is resolved and recorded: start Studio if it is not already running, then open the browser.
+if [ "$STUDIO_RUNNING" -ne 1 ]; then
+  start_studio
+fi
+echo "Aideos Studio: http://localhost:$PORT/"
+
+# Open in default browser
+open "http://localhost:$PORT/" 2>/dev/null || true
+
+# Last, hand the terminal to the chosen agent (Web Studio only has none).
+if [ "$TARGET_AGENT" = "none" ]; then
+  echo "🎬 Aideos Studio is active on http://localhost:$PORT/. Happy editing!"
+  exit 0
+fi
+
+case "$LAUNCH_MODE" in
+  tmux-current)
+    echo "✨ Connected to active tmux session ($TMUX_SESSION, pane $CURRENT_PANE). Auto-prompter is active!"
+    exec "$TARGET_AGENT"
+    ;;
+  tmux-new)
     echo "⚡ Launching $TARGET_AGENT in tmux session [$TMUX_SESSION] with Aideos Auto-Prompter..."
     if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
       echo "Attaching to existing tmux session [$TMUX_SESSION]..."
@@ -480,15 +527,9 @@ EOF
     else
       exec tmux new-session -s "$TMUX_SESSION" -c "$AIDEOS_DIR" "$TARGET_AGENT"
     fi
-  else
-    cat <<EOF > "$SESSION_FILE"
-{
-  "agent": "$TARGET_AGENT",
-  "sessionType": "standalone",
-  "updatedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-}
-EOF
+    ;;
+  *)
     echo "✨ Launching $TARGET_AGENT in $AIDEOS_DIR..."
     exec "$TARGET_AGENT"
-  fi
-fi
+    ;;
+esac

@@ -22,7 +22,7 @@ The editor chrome uses a dedicated Neobrutalism design system, entirely decouple
 
 The editor interface is organized into 7 sequential editing stages located in `src/screens/`:
 
-1. **Script (`ScriptStage.tsx` / `ScriptEditor.tsx`)**: Screenplay markdown editor, visual shot beat cards, zero-leakage spoken dialogue extraction, and multi-provider TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say).
+1. **Script (`ScriptStage.tsx` / `ScriptEditor.tsx`)**: Story-first paragraph authoring with collapsible visual and on-screen notes, visible narration change list, zero-leakage spoken dialogue extraction, per-line TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say), and Auto-Prompt agent dispatching with live queue delivery tracking. A repeated Auto-Prompt click reuses the open task; an existing task counts as open only while younger than `OPEN_AFTER_TIMEOUT_MS` (10 minutes, `backend/agentBridge/paneDelivery.ts`, measured from when the task was created or last sent) regardless of whether it is pending, claimed, or timed out with a sent pane, after which a click creates a new task.
 2. **Story (`StoryStage.tsx` / `MindMap.tsx`)**: 2D infinite spatial canvas for positioning concept nodes, wiring directed relationship edges, and inspecting camera framing targets.
 3. **Look (`LookStage.tsx` / `DesignView.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)**: Sub-views for bespoke design and look plans (`DesignView.tsx`: stage, cast, shot treatments, LOOK.md preview, captain approval via `approveLookPlan`, artwork, motion, and honest visual swaps), project theme customization (`CustomizationEditor.tsx`: paper textures, typography, accent color), and storyboard keyframe gallery (`Styleboard.tsx`).
 4. **Motion (`MotionStage.tsx`)**: Authoring studio for bespoke SVG movie animations, element-level timeline keyframing, and pre-built motion templates.
@@ -40,6 +40,8 @@ The editor interface is organized into 7 sequential editing stages located in `s
 - **Audio Peak Extraction (`src/components/timeline/useAudioPeaks.ts`)**: Fetches pre-computed waveform envelope peaks from `/api/audio/peaks` with fallback to in-browser Web Audio API decoding without pulling Node child processes into the browser bundle.
 - **Live Real-Time Agent Trace Inspector (`src/components/AgentActivityInspector.tsx`)**: Subscribes to Server-Sent Events (`/api/agent/trace`) to display a unified, real-time execution timeline of connected coding agent actions, neural TTS synthesis, AI video editing, GPU B-roll rendering, and invariant validation.
 - **Model-Driven AI Editing Core (`src/components/OnCanvasAiEditor.tsx`, `backend/editPlanner/`)**: Translates natural-language edit requests into closed `EditOp` sequences, validates semantic constraints, previews planned changes to the user, and atomically applies changes through `applyEditProgram` as a single undo step.
+- **Terminal Agent Prompt Queue (`src/state/paneDelivery.ts`, `backend/agentBridge/paneDelivery.ts`)**: Tracks live Auto-Prompt terminal delivery status via `/api/prompt-agent/queue`, polling state transitions (queued, sending, sent, failed, duplicate) as the backend waits for the terminal agent to become idle before typing.
+- **Auto-Prompt State & Single-Flight Guard (`src/state/autoPromptState.ts`)**: Pure state rules for the Auto-Prompt button, dropping concurrent duplicate clicks while a request is in flight (`createSingleFlight`) and resolving delivery badge labels and tones (`autoPromptBadge`).
 
 ---
 
