@@ -7,7 +7,7 @@ File Description: Documentation and usage reference for aideos deterministic vid
 Video quality verification in Aideos operates on two connected layers, and `aideos all-check` (section 3) runs
 both, on the long cut and the reel, with an agent that fixes the film between rounds:
 1. **Deterministic Checks (`aideos review`)**: Precise numerical measurements (OCR caption-card coverage, layout correlation, audio loudness, camera motion frequency).
-2. **Gemini 3.8 Flash Native Review (`aideos gemini-review`)**: Full multimodal video and audio evaluation against the 12-criterion rubric, requiring a score of 9.0+ out of 10.0 with all 6 hard gates passing for acceptance.
+2. **Gemini 3.8 Flash Native Review (`aideos gemini-review`)**: Full multimodal video and audio evaluation against the 12-criterion rubric, requiring a score of 9.0+ out of 10.0 (the mean of the individual criteria scores, see the verdict policy in section 2) with all 6 hard gates passing for acceptance.
 
 ---
 
@@ -181,9 +181,13 @@ parent exit also kills the remaining tree.
 2. **Deterministic Facts Extraction**: Gathers ground-truth data (caption-position OCR coverage, audio LUFS loudness, duration, framerate, camera track from `film.json` including declared `scene.camera` keyframes, and per-shot look plan facts from `design/LOOK.md` when present) and feeds them into the model prompt to prevent hallucinations.
 3. **Structured Rubric Evaluation**: Grades all 12 criteria on a 0.0 to 10.0 scale, checking the 6 hard gates (persistent stage, camera purpose, captions at their placed position, readability, no overlap/clipping, audio sync).
 4. **Timestamp Evidence Enforcement**: Validates that every criterion score includes concrete timestamp citations (e.g. `00:14`, `01:02`) within the video bounds. A criterion still without evidence after the last attempt is failed as unmeasured and the verdict is `REVISE`: missing evidence is never a pass.
-5. **Verdict Decision**:
-   - `ACCEPT`: Overall score >= 9.0 and all 6 hard gates passed.
-   - `REVISE`: Overall score < 9.0 or any hard gate failed.
+5. **Verdict Decision** (the verdict policy, `backend/geminiReview/verdictPolicy.ts`; the captain's option C):
+   - A draw's score is the **mean of its individual criteria scores**, computed by the tool. The reviewer's own overall number is kept in the report as `overallScore` for the record and never decides: on the 0.5.0 evidence the twelve criteria averaged 8.81 where the reviewer wrote 8.6.
+   - When that mean is **within 0.5 of the 9.0 bar** (8.5 up to 9.5, both ends included) and the draw could still be an ACCEPT (no failed hard gate, every criterion carries timestamp evidence), **exactly one second draw** of the same video runs, never a loop, so a review has at most two scored draws (each draw may still retry its reviewer call for invalid JSON or missing timestamps, up to the existing attempt limit). A draw outside the band is settled alone, with one scored draw. If the second draw cannot run, the review is unfinished (an error), never a pass on one in-band draw.
+   - With two draws the **combined score is the mean of the two draw scores**. `ACCEPT`: combined >= 9.0 and all 6 hard gates passed and every criterion had timestamp evidence in **both** draws. `REVISE`: anything else. With one draw the same rule applies to that draw alone.
+   - The bar (9.0), the six hard gates and the timestamp rule are exactly as before; only how the score is computed and when a second draw runs changed. A failed hard gate still holds a draw's score at 8.5.
+   - Worked example, release 0.5.0 (long film): the same bytes were ACCEPT 9.2 and then REVISE 8.6, both the reviewer's own numbers. In the second draw the criteria averaged 8.81. Say the first draw's criteria also averaged 9.2: that is inside the band, so a second draw runs, and the combined score is (9.2 + 8.81) / 2 = 9.005, which is >= 9.0, so with the gates and timestamps passing the verdict is `ACCEPT`. Had the second draw's criteria averaged 8.6, the combined score is 8.9 and the verdict `REVISE`. A first draw averaging 9.6 is an `ACCEPT` on its own and one averaging 8.4 a `REVISE` on its own, each with one scored draw. (The 0.5.0 evidence records only the reviewer's own number for the first draw, so its criteria mean is assumed here to match it.)
+   - Both draws, their scores and how many scored draws ran are printed by `aideos gemini-review` ("Draws: ...") and stored in the report (`draws`, `criteriaMeanScore`, `drawNote`). Every computed score (gemini-review output, all-check rounds and summary, the acceptance summary and Export dialog) is shown by one formatter, `formatScore`: one decimal when the score is exact at one decimal (9.3), otherwise cut (never rounded up) to two decimals (8.97), so a score under the bar never reads as reaching it.
 6. **Prioritized Feedback**: Generates actionable, timestamped recommendations (high, medium, low priority) on how to improve the video.
 7. **Stage facts (character films)**: the facts name the stage as the measured review sees this output, in plain words (`backend/review/stageTruth.ts`): characters drawn, hidden cast, what is projected in frame per shot, each contact against its decisive word, the camera in this crop, and what no tool measured. The prompt says those facts locate geometry, not pixels, and that face appeal, finger contact and occlusion are judged from the video or not at all. Without a probed output size the stage facts and the stage camera are reported as not measured.
 8. **Look Plan Check (unscored)**: If `design/LOOK.md` is present in the film package, Gemini compares each shot's planned treatment, carried objects, and cue against the video, logging any mismatch with timestamps in feedback without changing the 12 criterion scores or the verdict.
@@ -205,8 +209,11 @@ cross-review and the fix-and-repeat loop.
 All-check also maintains `videos/<slug>/acceptance.json`, with one acceptance record for each format. Each
 record binds the measured result and judge draws to the hashes of the film manifest and rendered MP4, so a
 changed film is reported as stale and an earlier verdict does not apply. Measured gates settle first; the
-latest judge draw for the same MP4 determines the judge result, and each new draw is retained. If those
-draws disagree, the summary says so without changing that verdict rule. Export status is summarized
+latest judge draw for the same MP4 determines the judge result, and each new draw is retained. A review whose
+first draw was within 0.5 of the 9.0 bar appends its second draw to the same record (keys `round-N` and
+`round-N-draw-2`); the second carries the combined score and the decision over both (section 2, verdict
+decision), and the Export summary says in words that the reviewer was asked twice and which number decided.
+Draws of separate reviews that disagree are still reported as a disagreement, without changing that verdict rule. Export status is summarized
 against the film supplied by Studio, and may change if export preparation changes the film. See the [Studio
 workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for what the Export dialog displays.
 
@@ -249,7 +256,7 @@ aideos all-check status hnsw                              # rounds so far
    final `round --format both`. Two rules are enforced by the tool, not the prompt: a round that scores lower than
    the best earlier round (compared on the formats both measured) restores that round's `film.json` and reel package automatically
    and says "ROLLED BACK"; and a new round is refused until the previous round's frame check is recorded.
-5. **Pass** = per format, the reviewer's JSON says at least the target (9.0) with every hard gate passing, AND
+5. **Pass** = per format, the reviewer's score (the mean of the criteria scores, over both draws when two ran, section 2) is at least the target (9.0) with every hard gate passing, AND
    the measured checks pass (`aideos review`: no failed gate; soft failures are listed, not blocking), AND (long
    only) the cross-review against the reference is a win or a tie, AND the agent's frame check is clean. The agent
    never scores its own work and never writes the round records: a tool that cannot run (agy signed out, quota)

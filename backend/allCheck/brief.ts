@@ -87,7 +87,7 @@ Order matters: long first, then reel, then one final re-check of both.
 
 A format passes when all of these hold in one record:
 - it carries music, sound effects and the end card (compulsory; a render is refused without them, so fix a refusal with \`aideos design build ${slug}\` rather than working around it),
-- the Gemini reviewer's JSON scores it ${target.toFixed(1)} or more with every hard gate passing,
+- the score the tool computes from the Gemini review (the mean of the criteria scores, over both draws when a second draw ran) reaches ${target.toFixed(1)} with every hard gate passing,
 - the measured checks (\`aideos review\`) pass,
 ${reference ? "- (long) it wins or ties the cross-review against the reference,\n" : ""}- your own frame check is clean.
 

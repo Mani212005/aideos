@@ -4,9 +4,12 @@
  * bytes, never to a name. The module is pure (no filesystem, no clock, no renderer) and owns every state, every
  * transition and the wording of what a state means; callers only feed it events and read the result.
  * Inputs and outputs: an AcceptanceRecord plus an AcceptanceEvent -> the next record, or an ImpossibleTransitionError.
+ * It imports only the pure score formatter of the verdict policy (backend/geminiReview/verdictPolicy.ts).
  * Used by: backend/filmAcceptance/store.ts, backend/allCheck/round.ts, backend/allCheck/finish.ts,
  * backend/designSpec/build.ts, editor/vite.config.ts.
  */
+
+import { formatScore } from "../geminiReview/verdictPolicy";
 
 /** The two deliverables of a film. */
 export type AcceptanceFormat = "long" | "reel";
@@ -35,8 +38,17 @@ export interface JudgeDraw {
   score: number;
   verdict: "ACCEPT" | "REVISE";
   gatesPassed: boolean;
-  /** Whether the caller's own bar (target score and hard gates) was met by this draw. */
+  /**
+   * Whether the caller's own bar (target score and hard gates) was met. On the last draw of a review that ran two
+   * draws this is the decision over both (see backend/geminiReview/verdictPolicy.ts), so the newest draw still decides.
+   */
   passed: boolean;
+  /** Names the review this draw belongs to (for example "round-3"), set when a review may hold more than one draw. */
+  reviewKey?: string;
+  /** 1 for the first draw of a review, 2 for the one extra draw the verdict policy allows. */
+  drawNumber?: number;
+  /** Set on the last draw of a two-draw review: the combined score (the mean of its draw scores) that `passed` and `verdict` were decided on. */
+  combinedScore?: number;
   at: string;
 }
 
@@ -97,23 +109,33 @@ export function currentDraws(record: AcceptanceRecord): JudgeDraw[] {
   return record.judged.filter((draw) => draw.mp4Hash === record.mp4Hash);
 }
 
-// Reports whether draws of one set of bytes contain conflicting verdicts.
+// The draws that decided a review each: a draw of a multi-draw review is settled by the last draw of its review, so only that one speaks for the review.
+export function decidingDraws(draws: readonly JudgeDraw[]): JudgeDraw[] {
+  return draws.filter((draw, i) => draw.reviewKey === undefined || !draws.slice(i + 1).some((later) => later.reviewKey === draw.reviewKey));
+}
+
+// Reports whether separate reviews of one set of bytes contain conflicting verdicts (the two draws of one review are settled by the verdict policy, not a disagreement).
 export function drawsDisagree(draws: readonly JudgeDraw[]): boolean {
-  return new Set(draws.map((draw) => draw.verdict)).size > 1;
+  return new Set(decidingDraws(draws).map((draw) => draw.verdict)).size > 1;
+}
+
+// A draw's score as shown to a person: the combined score of a two-draw review, else the draw's own score, never rounded up to the bar.
+function shownScore(draw: JudgeDraw): string {
+  return formatScore(draw.combinedScore ?? draw.score);
 }
 
 // Adds the current byte set's disagreement summary without changing its state or verdict.
 function withDisagreement(summary: AcceptanceSummary, draws: JudgeDraw[]): AcceptanceSummary {
   const disagree = drawsDisagree(draws);
   if (!disagree) return { ...summary, drawsDisagree: false };
-  const evidence = `${draws.length} reviews of these exact bytes disagree: ${draws.map((item) => `${item.verdict} ${item.score.toFixed(1)}`).join(", ")}. `;
+  const evidence = `${decidingDraws(draws).length} reviews of these exact bytes disagree: ${decidingDraws(draws).map((item) => `${item.verdict} ${shownScore(item)}`).join(", ")}. `;
   return { ...summary, drawsDisagree: true, message: `${evidence}${summary.message}` };
 }
 
 /**
- * The judged verdict rule over recorded draws: the newest draw of the current bytes decides. This is today's
- * behaviour ("the latest review says ACCEPT") kept as one named place, so a stricter policy (for example two
- * draws when within 0.5 of the bar) is a change to this function alone.
+ * The judged verdict rule over recorded draws: the newest draw of the current bytes decides. When a review ran two
+ * draws (the first within 0.5 of the 9.0 bar), both are recorded together and the second carries the combined
+ * decision (`passed`, `verdict`, `combinedScore`), so "the newest draw decides" is still the whole rule here.
  */
 export function judgedPasses(draws: JudgeDraw[]): boolean | null {
   return draws.length === 0 ? null : draws[draws.length - 1].passed;
@@ -206,10 +228,15 @@ export function summarize(record: AcceptanceRecord | null, currentFilmHash: stri
   }
   const state = effectiveState(record, currentFilmHash);
   const draws = currentDraws(record);
-  const score = draws.slice(-1)[0]?.score;
-  const scoreText = score === undefined ? "" : ` (reviewer score ${score.toFixed(1)})`;
+  const last = draws.slice(-1)[0];
+  const scoreText = last === undefined ? "" : ` (reviewer score ${shownScore(last)})`;
+  const review = last?.reviewKey === undefined ? [] : draws.filter((draw) => draw.reviewKey === last.reviewKey);
+  // A review of two draws says so in words: how many times the reviewer was asked, why, and which number decided.
+  const twoDraws = review.length > 1 && last?.combinedScore !== undefined
+    ? ` The reviewer was asked ${review.length} times about these exact bytes (scores ${review.map((draw) => formatScore(draw.score)).join(" and ")}) because the first was within 0.5 of the 9.0 bar; their mean, ${formatScore(last.combinedScore)}, decided.`
+    : "";
   const result = (reviewed: boolean, message: string): AcceptanceSummary => withDisagreement({
-    state, reviewed, drawsDisagree: false, message,
+    state, reviewed, drawsDisagree: false, message: `${message}${twoDraws}`,
   }, draws);
   switch (state) {
     case "accepted":

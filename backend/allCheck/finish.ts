@@ -8,6 +8,7 @@
  * Used by: backend/allCheck/index.ts.
  */
 
+import { formatScore } from "../geminiReview/verdictPolicy";
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -144,7 +145,7 @@ export function reportMarkdown(slug: string, config: AllCheckConfig, records: Fo
   ];
   for (const r of records) {
     lines.push(
-      `| ${r.round} | ${r.format} | ${r.review.error ? "error" : `${r.review.score?.toFixed(1)} ${r.review.verdict}`} | ${r.measured.error ? "error" : r.measured.passed ? "pass" : "FAIL"} | ${r.pairwise ? (r.pairwise.error ? "error" : r.pairwise.winner) : "-"} | ${r.frameCheck.status} | ${r.passed ? "yes" : "no"} |`,
+      `| ${r.round} | ${r.format} | ${r.review.error ? "error" : `${r.review.score === null ? "n/a" : formatScore(r.review.score)} ${r.review.verdict}`} | ${r.measured.error ? "error" : r.measured.passed ? "pass" : "FAIL"} | ${r.pairwise ? (r.pairwise.error ? "error" : r.pairwise.winner) : "-"} | ${r.frameCheck.status} | ${r.passed ? "yes" : "no"} |`,
     );
   }
   lines.push(``);
@@ -231,7 +232,7 @@ export function finishRun(slug: string, deps: FinishDeps = REAL_FINISH_DEPS): Al
 
   if (!config.studioWasRunning && deps.studioRunning()) deps.stopStudio();
 
-  const fmt = (s: AllCheckResult["long"]) => (s?.score != null ? s.score.toFixed(1) : "n/a");
+  const fmt = (s: AllCheckResult["long"]) => (s?.score != null ? formatScore(s.score) : "n/a");
   deps.notify(
     verdict.passed ? "all-check: all good" : "all-check: needs a look",
     `${slug}: long ${fmt(result.long)}, reel ${fmt(result.reel)}${verdict.passed ? "" : ` - ${verdict.stillFailing[0] ?? "see report"}`}`,
