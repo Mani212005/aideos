@@ -89,7 +89,15 @@ The command fetches refs and checks version/fast-forward eligibility, then:
    Gemini video review. These must pass. Reports remain beside the temporary rendered package;
    `production.json` records the run. Review tools require their normal local dependencies/login.
    Gemini review of the long film and of the reel is mandatory in every release: a verdict other than
-   ACCEPT, for either film, stops the release. No flag, setting or environment variable waives it. (Release
+   ACCEPT, for either film, stops the release. No flag, setting or environment variable waives it. The verdict
+   is decided on the mean of the individual criteria scores, not the reviewer's own overall number, and when
+   that mean is within 0.5 of the 9.0 bar the review makes exactly one second draw of the same video and
+   decides on both: combined (mean of the two draws) >= 9.0 with every hard gate and every timestamp holding
+   in both draws. The release output prints each draw and the number of scored draws (at most two per
+   film; each draw may still retry its reviewer call for invalid JSON or missing timestamps, up to the
+   existing attempt limit). Worked example with the 0.5.0 numbers: first draw 9.2, second draw whose criteria average 8.81
+   (the reviewer wrote 8.6): (9.2 + 8.81) / 2 = 9.005 is an ACCEPT; had the second averaged 8.6 the combined
+   8.9 is a REVISE. See [Review](REVIEW.md#2-gemini-38-flash-video-quality-review-aideos-gemini-review). (Release
    0.5.0 carried two one-time waivers of these verdicts; both have since been removed.)
 6. Waits for the captain to watch **both complete outputs with sound**, then type exactly
    `WATCHED AND APPROVE v0.5.0` in an interactive terminal. There is no automatic approval option;

@@ -45,8 +45,9 @@ import {
 import type { CriterionEvaluation, GeminiReviewReport, ReviewFeedbackItem } from "./types";
 
 // Helper to construct a full 12-criterion evaluation list for test mocks.
-function createMockCriteria(options?: { gateScore?: number; gatePassed?: boolean; withTimestamps?: boolean }): CriterionEvaluation[] {
+function createMockCriteria(options?: { gateScore?: number; otherScore?: number; gatePassed?: boolean; withTimestamps?: boolean }): CriterionEvaluation[] {
   const gateScore = options?.gateScore ?? 9.0;
+  const otherScore = options?.otherScore ?? 8.5;
   const gatePassed = options?.gatePassed ?? true;
   const withTimestamps = options?.withTimestamps ?? true;
 
@@ -54,7 +55,7 @@ function createMockCriteria(options?: { gateScore?: number; gatePassed?: boolean
     name: def.name,
     title: def.title,
     isGate: def.isGate,
-    score: def.isGate ? gateScore : 8.5,
+    score: def.isGate ? gateScore : otherScore,
     passed: def.isGate ? gatePassed : true,
     evidenceTimestamps: withTimestamps ? ["0:12", "0:45-0:52"] : [],
     reason: withTimestamps ? `Observed compliant behavior at 0:12 for ${def.title}` : "Generic reason without timestamps",
@@ -211,7 +212,7 @@ test("CLI: gemini-review --json writes parseable JSON to stdout without npm bann
     overallScore: 9.2,
     verdict: "ACCEPT",
     summary: "All gates pass.",
-    criteria: createMockCriteria(),
+    criteria: createMockCriteria({ gateScore: 9.6, otherScore: 9.6 }),
     feedback: [],
   };
   const agyOutput = JSON.stringify({ status: "SUCCESS", response: JSON.stringify(response) });
@@ -327,7 +328,7 @@ test("geminiReview: reviewVideo evaluates verdict ACCEPT when score >= 9.0 and g
   const testVideo = path.join(tmpDir, "test.mp4");
   fs.writeFileSync(testVideo, Buffer.alloc(512, 1));
 
-  const criteria = createMockCriteria({ gateScore: 9.2, gatePassed: true, withTimestamps: true });
+  const criteria = createMockCriteria({ gateScore: 9.6, otherScore: 9.6, gatePassed: true, withTimestamps: true });
   const mockReportPayload: Partial<GeminiReviewReport> = {
     overallScore: 9.3,
     verdict: "ACCEPT",
@@ -557,7 +558,7 @@ test("geminiReview: supports client injection via AgyReviewClient", async () => 
   const testVideo = path.join(tmpDir, "test.mp4");
   fs.writeFileSync(testVideo, Buffer.alloc(128, 1));
 
-  const criteria = createMockCriteria({ gateScore: 9.0, gatePassed: true, withTimestamps: true });
+  const criteria = createMockCriteria({ gateScore: 9.6, otherScore: 9.6, gatePassed: true, withTimestamps: true });
   const mockReportPayload: Partial<GeminiReviewReport> = {
     overallScore: 9.1,
     verdict: "ACCEPT",
@@ -687,7 +688,7 @@ test("geminiReview: reviewVideo executes in isolated workspace with neutral vide
     overallScore: 9.2,
     verdict: "ACCEPT",
     summary: "Isolated workspace test passed.",
-    criteria: createMockCriteria({ gateScore: 9.0, gatePassed: true, withTimestamps: true }),
+    criteria: createMockCriteria({ gateScore: 9.6, otherScore: 9.6, gatePassed: true, withTimestamps: true }),
     feedback: [],
   };
 

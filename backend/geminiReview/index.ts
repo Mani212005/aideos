@@ -7,5 +7,6 @@
 export * from "./types";
 export * from "./rubric";
 export * from "./geminiReview";
+export * from "./verdictPolicy";
 export * from "./render";
 export * from "./facts";

@@ -6,6 +6,7 @@
  * Used by: backend/allCheck/cli.ts, backend/allCheck/agent.ts.
  */
 
+import { formatScore } from "../geminiReview/verdictPolicy";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -149,7 +150,7 @@ export function runStatus(slug: string, lockDeps: LockDeps = realStartDeps().loc
   const result = readResult(slug);
   const records = fs.existsSync(allCheckDir(slug)) ? readRecords(slug) : [];
   const lines = records.map(
-    (r) => `round ${r.round} ${r.format}: ${r.review.error ? "review error" : `${r.review.score?.toFixed(1)} ${r.review.verdict}`}, measured ${r.measured.passed === null ? "n/a" : r.measured.passed ? "pass" : "fail"}, frame check ${r.frameCheck.status} -> ${r.passed ? "PASSED" : "not passed"}`,
+    (r) => `round ${r.round} ${r.format}: ${r.review.error ? "review error" : `${r.review.score === null ? "n/a" : formatScore(r.review.score)} ${r.review.verdict}`}, measured ${r.measured.passed === null ? "n/a" : r.measured.passed ? "pass" : "fail"}, frame check ${r.frameCheck.status} -> ${r.passed ? "PASSED" : "not passed"}`,
   );
   const base = { roundsMeasured: latestRound(slug), lines };
   if (result) return { state: "finished", detail: `${result.status}: see ${result.reportPath}`, result, ...base };

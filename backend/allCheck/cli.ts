@@ -8,6 +8,7 @@
  * Used by: backend/cli.ts, bin/aideos.
  */
 
+import { formatScore } from "../geminiReview/verdictPolicy";
 import path from "node:path";
 import type { Command } from "commander";
 import {
@@ -55,7 +56,7 @@ function fail(err: unknown, code = 2): void {
 // Formats one record as the lines the agent reads after a round.
 function describeRecord(rec: FormatRoundRecord): string {
   const lines = [
-    `[${rec.format}] round ${rec.round}: reviewer ${rec.review.error ? "ERROR" : `${rec.review.score?.toFixed(1)} ${rec.review.verdict}`}, measured ${rec.measured.error ? "ERROR" : rec.measured.passed ? "pass" : "FAIL"}${rec.pairwise ? `, cross-review ${rec.pairwise.error ? "ERROR" : rec.pairwise.winner}` : ""}, frame check ${rec.frameCheck.status} -> ${rec.passed ? "PASSED" : "not passed"}`,
+    `[${rec.format}] round ${rec.round}: reviewer ${rec.review.error ? "ERROR" : `${rec.review.score === null ? "n/a" : formatScore(rec.review.score)} ${rec.review.verdict}`}, measured ${rec.measured.error ? "ERROR" : rec.measured.passed ? "pass" : "FAIL"}${rec.pairwise ? `, cross-review ${rec.pairwise.error ? "ERROR" : rec.pairwise.winner}` : ""}, frame check ${rec.frameCheck.status} -> ${rec.passed ? "PASSED" : "not passed"}`,
   ];
   for (const f of rec.failing) lines.push(`    - ${f}`);
   lines.push(`    details: ${rec.videoPath.replace(/\.mp4$/, ".md")}`, `    stills:  ${rec.frameCheck.stillsDir} (${rec.frameCheck.stills.length} frames)`);
@@ -64,7 +65,7 @@ function describeRecord(rec: FormatRoundRecord): string {
 
 // Formats the final result as the summary the calling agent reports.
 export function describeResult(result: AllCheckResult): string {
-  const part = (name: string, s: AllCheckResult["long"]) => (s ? `${name} ${s.score?.toFixed(1) ?? "n/a"}/10 (round ${s.round}, ${s.passed ? "passed" : "not passed"}) ${s.finalPath ?? ""}` : `${name} never measured`);
+  const part = (name: string, s: AllCheckResult["long"]) => (s ? `${name} ${s.score == null ? "n/a" : formatScore(s.score)}/10 (round ${s.round}, ${s.passed ? "passed" : "not passed"}) ${s.finalPath ?? ""}` : `${name} never measured`);
   const lines = [
     `all-check ${result.status === "passed" ? "ALL GOOD" : "NOT ALL GOOD"}: ${result.slug} (target ${result.target.toFixed(1)}, ${result.roundsUsed} of ${result.roundBudget} rounds used)`,
     `  ${part("long", result.long)}`,

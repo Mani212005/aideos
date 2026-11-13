@@ -34,7 +34,7 @@ change to the document shape is a new version number (see below), never a quiet 
 | Rust tests | `native/aideos-render-ir/tests/fixtures.rs` |
 
 `native/` is the home of every native renderer crate. R2 added the renderer crate to
-`native/Cargo.toml`; R3 will add the encoder crate.
+`native/Cargo.toml`; the workspace also includes the encoder and audio mux; see [NATIVE_ENCODE.md](NATIVE_ENCODE.md).
 
 ## Versioning and rejection
 

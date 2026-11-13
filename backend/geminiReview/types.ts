@@ -66,8 +66,31 @@ export interface DeterministicVideoFacts {
   rawSummaryText: string;
 }
 
-export interface GeminiReviewReport {
+/** One draw of the reviewer model over the same video bytes. */
+export interface ReviewDrawReport {
+  /** 1 for the first draw, 2 for the one extra draw the verdict policy allows. */
+  draw: number;
+  /** The reviewer's own overall number for this draw, kept for the record only. */
   overallScore: number;
+  /** The mean of this draw's individual criteria scores (held at 8.5 while a hard gate failed): the number the verdict uses. */
+  score: number;
+  gatesPassed: boolean;
+  timestampsValid: boolean;
+  /** What this draw alone would have been: ACCEPT only at the bar with gates and timestamps held. */
+  verdict: "ACCEPT" | "REVISE";
+  criteria: CriterionEvaluation[];
+  evaluatedAt: string;
+}
+
+export interface GeminiReviewReport {
+  /** The reviewer's own overall number (of the first draw), kept for the record. It never decides the verdict: criteriaMeanScore does. */
+  overallScore: number;
+  /** The score the verdict was decided on: the mean of the individual criteria scores, combined over both draws when two ran. Absent in reports written before the verdict policy. */
+  criteriaMeanScore?: number;
+  /** Every draw of the reviewer behind this report (one, or two when the first was within 0.5 of the bar). */
+  draws?: ReviewDrawReport[];
+  /** Plain words on how many draws ran and why. */
+  drawNote?: string;
   verdict: "ACCEPT" | "REVISE";
   summary: string;
   criteria: CriterionEvaluation[];
