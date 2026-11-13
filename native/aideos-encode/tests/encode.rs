@@ -778,6 +778,18 @@ fn cli_exit_codes_and_png_frame_input() {
     let dir = TempDir::new("cli-misc");
     assert_eq!(cli(&["--out", dir.join("x.mp4").to_str().unwrap()]).status.code(), Some(2), "no frame source");
     assert_eq!(cli(&["--frames", dir.0.to_str().unwrap(), "--profile", "nonsense", "--out", dir.join("x.mp4").to_str().unwrap()]).status.code(), Some(2));
+    let out = dir.join("x.mp4");
+    let out_arg = out.to_str().unwrap();
+    for raw_only in [
+        ["--size", "128x72"].as_slice(),
+        ["--frame-count", "1"].as_slice(),
+        ["--pixel-format", "i420"].as_slice(),
+    ] {
+        let mut args = vec!["--frames", dir.0.to_str().unwrap()];
+        args.extend_from_slice(raw_only);
+        args.extend(["--out", out_arg]);
+        assert_eq!(cli(&args).status.code(), Some(2), "raw-only options must be rejected with --frames: {raw_only:?}");
+    }
     assert_eq!(cli(&["--frames", dir.0.to_str().unwrap(), "--raw-stdin", "--size", "128x72", "--frame-count", "3", "--out", dir.join("x.mp4").to_str().unwrap()]).status.code(), Some(2), "two frame sources");
     let odd_frames = dir.join("odd");
     fs::create_dir_all(&odd_frames).unwrap();

@@ -43,7 +43,7 @@ struct Args {
     raw_stdin: bool,
     size: Option<(u32, u32)>,
     frame_count: Option<u64>,
-    pixel_format: PixelFormat,
+    pixel_format: Option<PixelFormat>,
     fps: Fps,
     profile: Profile,
     backend: BackendChoice,
@@ -71,7 +71,7 @@ fn parse_args(raw: &[String]) -> Result<Args, Usage> {
         raw_stdin: false,
         size: None,
         frame_count: None,
-        pixel_format: PixelFormat::Rgba8,
+        pixel_format: None,
         fps: Fps { num: 30, den: 1 },
         profile: Profile::Final,
         backend: BackendChoice::Auto,
@@ -94,7 +94,7 @@ fn parse_args(raw: &[String]) -> Result<Args, Usage> {
             "--frame-count" => args.frame_count = Some(value("--frame-count")?.parse().map_err(|_| Usage("--frame-count must be a whole number".to_string()))?),
             "--pixel-format" => {
                 let text = value("--pixel-format")?;
-                args.pixel_format = PixelFormat::parse(&text).ok_or_else(|| Usage(format!("pixel format \"{text}\" must be rgba or i420")))?;
+                args.pixel_format = Some(PixelFormat::parse(&text).ok_or_else(|| Usage(format!("pixel format \"{text}\" must be rgba or i420")))?);
             }
             "--fps" => args.fps = Fps::parse(&value("--fps")?).map_err(|e| Usage(e.to_string()))?,
             "--profile" => {
@@ -124,13 +124,15 @@ fn open_source(args: &Args) -> Result<Box<dyn FrameSource>, Usage> {
     if chosen != 1 {
         return Err(Usage("give exactly one of --frames and --raw-stdin".to_string()));
     }
-    let spec_for = |width: u32, height: u32, count: u64| FrameSpec { width, height, fps: args.fps, pixel_format: args.pixel_format, frame_count: count };
     if let Some(dir) = &args.frames_dir {
+        if args.size.is_some() || args.frame_count.is_some() || args.pixel_format.is_some() {
+            return Err(Usage("--size, --frame-count and --pixel-format apply only to --raw-stdin".to_string()));
+        }
         return Ok(Box::new(PngSequenceSource::open(dir, args.fps).map_err(|e| Usage(e.to_string()))?));
     }
     let (width, height) = args.size.ok_or_else(|| Usage("--raw-stdin needs --size WxH".to_string()))?;
     let count = args.frame_count.ok_or_else(|| Usage("this frame source needs --frame-count N".to_string()))?;
-    let spec = spec_for(width, height, count);
+    let spec = FrameSpec { width, height, fps: args.fps, pixel_format: args.pixel_format.unwrap_or(PixelFormat::Rgba8), frame_count: count };
     Ok(Box::new(RawStreamSource::new(spec, std::io::BufReader::with_capacity(1 << 20, std::io::stdin())).map_err(|e| Usage(e.to_string()))?))
 }
 
