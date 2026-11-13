@@ -50,6 +50,8 @@ import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/co
 import { executeCritique } from '../backend/critique/engine.ts'
 import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
+  assertScriptReadyForSynthesis,
+  ScriptIntakeError,
   buildFilmPartsFromScript,
   hasScreenplayTags,
   plainTextToTaggedScript,
@@ -1501,7 +1503,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const shotTexts: string[] = film.shots?.map((s: any) => (s.scriptText || s.id || '').trim()).filter(Boolean) || [];
             const scriptInput = scriptText ? splitScriptIntoSegments(scriptText) : shotTexts.length > 0 ? shotTexts : [film.title];
             const pkgDir = path.join(videosDir, film.id);
-            const audioResult = await produceAudioPipeline(scriptInput, pkgDir);
+            const intakeNotices: string[] = [];
+            const audioResult = await produceAudioPipeline(scriptInput, pkgDir, {
+              ...(scriptText ? { intakeSource: scriptText } : {}),
+              onIntakeNotice: (issue) => intakeNotices.push(issue.message),
+            });
 
             // Update shot durations to match audio segments accurately (1:1 shot-level mapping)
             const updatedShots = film.shots.map((shot: any, idx: number) => {
@@ -1544,10 +1550,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               ],
             });
 
-            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult });
+            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult, intakeNotices });
           }).catch(err => {
             console.error('[API voiceover error]:', err);
-            sendJson(res, 500, { error: String(err) });
+            sendJson(res, err instanceof ScriptIntakeError ? 400 : 500, { error: err instanceof Error ? err.message : String(err) });
           });
           return;
         }
@@ -1978,6 +1984,16 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
 
+            let intakeNotices: string[] = [];
+            if (!(spokenTextOverride && typeof spokenTextOverride === 'string' && spokenTextOverride.trim())) {
+              try {
+                assertScriptReadyForSynthesis(script || '', (issue) => intakeNotices.push(issue.message));
+              } catch (err) {
+                sendJson(res, 400, { error: err instanceof Error ? err.message : String(err), intakeNotices });
+                return;
+              }
+            }
+
             // The narration lines to record: only the spoken lines of a tagged script, the paragraphs of a plain
             // story, or the spoken text override, one recording per line.
             const narrationLinesToSpeak: string[] = spokenTextOverride && typeof spokenTextOverride === 'string' && spokenTextOverride.trim()
@@ -2151,6 +2167,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 estimatedDurationSec: Math.round(measuredDuration),
                 actualDurationSec: measuredDuration,
                 lines: lineSummary,
+                intakeNotices,
                 shots: updatedShots,
                 film: updatedFilm,
                 agentPrompt,

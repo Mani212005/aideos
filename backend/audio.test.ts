@@ -15,6 +15,7 @@ dotenv.config({ quiet: true });
 
 import {
   splitScriptIntoSegments,
+  produceAudioPipeline,
   formatTime,
   buildFilmFromAudioResult,
   retimeAudio,
@@ -28,6 +29,7 @@ import {
 import { measureLoudness } from "./review/media";
 import { getRetimedAudioFilename, getRetimedAudioRelPath } from "../src/dl/audio/retime";
 import { decodeWav, encodeWav } from "./pcm";
+import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
 
 const fixtureDir = path.resolve(process.cwd(), "test_fixtures");
 const testAudioPath = path.join(fixtureDir, "test_audio.wav");
@@ -68,6 +70,44 @@ test("no-narration-segment rejection throws error for empty or textless script s
     () => splitScriptIntoSegments("   \n\t  "),
     /A shot with no narration is not allowed mid-script in v1/,
   );
+});
+
+test("shared audio entry reports fragments, rejects title leaks, and still synthesizes clean narration", async () => {
+  const pkg = await fs.mkdtemp(path.join(os.tmpdir(), "aideos-intake-audio-"));
+  const synthesized: string[] = [];
+  const notices: string[] = [];
+  const backend: TtsBackend = {
+    name: "intake-test",
+    maxChars: 800,
+    async synthesize(text) {
+      synthesized.push(text);
+      return new Float32Array(PCM_SAMPLE_RATE * 4).fill(0.05);
+    },
+  };
+  try {
+    await assert.rejects(
+      produceAudioPipeline("## Closing\n[NARRATION]\nClosing.", pkg, { ttsBackendInstance: backend }),
+      /would read the heading aloud/,
+    );
+    assert.deepEqual(synthesized, [], "title validation runs before the TTS backend is called");
+
+    const result = await produceAudioPipeline("A clean narration line.", pkg, {
+      ttsBackendInstance: backend,
+      onIntakeNotice: (issue) => notices.push(issue.message),
+    });
+    assert.equal(result.segments[0].text, "A clean narration line.");
+    assert.deepEqual(synthesized, ["A clean narration line."]);
+    assert.deepEqual(notices, []);
+
+    const fragmentResult = await produceAudioPipeline("the closing\nprocess is expensive", pkg, {
+      ttsBackendInstance: backend,
+      onIntakeNotice: (issue) => notices.push(issue.message),
+    });
+    assert.equal(fragmentResult.segments[0].text, "the closing process is expensive");
+    assert.match(notices[0], /line 1.*the closing.*line 2.*process is expensive/);
+  } finally {
+    await fs.rm(pkg, { recursive: true, force: true });
+  }
 });
 
 test("caption offset math correctly shifts timestamps by segment start offset", () => {

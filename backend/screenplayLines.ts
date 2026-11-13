@@ -52,7 +52,7 @@ export type Dialect = "screenplay" | "story";
 export interface LineContext {
   /** Story only: no paragraph is open, so this line would start one. */
   paragraphStart?: boolean;
-  /** Story only: the raw line that follows, if any. */
+  /** The raw line that follows, if any. */
   next?: string;
 }
 
@@ -204,7 +204,7 @@ export function looksLikeHeading(text: string): boolean {
 }
 
 /** Gives one screenplay line exactly one class, testing in the fixed order the parser always used. */
-export function classifyScreenplayLine(rawLine: string): ClassifiedLine {
+export function classifyScreenplayLine(rawLine: string, ctx: LineContext = {}): ClassifiedLine {
   const text = rawLine.trim();
   if (!text) return { cls: "blank", text };
   if (isProductionNotesHeader(text)) return { cls: "note", text, note: "production-notes" };
@@ -222,7 +222,7 @@ export function classifyScreenplayLine(rawLine: string): ClassifiedLine {
   if (bracket) return { cls: "tag", text, beat: bracket.type, inline: bracket.inline };
 
   if (isLegacyBoundaryTag(text)) return { cls: "note", text, note: "stage-direction" };
-  return { cls: "prose", text, hashed: text.startsWith("#") };
+  return { cls: "prose", text, hashed: text.startsWith("#"), continuation: continuedFragment(text, ctx.next) };
 }
 
 /** Gives one plain-story line exactly one class; a bare title directly above prose is a heading, not narration. */
@@ -365,6 +365,18 @@ export interface ScriptIssue {
   line?: number;
   text: string;
   message: string;
+}
+
+/** Converts the classifier's shared continuation metadata into the user-facing intake notice. */
+export function continuedFragmentIssue(line: ClassifiedLine, lineNumber: number): ScriptIssue | null {
+  if (line.cls !== "prose" || !line.continuation) return null;
+  return {
+    kind: "continued-fragment",
+    severity: "notice",
+    line: lineNumber,
+    text: line.text,
+    message: `line ${lineNumber} "${line.text}" may be a fragment continued by line ${lineNumber + 1} "${line.continuation}"; both lines remain prose`,
+  };
 }
 
 /** Lower-cases and strips punctuation so a title and a narration opening compare word for word. */

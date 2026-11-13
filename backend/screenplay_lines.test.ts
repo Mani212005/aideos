@@ -12,6 +12,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 
 import {
   ImpossibleTransitionError,
@@ -137,7 +138,16 @@ test("tagged screenplay: narration that begins with its own chapter title is an 
   assert.equal(checkScriptIntake(titleOnly)[0]?.kind, "narration-starts-with-title", "narration consisting only of its title is flagged");
 });
 
-test("intake stage: a leaked title stops the run before any voice is synthesized, and a story heading is reported", async () => {
+test("tagged screenplay: continued prose fragments are reported without changing spoken text", () => {
+  const script = "## Opening\n[NARRATION]\nthe closing\nprocess is expensive";
+  const issues = checkScriptIntake(script);
+  assert.deepEqual(issues.map((issue) => [issue.kind, issue.severity, issue.line, issue.text]), [
+    ["continued-fragment", "notice", 3, "the closing"],
+  ]);
+  assert.deepEqual(extractSpokenBlocks(script), ["the closing process is expensive"]);
+});
+
+test("the shared synthesis boundary rejects a leaked title before any voice is synthesized", async () => {
   const slug = `m6-intake-${Date.now().toString(36)}`;
   const messages: string[] = [];
   try {
@@ -150,7 +160,6 @@ test("intake stage: a leaked title stops the run before any voice is synthesized
           ttsBackend: "tone",
           design: "templates",
           broll: false,
-          stopAfter: "intake",
           resume: false,
           syncToPreview: false,
         },
@@ -158,19 +167,47 @@ test("intake stage: a leaked title stops the run before any voice is synthesized
       ),
       /would read the heading aloud/,
     );
-    assert.ok(messages.includes("intake:failed"));
-    assert.ok(!messages.some((m) => m.startsWith("narrate")), "nothing was narrated");
-
-    const events: string[] = [];
-    await runProduction(
-      { script: CLOSING_STORY, title: "M6", slug, ttsBackend: "tone", design: "templates", broll: false, stopAfter: "intake", resume: false, syncToPreview: false },
-      (event) => events.push(event.message),
-    );
-    assert.ok(events.some((m) => /"The Closing" is a chapter heading/.test(m)));
+    assert.ok(messages.includes("narrate:failed"));
+    assert.ok(!messages.some((m) => m.includes("synthesizing 1/")), "nothing was synthesized");
   } finally {
     fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
     fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
   }
+});
+
+test("Studio /api/voiceover rejects a title leak before generating audio", async () => {
+  const config = (await import("../editor/vite.config")).default as { plugins: Array<any> };
+  const plugin = config.plugins.find((candidate) => candidate.name === "film-api");
+  assert.ok(plugin, "the studio film API plugin is present");
+  let middleware: ((req: unknown, res: unknown, next: () => void) => void) | undefined;
+  plugin.configureServer({ middlewares: { use: (handler: typeof middleware) => { middleware = handler; } } });
+  assert.ok(middleware);
+
+  const req = new PassThrough() as PassThrough & { method: string; url: string; headers: Record<string, string> };
+  req.method = "POST";
+  req.url = "/api/voiceover";
+  req.headers = { host: "localhost" };
+  let statusCode = 200;
+  let responseBody = "";
+  let resolveResponse!: () => void;
+  const responseComplete = new Promise<void>((resolve) => { resolveResponse = resolve; });
+  const res = {
+    statusCode,
+    setHeader() {},
+    end(body = "") {
+      statusCode = this.statusCode;
+      responseBody = String(body);
+      resolveResponse();
+    },
+  };
+  middleware(req, res, () => {});
+  req.end(JSON.stringify({
+    film: { id: `m6-studio-${Date.now().toString(36)}`, title: "Closing", shots: [] },
+    scriptText: "## Closing\n[NARRATION]\nClosing.",
+  }));
+  await responseComplete;
+  assert.equal(statusCode, 400);
+  assert.match(JSON.parse(responseBody).error, /would read the heading aloud/);
 });
 
 test("screenplay machine: states and transitions through a section, its beats and a notes header", () => {

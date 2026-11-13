@@ -49,9 +49,12 @@ implementation detail, and every type it takes or returns lives in `backend/pipe
 | `render`   | Installs the film as active, drives Remotion for each requested format, then measures and masters each MP4 audio track | `src/dl/activeFilm.ts`, `videos/<slug>/renders/<format>.mp4`, `<format>.mp4.master.json`, `description-credits.txt` by default |
 | `verify`   | Probes the rendered files and writes contact sheets across the whole duration         | `videos/<slug>/review/<format>-sheet.jpg`          |
 
-Intake reports a notice when a plain-story line of at most six words has no ending punctuation
+Pre-synthesis validation reports a notice when a plain-story line of at most six words has no ending punctuation
 and the next line starts lowercase, since that may be a sentence fragment continuing across lines.
 The lines remain prose and their narration is unchanged.
+`assertScriptReadyForSynthesis` is the shared guard: `produceAudioPipeline` calls it before preparing
+audio, including on resumed forced narration, and Studio's direct line-synthesis route calls the same
+guard before invoking TTS. Title leaks stop with an error; notices travel through progress or response data.
 
 Progress arrives through the second argument to `runProduction`: one `ProductionProgress` per
 event, carrying the stage, its status, a human-readable message, an optional 0..1 fraction within
