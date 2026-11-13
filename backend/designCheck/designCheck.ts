@@ -12,6 +12,9 @@
  * Used by: backend/cli.ts, backend/pipeline/run.ts.
  */
 
+import { stageTimeline, STORY_HOLD_MAX_SEC } from "../stageTimeline";
+import { compileScene } from "../../src/dl/scene/compile";
+import { VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
 import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import { checkCaptionPlacements } from "./captionPlacement";
 import fs from "node:fs";
@@ -45,6 +48,7 @@ import type { AudioLibrary } from "../audioLibrary/schema";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
+  | "stage-hold"
   | "caption-placement"
   | "schema"
   | "scene"
@@ -259,7 +263,7 @@ function valueAt(list: TargetClip[] | undefined, slot: string, frame: number): n
 
 // Checks every animated element for snaps (a clip not starting where the last one left the value,
 // while the element is visible) and for more than one transform origin.
-function checkContinuity(asset: EnvironmentAsset, findings: DesignFinding[]): number {
+function checkContinuity(asset: EnvironmentAsset, findings: DesignFinding[], visibleAt?: (target: string, frame: number) => boolean): number {
   const clips = asset.animation?.clips ?? [];
   const slots = perTargetSlots(clips);
   for (const [key, list] of slots) {
@@ -272,9 +276,7 @@ function checkContinuity(asset: EnvironmentAsset, findings: DesignFinding[]): nu
       if (Math.abs(prev.to - cur.from) <= 1e-6) continue;
       // A jump the viewer cannot see is fine: the element is fully transparent on the frame
       // before the jump (it reappears already in place) or on the jump frame itself.
-      const opacityClips = slots.get(`${target}::opacity`);
-      const opacity = Math.min(valueAt(opacityClips, "opacity", cur.start - 1), valueAt(opacityClips, "opacity", cur.start));
-      if (opacity <= 0.001) continue;
+      if (visibleAt && (!visibleAt(target, cur.start - 1) || !visibleAt(target, cur.start))) continue;
       findings.push({
         rule: "continuity",
         severity: "error",
@@ -583,6 +585,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
     for (const e of result.errors) {
       findings.push({ rule: "scene", severity: "error", where: e.entityId ?? "scene", message: e.message });
     }
+    const compiled = result.errors.length === 0 ? compileScene(scene, { clockMs: 0 }) : undefined;
+    const stageTimes = compiled ? formats.map((format) => ({ format, timeline: stageTimeline(film, format, { compiled }) })) : [];
     const hasCaptions = film.captions !== "off" && film.subtitles !== false;
     const defaultCaptionFormats = formats.filter((format) =>
       hasCaptions && film.shots.some((shot) => resolveCaptionPlacement(film, format, shot.id).source === "default"));
@@ -595,7 +599,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
     const projections = context.collapsedClips?.length && result.errors.length === 0 ? formats.map((format) => {
       const width = format === "long" ? 1920 : 1080;
       const height = format === "long" ? 1080 : 1920;
-      return { width, height, project: prepareSvgProjection(scene, width, height, { packageSlug: film.id, includeBackground: true, includeAncestry: true, minOpacity: 0.001 }) };
+      return { width, height, project: prepareSvgProjection(scene, width, height, { packageSlug: film.id, includeBackground: true, includeAncestry: true, minOpacity: VISIBLE_OPACITY_MIN }) };
     }) : [];
     for (const asset of assets) {
       // The scene-art cutoff y > 1260 is the intentional legacy default for every format whenever
@@ -604,7 +608,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
         findings.push({ rule: "safe-area", severity: "error", where: asset.assetId, message: `placed at y=${asset.position.y}, which is inside the default caption band in ${defaultCaptionFormats.join(" and ")} (y > ${CAPTION_SAFE_SQUARE.y1}); move it up to keep it readable.` });
       }
       checkAsset(asset, chosenAccent ?? film.accent, chosenAccent, findings);
-      clips += checkContinuity(asset, findings);
+      clips += checkContinuity(asset, findings, stageTimes.length ? (target, frame) =>
+        stageTimes.some(({ timeline }) => timeline.visibleAt(frame).includes(`${asset.assetId}::${target}`)) : undefined);
       for (const collapsed of context.collapsedClips?.filter((c) => c.asset === asset.assetId) ?? []) {
         const clip = asset.animation?.clips.find((c) => c.clipId === collapsed.clipId);
         if (!clip || clip.from === clip.to) continue;
@@ -622,6 +627,12 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
     checkCarryChangeHolds(film, scene, context.lookPlan, findings);
     // The inset rule reads the compiled scene, which only exists when the scene itself is valid.
     if (result.errors.length === 0) {
+      for (const { format, timeline } of stageTimes) {
+        for (const hold of timeline.holds) findings.push({
+          rule: "stage-hold", severity: "error", where: `${format} / shot ${hold.shots.join(", ")}`,
+          message: `story picture holds unchanged from ${hold.start.toFixed(2)}s to ${hold.end.toFixed(2)}s (${(hold.end - hold.start).toFixed(2)}s; max ${STORY_HOLD_MAX_SEC}s). Animate a visible stage element or move the camera during this hold.`,
+        });
+      }
       for (const f of checkInsetRegions(film, scene, formats)) findings.push({ rule: "inset", severity: "error", ...f });
     }
   }

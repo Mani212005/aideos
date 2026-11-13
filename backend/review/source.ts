@@ -17,7 +17,8 @@ import { stageTreatmentAt, type StageTreatment, type TreatmentSpan } from "../..
 import fs from "node:fs";
 import path from "node:path";
 import { buildTimeline, lookBox, nodeBox, solveCam } from "../../src/dl/camera";
-import { deliveryTimeline } from "../../src/dl/delivery";
+import { stageSegments, stageTimeline, type StageSpan } from "../stageTimeline";
+import { compileScene } from "../../src/dl/scene/compile";
 import { MS } from "../../src/dl/motion";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
@@ -99,6 +100,7 @@ export interface PerformanceFacts {
 /** Facts read from film data. */
 export interface FilmFacts {
   stage?: ReturnType<typeof stageEvidence>;
+  stageSpans?: StageSpan[];
   /** Output format the format-specific facts (presence, camera) were measured for. */
   format?: "long" | "reel";
   viewport?: ReviewViewport;
@@ -275,41 +277,6 @@ function changingTrackStarts(tracks: Array<{ trackId?: string; keyframes: Array<
   return starts;
 }
 
-// Reads the opacity of a scene asset at a frame, honoring its explicit opacity track.
-function sceneAssetOpacityAt(asset: Scene["background"], frame: number): number {
-  const track = asset.tracks?.find((candidate) => candidate.trackId === "opacity");
-  if (!track?.keyframes.length) return asset.opacity;
-  const nextIndex = track.keyframes.findIndex((keyframe) => keyframe.frame >= frame);
-  if (nextIndex === -1) return track.keyframes[track.keyframes.length - 1].value;
-  const next = track.keyframes[nextIndex];
-  if (nextIndex === 0) return next.value;
-  const previous = track.keyframes[nextIndex - 1];
-  const progress = (frame - previous.frame) / Math.max(1, next.frame - previous.frame);
-  return previous.value + (next.value - previous.value) * progress;
-}
-
-// Reads one animated SVG target's opacity at a scene frame.
-function sceneTargetOpacityAt(asset: Scene["background"], target: string, frame: number): number {
-  const clips: Array<{ start: number; duration: number; from: number; to: number }> = [];
-  for (const clip of asset.animation?.clips ?? []) {
-    if (clip.property !== "opacity") continue;
-    const targetIndex = clip.targets.indexOf(target);
-    if (targetIndex < 0) continue;
-    const start = clip.startFrame + (clip.staggerFrames ?? 0) * targetIndex;
-    clips.push({ start, duration: clip.durationFrames, from: clip.from, to: clip.to });
-  }
-  if (!clips.length) return 1;
-  clips.sort((a, b) => a.start - b.start);
-  if (frame < clips[0].start) return clips[0].from;
-  let governing = clips[0];
-  for (const clip of clips) {
-    if (clip.start <= frame) governing = clip;
-  }
-  if (frame >= governing.start + governing.duration) return governing.to;
-  const progress = Math.min(1, Math.max(0, (frame - governing.start) / Math.max(1, governing.duration)));
-  return governing.from + (governing.to - governing.from) * progress;
-}
-
 // Solves the framing of every shot of a node-graph film and lists the moves between them.
 function nodeGraphCamera(film: Film, voiceSec: number | null): { camera: CameraFacts; starts: number[]; durations: number[] } {
   const timeline = buildTimeline(film, voiceSec ?? undefined);
@@ -338,22 +305,10 @@ function nodeGraphCamera(film: Film, voiceSec: number | null): { camera: CameraF
   return { camera: { available: true, kind: "node-graph", moves, driftOnly, maxSpeed: Math.max(0, ...moves.map((m) => m.speed)) }, starts, durations };
 }
 
-// The opacity a target holds at a frame from its ordered opacity clips (first clip's start value before any clip touches it).
-function opacityAt(clips: Array<{ start: number; end: number; from: number; to: number }>, frame: number): number {
-  if (!clips.length) return 1;
-  if (frame < clips[0].start) return clips[0].from;
-  let value = clips[0].from;
-  for (const c of clips) {
-    if (c.start > frame) break;
-    value = frame >= c.end ? c.to : c.from + ((c.to - c.from) * (frame - c.start)) / Math.max(1, c.end - c.start);
-  }
-  return value;
-}
-
 // Per boundary, which opacity-driven scene elements stay on stage and which of those are being transformed.
-function sceneBoundaries(scene: Scene, boundaryFrames: number[], fps: number): { carry: BoundaryCarry[]; clipStarts: number[] } {
+function sceneBoundaries(scene: Scene, boundaryFrames: number[], fps: number, visibleAt: (frame: number) => string[]): { carry: BoundaryCarry[]; clipStarts: number[] } {
   const assets = [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])];
-  const opacity = new Map<string, Array<{ start: number; end: number; from: number; to: number }>>();
+  const opacity = new Set<string>();
   const transforms = new Map<string, Array<{ start: number; end: number }>>();
   const clipStarts = new Set<number>();
   for (const asset of assets) {
@@ -363,19 +318,19 @@ function sceneBoundaries(scene: Scene, boundaryFrames: number[], fps: number): {
         const key = `${asset.assetId}::${target}`;
         if (k === 0) clipStarts.add(clip.startFrame);
         if (clip.property === "opacity") {
-          opacity.set(key, [...(opacity.get(key) ?? []), { start, end: start + clip.durationFrames, from: clip.from, to: clip.to }]);
+          opacity.add(key);
         } else if (clip.property !== "drawOn") {
           transforms.set(key, [...(transforms.get(key) ?? []), { start, end: start + clip.durationFrames }]);
         }
       });
     }
   }
-  for (const list of opacity.values()) list.sort((a, b) => a.start - b.start);
   const after = Math.round(0.5 * fps);
   const around = Math.round(1.5 * fps);
   const carry = boundaryFrames.map((b) => {
-    const outgoing = [...opacity.keys()].filter((k) => opacityAt(opacity.get(k)!, b - 1) > 0.05);
-    const keptKeys = outgoing.filter((k) => opacityAt(opacity.get(k)!, b + after) > 0.05);
+    const before = new Set(visibleAt(b - 1)), afterVisible = new Set(visibleAt(b + after));
+    const outgoing = [...opacity].filter((k) => before.has(k));
+    const keptKeys = outgoing.filter((k) => afterVisible.has(k));
     const transformed = keptKeys.filter((k) => (transforms.get(k) ?? []).some((c) => c.end >= b - after && c.start <= b + around));
     return { t: b / fps, outgoing: outgoing.length, kept: keptKeys.length, transformed: transformed.length };
   });
@@ -403,7 +358,7 @@ export function readFilmFacts(film: Film, viewport: ReviewViewport = FRAME): Fil
 
 // The end card span and its spoken words in one output, in seconds of the delivered video.
 export function endCardFacts(film: Film, format: "long" | "reel"): FilmFacts["endCard"] {
-  const delivery = deliveryTimeline(film, format);
+  const delivery = stageSegments(film, format);
   if (!delivery.card) return null;
   const sec = (frame: number) => frame / delivery.fps;
   return {
@@ -427,8 +382,10 @@ function readStoryFacts(film: Film, viewport: ReviewViewport): FilmFacts {
     shotBoundaries.push(acc);
   });
   if (scene) {
+    const compiled = compileScene(scene, { clockMs: 0 });
+    const stageTime = stageTimeline(film, formatOfViewport(viewport), { compiled });
     const boundaryFrames = shotBoundaries.map((t) => Math.round(t * fps));
-    const { carry, clipStarts } = sceneBoundaries(scene, boundaryFrames, fps);
+    const { carry, clipStarts } = sceneBoundaries(scene, boundaryFrames, fps, stageTime.visibleAt);
     const three = scene.renderer === "three";
     const stage = three ? stageEvidence(scene, boundaryFrames) : undefined;
     const projection = three ? prepareStageFacts(scene, viewport.width, viewport.height) : undefined;
@@ -467,12 +424,7 @@ function readStoryFacts(film: Film, viewport: ReviewViewport): FilmFacts {
       const endFrame = Math.round(endSec * fps);
       // Lists rendered SVG assets and targets at one scene frame; actor rigs are not rendered.
       const visibleFor = (frame: number) => {
-        const visibleFromAssets = assets.flatMap((asset) => {
-          if (sceneAssetOpacityAt(asset, frame) <= THRESHOLDS.planAdherence.visibleOpacityMin) return [];
-          const targets = [...new Set((asset.animation?.clips ?? []).flatMap((clip) => clip.targets))];
-          const visibleTargets = targets.filter((target) => sceneTargetOpacityAt(asset, target, frame) > THRESHOLDS.planAdherence.visibleOpacityMin);
-          return targets.length > 0 && visibleTargets.length === 0 ? visibleTargets : [asset.assetId, ...visibleTargets];
-        });
+        const visibleFromAssets = stageTime.visibleAt(frame).map((id) => id.includes("::") ? id.split("::")[1] : id);
         return [...visibleFromAssets, ...stageVisible(frame)];
       };
       const visibleAtStart = visibleFor(startFrame);
@@ -511,7 +463,7 @@ function readStoryFacts(film: Film, viewport: ReviewViewport): FilmFacts {
     } : undefined;
     const contactStarts = (performances ?? []).flatMap((p) => p.contactFrame === null ? [] : [p.contactFrame / fps]);
     return {
-      filmId: film.id, kind: "scene", durationSec: total, fps, shotBoundaries, shotDurations: durations,
+      filmId: film.id, kind: "scene", stageSpans: stageTime.spans, durationSec: total, fps, shotBoundaries, shotDurations: durations,
       camera: three ? projectedCameraMoves(scene, fps, viewport) : sceneCameraMoves(scene, fps), boundaries: carry,
       clipStarts, performanceContacts: contactStarts, nodeOverlaps: [], voiceoverSec, planShots, cameraKeyframes,
       ...(stage ? { stage } : {}),

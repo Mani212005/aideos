@@ -9,6 +9,7 @@
  * Used by: backend/geminiReview/geminiReview.ts.
  */
 
+import { STORY_HOLD_MAX_SEC } from "../stageTimeline";
 import { hasCaptionPlacementForFormat, prepareCaptionReview } from "../review/captionRegion";
 import type { CaptionRect } from "../../src/dl/captionPlacement";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -420,6 +421,15 @@ export function endCardFactLine(card: NonNullable<FilmFacts["endCard"]>): string
   return `- End Card: the last ${(card.endSec - card.startSec).toFixed(1)}s (${card.startSec.toFixed(1)}s to ${card.endSec.toFixed(1)}s) is the fixed like-and-subscribe end card added to every video; the story ends at ${card.startSec.toFixed(1)}s. Its held, dimmed final stage is by design, not a static freeze, dead air or a stage clear${spoken}.`;
 }
 
+// Reports compiled story holds using the same policy as design preflight and measured pacing.
+export function stageHoldFactLine(facts: FilmFacts): string | null {
+  if (!facts.stageSpans) return null;
+  const holds = facts.stageSpans.filter((span) => span.segment === "story" && span.motion === "holding" && span.to - span.from > STORY_HOLD_MAX_SEC * facts.fps);
+  return holds.length
+    ? `- Stage timeline: story holds longer than ${STORY_HOLD_MAX_SEC}s: ${holds.map((span) => `${(span.from / facts.fps).toFixed(2)}s to ${(span.to / facts.fps).toFixed(2)}s`).join(", ")}. The appended end card is excluded.`
+    : `- Stage timeline: no story hold longer than ${STORY_HOLD_MAX_SEC}s in compiled scene and camera data. The appended end card is excluded; pixel motion remains a separate measurement.`;
+}
+
 // Extracts all deterministic ground truth facts for a video.
 export async function extractDeterministicFacts(
   videoPath: string,
@@ -536,6 +546,7 @@ export async function extractDeterministicFacts(
     metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,
     stage ? `=== STAGE FACTS FOR THIS OUTPUT (projected geometry and action data; pixels and craft unmeasured) ===\n${stageTruthText(stage)}` : stageNote,
     filmFacts?.endCard ? endCardFactLine(filmFacts.endCard) : null,
+    filmFacts ? stageHoldFactLine(filmFacts) : null,
     reelLength ? `- ${reelLength.summary} Gate Status: ${reelLength.passed ? "PASS" : "FAIL"}. This deterministic reel-length gate overrides any model pass.` : null,
     audio.measured ? `- Audio Mix: ${audio.summary}` : `- Audio: Not measured`,
     bottomCaptions.measured
