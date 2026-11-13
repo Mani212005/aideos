@@ -68,7 +68,7 @@ device inset region.
 
 Measured pacing combines these scene spans with pixel freeze measurements. Both are clipped to the
 story before applying the same three-second limit. A run crossing into the end card keeps only its
-story portion; the fixed end-card hold is intentional. Gemini receives these same timeline facts,
+story portion; the fixed end-card hold is intentional. Gemini receives the same end-card boundary,
 and verification uses the same story boundary for silence. Films without a compiled scene still
 receive pixel freeze checks. Geometry does not establish occlusion or judge animation craft.
 
