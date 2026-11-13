@@ -167,10 +167,10 @@ cannot satisfy `-lfontconfig`; `build.rs` then links through a symlink to the ru
 `https://github.com/rust-skia/skia-binaries/releases/download/0.157.0/skia-binaries-<key>.tar.gz` and
 unpacks it into `native/target/<profile>/build/skia-bindings-*/out/skia`. Nothing is installed globally.
 
-**How CI caches it.** The `unit` job's existing "Restore the Rust build cache" step caches
+**How CI caches it.** The `unit` job's "Restore the Rust build cache" step caches
 `~/.cargo/registry`, `~/.cargo/git` and `native/target`, keyed by `native/Cargo.lock`. The unpacked binary
 lives in `native/target`, so a cache hit needs no download; a lockfile change misses the cache and downloads
-the 21 MB binary once. No new job or step was needed.
+the 21 MB binary once. The cache step was added alongside the Rust test step in the existing `unit` job.
 
 **Mirror or offline build.** `SKIA_BINARIES_URL` replaces the download URL template (`{tag}` and `{key}`
 are substituted; `file://` works), for example

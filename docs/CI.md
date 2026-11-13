@@ -25,7 +25,7 @@ GitHub job summary), so one run reports every problem.
 | --- | --- | --- |
 | `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy, and reports shadow PR risk rating | every PR and push to main |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
-| `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
+| `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), native Render IR and renderer tests (`cargo test --locked --manifest-path native/Cargo.toml`), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
 | `journeys` | `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
@@ -62,7 +62,8 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
   are cached across runs under `/home/runner/.apt-cache` with retry-hardened installs (detailed under
   [Runner hardening and red-main alert](#runner-hardening-and-red-main-alert)).
 * The `unit` job restores the Remotion browser cache, runs `remotion browser ensure` before tests,
-  and installs `tesseract-ocr` so OCR features run without skipping.
+  restores the Cargo registry and `native/target` cache keyed by `native/Cargo.lock`, runs the Rust
+  Render IR and renderer tests, and installs `tesseract-ocr` so OCR features run without skipping.
 * Skipped tests in any test runner are captured and reported honestly as `NOT COVERED (skipped)` in
   the timing summary and job summary, not as passes.
 * Renders use **software GL** (`AIDEOS_GL=swangle`, read by `backend/pipeline/render.ts`'s `glFlag`).

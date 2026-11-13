@@ -11,9 +11,10 @@ number, format)`, so any frame can be rendered in any order. R1 provides its sch
 pipeline emitter and renderer integration are later Phase 1 work.
 
 This is **R1** of Phase 1 of the native renderer plan: the schema, the TypeScript validator and the
-Rust loader. The evaluator and raster (R2), encode and audio mux (R3) and the film.json emitter plus
-Still Talking acceptance (R4) are separate ships. The IR is not coupled to Remotion or to the
-`RenderJob` state machine; later integration will hand a renderer an IR path and a format.
+Rust loader. The evaluator and raster are implemented in R2; encode and audio mux (R3), and the
+film.json emitter plus Still Talking acceptance (R4), remain separate ships. The IR is not coupled
+to Remotion or to the `RenderJob` state machine; later integration will hand a renderer an IR path
+and a format.
 
 **Status: unfrozen.** `/1` may still change shape until R4 passes on Still Talking. After that, any
 change to the document shape is a new version number (see below), never a quiet edit.
@@ -31,7 +32,8 @@ change to the document shape is a new version number (see below), never a quiet 
 | TypeScript tests | `backend/renderIr/renderIr.test.ts` |
 | Rust tests | `native/aideos-render-ir/tests/fixtures.rs` |
 
-`native/` is the home of every native renderer crate. R2 and R3 add members to `native/Cargo.toml`.
+`native/` is the home of every native renderer crate. R2 added the renderer crate to
+`native/Cargo.toml`; R3 will add the encoder crate.
 
 ## Versioning and rejection
 
@@ -168,7 +170,7 @@ Schema (embedded in the binary with `include_str!`), typed deserialization, then
 npm run render-ir:schema                    # regenerate the JSON Schema after editing schema.ts
 npm run render-ir:schema -- --check         # fail when the committed schema is out of date
 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test backend/renderIr/renderIr.test.ts
-cargo test --locked --manifest-path native/Cargo.toml      # the Rust loader against the same fixtures
+cargo test --locked --manifest-path native/Cargo.toml      # loader fixtures and renderer tests
 ```
 
 `npm test` finds the TypeScript suite by glob. `npm run ci -- unit` also runs the `cargo test` step
@@ -190,7 +192,7 @@ JSON file and its entry, then run both suites.
 
 ## Dependencies this adds
 
-Rust: `serde`, `serde_json` and `jsonschema` (built without HTTP or file resolution), 80 crates in
-all, in `native/Cargo.lock`, built into `native/target` (gitignored). Skia (`skia-safe`) is a dependency
-of the renderer crate only, not of this loader; see [NATIVE_RENDERER.md](NATIVE_RENDERER.md). CI: one step
-in the existing `unit` job and a cache of the cargo registry and `native/target`.
+The loader uses `serde`, `serde_json` and `jsonschema` (built without HTTP or file resolution). Skia
+(`skia-safe`) is a dependency of the renderer crate only, not of this loader; see
+[NATIVE_RENDERER.md](NATIVE_RENDERER.md). CI runs the workspace tests in the existing `unit` job and
+caches the Cargo registry and `native/target`.
