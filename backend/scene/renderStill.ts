@@ -6,8 +6,6 @@
  * misleading record of what the scene actually looks like.
  * Inputs and outputs: SVG markup, frame dimensions, and output path -> rendered PNG still via headless Chrome.
  * Used by: backend/designCheck/stills.ts, backend/sceneKit/preview.ts, backend/visionJudge/sampler.ts.
- * Inputs and outputs: SVG markup, frame dimensions, and output path -> rendered PNG still via headless Chrome.
- * Used by: backend/designCheck/stills.ts, backend/sceneKit/preview.ts, backend/visionJudge/sampler.ts.
  */
 
 import React from "react";
@@ -18,14 +16,10 @@ import os from "os";
 import { spawn } from "child_process";
 import type { CompiledFrame } from "../../src/dl/scene/compile";
 import { SceneView } from "../../src/dl/scene/SceneView";
+import { findChromeBinary } from "./chromeBinary";
 
-const CHROME_CANDIDATES = [
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/Applications/Chromium.app/Contents/MacOS/Chromium",
-  "/usr/bin/google-chrome",
-  "/usr/bin/chromium",
-  "/usr/bin/chromium-browser",
-];
+// Every headless-Chrome caller imports the binary lookup from here.
+export { findChromeBinary };
 
 export interface RenderStillOptions {
   /** Output width in pixels. Defaults to 1920. */
@@ -36,13 +30,6 @@ export interface RenderStillOptions {
   sceneSize?: { w: number; h: number };
   /** SVG source text per asset svgSource path, as produced by loadSceneAssets. */
   svgSources?: Record<string, string>;
-}
-
-/** Locates an installed Chrome or Chromium binary, or returns null when none is present. */
-export function findChromeBinary(): string | null {
-  const fromEnv = process.env.AIDEOS_CHROME_PATH;
-  if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
-  return CHROME_CANDIDATES.find((candidate) => fs.existsSync(candidate)) ?? null;
 }
 
 /**

@@ -25,8 +25,8 @@ GitHub job summary), so one run reports every problem.
 | --- | --- | --- |
 | `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy, and reports shadow PR risk rating | every PR and push to main |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
-| `unit` | `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), native Render IR and renderer tests (`cargo test --locked --manifest-path native/Cargo.toml`), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
-| `journeys` | `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
+| `unit` | warm the system Chrome (`scripts/warmChrome.ts`), `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), native Render IR and renderer tests (`cargo test --locked --manifest-path native/Cargo.toml`), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
+| `journeys` | warm the system Chrome (`scripts/warmChrome.ts`), `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
 | `all-green` | fails unless all five jobs above succeeded | the one check to require |
@@ -64,6 +64,13 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
 * The `unit` job restores the Remotion browser cache, runs `remotion browser ensure` before tests,
   restores the Cargo registry and `native/target` cache keyed by `native/Cargo.lock`, runs the Rust
   Render IR and renderer tests, and installs `tesseract-ocr` so OCR features run without skipping.
+* The `unit` and `journeys` jobs start by warming the system Chrome (`scripts/warmChrome.ts`): it reads
+  Chrome's install folder once and makes one headless launch, and prints both timings. On a fresh
+  GitHub runner the first launch of `/usr/bin/google-chrome` took a median 8 s and up to 34 s, while
+  every later launch took under a second (85 unit jobs, November 2026), so the test that happened to
+  launch Chrome first failed its own startup deadline (caption measurement's 25 s `ETIMEDOUT`, the
+  character browser's 30 s DevTools port wait). No test deadline was changed; the one-time cost now
+  happens before any test runs.
 * Skipped tests in any test runner are captured and reported honestly as `NOT COVERED (skipped)` in
   the timing summary and job summary, not as passes.
 * Renders use **software GL** (`AIDEOS_GL=swangle`, read by `backend/pipeline/render.ts`'s `glFlag`).

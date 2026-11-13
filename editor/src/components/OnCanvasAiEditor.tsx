@@ -177,8 +177,8 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
     }
   };
 
-  /** Applies the approved edit plan via the pure interpreter and commits a single undo step. */
-  const handleApplyPlan = () => {
+  /** Applies the approved edit plan via the pure interpreter, commits a single undo step, and confirms once it is saved and logged. */
+  const handleApplyPlan = async () => {
     if (!plannedState || isApplying) return;
 
     setIsApplying(true);
@@ -194,34 +194,37 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
           text: `Application rejected: ${firstRej.reason}`,
           isError: true,
         });
-        setIsApplying(false);
         return;
       }
 
       const updatedFilm = convertLayeredFilmToFilm(result.film, film);
       onUpdateFilm(updatedFilm);
 
-      void saveFilm(updatedFilm, "On-canvas AI edit");
+      // The save and the provenance record both finish before the edit is reported as applied, so the
+      // confirmation never runs ahead of what is on disk.
+      const [saved] = await Promise.all([
+        saveFilm(updatedFilm, "On-canvas AI edit"),
+        fetch("/api/edit-log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filmId: film.id,
+            request: plannedState.request || promptInput || "Applied AI edit",
+            plan: plannedState.plan,
+            ops: plannedState.ops,
+            attempts: 1,
+            dryRun: false,
+            source: "studio",
+            warnings: plannedState.warnings,
+          }),
+        }).catch(() => undefined),
+      ]);
 
-      void fetch("/api/edit-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filmId: film.id,
-          request: plannedState.request || promptInput || "Applied AI edit",
-          plan: plannedState.plan,
-          ops: plannedState.ops,
-          attempts: 1,
-          dryRun: false,
-          source: "studio",
-          warnings: plannedState.warnings,
-        }),
-      }).catch(() => undefined);
-
-      setStatusMessage({
-        text: "Applied AI edit successfully!",
-        isError: false,
-      });
+      setStatusMessage(
+        saved.ok
+          ? { text: "Applied AI edit successfully!", isError: false }
+          : { text: `Applied AI edit, but it is not saved yet: ${saved.reason}`, isError: true },
+      );
       setPlannedState(null);
       setPromptInput("");
     } catch (err: unknown) {
@@ -366,7 +369,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={handleApplyPlan}
+                    onClick={() => void handleApplyPlan()}
                     disabled={isApplying}
                     className="px-3 py-1 bg-success text-ink border-2 border-ink rounded font-mono text-xs font-bold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50"
                   >
