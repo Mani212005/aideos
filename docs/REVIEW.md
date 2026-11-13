@@ -353,3 +353,9 @@ For CanvasGraph films, the report warns that placed-card collisions against grap
 its 3D projection is deliberately out of scope for the collision geometry. Review of the placed position
 remains the safety net for CanvasGraph films; scene-art and posed-character collision checks remain active.
 Automatic placement and suggestions are outside this feature.
+
+Caption word measurement embeds the pinned Geist fonts and runs a bounded local Chrome page.
+On Linux, both synchronous and asynchronous measurement disable desktop D-Bus discovery in the
+browser's environment. A bus socket that accepts a connection but never authenticates can block
+Chrome startup before the page runs, even with all fonts embedded. Measuring DOM text does not
+need a desktop bus. The browser still has its existing 25 second deadline; no retry is used.

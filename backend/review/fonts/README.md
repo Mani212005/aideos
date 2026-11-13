@@ -1,9 +1,8 @@
 # Vendored Geist (weight 700)
 
 The review measures caption words in Geist 700, the render's caption face. The measuring page embeds
-these files instead of fetching them from `fonts.gstatic.com`: a stalled connection to the font CDN
-leaves headless Chrome waiting until the caller's 25 second kill, which failed
-`backend/captionPlacement.test.ts` with `Could not measure caption words: spawnSync ... ETIMEDOUT`.
+these files instead of fetching them from `fonts.gstatic.com`. See [review documentation](../../../docs/REVIEW.md)
+for the browser startup and timeout behavior.
 
 Each file is the upstream file `@remotion/google-fonts/Geist` lists for weight 700, named
 `<subset>-<upstream file name>`. If a Remotion upgrade changes those URLs, measuring throws and names

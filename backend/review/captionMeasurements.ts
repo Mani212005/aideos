@@ -106,6 +106,18 @@ function collectMeasurements(
   return merged;
 }
 
+// Keeps Linux DOM measurement independent of desktop buses whose authentication can block Chrome startup.
+function captionChromeEnvironment(): NodeJS.ProcessEnv {
+  return process.platform === "linux"
+    ? {
+        ...process.env,
+        // An invalid address fails immediately instead of discovering or authenticating with a desktop service.
+        DBUS_SESSION_BUS_ADDRESS: "disabled:",
+        DBUS_SYSTEM_BUS_ADDRESS: "disabled:",
+      }
+    : process.env;
+}
+
 // Executes Chrome synchronously for blocking review and design-check callers.
 function runChromeSync(chrome: string, file: string) {
   return spawnSync(
@@ -120,7 +132,7 @@ function runChromeSync(chrome: string, file: string) {
       "--dump-dom",
       `file://${file}`,
     ],
-    { encoding: "utf8", timeout: 25000, maxBuffer: 16 * 1024 * 1024 },
+    { encoding: "utf8", timeout: 25000, maxBuffer: 16 * 1024 * 1024, env: captionChromeEnvironment() },
   );
 }
 
@@ -136,7 +148,7 @@ function runChromeAsync(chrome: string, file: string): Promise<string> {
       "--virtual-time-budget=15000",
       "--dump-dom",
       `file://${file}`,
-    ]);
+    ], { env: captionChromeEnvironment() });
     let stdout = "";
     let stderr = "";
     const timeout = setTimeout(() => child.kill("SIGKILL"), 25000);
