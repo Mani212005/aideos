@@ -24,6 +24,7 @@ import { designSpecSchema } from "./spec";
 import { narrationTimingForFilm, type TimedWord } from "./compile";
 import { createCues } from "../sceneKit/timing";
 import { checkSoundtrack } from "../designCheck/soundtrack";
+import { designAcceptance, judgeBuiltDesign, type JudgeState } from "../lookPlan/contract";
 
 
 /** Asks a text model for a completion; injectable so tests never reach a real model. */
@@ -35,7 +36,8 @@ export interface DesignOutcome {
   note: string;
   status?: DesignBuildStatus;
   /** The vision judge's ruling on the finished design, when it ran. */
-  judge?: JudgeResult;
+  judge?: JudgeState;
+  judgeDetails?: JudgeResult;
 }
 
 /** Options for designing one film. */
@@ -58,6 +60,8 @@ export interface DesignFilmOptions {
   ownerKey?: string;
   /** Vision-judge settings, or false to skip it. It is off under the Node test runner unless given here. */
   judge?: JudgeOptions | false;
+  /** Supplies visual evidence from an alternative renderer or a deterministic test. */
+  judgeRunner?: typeof judgeAndRepair;
 }
 
 // Delivers a look or design task through the same channel ladder and waits for validated output.
@@ -266,8 +270,11 @@ async function markTemplates(filmId: string, note: string): Promise<void> {
 
 // Runs the vision judge on a finished design and sends failed frames back through the path that made it.
 async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignFilmOptions): Promise<DesignOutcome> {
-  if (readFilm(filmId)?.scene?.renderer === "three") return { ...outcome, note: `${outcome.note}; Three craft unmeasured by SVG-only vision judge. Review actual FilmView renders.` };
-  if (opts.judge === false || (opts.judge === undefined && process.env.NODE_TEST_CONTEXT)) return outcome;
+  // Makes an intentional lack of visual evidence explicit, including unsupported renderer adapters.
+  const skipped = (reason: string): DesignOutcome => ({ ...outcome, judge: judgeBuiltDesign({ state: "built" }, { passed: null, skipped: reason }).judge,
+    note: `${outcome.note}; visual judgment unavailable: ${reason}` });
+  if (!opts.judgeRunner && readFilm(filmId)?.scene?.renderer === "three") return skipped("Three craft unmeasured by SVG-only vision judge. Review actual FilmView renders.");
+  if (!opts.judgeRunner && (opts.judge === false || (opts.judge === undefined && process.env.NODE_TEST_CONTEXT))) return skipped("vision judge disabled");
   const judgeOptions: JudgeOptions = { skipAgent: opts.skipAgent, ownerKey: opts.ownerKey, onProgress: opts.onProgress, ...(opts.judge ?? {}) };
   const repair = async (errors: string): Promise<boolean> => {
     if (outcome.source === "agent") return (await tryAgent(filmId, opts, "design", () => {
@@ -277,17 +284,18 @@ async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignF
     if (!opts.llmCaller) return false;
     return (await tryServerModel(filmId, opts.llmCaller, opts, `The vision judge ruled these frames wrong. Fix each one, exactly as reported:\n${errors}`)).state === "passed";
   };
-  const judge = await judgeAndRepair(filmId, { ...judgeOptions, repair });
-  if (judge.skipped) {
-    const note = `${outcome.note}; visual judgment unavailable: ${judge.skipped}`;
+  const judge = await (opts.judgeRunner ?? judgeAndRepair)(filmId, { ...judgeOptions, repair });
+  const judgment = judgeBuiltDesign({ state: "built" }, judge);
+  if (judgment.judge === "skipped") {
+    const note = `${outcome.note}; visual judgment unavailable: ${judgment.reason}`;
     opts.onProgress?.(note);
-    return { ...outcome, note, judge };
+    return { ...outcome, note, judge: judgment.judge, judgeDetails: judge };
   }
   const note = judge.passed
     ? `${outcome.note}; vision judge: ${judge.samples.length} frames match`
     : `${outcome.note}; vision judge: ${judge.failures.length} of ${judge.samples.length} frames still fail`;
   opts.onProgress?.(note);
-  return { ...outcome, note, judge };
+  return { ...outcome, source: designAcceptance(judgment.judge) === "needs_design" ? "needs_design" : outcome.source, note, judge: judgment.judge, judgeDetails: judge };
 }
 
 // Builds existing authoring data, or requests it through the explicit mode without silent templates.
@@ -296,7 +304,7 @@ export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): 
   if (mode === "templates") {
     const note = "template design explicitly requested";
     await markTemplates(filmId, note);
-    return { source: "templates", note };
+    return { source: "templates", note, judge: "skipped" };
   }
   writeDesignBrief(filmId);
   if (fs.existsSync(path.join(designDir(filmId), "design.json"))) {

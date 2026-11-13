@@ -16,14 +16,14 @@ import { DOT_RESOURCES, STAGE_RESOURCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } fr
 import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { characterCandidates } from "../characters/library";
 import type { LookPlan } from "../lookPlan/schema";
+import { designAcceptance } from "../lookPlan/contract";
 import { writeLookMd } from "../lookPlan/render";
 import crypto from "crypto";
 import fs from "fs";
 import fsp from "fs/promises";
-import os from "os";
 import path from "path";
 import type { Film } from "../../src/dl/schema";
-import { ensureRetimedAudio, produceAudioPipeline, type ProduceAudioResult } from "../audio";
+import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { DEFAULT_KOKORO_SPEED } from "../tts";
 import { DELIVERY_CONFIG, deliveryTimeline } from "../../src/dl/delivery";
 import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../endCard/voice";
@@ -43,18 +43,18 @@ import {
   readActiveFilmSource,
   readFilm,
   restoreActiveFilmSource,
-  setActiveFilm,
   slugify,
   wireFootageIntoFilm,
   writeFilm,
   withFootage,
 } from "./filmStore";
-import { analyseAudio, contactSheet, describeVideo, renderFormat, FORMAT_SPECS } from "./render";
-import { masterAudio, writeDescriptionCredits } from "../masterAudio";
+import { analyseAudio, contactSheet, describeVideo, FORMAT_SPECS } from "./render";
+import { writeDescriptionCredits } from "../masterAudio";
 import { assertDeliverable } from "../deliveryGate";
 import { filmEditState } from "../filmAcceptance/store";
 import { boundTheme } from "../../src/projectTheme";
-import { checkRenderDiskBudget } from "./renderDiskBudget";
+import { createRenderJob } from "../renderJob";
+import { createRemotionRenderer } from "../remotionRenderer";
 import {
   PRODUCTION_STAGES,
   DESIGN_MODES,
@@ -267,6 +267,7 @@ export async function runProduction(
   const delivery = {
     mode, skipAgent: request.skipAgent ?? Boolean(process.env.NODE_TEST_CONTEXT),
     agentTimeoutMs: request.designAgentTimeoutMs, llmCaller: request.designLlmCaller,
+    judgeRunner: request.designJudgeRunner,
     ...(request.ownerKey ? { ownerKey: request.ownerKey } : {}),
   };
 
@@ -303,6 +304,7 @@ export async function runProduction(
     outputs: outputResults,
     stages: state.stages,
     warnings,
+    ...(state.designJudge ? { designJudge: state.designJudge } : {}),
     ...(stoppedAfter ? { stoppedAfter } : {}),
   });
 
@@ -370,6 +372,8 @@ export async function runProduction(
         return reused;
       }
     }
+
+    if (PRODUCTION_STAGES.indexOf(stage) <= PRODUCTION_STAGES.indexOf("design")) state.designJudge = undefined;
 
     // A stage that runs again invalidates every later stage, even if its output hashes identically.
     // Forced narration/design must not leave a completed assembly or render attached to old inputs.
@@ -524,12 +528,13 @@ export async function runProduction(
     // ---- design: the accepted plan controls treatments and invalidates changed designs -------
     const lookHash = look ? lookPlanFingerprint(slug) : null;
     const designFingerprint = () => fingerprint(script, narration.shotDurations, request.music ?? null,
-      wantsBroll, mode, lookHash, "default-soundtrack-v1", mode === "templates" ? null : designFilesFingerprint(slug));
+      wantsBroll, mode, lookHash, "look-contract-v1", "default-soundtrack-v1", mode === "templates" ? null : designFilesFingerprint(slug));
 
     const design = await runStage(
       "design",
       designFingerprint(),
       () => {
+        if (!state.designJudge || designAcceptance(state.designJudge) === "needs_design") return null;
         if (mode !== "templates") {
           try {
             // Rebuild under the source that made the film, so an unchanged design writes an identical film and later stages stay reused.
@@ -562,9 +567,6 @@ export async function runProduction(
         fs.mkdirSync(designDir(slug), { recursive: true });
         fs.writeFileSync(path.join(designDir(slug), "base-film.json"), JSON.stringify(compiled.film, null, 2) + "\n");
         writeVisualChoices(slug, compiled.film, compiled.shotVisuals, compiled.deviceReports);
-        for (const [shotId, report] of compiled.deviceReports) {
-          if (look && report.state !== "authored") warnings.push(`${shotId}: ${report.reason}`);
-        }
         emit(
           "design",
           "running",
@@ -574,8 +576,9 @@ export async function runProduction(
         const outcome = await designFilm(slug, {
           ...delivery, onProgress: (message) => emit("design", "running", message),
         });
+        state.designJudge = outcome.judge;
         emit("design", "running", `design: ${outcome.note}`);
-        if (outcome.source === "needs_design") {
+        if (outcome.source === "needs_design" || outcome.judge && designAcceptance(outcome.judge) === "needs_design") {
           warnings.push(outcome.note);
           if (outcome.status) warnings.push(formatBuildStatus(slug, outcome.status));
           throw new NeedsInput("needs_design", [
@@ -769,40 +772,19 @@ export async function runProduction(
         return cached.length === formats.length && cached.every((o) => fs.existsSync(o.path)) ? cached : null;
       },
       async () => {
-        // Remotion's CLI bundles whichever film src/dl/activeFilm.ts names, so pointing it at
-        // this run is part of rendering. It happens here rather than during assembly because
-        // assembly is reached by runs that stop before rendering, and those must not leave the
-        // repository pointing at a film nothing ever rendered.
-        ensureRetimedAudio(assembled);
-
-        // The delivered cuts must all carry music, sound effects and the end card before any frame is rendered.
+        // Keep the existing all-format deliverable preflight before producing any output.
         assertDeliverable(formats.map((format) => ({ film: format === "reel" ? reelForRender(slug) : assembled, format })));
-
         const produced: RenderedOutput[] = [];
         for (const format of formats) {
           const outputFilm = format === "reel" ? reelForRender(slug) : assembled;
-          ensureRetimedAudio(outputFilm);
-          setActiveFilm(slug);
-          if (!FORMAT_SPECS[format]) {
-            throw new Error(`Invalid format "${format}". Supported formats are: ${Object.keys(FORMAT_SPECS).join(", ")}`);
-          }
           const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
-          // Remotion holds every frame of a format in the temp dir until it stitches them, so the
-          // guard renders a few real frames, measures them and refuses only a render that cannot fit.
-          // The whole delivered video: the story plus this format's compulsory end card.
-          const frameRange: [number, number] = request.renderFrames ?? [0, deliveryTimeline(outputFilm, format).totalFrames - 1];
-          emit("render", "running", `measuring ${format} frame sizes for the disk budget`);
-          await checkRenderDiskBudget({ film: outputFilm, format, range: frameRange, dirs: [os.tmpdir(), outDir], browserExecutable: request.browserExecutable });
-          emit("render", "running", `rendering ${format} (${FORMAT_SPECS[format].width}x${FORMAT_SPECS[format].height})`);
-          await renderFormat(format, outPath, {
-            concurrency: request.renderConcurrency,
-            browserExecutable: request.browserExecutable,
-            frames: request.renderFrames,
+          const job = createRenderJob({ film: outputFilm, format, outPath, profile: "final", frames: request.renderFrames }, createRemotionRenderer({
+            caller: "pipeline", concurrency: request.renderConcurrency, browserExecutable: request.browserExecutable,
             onLog: (message, progress) => emit("render", "running", message, progress),
-          });
-          const master = masterAudio(outPath, (message) => emit("render", "running", message));
+          }), { onLog: (message) => emit("render", "running", message) });
+          const { output, master } = await job.run();
           if (master.status === "skipped") warnings.push(`${format} master skipped: ${master.reason}`);
-          produced.push(describeVideo(format, outPath));
+          produced.push(output);
         }
         writeDescriptionCredits(path.join(pkgDir, "renders"), [assembled, ...(reelFilm ? [reelFilm] : [])]);
         state.outputs = produced;

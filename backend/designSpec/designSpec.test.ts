@@ -20,7 +20,7 @@ import { checkFilmDesign } from "../designCheck/designCheck";
 import { compileDesign, narrationTimingForFilm, type TimedWord } from "./compile";
 import { resolveCue } from "./cues";
 import { designSpecSchema, type LegacyDesignSpec } from "./spec";
-import { checkDesignAgainstLook } from "./build";
+import { bindDesignLook, checkDesignAgainstLook } from "./build";
 import { type LegacyLookPlan, parseLookPlan } from "../lookPlan/schema";
 
 const PKG = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
@@ -58,7 +58,7 @@ test("DesignSpec: the demo design compiles into a scene film that passes the des
 test("DesignSpec: planned scene motion must start within 0.4s of its spoken cue", () => {
   const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(PKG, "design/look.json"), "utf8"))) as LegacyLookPlan;
   const shot = plan.shots.find((candidate) => candidate.treatment === "scene")!;
-  const focusedPlan = { ...plan, film: { ...plan.film, camera: [] }, shots: [shot] };
+  const focusedPlan = { ...plan, film: { ...plan.film, camera: [], cast: plan.film.cast.map((item) => ({ ...item, changes: item.changes.filter((change) => change.at === shot.id) })) }, shots: [shot] };
   const design = spec();
   design.clips = [];
   const failed = checkDesignAgainstLook(base(), design, words(), PKG, focusedPlan);
@@ -196,5 +196,25 @@ test("DesignSpec camera: the demo's poses keep both artwork pieces inside the re
     for (const [l, r] of edges) {
       assert.ok(p.center[0] - half <= l && p.center[0] + half >= r, `pose "${p.id}" crops the artwork out of the reel (x ${p.center[0] - half}-${p.center[0] + half})`);
     }
+  }
+});
+
+
+// Keeps omitted-shot intentions enforceable when a caller supplies an incomplete design.
+test("DesignSpec ledger: unfulfilled cast changes in omitted shots are individually dropped", () => {
+  const plan = parseLookPlan(JSON.parse(fs.readFileSync(path.join(PKG, "design/look.json"), "utf8"))) as LegacyLookPlan;
+  const shot = plan.shots.find((candidate) => candidate.treatment === "scene")!;
+  const partialPlan = { ...plan, film: { ...plan.film, camera: [] }, shots: [shot] };
+  const design = spec();
+  design.clips = [];
+  const result = bindDesignLook(base(), design, words(), PKG, partialPlan);
+  const omitted = plan.film.cast.flatMap((item) => item.changes.flatMap((change, index) => change.at === shot.id ? [] : [{ id: `change:${item.id}:${index}`, subject: `${item.id} at ${change.at}` }]));
+  assert.ok(omitted.length > 0);
+  for (const intended of omitted) {
+    const row = result.ledger.find((item) => item.id === intended.id);
+    assert.equal(row?.state, "dropped");
+    assert.equal(row.subject, intended.subject);
+    assert.match(row.reason, /has no changing clip or performance/);
+    assert.ok(result.errors.includes(row.reason));
   }
 });

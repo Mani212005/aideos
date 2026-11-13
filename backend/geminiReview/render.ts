@@ -5,18 +5,14 @@
  * Used by: backend/allCheck/round.ts.
  */
 
-import fs from "node:fs";
-import fsp from "node:fs/promises";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
-import { masterAudio, writeDescriptionCredits } from "../masterAudio";
-import { stagePublicDir } from "../pipeline/render";
-import { readFilm, readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
+import { writeDescriptionCredits } from "../masterAudio";
+import { readFilm } from "../pipeline/filmStore";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { reelForRender } from "../reelCut/store";
 import { assertDeliverable } from "../deliveryGate";
-
-const REPO_ROOT = path.resolve(__dirname, "../..");
+import { createRenderJob } from "../renderJob";
+import { createRemotionRenderer, type RemotionRendererDeps } from "../remotionRenderer";
 
 // Refuses a film that would be delivered without music, sound effects or the end card; an all-check render becomes the final video, so it is held to the same rule as any delivery.
 export function assertSlugDeliverable(slug: string, format: "long" | "reel"): void {
@@ -25,33 +21,13 @@ export function assertSlugDeliverable(slug: string, format: "long" | "reel"): vo
 }
 
 // Renders the video for a given slug using Remotion CLI.
-export async function renderVideoForSlug(slug: string, format: "long" | "reel" = "long"): Promise<string> {
+export async function renderVideoForSlug(slug: string, format: "long" | "reel" = "long", deps: RemotionRendererDeps = {}): Promise<string> {
   const film = format === "reel" ? reelForRender(slug) : readFilm(slug);
   const pkgDir = resolvePackageDir(slug);
   const rendersDir = path.join(pkgDir, "renders");
   const outPath = path.join(rendersDir, `${format}.mp4`);
-  // Refresh generated shadows, then capture the active-film source so this render can restore it afterward.
-  const previousActive = readActiveFilmSource();
-  await fsp.mkdir(rendersDir, { recursive: true });
-
-  const compId = format === "reel" ? "Reel" : "Long";
-  const args = [
-    "remotion", "render", "src/index.ts", compId, outPath, "--gl=angle"
-  ];
-  const publicDir = stagePublicDir();
-  if (publicDir) args.push(`--public-dir=${publicDir.dir}`);
-
-  try {
-    setActiveFilm(slug);
-    execFileSync("npx", args, { cwd: REPO_ROOT, stdio: "inherit" });
-    if (!fs.existsSync(outPath)) {
-      throw new Error(`Render failed to create output file at ${outPath}`);
-    }
-    masterAudio(outPath);
-    if (film) writeDescriptionCredits(rendersDir, [film]);
-    return outPath;
-  } finally {
-    publicDir?.cleanup();
-    restoreActiveFilmSource(previousActive);
-  }
+  if (!film) throw new Error(`No film found for "${slug}"`);
+  await createRenderJob({ film, format, outPath, profile: "review" }, createRemotionRenderer({ caller: "review" }, deps)).run();
+  writeDescriptionCredits(rendersDir, [film]);
+  return outPath;
 }
