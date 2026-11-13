@@ -5,7 +5,8 @@
  * into canonical markdown, into strictly-spoken narration text, and into Remotion sub-shots with on-screen
  * TextReveal overlays. Contains no Node-only imports so it can be bundled for the browser as-is.
  * Inputs and outputs: raw script text or structured ScriptData -> bidirectional parsed segments, beats, and formatted screenplay.
- * Used by: backend/pipeline/run.ts, backend/pipeline/director.ts, backend/audio.ts, editor/src/components/ScriptEditor.tsx.
+ * Used by: backend/pipeline/run.ts and backend/pipeline/director.ts for parsing, backend/audio.ts and the
+ * Studio script-to-TTS route through assertScriptReadyForSynthesis, and editor/src/components/ScriptEditor.tsx.
  */
 
 import {
@@ -26,6 +27,7 @@ import {
   STORY_START,
   classifyScreenplayLine,
   classifyStoryLine,
+  continuedFragmentIssue,
   narrationStartsWithTitle,
   stepScreenplay,
   stepStory,
@@ -183,9 +185,9 @@ export function parseClaudeScript(raw: string): ScriptSegment[] {
   };
 
   let state = SCREENPLAY_START;
-  for (const rawLine of lines) {
+  for (let index = 0; index < lines.length; index++) {
     if (state.phase === "ended") break;
-    const line = classifyScreenplayLine(rawLine);
+    const line = classifyScreenplayLine(lines[index], { next: lines[index + 1] });
     const step = stepScreenplay(state, line);
     state = step.state;
     for (const effect of step.effects) {
@@ -344,7 +346,11 @@ function readPlainStory(raw: string): { sections: PlainStorySection[]; issues: S
     for (const effect of step.effects) {
       if (effect === "flush-paragraph") flushParagraph();
       else if (effect === "set-tag") tag = line.storyTag;
-      else if (effect === "append-line") lines.push(line.text);
+      else if (effect === "append-line") {
+        lines.push(line.text);
+        const issue = continuedFragmentIssue(line, index + 1);
+        if (issue) issues.push(issue);
+      }
       else if (effect === "report-heading") {
         issues.push({
           kind: "heading-line",
@@ -366,8 +372,8 @@ function splitPlainStory(raw: string): PlainStorySection[] {
 }
 
 /**
- * Checks a script at intake, before any voice is synthesized. A tagged screenplay whose narration begins
- * with its own multi-word section title is an error (the heading leaked into the spoken text); a plain
+ * Checks a script before synthesis. A tagged screenplay whose narration begins
+ * with its own section title is an error (the heading leaked into the spoken text); a plain
  * story's heading lines are reported as notices saying they became section titles instead of narration.
  */
 export function checkScriptIntake(raw: string): ScriptIssue[] {
@@ -375,6 +381,15 @@ export function checkScriptIntake(raw: string): ScriptIssue[] {
   const segments = parseClaudeScript(raw);
   if (!segments.some((seg) => seg.beats.length > 0)) return readPlainStory(raw).issues;
   const issues: ScriptIssue[] = [];
+  const lines = raw.split(/\r?\n/);
+  let state = SCREENPLAY_START;
+  for (let index = 0; index < lines.length; index++) {
+    if (state.phase === "ended") break;
+    const line = classifyScreenplayLine(lines[index], { next: lines[index + 1] });
+    const issue = continuedFragmentIssue(line, index + 1);
+    if (issue) issues.push(issue);
+    state = stepScreenplay(state, line).state;
+  }
   for (const seg of segments) {
     for (const beat of seg.beats) {
       if (beat.type === "narration" && narrationStartsWithTitle(seg.title, beat.text)) {
@@ -388,6 +403,25 @@ export function checkScriptIntake(raw: string): ScriptIssue[] {
     }
   }
   return issues;
+}
+
+/** Marks a blocking screenplay issue raised before audio synthesis begins. */
+export class ScriptIntakeError extends Error {
+  /** Constructs the blocking intake error shown to the script author. */
+  constructor(message: string) {
+    super(message);
+    this.name = "ScriptIntakeError";
+  }
+}
+
+/** Reports non-blocking issues, then rejects title leaks at each script-to-synthesis entry. */
+export function assertScriptReadyForSynthesis(raw: string, onNotice?: (issue: ScriptIssue) => void): ScriptIssue[] {
+  const issues = checkScriptIntake(raw);
+  const notices = issues.filter((issue) => issue.severity === "notice");
+  for (const issue of notices) onNotice?.(issue);
+  const blocking = issues.filter((issue) => issue.severity === "error");
+  if (blocking.length) throw new ScriptIntakeError(blocking.map((issue) => issue.message).join("; "));
+  return notices;
 }
 
 /**

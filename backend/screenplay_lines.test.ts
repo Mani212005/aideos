@@ -32,6 +32,8 @@ import {
 } from "./scriptIntake";
 import { runProduction } from "./pipeline/run";
 import { FILMS_DIR, VIDEOS_DIR } from "./pipeline/filmStore";
+import { checkVoiceoverIntake } from "./voiceoverIntake";
+import { startEditor } from "../scripts/studioDriver";
 
 // The 0.5.0 defect: a bare chapter title sits directly above the paragraph it opens.
 const CLOSING_STORY = `The Middle
@@ -107,6 +109,20 @@ test("ordinary story paragraphs are unchanged: sentence lines of one paragraph s
   );
 });
 
+test("intake reports a short lowercase fragment continued on the next line without changing narration", () => {
+  const story = "the closing\nprocess is expensive";
+  const issues = checkScriptIntake(story);
+  assert.deepEqual(issues.map((issue) => [issue.kind, issue.severity, issue.line, issue.text]), [
+    ["continued-fragment", "notice", 1, "the closing"],
+  ]);
+  assert.match(issues[0].message, /line 1.*the closing.*line 2.*process is expensive/);
+  assert.deepEqual(
+    plainTextToSegments(story).map((segment) => segment.beats.find((beat) => beat.type === "narration")?.text),
+    ["the closing process is expensive"],
+  );
+  assert.deepEqual(checkScriptIntake("A short sentence.\nThis starts a new sentence."), []);
+});
+
 test("tagged screenplay: narration that begins with its own chapter title is an intake error", () => {
   const leaked = "## 3:00-3:20 - The Closing\n\n[NARRATION]\nThe Closing does this mean harnesses are useless?\n";
   const issues = checkScriptIntake(leaked);
@@ -118,10 +134,21 @@ test("tagged screenplay: narration that begins with its own chapter title is an 
   const clean = "## 3:00-3:20 - The Closing\n\n[NARRATION]\nDoes this mean harnesses are useless?\n";
   assert.deepEqual(checkScriptIntake(clean), []);
   const oneWord = "## 3:00-3:20 - Closing\n\n[NARRATION]\nClosing the loop is the whole job.\n";
-  assert.deepEqual(checkScriptIntake(oneWord), [], "a one-word title that opens a real sentence is not flagged");
+  assert.equal(checkScriptIntake(oneWord)[0]?.kind, "narration-starts-with-title", "a one-word title at the start is flagged");
+  const titleOnly = "## Closing\n[NARRATION]\nClosing.\n";
+  assert.equal(checkScriptIntake(titleOnly)[0]?.kind, "narration-starts-with-title", "narration consisting only of its title is flagged");
 });
 
-test("intake stage: a leaked title stops the run before any voice is synthesized, and a story heading is reported", async () => {
+test("tagged screenplay: continued prose fragments are reported without changing spoken text", () => {
+  const script = "## Opening\n[NARRATION]\nthe closing\nprocess is expensive";
+  const issues = checkScriptIntake(script);
+  assert.deepEqual(issues.map((issue) => [issue.kind, issue.severity, issue.line, issue.text]), [
+    ["continued-fragment", "notice", 3, "the closing"],
+  ]);
+  assert.deepEqual(extractSpokenBlocks(script), ["the closing process is expensive"]);
+});
+
+test("the shared synthesis boundary rejects a leaked title before any voice is synthesized", async () => {
   const slug = `m6-intake-${Date.now().toString(36)}`;
   const messages: string[] = [];
   try {
@@ -134,7 +161,6 @@ test("intake stage: a leaked title stops the run before any voice is synthesized
           ttsBackend: "tone",
           design: "templates",
           broll: false,
-          stopAfter: "intake",
           resume: false,
           syncToPreview: false,
         },
@@ -142,18 +168,44 @@ test("intake stage: a leaked title stops the run before any voice is synthesized
       ),
       /would read the heading aloud/,
     );
-    assert.ok(messages.includes("intake:failed"));
-    assert.ok(!messages.some((m) => m.startsWith("narrate")), "nothing was narrated");
-
-    const events: string[] = [];
-    await runProduction(
-      { script: CLOSING_STORY, title: "M6", slug, ttsBackend: "tone", design: "templates", broll: false, stopAfter: "intake", resume: false, syncToPreview: false },
-      (event) => events.push(event.message),
-    );
-    assert.ok(events.some((m) => /"The Closing" is a chapter heading/.test(m)));
+    assert.ok(messages.includes("narrate:failed"));
+    assert.ok(!messages.some((m) => m.includes("synthesizing 1/")), "nothing was synthesized");
   } finally {
     fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
     fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
+});
+
+test("Studio /api/voiceover rejects a title leak before generating audio", () => {
+  const result = checkVoiceoverIntake("## Closing\n[NARRATION]\nClosing.");
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.status, 400);
+    assert.match(result.error, /would read the heading aloud/);
+    assert.deepEqual(result.intakeNotices, []);
+  }
+});
+
+test("Studio /api/generate-voiceover rejects a title leak even with a spoken-text override", async () => {
+  const videosDir = path.resolve(".tmp", `m6-generate-voiceover-${process.pid}`);
+  fs.mkdirSync(videosDir, { recursive: true });
+  const server = await startEditor(videosDir);
+  try {
+    const response = await fetch(new URL("/api/generate-voiceover", server.url), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId: "m6-override",
+        script: "## Closing\n[NARRATION]\nClosing.",
+        spokenTextOverride: "Closing.",
+      }),
+    });
+    const body = await response.json() as { error?: string };
+    assert.equal(response.status, 400);
+    assert.match(body.error ?? "", /would read the heading aloud/);
+  } finally {
+    server.stop();
+    fs.rmSync(videosDir, { recursive: true, force: true });
   }
 });
 

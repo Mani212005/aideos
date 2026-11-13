@@ -9,11 +9,12 @@ import { Audio, Sequence, staticFile, useDelayRender, useVideoConfig } from "rem
 import { deliveryTimeline, formatForSize } from "./delivery";
 import { EndCardVoice } from "./EndCard";
 import { calculateDuckingVolume, type SpeechInterval } from "./audio/ducking";
+import { buildVoiceTimeline } from "./audio/voiceActivity";
 import { getRetimedAudioRelPath } from "./audio/retime";
 import { normalizeFilmSoundtrack, type Film } from "./schema";
 import { totalFrames, type TimedShot } from "./camera";
 import {
-  dbGain, effectGain, isLibrarySource, mergeSpeech, mixSections, sectionEnvelope, speechGain, usesSectionMixer,
+  dbGain, effectGain, isLibrarySource, mixSections, sectionEnvelope, speechGain, usesSectionMixer,
   soundtrackItem, soundtrackItemSrc,
 } from "./audio/sectionMixer";
 
@@ -109,9 +110,11 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
     });
   }
 
+  // The legacy ducker reads the same voice states, built once instead of on every frame.
+  const legacyVoice = buildVoiceTimeline(speechIntervals);
   const hasVoiceoverClips = voClips.length > 0;
   // Authored soundtracks honor measured silence, including an intentionally empty speech list.
-  const measuredSpeech = mergeSpeech([
+  const measuredVoice = buildVoiceTimeline([
     ...soundtrack.speech.map((interval) => ({
       startSec: interval.startSec,
       endSec: Math.min(interval.endSec, effectiveTotalFrames / effectiveFps),
@@ -136,7 +139,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
             trimAfter={section.trimBefore + section.durationInFrames}
             volume={(frame) => section.gain * (musicVolume ?? 1) * sectionEnvelope(section, frame) *
               (section.duck ? speechGain(
-                (frame + section.from) / effectiveFps, measuredSpeech, soundtrack.mix,
+                (frame + section.from) / effectiveFps, measuredVoice, soundtrack.mix,
                 effectiveTotalFrames / effectiveFps,
               ) : dbGain(soundtrack.mix.musicOnlyGainDb))}
           />
@@ -154,7 +157,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
               totalFrames: delivery.totalFrames,
               musicVolume: effectiveMusicVolume,
               duckUnderVoiceover: primarySection?.duckUnderVoiceover ?? film.music?.duckUnderVoiceover ?? true,
-              speechIntervals,
+              voice: legacyVoice,
             })
           }
         />
@@ -197,7 +200,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
                           totalFrames: delivery.totalFrames,
                           musicVolume: clipLevel,
                           duckUnderVoiceover: true,
-                          speechIntervals,
+                          voice: legacyVoice,
                         })
                       : voiceLevel(f + startFrame, clipLevel, effectiveTotalFrames)
                   }
