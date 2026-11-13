@@ -89,6 +89,7 @@ export interface RenderRequest {
 
 export interface RenderContext {
   signal: AbortSignal;
+  forceSignal: AbortSignal;
   onOutput: (text: string) => void;
 }
 
@@ -160,17 +161,6 @@ export function renderFilmHash(film: Film): string {
     .digest("hex");
 }
 
-/** Captures filesystem identity without reading potentially large render files. */
-function artifactIdentity(file: string): string | null {
-  try {
-    const stat = fs.statSync(file, { bigint: true });
-    return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs].join(":");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
-  }
-}
-
 /** Creates a single-use job; cancellation waits for backend teardown before discarding partial output. */
 export function createRenderJob(
   input: RenderRequest,
@@ -187,8 +177,10 @@ export function createRenderJob(
   const request = structuredClone(input);
   const services = { ...SERVICES, ...options.services };
   const controller = new AbortController();
+  const forceController = new AbortController();
   const context: RenderContext = {
     signal: controller.signal,
+    forceSignal: forceController.signal,
     onOutput: options.onOutput ?? (() => {}),
   };
   let cleaned = false;
@@ -219,13 +211,8 @@ export function createRenderJob(
 
   /** Executes the shared delivery steps exactly once for this immutable input snapshot. */
   const execute = async () => {
-    const sidecar = `${request.outPath}.render.json`;
-    const masterReport = `${request.outPath}.master.json`;
-    const priorArtifacts = new Map<string, string | null>(
-      [request.outPath, sidecar, masterReport].map(
-        (file): [string, string | null] => [file, artifactIdentity(file)],
-      ),
-    );
+    let attemptDir: string | undefined;
+    let attemptRequest = request;
     try {
       checkCancelled();
       if (request.format !== "long" && request.format !== "reel")
@@ -242,30 +229,41 @@ export function createRenderJob(
       services.checkBroll(request.film);
       services.retimeAudio(request.film);
       fs.mkdirSync(path.dirname(request.outPath), { recursive: true });
-      await renderer.prepare?.(request, context);
+      attemptDir = fs.mkdtempSync(
+        path.join(
+          path.dirname(request.outPath),
+          `.${path.basename(request.outPath)}.job-`,
+        ),
+      );
+      attemptRequest = {
+        ...request,
+        outPath: path.join(attemptDir, path.basename(request.outPath)),
+      };
+      await renderer.prepare?.(attemptRequest, context);
       checkCancelled();
-      await renderer.checkDiskBudget(request, context);
+      await renderer.checkDiskBudget(attemptRequest, context);
       checkCancelled();
       const filmHash = renderFilmHash(request.film);
       move("rendering");
       checkCancelled();
-      await renderer.render(request, context);
+      await renderer.render(attemptRequest, context);
       checkCancelled();
-      if (!fs.existsSync(request.outPath))
+      if (!fs.existsSync(attemptRequest.outPath))
         throw new Error(
-          `Render failed to create output file at ${request.outPath}`,
+          `Render failed to create output file at ${attemptRequest.outPath}`,
         );
       move("mastering");
       checkCancelled();
-      const master = await services.master(request.outPath, options.onLog);
+      const master = await services.master(attemptRequest.outPath, options.onLog);
       checkCancelled();
       options.onMaster?.(master, request.film);
-      const output = await services.probe(request.format, request.outPath);
+      const probed = await services.probe(request.format, attemptRequest.outPath);
+      const output = { ...probed, path: request.outPath };
       checkCancelled();
       move("probed");
       checkCancelled();
       fs.writeFileSync(
-        sidecar,
+        `${attemptRequest.outPath}.render.json`,
         JSON.stringify(
           {
             filmId: request.film.id,
@@ -280,15 +278,22 @@ export function createRenderJob(
       );
       await cleanup();
       checkCancelled();
+      const attemptMasterReport = `${attemptRequest.outPath}.master.json`;
+      if (fs.existsSync(attemptMasterReport))
+        fs.renameSync(attemptMasterReport, `${request.outPath}.master.json`);
+      else fs.rmSync(`${request.outPath}.master.json`, { force: true });
+      fs.renameSync(
+        `${attemptRequest.outPath}.render.json`,
+        `${request.outPath}.render.json`,
+      );
+      fs.renameSync(attemptRequest.outPath, request.outPath);
+      fs.rmSync(attemptDir, { recursive: true, force: true });
       move("done");
       return { output, master, filmHash };
     } catch (error) {
       await cleanup().catch(() => {});
       move(controller.signal.aborted ? "cancelled" : "failed");
-      for (const [file, priorIdentity] of priorArtifacts) {
-        if (artifactIdentity(file) !== priorIdentity)
-          fs.rmSync(file, { force: true });
-      }
+      if (attemptDir) fs.rmSync(attemptDir, { recursive: true, force: true });
       throw error;
     }
   };
@@ -309,6 +314,14 @@ export function createRenderJob(
       controller.abort(new Error("Render cancelled"));
       if (!running) running = Promise.resolve().then(execute);
       await running.catch(() => {});
+    },
+    /** Immediately signals the renderer tree during process shutdown. */
+    forceCancel(): void {
+      if (state === "done" || state === "failed" || state === "cancelled")
+        return;
+      forceController.abort();
+      controller.abort(new Error("Render cancelled"));
+      if (!running) running = Promise.resolve().then(execute);
     },
   };
 }

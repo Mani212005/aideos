@@ -27,6 +27,7 @@ function fixture(t: test.TestContext) {
   const film = loadFixtureFilm("fixture-canvas-a");
   const outPath = path.join(dir, "result.mp4");
   const calls: string[] = [];
+  let attemptOutput: string | undefined;
   const renderer: Renderer = {
     prepare: () => {
       calls.push("backend-prepare");
@@ -36,6 +37,7 @@ function fixture(t: test.TestContext) {
     },
     render: async (request) => {
       calls.push("encode");
+      attemptOutput = request.outPath;
       fs.writeFileSync(request.outPath, "encoded");
     },
     cleanup: () => {
@@ -55,6 +57,7 @@ function fixture(t: test.TestContext) {
     master: (file) => {
       calls.push("master");
       fs.appendFileSync(file, " mastered");
+      fs.writeFileSync(`${file}.master.json`, "attempt master report");
       return { status: "skipped", reason: "synthetic audio" };
     },
     probe: (format, file) => {
@@ -70,7 +73,7 @@ function fixture(t: test.TestContext) {
       };
     },
   };
-  return { film, outPath, calls, renderer, services };
+  return { film, outPath, calls, renderer, services, attemptOutput: () => attemptOutput };
 }
 
 test("one execution visits every phase, masters before probe and records the prepared film snapshot", async (t) => {
@@ -162,7 +165,7 @@ for (const state of [
   "mastering",
   "probed",
 ] as const) {
-  test(`cancel from ${state} is terminal, cleans once and removes partial output`, async (t) => {
+  test(`cancel from ${state} is terminal and removes only attempt output`, async (t) => {
     const f = fixture(t);
     fs.writeFileSync(f.outPath, "previous render");
     fs.writeFileSync(`${f.outPath}.render.json`, "previous sidecar");
@@ -183,11 +186,8 @@ for (const state of [
     assert.equal(job.state, "cancelled");
     await job.cancel();
     assert.equal(f.calls.filter((call) => call === "cleanup").length, 1);
-    if (state === "mastering" || state === "probed") {
-      assert.equal(fs.existsSync(f.outPath), false);
-    } else {
-      assert.equal(fs.readFileSync(f.outPath, "utf8"), "previous render");
-    }
+    assert.equal(fs.readFileSync(f.outPath, "utf8"), "previous render");
+    if (f.attemptOutput()) assert.equal(fs.existsSync(f.attemptOutput()!), false);
     assert.equal(
       fs.readFileSync(`${f.outPath}.render.json`, "utf8"),
       "previous sidecar",
@@ -223,6 +223,46 @@ test("preflight failure preserves an earlier render and its metadata", async (t)
     fs.readFileSync(`${f.outPath}.master.json`, "utf8"),
     "previous master report",
   );
+});
+
+test("a failed concurrent attempt cannot remove another job's published artifacts", async (t) => {
+  const f = fixture(t);
+  let resumePreflight: (error: Error) => void = () => {};
+  let enteredPreflight: () => void = () => {};
+  const reachedPreflight = new Promise<void>((resolve) => {
+    enteredPreflight = resolve;
+  });
+  const blockedRenderer: Renderer = {
+    ...f.renderer,
+    checkDiskBudget: () =>
+      new Promise<void>((_resolve, reject) => {
+        resumePreflight = reject;
+        enteredPreflight();
+      }),
+  };
+  const blocked = createRenderJob(
+    { film: f.film, format: "long", outPath: f.outPath, profile: "review" },
+    blockedRenderer,
+    { services: f.services },
+  );
+  const failed = blocked.run();
+  await reachedPreflight;
+
+  const successful = createRenderJob(
+    { film: f.film, format: "long", outPath: f.outPath, profile: "final" },
+    f.renderer,
+    { services: f.services },
+  );
+  await successful.run();
+  const output = fs.readFileSync(f.outPath, "utf8");
+  const sidecar = fs.readFileSync(`${f.outPath}.render.json`, "utf8");
+  const masterReport = fs.readFileSync(`${f.outPath}.master.json`, "utf8");
+  resumePreflight(new Error("blocked attempt failed"));
+  await assert.rejects(failed, /blocked attempt failed/);
+
+  assert.equal(fs.readFileSync(f.outPath, "utf8"), output);
+  assert.equal(fs.readFileSync(`${f.outPath}.render.json`, "utf8"), sidecar);
+  assert.equal(fs.readFileSync(`${f.outPath}.master.json`, "utf8"), masterReport);
 });
 
 for (const phase of [

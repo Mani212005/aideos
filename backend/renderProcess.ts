@@ -24,6 +24,7 @@ export interface RenderProcessDeps {
   pollIntervalMs?: number;
   killGraceMs?: number;
   killProcess?: (child: ReturnType<typeof spawn>) => void;
+  forceKillProcess?: (child: ReturnType<typeof spawn>) => void;
 }
 
 /** Signals the entire renderer tree, including browser and encoder descendants. */
@@ -51,6 +52,7 @@ export async function runRenderCommand(
   outPath: string,
   options: {
     signal?: AbortSignal;
+    forceSignal?: AbortSignal;
     onOutput?: (text: string) => void;
     onStdout?: (text: string) => void;
     requireOutput?: boolean;
@@ -64,15 +66,24 @@ export async function runRenderCommand(
   let grace: ReturnType<typeof setTimeout> | undefined;
   let child: ChildProcess | undefined;
   let failure: Error | undefined;
+  let forced = false;
 
   /** Stops a running tree once and escalates if graceful cancellation is ignored. */
   const stop = (): void => {
-    if (!child || grace) return;
+    if (!child || grace || forced) return;
     if (deps.killProcess) deps.killProcess(child as ReturnType<typeof spawn>);
     else signalTree(child, "SIGTERM");
     grace = setTimeout(() => {
       if (child) signalTree(child, "SIGKILL");
     }, deps.killGraceMs ?? 5000);
+  };
+  /** Immediately kills the process tree for server shutdown. */
+  const forceStop = (): void => {
+    forced = true;
+    if (!child) return;
+    if (deps.forceKillProcess)
+      deps.forceKillProcess(child as ReturnType<typeof spawn>);
+    else signalTree(child, "SIGKILL");
   };
 
   try {
@@ -89,7 +100,9 @@ export async function runRenderCommand(
       },
     });
     options.signal?.addEventListener("abort", stop, { once: true });
+    options.forceSignal?.addEventListener("abort", forceStop, { once: true });
     if (options.signal?.aborted) stop();
+    if (options.forceSignal?.aborted) forceStop();
     watchdog = setInterval(() => {
       if (failure) return;
       try {
@@ -138,6 +151,7 @@ export async function runRenderCommand(
       throw new Error(`Render failed to create output file at ${outPath}`);
   } finally {
     options.signal?.removeEventListener("abort", stop);
+    options.forceSignal?.removeEventListener("abort", forceStop);
     clearInterval(watchdog);
     clearTimeout(grace);
     fs.rmSync(temp, { recursive: true, force: true });

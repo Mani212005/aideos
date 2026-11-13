@@ -102,6 +102,7 @@ export function createRemotionRenderer(
         request.outPath,
         {
           signal: context.signal,
+          forceSignal: context.forceSignal,
           onOutput: (text) => {
             context.onOutput(text);
             const match = [...text.matchAll(/(\d+)\s*\/\s*(\d+)/g)].pop();

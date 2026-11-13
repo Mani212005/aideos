@@ -213,7 +213,7 @@ export function createExportJobs(deps: ExportJobDeps = {}) {
 
     /** Requests cancellation of every in-flight export during server shutdown. */
     killAll(): void {
-      for (const job of jobs.values()) void job.machine.cancel();
+      for (const job of jobs.values()) job.machine.forceCancel();
     },
   };
 }

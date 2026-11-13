@@ -23,6 +23,7 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const [out, dir, mode, rendered, total] = process.argv.slice(2);
 fs.writeFileSync(out, "partial");
+fs.writeFileSync(dir + "/attempt-output", out);
 const grandchild = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "inherit" });
 fs.writeFileSync(dir + "/pids.json", JSON.stringify({ child: process.pid, grandchild: grandchild.pid }));
 if (mode === "stubborn") process.on("SIGTERM", () => {});
@@ -60,13 +61,16 @@ function fixture(mode: "run" | "stubborn" | "fail" = "run", rendered = 4, total 
       cleanedUp += 1;
     },
   };
-  const command = { command: process.execPath, args: [script, outPath, dir, mode, String(rendered), String(total)], cwd: dir };
   // Exercises the actual cancellable process boundary while replacing film/media work with tiny fixture services.
   const jobs = (deps: RenderProcessDeps = {}) => createExportJobs({
     ...deps,
     renderer: () => ({
       checkDiskBudget: async () => {},
-      render: async (_request, context) => runRenderCommand(command, outPath, { signal: context.signal, onOutput: context.onOutput }, deps),
+      render: async (request, context) => runRenderCommand({
+        command: process.execPath,
+        args: [script, request.outPath, dir, mode, String(rendered), String(total)],
+        cwd: dir,
+      }, request.outPath, { signal: context.signal, forceSignal: context.forceSignal, onOutput: context.onOutput }, deps),
     }),
     services: {
       checkDeliverable: () => {}, checkBroll: () => {}, retimeAudio: () => {},
@@ -74,7 +78,7 @@ function fixture(mode: "run" | "stubborn" | "fail" = "run", rendered = 4, total 
       probe: (format, file) => ({ format, path: file, width: 1920, height: 1080, fps: 30, durationSec: 1, sizeBytes: fs.statSync(file).size }),
     },
   });
-  return { dir, input, outPath, jobs, cleanups: () => cleanedUp, pids: () => JSON.parse(fs.readFileSync(path.join(dir, "pids.json"), "utf8")) as { child: number; grandchild: number } };
+  return { dir, input, outPath, jobs, cleanups: () => cleanedUp, attemptPath: () => fs.readFileSync(path.join(dir, "attempt-output"), "utf8"), pids: () => JSON.parse(fs.readFileSync(path.join(dir, "pids.json"), "utf8")) as { child: number; grandchild: number } };
 }
 
 /** Polls until the condition holds or fails the test after a few seconds. */
@@ -139,7 +143,7 @@ test("cancel mid-render deletes the partial video and leaves no orphan process",
   const jobs = f.jobs();
   const { job } = jobs.start(f.input);
   try {
-    await until(() => jobs.get(job.id)!.renderedFrames === 4 && fs.existsSync(f.outPath), "a partial video on disk");
+    await until(() => jobs.get(job.id)!.renderedFrames === 4 && fs.existsSync(f.attemptPath()), "a partial video on disk");
     const { child, grandchild } = f.pids();
     assert.ok(alive(child) && alive(grandchild), "the render tree is running before the cancel");
 
@@ -162,12 +166,30 @@ test("cancel still ends a renderer that ignores SIGTERM, and removes its partial
   const jobs = f.jobs({ killGraceMs: 150 });
   const { job } = jobs.start(f.input);
   try {
-    await until(() => jobs.get(job.id)!.renderedFrames === 2 && fs.existsSync(f.outPath), "the stubborn renderer to start");
+    await until(() => jobs.get(job.id)!.renderedFrames === 2 && fs.existsSync(f.attemptPath()), "the stubborn renderer to start");
     const { child, grandchild } = f.pids();
     const cancelled = await jobs.cancel(job.id);
     assert.equal(cancelled!.status, "cancelled");
-    assert.equal(fs.existsSync(f.outPath), false);
+    assert.equal(fs.existsSync(f.attemptPath()), false);
     await until(() => !alive(child) && !alive(grandchild), "SIGKILL to take the tree down");
+  } finally {
+    jobs.killAll();
+    fs.rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("shutdown force-kills a renderer tree without waiting for graceful escalation", async () => {
+  const f = fixture("stubborn", 2, 10);
+  const jobs = f.jobs({ killGraceMs: 5000 });
+  const { job } = jobs.start(f.input);
+  try {
+    await until(() => jobs.get(job.id)!.renderedFrames === 2 && fs.existsSync(f.attemptPath()), "the stubborn renderer to start");
+    const { child, grandchild } = f.pids();
+    jobs.killAll();
+    await until(() => !alive(child) && !alive(grandchild), "immediate shutdown of the renderer tree");
+    await until(() => jobs.get(job.id)!.status === "cancelled", "the job cancellation state");
+    assert.equal(fs.existsSync(f.attemptPath()), false);
+    assert.equal(fs.existsSync(f.outPath), false);
   } finally {
     jobs.killAll();
     fs.rmSync(f.dir, { recursive: true, force: true });
