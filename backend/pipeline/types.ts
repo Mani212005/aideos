@@ -8,6 +8,7 @@
  */
 
 import type { TtsBackendName } from "../tts";
+import type { JudgeState } from "../lookPlan/contract";
 
 /** The ordered stages a production run moves through. */
 export const PRODUCTION_STAGES = [
@@ -99,6 +100,8 @@ export interface ProductionRequest {
   designAgentTimeoutMs?: number;
   /** Caller for server-mode look and design; null disables it. Defaults to videoModels.generation. */
   designLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
+  /** Renderer-independent visual judgment injection. */
+  designJudgeRunner?: import("../designSpec/designer").DesignFilmOptions["judgeRunner"];
   /** Writes chart contents from the narration; defaults to Gemini when configured, null for none. */
   deviceCaller?: import("./deviceData").DeviceLlmCaller | null;
   /** Studio owner key: the bespoke design task goes to the owner's agent connected through `aideos connect`. */
@@ -176,6 +179,8 @@ export interface ProductionResult {
   outputs: RenderedOutput[];
   stages: StageRecord[];
   warnings: string[];
+  /** Visual evidence is reported separately from a successful structural build. */
+  designJudge?: JudgeState;
   /** Set when the caller asked the run to stop before the end; outputs may be empty. */
   stoppedAfter?: ProductionStage;
 }
@@ -196,6 +201,7 @@ export class ProductionError extends Error {
 
 /** Persisted between runs so `resume` can skip work that is already done. */
 export interface RunState {
+  designJudge?: JudgeState;
   slug: string;
   title: string;
   updatedAt: string;
