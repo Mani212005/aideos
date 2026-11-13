@@ -8,6 +8,7 @@
  */
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -224,6 +225,44 @@ test("BuildRecord: a generated default canvas does not change the authored input
     buildDesign(ID, "hand-built");
     assert.equal(fs.existsSync(canvas), true, "the build creates its default canvas");
     assert.equal(designInputHash(ID), beforeBuild, "the generated default is not an authored input");
+  } finally {
+    teardown();
+  }
+});
+
+test("BuildRecord: a passing build records the hash of the film it leaves, even when it rewrites the accent", () => {
+  const spec = setup();
+  try {
+    fs.writeFileSync(path.join(PKG, "design/design.json"), spec);
+    for (const file of ["film.json", "design/base-film.json"]) {
+      const film = JSON.parse(fs.readFileSync(path.join(PKG, file), "utf8"));
+      fs.writeFileSync(path.join(PKG, file), JSON.stringify({ ...film, accent: "#22C55E" }));
+    }
+    const built = buildDesign(ID, "hand-built");
+    assert.equal(built.state, "passed", JSON.stringify(built.errors));
+    assert.equal(JSON.parse(fs.readFileSync(path.join(PKG, "film.json"), "utf8")).accent, JSON.parse(spec).accent, "the build wrote the spec's accent");
+    assert.equal(readDesignStatus(ID)?.inputHash, designInputHash(ID), "an unchanged design is current after its own build");
+  } finally {
+    teardown();
+  }
+});
+
+test("BuildRecord: aideos design build --request records the request it answers", () => {
+  const spec = setup();
+  try {
+    fs.writeFileSync(path.join(PKG, "design/design.json"), spec);
+    const request = openBuildRequest(ID, "motion", "m-cli-probe");
+    const result = spawnSync("bash", [path.join(ROOT, "bin/aideos"), "design", "build", ID, "--source", "agent", "--request", request.requestId], {
+      cwd: ROOT,
+      env: { ...process.env, AIDEOS_VIDEOS_DIR: TEST_VIDEOS_DIR },
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const status = readDesignStatus(ID);
+    assert.equal(status?.state, "passed");
+    assert.equal(status?.source, "agent");
+    assert.equal(status?.requestId, request.requestId);
+    assert.equal(status?.inputHash, designInputHash(ID), "the recorded build is current for the film it left");
   } finally {
     teardown();
   }

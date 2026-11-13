@@ -19,6 +19,9 @@ import { listMotionRequests, requestMotion, revertMotion } from "./motionRequest
 import { buildDesign, readDesignStatus } from "./build";
 import { designInputHash, readOpenBuildRequest } from "./buildRecord";
 import { buildSvgSources } from "../scene/buildSvgSources";
+import { buildDirectingPrompt } from "../agentBridge/contextBuilder";
+import { remoteTaskPrompt } from "../agentLink/prompt";
+import type { DispatchOptions } from "../agentBridge/types";
 
 const ROOT = path.resolve(__dirname, "../..");
 const SRC = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");
@@ -61,7 +64,7 @@ test("MotionRequests: an agent request is settled by the next design build", asy
     assert.equal(listMotionRequests(ID)[0].state, "sent", "no build yet");
 
     // The agent's first build fails; it is still working, so that is not the answer yet.
-    // A build answers a request by carrying its id, as `aideos design-build` does for the open request.
+    // A build answers a request by carrying its id, as `aideos design build --request` does for the open request.
     const status = (state: string, errors: string[], offset: number, requestId: string = r.id) =>
       fs.writeFileSync(path.join(PKG, "design/status.json"), JSON.stringify({ state, source: "agent", at: new Date(Date.now() + offset).toISOString(), errors, findings: [], requestId, inputHash: designInputHash(ID) }));
     status("failed", ["clips.9.easing: invalid"], 1000);
@@ -160,11 +163,11 @@ test("MotionRequests: only a build that carries the request's id settles it", as
   try {
     let dispatchedInstruction = "";
     const r = await requestMotion(film, "beat-02", "drop a tile per word", {
-      dispatch: async (input) => { dispatchedInstruction = input.customInstruction ?? ""; return agentDispatch(); },
+      dispatch: async (input) => { dispatchedInstruction = remoteTaskPrompt("task-1", buildDirectingPrompt(input as DispatchOptions)); return agentDispatch(); },
     });
     assert.equal(readOpenBuildRequest(ID)?.requestId, r.id, "the request is open before the agent is asked");
     assert.match(dispatchedInstruction, new RegExp(`request ${r.id}`));
-    assert.match(dispatchedInstruction, new RegExp(`aideos design-build ${ID} --source agent --request ${r.id}`));
+    assert.match(dispatchedInstruction, new RegExp(`aideos design build ${ID} --source agent --request ${r.id}`));
 
     // A build from any other cause (a pipeline resume, a hand build) is not the agent's answer.
     const other = buildDesign(ID, "hand-built");
@@ -223,6 +226,24 @@ test("MotionRequests: a newer request supersedes the open one, and a build answe
     buildDesign(ID, "agent", { requestId: second.id });
     const states = Object.fromEntries(listMotionRequests(ID).map((x) => [x.id, x.state]));
     assert.deepEqual(states, { [first.id]: "sent", [second.id]: "passed" });
+  } finally {
+    teardown();
+  }
+});
+
+test("MotionRequests: a request no current build answered is still given up on", async () => {
+  const film = setup();
+  try {
+    const r = await requestMotion(film, "beat-02", "drop a tile per word", { dispatch: agentDispatch });
+    assert.equal(listMotionRequests(ID)[0].state, "sent");
+    const late = listMotionRequests(ID, () => Date.parse(r.at) + 31 * 60 * 1000)[0];
+    assert.deepEqual([late.state, late.message], ["failed", "no current design build answered this request"]);
+    assert.equal(readOpenBuildRequest(ID), null, "a request given up on is closed");
+
+    const second = await requestMotion(film, "beat-03", "another", { dispatch: agentDispatch });
+    buildDesign(ID, "hand-built");
+    const unattributed = listMotionRequests(ID, () => Date.parse(second.at) + 31 * 60 * 1000)[0];
+    assert.equal(unattributed.state, "failed", "a build that does not carry the request's id does not keep it waiting forever");
   } finally {
     teardown();
   }

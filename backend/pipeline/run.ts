@@ -30,6 +30,7 @@ import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../
 import { readRecordedNarration } from "./recordedNarration";
 import { deliverReel } from "../reelCut/writer";
 import { reelForRender, reelSourceFingerprint, writeReelFilm } from "../reelCut/store";
+import { recordReelStatus, type ReelBuildStatus } from "../reelCut/build";
 import { parseClaudeScript, plainTextToTaggedScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
@@ -631,6 +632,7 @@ export async function runProduction(
       async () => {
         if (!wantsBroll || footageRequests.length === 0) {
           emit("broll", "running", "no footage requested");
+          state.brollClips = [];
           return [];
         }
         const engineName = request.brollEngine ?? "ssh-wangp";
@@ -660,11 +662,10 @@ export async function runProduction(
             height: probe.height,
           });
         }
+        state.brollClips = clips;
         return clips;
       },
     );
-    state.brollClips = brollClips;
-    machine.save();
     clipResults = brollClips;
     if (shouldStop("broll")) return buildResult("broll");
 
@@ -703,7 +704,11 @@ export async function runProduction(
         }
 
         const film = writeFilm(slug, expectedAssembled);
-        if (expectedReel) reelFilm = writeReelFilm(slug, { ...expectedReel, endCardVoice: film.endCardVoice });
+        if (expectedReel) {
+          reelFilm = writeReelFilm(slug, { ...expectedReel, endCardVoice: film.endCardVoice });
+          const status = JSON.parse(fs.readFileSync(path.join(pkgDir, "reel/status.json"), "utf8")) as ReelBuildStatus;
+          recordReelStatus(slug, { ...status, fingerprint: reelSourceFingerprint(slug) });
+        }
         const wired = film.shots.filter((s) => s.blocks.some((b) => b.c === "AnalogyInset" && Boolean(b.src))).length;
         emit("assemble", "running", `${wired} shot(s) carry B-roll`);
         return film;

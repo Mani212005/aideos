@@ -78,14 +78,14 @@ export function fileDigest(file: string): string | null {
   }
 }
 
-/** Hashes what a design build is made from: the spec, the look plan, the narration timing and every svg. */
+/** Hashes what a design build is made from (the spec, the look plan, the narration timing, every svg and the film fields the build keeps), never what the build itself writes. */
 export function designInputHash(filmId: string): string {
   const pkg = resolvePackageDir(filmId);
   const hash = crypto.createHash("sha1");
   const readJson = (file: string): unknown => {
     try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
   };
-  const design = readJson(path.join(pkg, "design/design.json")) as { assets?: Array<{ kind?: string; character?: string; file?: string }>; background?: { file?: string } } | null;
+  const design = readJson(path.join(pkg, "design/design.json")) as { assets?: Array<{ kind?: string; character?: string; file?: string }>; background?: { file?: string }; soundtrack?: unknown } | null;
   const assetFiles = new Set([
     ...(design?.assets ?? []).flatMap((asset) => asset.file ? [asset.file] : []),
     ...(design?.background?.file ? [design.background.file] : []),
@@ -96,21 +96,21 @@ export function designInputHash(filmId: string): string {
   const baseFilm = path.join(pkg, "design/base-film.json");
   const activeFilm = path.join(pkg, "film.json");
   hash.update(`base-film:${fileDigest(baseFilm) ?? fileDigest(activeFilm) ?? "-"}\n`);
-  const active = readJson(activeFilm) as {
+  type Soundtrack = { defaultScore?: unknown } | null | undefined;
+  type FilmInputs = {
     theme?: unknown;
-    accent?: unknown;
-    soundtrack?: unknown;
+    soundtrack?: Soundtrack;
     music?: unknown;
     captionPlacement?: unknown;
     endCardVoice?: unknown;
     shots?: Array<{ id?: unknown; captionPlacement?: unknown }>;
-  } | null;
-  const activeSoundtrack = active?.soundtrack as { defaultScore?: boolean } | undefined;
+  };
+  const active = readJson(activeFilm) as FilmInputs | null;
+  const base = (readJson(baseFilm) ?? active) as FilmInputs | null;
+  const authored = (soundtrack: Soundtrack): Soundtrack => soundtrack && !soundtrack.defaultScore ? soundtrack : undefined;
   hash.update(`active-build-inputs:${JSON.stringify(active ? {
     theme: active.theme,
-    accent: active.accent,
-    soundtrack: activeSoundtrack?.defaultScore ? undefined : active.soundtrack,
-    music: active.music,
+    ...(!design?.soundtrack ? { soundtrack: authored(active.soundtrack) ?? authored(base?.soundtrack), music: active.music || base?.music } : {}),
     captionPlacement: active.captionPlacement,
     endCardVoice: active.endCardVoice,
     shots: active.shots?.map(({ id, captionPlacement }) => ({ id, captionPlacement })),

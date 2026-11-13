@@ -89,10 +89,11 @@ async function tryAgent<T>(
   const finish = (): void => { if (request) closeBuildRequest(filmId, request.requestId); };
   const task = kind === "look"
     ? `Plan the look before making any picture. Read ${path.join(designDir(filmId), "LOOK_BRIEF.md")}, write design/look.json, and run aideos look check ${filmId}. For a character film, name a character the brief lists; a new character is authored first with aideos character check <file> --stamp and drawn with aideos character sheet <file>. Do not build the design yet.`
-    : `Build the picture from design/look.json and design/BRIEF.md. For a Three look, copy every look performance into design.json performances with the same id, action, actor, prop, start, decisive cue and afterState; follow the worked mapping in the brief. This task answers request ${request!.requestId}. Run exactly: aideos design-build ${filmId} --source agent --request ${request!.requestId}.`;
+    : `Build the picture from design/look.json and design/BRIEF.md. For a Three look, copy every look performance into design.json performances with the same id, action, actor, prop, start, decisive cue and afterState; follow the worked mapping in the brief. This task answers request ${request!.requestId}: build with \`aideos design build ${filmId} --source agent --request ${request!.requestId}\` (over MCP, aideos_design_build with requestId "${request!.requestId}").`;
   const dispatch = await (opts.dispatch ?? dispatchTask)({
     eventType: "design_film", filmId, filmTitle: film?.title, enableFallback: false,
     customInstruction: `${task}${instruction ? `\n${instruction}` : ""}`,
+    ...(request ? { metadata: { requestId: request.requestId } } : {}),
     ...(opts.ownerKey ? { ownerKey: opts.ownerKey } : {}),
   });
   const delivered = dispatch.channels.some((c) => c === "agent_link" || c === "tmux" || c === "firstmate_inbox");

@@ -160,7 +160,7 @@ ${shots}
 
 ## Commands
 
-- \`aideos design build ${film.id}\`: compile, check, and write the film when it passes. Result also in \`videos/${film.id}/design/status.json\`.
+- \`aideos design build ${film.id}\`: compile, check, and write the film when it passes. Result also in \`videos/${film.id}/design/status.json\`. When your task names a request id, add \`--source agent --request <id>\` (over MCP: aideos_design_build with requestId) so the build is recorded as its answer.
 - \`aideos design check ${film.id} --stills\`: re-check and render review stills into \`.frames/${film.id}/\`. Look at them: fix anything that reads badly, collides with captions, or is off the safe square.
 - \`aideos gemini-review videos/${film.id}/renders/long.mp4\`: run a single Gemini 3.8 Flash video review with timestamp evidence and prioritized feedback.
 `;

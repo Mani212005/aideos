@@ -303,7 +303,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent", opti
     if (lost.length > 0) {
       return fail([
         `film.json was edited by hand after the last tool write, and this rebuild (which starts from design/base-film.json) would drop: ${lost.slice(0, 12).join(", ")}${lost.length > 12 ? `, and ${lost.length - 12} more` : ""}. ` +
-          `Move the fix into design/design.json (or the builder script), or restore film.json from design/base-film.json before running aideos design-build ${filmId} to knowingly start over.`,
+          `Move the fix into design/design.json (or the builder script), or restore film.json from design/base-film.json before running aideos design build ${filmId} to knowingly start over.`,
       ]);
     }
   }

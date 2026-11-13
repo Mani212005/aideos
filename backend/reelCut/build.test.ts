@@ -4,6 +4,7 @@
  * Used by: npm test.
  */
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -215,4 +216,40 @@ test("runProduction reel stage: inline stop resumes with an injected writer and 
   await runProduction({ ...request, reel: "server", reelLlmCaller: async () => JSON.stringify(cutFor(changed)),
     reelSynthesizer: async (s, dir) => { const texts = splitScriptIntoSegments(s); return narration(texts, texts.map(() => 20), dir); } }, (e) => { if (e.stage === "reel") events.push(e.status); });
   assert.ok(events.includes("running"));
+});
+
+test("runProduction assemble: B-roll wired into a condensed reel keeps the reel renderable and reusable", async (t) => {
+  setMockShotVisualHandler(() => ({ choice: "Text", confidence: 1, probabilities: {} }));
+  t.after(clearMockShotVisualHandler);
+  const slug = "reel-pipeline-broll";
+  const pkg = path.join(TEST_VIDEOS_DIR, slug);
+  fs.rmSync(pkg, { recursive: true, force: true });
+  const text = "Paper moves and stays in your hands. ".repeat(5);
+  const script = `# Reel broll\n## The Hands\n${`[ON SCREEN]\nPaper moves.\n[NARRATION]\n${text}\n`.repeat(14)}`;
+  const synth = async (s: string, dir: string) => { const texts = splitScriptIntoSegments(s); return narration(texts, texts.map(() => 8), dir); };
+  const request = { script, slug, title: "Reel broll", ttsBackend: "tone" as const, design: "templates" as const,
+    skipAgent: true, deviceCaller: null, broll: true, brollMaxClips: 1, brollSeconds: 120, brollEngine: "null" };
+  const first = await runProduction({ ...request, stopAfter: "reel", reel: "server",
+    reelLlmCaller: async () => JSON.stringify(cutFor(parseFilm(JSON.parse(fs.readFileSync(path.join(pkg, "film.json"), "utf8"))))),
+    reelSynthesizer: synth });
+  assert.equal(first.stoppedAfter, "reel", JSON.stringify(first));
+  const footageShots = parseFilm(JSON.parse(fs.readFileSync(path.join(pkg, "film.json"), "utf8"))).shots.filter((shot) => shot.needsFootage);
+  assert.ok(footageShots.length > 0, "the design asks for footage");
+  fs.mkdirSync(path.join(pkg, "footage"), { recursive: true });
+  for (const shot of footageShots) {
+    const made = spawnSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=black:s=64x36:r=4",
+      "-t", String(Math.ceil(shot.dur) + 2), "-pix_fmt", "yuv420p", path.join(pkg, "footage", `${shot.id}.mp4`)]);
+    assert.equal(made.status, 0, String(made.stderr));
+  }
+  const fingerprintBefore = reelSourceFingerprint(slug);
+  const refuse = { reel: "server" as const, reelLlmCaller: async (): Promise<string> => { throw new Error("completed reel must not be dispatched again"); },
+    reelSynthesizer: async (): Promise<ProduceAudioResult> => { throw new Error("completed reel must not be synthesized again"); } };
+  const assembled = await runProduction({ ...request, ...refuse, stopAfter: "assemble" });
+  assert.equal(assembled.stoppedAfter, "assemble", JSON.stringify(assembled));
+  assert.notEqual(reelSourceFingerprint(slug), fingerprintBefore, "assembly rewrote film.json with the footage");
+  assert.doesNotThrow(() => reelForRender(slug), "the reel stays current after footage is wired in");
+  const events: string[] = [];
+  const resumed = await runProduction({ ...request, ...refuse, stopAfter: "assemble" }, (event) => { if (event.stage === "reel") events.push(event.status); });
+  assert.equal(resumed.stoppedAfter, "assemble", JSON.stringify(resumed));
+  assert.ok(events.includes("skipped"), `the reel is reused after assembly, saw ${events.join(", ")}`);
 });
