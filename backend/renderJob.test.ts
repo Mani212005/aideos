@@ -266,9 +266,13 @@ test("a failed concurrent attempt cannot remove another job's published artifact
   assert.equal(fs.readFileSync(`${f.outPath}.master.json`, "utf8"), masterReport);
 });
 
-test("separate render processes publish matching video and metadata", async (t) => {
+test("separate render processes reclaim an abandoned lock and publish matching artifacts", async (t) => {
   const f = fixture(t);
   const release = path.join(path.dirname(f.outPath), "release-publishers");
+  const lockPath = `${path.resolve(f.outPath)}.publish.lock`;
+  fs.mkdirSync(lockPath);
+  const stale = new Date(Date.now() - 5000);
+  fs.utimesSync(lockPath, stale, stale);
   const worker = `
     import fs from "node:fs";
     import { createRenderJob } from "./backend/renderJob.ts";
@@ -336,6 +340,24 @@ test("separate render processes publish matching video and metadata", async (t) 
     renderFilmHash({ ...f.film, title: video }),
   );
   assert.equal(sidecar.output.sizeBytes, Buffer.byteLength(video));
+});
+
+test("a job recovers an abandoned publication lock before initialization", { timeout: 8000 }, async (t) => {
+  const f = fixture(t);
+  const lockPath = `${path.resolve(f.outPath)}.publish.lock`;
+  fs.mkdirSync(lockPath);
+  const stale = new Date(Date.now() - 5000);
+  fs.utimesSync(lockPath, stale, stale);
+  const job = createRenderJob(
+    { film: f.film, format: "long", outPath: f.outPath, profile: "final" },
+    f.renderer,
+    { services: f.services },
+  );
+
+  await job.run();
+  assert.equal(job.state, "done");
+  assert.ok(fs.existsSync(f.outPath));
+  assert.equal(fs.existsSync(lockPath), false);
 });
 
 for (const phase of [

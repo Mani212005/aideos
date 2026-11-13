@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import lockfile from "proper-lockfile";
 import type { Film } from "../src/dl/schema";
 import type { ProductionFormat, RenderedOutput } from "./pipeline/types";
 import { resolvePackageDir } from "../src/dl/videoPackageLoader";
@@ -165,37 +166,22 @@ export function renderFilmHash(film: Film): string {
 async function acquirePublicationLock(
   outPath: string,
   signal: AbortSignal,
-): Promise<() => void> {
-  const lockPath = `${path.resolve(outPath)}.publish.lock`;
-  for (;;) {
+): Promise<() => Promise<void>> {
+  signal.throwIfAborted();
+  const release = await lockfile.lock(path.resolve(outPath), {
+    realpath: false,
+    lockfilePath: `${path.resolve(outPath)}.publish.lock`,
+    stale: 2_000,
+    update: 1_000,
+    retries: { retries: 100, minTimeout: 20, maxTimeout: 40, factor: 1.1 },
+  });
+  try {
     signal.throwIfAborted();
-    try {
-      const fd = fs.openSync(lockPath, "wx");
-      fs.writeFileSync(fd, String(process.pid));
-      return () => {
-        fs.closeSync(fd);
-        fs.rmSync(lockPath, { force: true });
-      };
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      try {
-        const owner = Number(fs.readFileSync(lockPath, "utf8"));
-        if (Number.isInteger(owner) && owner > 0) {
-          try {
-            process.kill(owner, 0);
-          } catch (ownerError) {
-            if ((ownerError as NodeJS.ErrnoException).code === "ESRCH") {
-              fs.rmSync(lockPath, { force: true });
-              continue;
-            }
-          }
-        }
-      } catch (readError) {
-        if ((readError as NodeJS.ErrnoException).code === "ENOENT") continue;
-      }
-      await new Promise<void>((resolve) => setTimeout(resolve, 20));
-    }
+  } catch (error) {
+    await release();
+    throw error;
   }
+  return release;
 }
 
 /** Creates a single-use job; cancellation waits for backend teardown before discarding partial output. */
@@ -331,7 +317,7 @@ export function createRenderJob(
         );
         fs.renameSync(attemptRequest.outPath, request.outPath);
       } finally {
-        releasePublication();
+        await releasePublication();
       }
       fs.rmSync(attemptDir, { recursive: true, force: true });
       move("done");
