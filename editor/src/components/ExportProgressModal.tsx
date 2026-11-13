@@ -101,7 +101,11 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
     if (!idleOpen) return;
     let alive = true;
     setAcceptance(null);
-    fetch(`/api/acceptance/${encodeURIComponent(film.id)}?format=${format}`)
+    fetch(`/api/acceptance/${encodeURIComponent(film.id)}?format=${format}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ film }),
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (alive && data?.message) setAcceptance(data as AcceptanceSummary);

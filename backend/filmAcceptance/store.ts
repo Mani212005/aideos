@@ -104,3 +104,8 @@ export function acceptanceSummary(pkgDir: string, format: AcceptanceFormat, curr
   const file = readAcceptance(pkgDir);
   return summarize(file.formats[format] ?? null, currentFilmHash);
 }
+
+// Summarizes the exact serialized film supplied by the export client, independent of film.json on disk.
+export function acceptanceSummaryForFilm(pkgDir: string, format: AcceptanceFormat, film: unknown): AcceptanceSummary {
+  return acceptanceSummary(pkgDir, format, hashBytes(JSON.stringify(film, null, 2)));
+}

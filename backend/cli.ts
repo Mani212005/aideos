@@ -565,12 +565,11 @@ program
   .description("Compile videos/<film>/design/design.json into the film; writes it only when the design check passes, then completes the compulsory music and sound effects with the default soundtrack")
   .argument("<film>", "film id under videos/")
   .option("--source <who>", "who made the design: agent, server-model or hand-built", "hand-built")
-  .option("--discard-hand-edits", "let the rebuild overwrite a hand-edited film.json (the edited film is saved to design/hand-edited/ first)")
-  .action(async (film: string, options: { source: string; discardHandEdits?: boolean }) => {
+  .action(async (film: string, options: { source: string }) => {
     const { buildDesign, formatBuildStatus } = await import("./designSpec/build");
     const source = options.source as "agent" | "server-model" | "hand-built";
     if (!["agent", "server-model", "hand-built"].includes(source)) throw new Error(`unknown --source "${options.source}"`);
-    const status = buildDesign(film, source, { discardHandEdits: options.discardHandEdits });
+    const status = buildDesign(film, source);
     if (status.state === "passed") {
       const { prepareDefaultSoundtrack } = await import("./defaultSoundtrack");
       const { readFilm, writeFilm } = await import("./pipeline/filmStore");

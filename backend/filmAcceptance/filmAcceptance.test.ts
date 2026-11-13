@@ -32,7 +32,7 @@ import {
   type AcceptanceRecord,
   type JudgeDraw,
 } from "./machine";
-import { acceptancePath, acceptanceSummary, applyEvents, filmEditState, hashFileOrNull, noteFilmWrite, readAcceptance, readRecord } from "./store";
+import { acceptancePath, acceptanceSummary, acceptanceSummaryForFilm, applyEvents, filmEditState, hashBytes, hashFileOrNull, noteFilmWrite, readAcceptance, readRecord } from "./store";
 
 const AT = "2026-11-13T00:00:00.000Z";
 const FILM = "film-hash-1";
@@ -267,6 +267,25 @@ test("all-check: a passing round is accepted only after the frame check, and a f
   }
 });
 
+test("export acceptance: status follows the posted film when it differs from film.json", () => {
+  const slug = "acc-posted-film";
+  const dir = makeRunPackage(slug);
+  try {
+    const posted = { ...JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")), title: "editor render film" };
+    const postedHash = hashBytes(JSON.stringify(posted, null, 2));
+    applyEvents(dir, "long", [
+      { type: "rendered", filmHash: postedHash, mp4Hash: MP4, at: AT },
+      { type: "measured", mp4Hash: MP4, passed: true, gateFailures: [], at: AT },
+      { type: "judged", draw: draw("posted", true), at: AT },
+      { type: "frame-checked", mp4Hash: MP4, passed: true, issues: [], at: AT },
+    ]);
+    assert.equal(acceptanceSummaryForFilm(dir, "long", posted).reviewed, true);
+    assert.equal(acceptanceSummary(dir, "long", hashFileOrNull(path.join(dir, "film.json"))).reviewed, false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("all-check: a frame-check issue after approval revokes it, and a second round of identical bytes is a second recorded draw", async () => {
   const slug = "acc-redraw";
   const dir = makeRunPackage(slug);
@@ -336,17 +355,8 @@ test("design build: a hand-edited film.json is not silently dropped by a rebuild
     fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify({ ...built, title: "Approved hand fix" }, null, 2));
     const refused = buildDesign(slug);
     assert.equal(refused.state, "failed");
-    assert.match(refused.errors.join(" "), /edited by hand.*would drop: field "title".*--discard-hand-edits/);
+    assert.match(refused.errors.join(" "), /edited by hand.*would drop: field "title".*restore film\.json from design\/base-film\.json/);
     assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")).title, "Approved hand fix", "a refused build leaves the hand fix on disk");
-
-    // Accepting the loss rebuilds, and the edited film is saved first.
-    const discarded = buildDesign(slug, "agent", { discardHandEdits: true });
-    assert.equal(discarded.state, "passed", JSON.stringify(discarded.errors));
-    assert.notEqual(readFilm(slug)?.title, "Approved hand fix");
-    const archived = fs.readdirSync(path.join(dir, "design/hand-edited"));
-    assert.equal(archived.length, 1);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "design/hand-edited", archived[0]), "utf8")).title, "Approved hand fix");
-    assert.equal(filmEditState(dir), "clean");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

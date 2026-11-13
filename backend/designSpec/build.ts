@@ -209,14 +209,8 @@ function record(filmId: string, status: DesignBuildStatus): DesignBuildStatus {
   return status;
 }
 
-/** Options of one design build. */
-export interface BuildDesignOptions {
-  /** Lets the rebuild overwrite a hand-edited film.json; the edited film is first saved under design/hand-edited/. */
-  discardHandEdits?: boolean;
-}
-
 // Builds a film's design from its spec and writes the film only when the design check passes.
-export function buildDesign(filmId: string, source: DesignSource = "agent", options: BuildDesignOptions = {}): DesignBuildStatus {
+export function buildDesign(filmId: string, source: DesignSource = "agent"): DesignBuildStatus {
   const at = new Date().toISOString();
   const pkg = resolvePackageDir(filmId);
   const fail = (errors: string[], findings: DesignFinding[] = []) =>
@@ -332,7 +326,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent", opti
   const finalFilm = endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm;
 
   // A film.json no tool wrote is a hand edit (for example a fix made in an all-check round). The rebuild starts from the
-  // base film, so it would drop that edit without a word: refuse, naming what would be lost, unless the caller accepts it.
+  // base film, so it would drop that edit without a word.
   if (filmEditState(pkg) === "hand-edited") {
     let lost: string[] = [];
     try {
@@ -341,18 +335,13 @@ export function buildDesign(filmId: string, source: DesignSource = "agent", opti
       lost = ["the film (it could not be compared)"];
     }
     if (lost.length > 0) {
-      if (!options.discardHandEdits) {
-        return fail([
-          `film.json was edited by hand after the last tool write, and this rebuild (which starts from design/base-film.json) would drop: ${lost.slice(0, 12).join(", ")}${lost.length > 12 ? `, and ${lost.length - 12} more` : ""}. ` +
-            `Move the fix into design/design.json (or the builder script) so the rebuild keeps it, or accept the loss with: aideos design-build ${filmId} --discard-hand-edits (the edited film is saved to design/hand-edited/ first).`,
-        ]);
-      }
-      const archive = path.join(designDir(filmId), "hand-edited");
-      fs.mkdirSync(archive, { recursive: true });
-      fs.copyFileSync(filmFile, path.join(archive, `film.${at.replace(/[:.]/g, "-")}.json`));
+      return fail([
+        `film.json was edited by hand after the last tool write, and this rebuild (which starts from design/base-film.json) would drop: ${lost.slice(0, 12).join(", ")}${lost.length > 12 ? `, and ${lost.length - 12} more` : ""}. ` +
+          `Move the fix into design/design.json (or the builder script), or restore film.json from design/base-film.json before running aideos design-build ${filmId} to knowingly start over.`,
+      ]);
     }
   }
-  writeFilm(filmId, finalFilm);
+  writeFilm(filmId, finalFilm, { owner: false, protectHandEdits: true });
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
 

@@ -711,6 +711,10 @@ test("runProduction: valid look without a design stops at needs_design and never
     const resumed = await runProduction(request);
     assert.equal(resumed.stoppedAfter, "assemble", JSON.stringify(resumed.warnings));
     assert.equal(readFilm(slug)?.design?.source, "agent");
+    const approved = { ...readFilm(slug)!, title: "Approved pipeline fix" };
+    fs.writeFileSync(path.join(VIDEOS_DIR, slug, "film.json"), JSON.stringify(approved, null, 2));
+    await runProduction({ ...request, force: ["design"] });
+    assert.equal(readFilm(slug)?.title, "Approved pipeline fix", "a resumed design stage must preserve an approved hand edit");
   } finally { cleanProbe(slug); }
 });
 
