@@ -15,6 +15,7 @@ import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../../src
 import { applyEditProgram } from "../../../backend/editPlanner/interpreter";
 import type { EditOp } from "../../../backend/editPlanner/schema";
 import type { EditContext } from "../../../backend/editContext/buildEditContext";
+import { useFilmSave } from "../state/FilmSaveContext";
 
 interface OnCanvasAiEditorProps {
   film: Film;
@@ -93,6 +94,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   avoidRect = null,
   yieldToCaption = false,
 }) => {
+  const saveFilm = useFilmSave();
   const [promptInput, setPromptInput] = useState<string>("");
   const [isPlanning, setIsPlanning] = useState<boolean>(false);
   const [isApplying, setIsApplying] = useState<boolean>(false);
@@ -199,11 +201,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
       const updatedFilm = convertLayeredFilmToFilm(result.film, film);
       onUpdateFilm(updatedFilm);
 
-      void fetch(`/api/films/${film.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ film: updatedFilm }),
-      }).catch(() => undefined);
+      void saveFilm(updatedFilm, "On-canvas AI edit");
 
       void fetch("/api/edit-log", {
         method: "POST",

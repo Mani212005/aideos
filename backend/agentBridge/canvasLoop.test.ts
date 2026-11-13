@@ -339,6 +339,7 @@ test("Instant studio hot-reload: traceBus.notifyFilmUpdated broadcasts to all su
     assert.equal(receivedUpdates[0].filmId, film.id);
     assert.equal(receivedUpdates[0].film.title, "Updated Film Live State");
     assert.equal(receivedUpdates[0].film.shots.length, 3);
+    assert.equal(receivedUpdates[0].order, traceBus.getFilmUpdateOrder(film.id));
 
     // Verify automatic authoring trace step
     const updateSteps = receivedSteps.filter((s) => s.title === "Studio Film Updated" && s.filmId === film.id);
