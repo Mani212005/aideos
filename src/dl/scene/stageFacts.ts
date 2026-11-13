@@ -51,22 +51,24 @@ export function prepareStageFacts(scene: Scene, width: number, height: number) {
     placement.matrix.copy(stagePlacement(resolvedActor.position[0], resolvedActor.position[1], resolvedActor.depth, resolvedActor.unitsToStage, scene.sceneSize));
     placement.add(art.rig.root, prop.root);
     const actorMeshes = Object.values(art.parts.meshes), propMeshes = Object.values(prop.meshes);
-    return { p, actor: resolvedActor, character, evaluate, art, prop, placement, actorMeshes, propMeshes, palette: declaredMaterialPalette(resolvedActor, propCast.asset), numerical: critiquePerformance(rig, p.data, evaluate, p.decisive.frame) };
+    // The numerical critique is only read by facts consumers, so the stage timeline does not pay for it.
+    let numerical: ReturnType<typeof critiquePerformance> | undefined;
+    return { p, actor: resolvedActor, character, evaluate, art, prop, placement, actorMeshes, propMeshes, palette: declaredMaterialPalette(resolvedActor, propCast.asset), get numerical() { return (numerical ??= critiquePerformance(rig, p.data, evaluate, p.decisive.frame)); } };
   });
   // Applies every private pose before measuring, so all characters share the same depth query.
-  const at = (frame: number, depth: false | "prop" | "all" = false) => {
+  const at = (frame: number, depth: false | "prop" | "all" = false, includeMotionSignature = false) => {
     const f = Math.min(scene.durationFrames - 1, Math.max(0, frame));
     const evaluated = entries.map((entry) => {
       const state = entry.evaluate(f);
       applyCharacter(entry.art, state);
       applyProp(entry.prop, state);
       entry.placement.updateMatrixWorld(true);
-      return { ...entry, state };
+      return { p: entry.p, actorMeshes: entry.actorMeshes, propMeshes: entry.propMeshes, state };
     });
     const meshes = entries.flatMap((e) => [...e.actorMeshes, ...e.propMeshes]);
     return evaluated.map(({ p, actorMeshes, propMeshes, state }) => {
-      const actorParts = projectMeshParts(actorMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits);
-      const propParts = projectMeshParts(propMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits);
+      const actorParts = projectMeshParts(actorMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits, includeMotionSignature);
+      const propParts = projectMeshParts(propMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits, includeMotionSignature);
       const actorBounds = unionPartBounds(actorParts), propBounds = unionPartBounds(propParts);
       if (!actorBounds || !propBounds) throw new Error(`performance ${p.id}: ${!actorBounds ? p.actor : p.prop} has no drawable geometry at frame ${frame}`);
       return { id: p.id, actor: p.actor, prop: p.prop, phase: state.phase, ownership: state.contact.mode, afterState: state.contact.mode === "attached" ? p.afterState : "airborne", actorBounds, propBounds, actorParts, propParts,
@@ -81,7 +83,8 @@ export function prepareStageFacts(scene: Scene, width: number, height: number) {
       e.placement.traverse((node) => { if ((node as Mesh).isMesh) meshes.push(node as Mesh); });
       return { actor: e.p.actor, character: e.character.id, palette: e.palette, meshes };
     }),
-    performances: entries.map(({ p, character, numerical }) => ({ id: p.id, actor: p.actor, character: characterIdentity(character), prop: p.prop, decisive: p.decisive, anchors: p.data.anchors, afterState: p.afterState, retarget: p.retarget ?? null, numerical, visualQuality: "unmeasured" as const })),
+    // Built on first read, so callers that only need posed geometry never run the numerical critique.
+    get performances() { return entries.map(({ p, character, numerical }) => ({ id: p.id, actor: p.actor, character: characterIdentity(character), prop: p.prop, decisive: p.decisive, anchors: p.data.anchors, afterState: p.afterState, retarget: p.retarget ?? null, numerical, visualQuality: "unmeasured" as const })); },
     dispose: () => entries.forEach(({ art, prop }) => { art.dispose(); prop.dispose(); }),
   };
 }

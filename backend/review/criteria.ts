@@ -8,6 +8,7 @@
  * Used by: backend/review/review.ts.
  */
 
+import { storyRanges } from "../stageTimeline";
 import type { Loudness, Silence } from "./media";
 import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
@@ -470,13 +471,19 @@ function audioSync(i: ReviewInputs): CriterionResult {
 function pacing(i: ReviewInputs, profile: PacingProfileName): CriterionResult {
   const { render, video, narration, film, silences } = i;
   const failures: string[] = [];
-  const longest = render.staticRuns.reduce((m, r) => Math.max(m, r.end - r.start), 0);
-  if (render.staticRuns.length) failures.push(`the picture holds unchanged for ${round(longest, 1)} s (max ${T.pacing.staticRunMaxSec} s)`);
+  const storyEnd = film?.endCard?.startSec ?? video.durationSec;
+  const staticRuns = storyRanges([
+    ...render.staticRuns,
+    ...(film?.stageSpans ?? []).filter((span) => span.segment === "story" && span.motion === "holding")
+      .map((span) => ({ start: span.from / film!.fps, end: span.to / film!.fps })),
+  ], storyEnd).filter((run) => run.end - run.start > T.pacing.staticRunMaxSec);
+  const longest = staticRuns.reduce((m, r) => Math.max(m, r.end - r.start), 0);
+  if (staticRuns.length) failures.push(`the picture holds unchanged for ${round(longest, 1)} s (max ${T.pacing.staticRunMaxSec} s)`);
   const cutsPerMin = (render.hardCutTimes.length / Math.max(1, video.durationSec)) * 60;
   if (cutsPerMin > T.pacing.hardCutsPerMinMax) failures.push(`${render.hardCutTimes.length} hard cuts (${round(cutsPerMin, 1)} per minute, max ${T.pacing.hardCutsPerMinMax}): the film plays as separate panels`);
   let deadAir = 0;
   if (narration?.timed) deadAir = pauses(narration.words, T.pacing.deadAirMaxSec).length;
-  else if (video.audioDurationSec !== null) deadAir = silences.filter((s) => s.start > 1 && s.end < video.durationSec - 1 && s.end - s.start > T.pacing.deadAirMaxSec).length;
+  else if (video.audioDurationSec !== null) deadAir = storyRanges(silences, storyEnd).filter((s) => s.start > 1 && s.end < storyEnd - 1 && s.end - s.start > T.pacing.deadAirMaxSec).length;
   if (deadAir > 0) failures.push(`${deadAir} stretches of dead air longer than ${T.pacing.deadAirMaxSec} s inside the narration`);
   const wpm = narration?.timed ? wordsPerMinute(narration.words) : narration ? (narration.text.split(/\s+/).filter(Boolean).length / video.durationSec) * 60 : null;
   const band = T.pacingProfiles[profile];
@@ -488,7 +495,7 @@ function pacing(i: ReviewInputs, profile: PacingProfileName): CriterionResult {
     summary: failures.length ? failures.join("; ") : "no static holds, cuts or dead air; narration pace is in range",
     metrics: { longestStaticSec: round(longest, 1), hardCuts: render.hardCutTimes.length, hardCutsPerMin: round(cutsPerMin, 1), deadAirStretches: deadAir, wordsPerMinute: wpm === null ? null : Math.round(wpm), meanBeatSec: meanBeat === null ? null : round(meanBeat, 1), ...(profile === "default" ? {} : { pacingProfile: profile }) },
     threshold: { staticRunMaxSec: T.pacing.staticRunMaxSec, hardCutsPerMinMax: T.pacing.hardCutsPerMinMax, deadAirMaxSec: T.pacing.deadAirMaxSec, wpmMin: band.wpmMin, wpmMax: band.wpmMax },
-    evidence: [...render.staticRuns.slice(0, 2).map((r) => ({ t: (r.start + r.end) / 2, note: "picture unchanged here" })), ...spread(render.hardCutTimes, 3).map((t) => ({ t, note: "hard cut" }))],
+    evidence: [...staticRuns.slice(0, 2).map((r) => ({ t: (r.start + r.end) / 2, note: "picture unchanged here" })), ...spread(render.hardCutTimes, 3).map((t) => ({ t, note: "hard cut" }))],
     fix: failures.length ? "Replace cuts with continuous transforms of the same stage, give every beat something that moves, and trim pauses over 0.7 s." : undefined,
   };
 }

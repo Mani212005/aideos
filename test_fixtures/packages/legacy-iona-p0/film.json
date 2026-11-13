@@ -1123,6 +1123,12 @@
       "w": 1920,
       "h": 1920
     },
+    "camera": {
+      "keyframes": [
+        { "frame": 216, "center": { "x": 960, "y": 960 }, "zoom": 1 },
+        { "frame": 299, "center": { "x": 960, "y": 960 }, "zoom": 1.02 }
+      ]
+    },
     "background": {
       "assetId": "background",
       "svgSource": "videos/iona-receive/visuals/canvas.svg",

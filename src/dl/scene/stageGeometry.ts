@@ -5,8 +5,9 @@
  */
 import { Color, Matrix4, Raycaster, Vector3, type Mesh, type Material } from "three";
 import { projectStagePoint, stageViewport, STAGE_CAMERA_DEPTH, STAGE_CAMERA_FAR, STAGE_CAMERA_NEAR, type SceneRect, type StageCameraPose } from "./projection";
+import { elementVisible } from "./visibility";
 
-export interface ProjectedPart { name: string; bounds: SceneRect }
+export interface ProjectedPart { name: string; bounds: SceneRect; signature?: string }
 export interface DepthEvidence {
   provenance: "sampled-mesh-depth";
   tested: number;
@@ -18,16 +19,21 @@ export interface DepthEvidence {
 // Checks ancestor visibility and actual drawable material opacity without trusting a placement anchor.
 export function meshIsDrawn(mesh: Mesh): boolean {
   for (let node = mesh as Mesh | null; node; node = node.parent as Mesh | null) if (!node.visible) return false;
-  return (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).some((m) => m.visible && (!m.transparent || m.opacity > 0.02));
+  return (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).some((m) => m.visible && (!m.transparent || elementVisible(m.opacity)));
 }
 
+const scratch = new Float64Array(2);
+const scratchBits = new Uint32Array(scratch.buffer);
+
 // Measures every posed vertex plus conservative normal-extrusion allowance through the shared projector.
-export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: number, height: number, size: { w: number; h: number }, outline: number): ProjectedPart[] {
+export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: number, height: number, size: { w: number; h: number }, outline: number, includeSignature = false): ProjectedPart[] {
   const point = new Vector3();
   const scale = new Vector3();
   return meshes.filter(meshIsDrawn).map((mesh) => {
     const vertices = mesh.geometry.getAttribute("position");
     if (!vertices?.count) throw new Error(`mesh ${mesh.name || mesh.uuid}: missing position geometry`);
+    // Folds each projected coordinate's exact bits into two 32-bit hashes, so a change is detected without building a string per vertex.
+    let h1 = 0x811c9dc5, h2 = 0x9747b28c;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < vertices.count; i++) {
       mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld);
@@ -36,10 +42,14 @@ export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: n
       const p = projectStagePoint({ x: point.x + size.w / 2, y: size.h / 2 - point.y }, pose, width, height, size);
       if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) throw new Error(`mesh ${mesh.name || mesh.uuid}: non-finite evaluated geometry`);
       x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+      if (includeSignature) {
+        scratch[0] = p.x; scratch[1] = p.y;
+        for (let k = 0; k < 4; k++) { h1 = Math.imul(h1 ^ scratchBits[k], 0x01000193); h2 = Math.imul(h2 + scratchBits[k], 0x85ebca6b) ^ (h2 >>> 13); }
+      }
     }
     mesh.getWorldScale(scale);
     const allowance = outline * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z)) * pose.zoom * stageViewport(width, height, size).fit;
-    return { name: mesh.name, bounds: { x0: x0 - allowance, y0: y0 - allowance, x1: x1 + allowance, y1: y1 + allowance } };
+    return { name: mesh.name, bounds: { x0: x0 - allowance, y0: y0 - allowance, x1: x1 + allowance, y1: y1 + allowance }, ...(includeSignature ? { signature: `${(h1 >>> 0).toString(36)}.${(h2 >>> 0).toString(36)}` } : {}) };
   });
 }
 
@@ -47,6 +57,11 @@ export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: n
 export function unionPartBounds(parts: ProjectedPart[]): SceneRect | null {
   if (!parts.length) return null;
   return { x0: Math.min(...parts.map((p) => p.bounds.x0)), y0: Math.min(...parts.map((p) => p.bounds.y0)), x1: Math.max(...parts.map((p) => p.bounds.x1)), y1: Math.max(...parts.map((p) => p.bounds.y1)) };
+}
+
+// Returns projected parts whose rendered extent intersects the selected output crop.
+export function partsInViewport(parts: ProjectedPart[], width: number, height: number): ProjectedPart[] {
+  return parts.filter(({ bounds }) => bounds.x1 > 0 && bounds.y1 > 0 && bounds.x0 < width && bounds.y0 < height);
 }
 
 // Tests reproducible surface samples against the actual shared depth geometry; this is weaker than raster evidence.

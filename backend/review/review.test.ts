@@ -648,6 +648,18 @@ test("criteria: the end card is part of the delivered length, its line is captio
   assert.equal(byKey(evaluateCriteria(inputs({ film: { ...moving, endCard: null }, video: forty })), "camera").metrics.movesNeeded, 2);
 });
 
+test("criteria: untimed silence on a delayed end-card line is excluded while story dead air still fails", () => {
+  const story = { ...readFilmFacts(nodeFilm([{ look: "a" }, { look: "b" }])), durationSec: 54, shotBoundaries: [] };
+  const card = { startSec: 54, endSec: 60, words: [] };
+  const review = (silences: ReviewInputs["silences"]) => byKey(evaluateCriteria(inputs({ film: { ...story, endCard: card }, silences })), "pacing");
+  const delayedLine = review([{ start: 54, end: 58.5 }]);
+  assert.equal(delayedLine.metrics.deadAirStretches, 0);
+  assert.equal(delayedLine.status, "pass");
+  const genuineStoryGap = review([{ start: 20, end: 24.5 }, { start: 54, end: 58.5 }]);
+  assert.equal(genuineStoryGap.metrics.deadAirStretches, 1);
+  assert.equal(genuineStoryGap.status, "fail");
+});
+
 test("criteria: pacing fails hard cuts, loudness fails a hot mix, grounding fails unspoken numbers", () => {
   const cuts = byKey(evaluateCriteria(inputs({ render: { ...RENDER, hardCutTimes: [5, 10, 15, 20] } })), "pacing");
   assert.equal(cuts.status, "fail");
@@ -773,4 +785,23 @@ test("review: burned-in captions at the bottom are read by OCR end to end", { sk
   const bare = path.join(TMP, "bare.mp4");
   spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "color=c=0x0a0a0b:s=1920x1080:r=10:d=12", "-c:v", "libx264", "-pix_fmt", "yuv420p", bare]);
   assert.equal(byKey((await reviewVideo({ target: bare, noWrite: true })).criteria, "captions").status, "skipped", "a silent video with no narration has nothing to caption");
+});
+
+// Reproduces the end-card pacing false positive through the public video review interface.
+test("review: a synthetic held end card is excluded from story freezes", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-m2-review-"));
+  try {
+    const video = path.join(dir, "tail.mp4");
+    const encoded = spawnSync("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=320x180:r=10:d=12", "-vf", "tpad=stop_mode=clone:stop_duration=6", "-c:v", "libx264", "-pix_fmt", "yuv420p", video]);
+    assert.equal(encoded.status, 0, encoded.stderr?.toString());
+    const film = nodeFilm([{ look: "a" }, { look: "b" }]);
+    const file = path.join(dir, "film.json");
+    fs.writeFileSync(file, JSON.stringify(film));
+    const result = await reviewVideo({ target: video, film: file, skipOcr: true, noWrite: true });
+    const pacing = byKey(result.criteria, "pacing");
+    assert.equal(pacing.status, "pass", pacing.summary);
+    assert.equal(pacing.metrics.longestStaticSec, 0);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -47,11 +47,31 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 6 | **Readability** | OCR box height (normalised to a 1080 short side) and pixel contrast | <= 58% of words under 18 px, <= 10% under 3:1 contrast |
 | 7 | **No overlap or clipping** | OCR boxes overlapping, text inside the edge margin, canvas node overlap | <= 10% of sampled frames affected |
 | 8 | **Audio sync** | audio vs video length, film length, shot boundaries vs word timings | lengths within 0.1 s, no shot boundary through a spoken word |
-| 9 | Pacing | frame difference (static holds, hard cuts), word timings or silence (dead air, pace) | no hold over 3 s, <= 2 hard cuts per minute, no pause over 0.7 s, 120 to 180 wpm |
+| 9 | Pacing | compiled stage motion plus frame difference (static holds, hard cuts), word timings or silence (dead air, pace) | no story hold over 3 s, <= 2 hard cuts per minute, no pause over 0.7 s, 120 to 180 wpm |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms windows overlapping speech on the shared voice activity timeline | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
 | 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
 | 15 | Reel hook | timed narration words (`punctuated_word` for sentence ends) | first word starts under 0.3 s, first sentence is 10 to 16 words, no greeting or intro opener; evaluated on reel reviews, non-gating |
+
+### Stage timeline and stillness
+
+`backend/stageTimeline.ts` owns `moving` / `holding` spans inside `story` / `end-card`
+segments. It reads compiled scene and camera data in each output crop, so no video render is needed.
+Design checks reject a story hold longer than three seconds with its times, format and shot ids.
+Hidden or off-frame SVG animation does not count as motion. SVG rendering uses the shared
+authored/animated opacity resolver; continuity and stage/review visibility use that resolver with
+the shared 0.05 cutoff.
+
+Projected SVG occupancy (`prepareSvgProjection` in `backend/designCheck/insetRegion.ts`, used by the
+inset, caption placement, Three foreground and reel visible-text checks) defaults to the same 0.05
+cutoff, so faint art such as a 0.1 opacity ghost grid counts as visible and can fail when it
+overlaps a region it must keep clear.
+
+Measured pacing combines these scene spans with pixel freeze measurements. Both are clipped to the
+story before applying the same three-second limit. A run crossing into the end card keeps only its
+story portion; the fixed end-card hold is intentional. Gemini receives the same end-card boundary,
+and verification uses the same story boundary for silence. Films without a compiled scene still
+receive pixel freeze checks. Geometry does not establish occlusion or judge animation craft.
 
 ### Reel hook (criterion 15)
 
@@ -312,7 +332,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 6 | **readability** | Yes | High contrast (>= 4.5:1), clear font hierarchy (>= 24px), sufficient reading duration (>= 0.35s per word). |
 | 7 | **no_overlap_clipping** | Yes | No text-text or text-artwork overlapping; all essential elements stay within the 96px safe margin. |
 | 8 | **audio_sync** | Yes | Story cues synchronize with voiceover within 120ms; the audio and delivered picture durations agree within 100ms, including the end card. |
-| 9 | pacing | No | Dynamic progression with no static holds > 3s, mean beat length 5-12s, no dead air > 0.7s, speech 130-170 wpm. |
+| 9 | pacing | No | Dynamic progression (see [Stage timeline and stillness](#stage-timeline-and-stillness)), mean beat length 5-12s, no dead air > 0.7s, speech 130-170 wpm. |
 | 10 | storyline | No | Clear problem statement, logical progression where beats build on previous content, satisfying payoff beat. |
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |

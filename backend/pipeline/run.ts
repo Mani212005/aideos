@@ -8,6 +8,7 @@
  * Used by: backend/cli.ts, backend/mcp/server.ts.
  */
 
+import { stageSegments, storyRanges } from "../stageTimeline";
 import { designFilm, planFilmLook } from "../designSpec/designer";
 import { prepareDefaultSoundtrack } from "../defaultSoundtrack";
 import { buildDesign, designDir, formatBuildStatus, readCheckedLookPlan } from "../designSpec/build";
@@ -25,7 +26,7 @@ import path from "path";
 import type { Film } from "../../src/dl/schema";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { DEFAULT_KOKORO_SPEED } from "../tts";
-import { DELIVERY_CONFIG, deliveryTimeline } from "../../src/dl/delivery";
+import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../endCard/voice";
 import { readRecordedNarration } from "./recordedNarration";
 import { deliverReel } from "../reelCut/writer";
@@ -832,7 +833,7 @@ export function deliveredOutputWarnings(input: {
 }): string[] {
   const { film, format, durationSec, narrationSec, silences, renderFrames } = input;
   const warnings: string[] = [];
-  const delivery = deliveryTimeline(film, format);
+  const delivery = stageSegments(film, format);
   const cardSec = delivery.card ? delivery.card.durationInFrames / delivery.fps : 0;
   const expected = renderFrames ? (renderFrames[1] - renderFrames[0] + 1) / film.fps : narrationSec + cardSec;
   if (Math.abs(durationSec - expected) > 1.0) {
@@ -842,9 +843,12 @@ export function deliveredOutputWarnings(input: {
         `${expected.toFixed(2)}s; picture and voice are not the same length`,
     );
   }
-  const storyEndSec = delivery.card && !renderFrames ? delivery.card.from / delivery.fps : Infinity;
-  const longSilence = silences
-    .map((s) => ({ startSec: s.startSec, durationSec: Math.min(s.startSec + s.durationSec, storyEndSec) - s.startSec }))
+  const storyEndFrame = delivery.segments[0].to;
+  const storyEndSec = renderFrames
+    ? Math.max(0, Math.min(renderFrames[1] + 1, storyEndFrame) - renderFrames[0]) / delivery.fps
+    : storyEndFrame / delivery.fps;
+  const longSilence = storyRanges(silences.map((s) => ({ start: s.startSec, end: s.startSec + s.durationSec })), storyEndSec)
+    .map((s) => ({ startSec: s.start, durationSec: s.end - s.start }))
     .find((s) => s.durationSec > 2.5);
   if (longSilence) {
     warnings.push(`${format} has ${longSilence.durationSec.toFixed(1)}s of silence at ${longSilence.startSec.toFixed(1)}s`);

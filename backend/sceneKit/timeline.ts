@@ -161,7 +161,8 @@ export class Timeline {
       center: { ...spec.from.center },
       zoom: spec.from.zoom,
       rotation: spec.from.rotation ?? 0,
-      easing: spec.easing
+      // Leave the key off when no easing is named, so a serialized and reloaded keyframe is identical.
+      ...(spec.easing ? { easing: spec.easing } : {}),
     });
 
     this.cameraKeyframes.push({
@@ -187,7 +188,10 @@ export class Timeline {
     for (const k of this.cameraKeyframes) {
       if (unique.has(k.frame)) {
         const ext = unique.get(k.frame)!;
-        unique.set(k.frame, { ...ext, ...k, easing: k.easing ?? ext.easing });
+        const easing = k.easing ?? ext.easing;
+        // Omit the key when neither keyframe names an easing, so a save and reload round trip is identical.
+        const { easing: _dropped, ...rest } = { ...ext, ...k };
+        unique.set(k.frame, easing ? { ...rest, easing } : rest);
       } else {
         unique.set(k.frame, k);
       }

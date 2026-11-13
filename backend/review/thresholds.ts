@@ -7,6 +7,9 @@
  * Used by: backend/review/criteria.ts.
  */
 
+import { STORY_HOLD_MAX_SEC } from "../stageTimeline";
+import { VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
+
 /** Calibrated on 2026-10-01 against references A, B and RAG (frames at 10 fps, 480x270, ink = 28 levels off the median). */
 export const THRESHOLDS = {
   /** Frames decoded for pixel analysis. */
@@ -70,7 +73,7 @@ export const THRESHOLDS = {
   },
   pacing: {
     /** Longest the picture may hold unchanged, seconds. */
-    staticRunMaxSec: 3,
+    staticRunMaxSec: STORY_HOLD_MAX_SEC,
     /** Frame difference (0 to 255) below which two frames count as unchanged. */
     staticDiff: 0.05,
     /** Silence longer than this inside narrated speech is dead air, seconds. */
@@ -127,7 +130,7 @@ export const THRESHOLDS = {
     /** Plan-directed scene motion must start this close to its spoken cue. */
     cueToleranceSec: 0.4,
     /** A visible object must remain present for at least this opacity. */
-    visibleOpacityMin: 0.05,
+    visibleOpacityMin: VISIBLE_OPACITY_MIN,
     /**
      * A drawn stage cast member counts as present in an output when at least this share of its
      * projected posed box (outline included) lies inside that output's frame.

@@ -379,6 +379,33 @@ function insetErrors(film: unknown): string[] {
   return checkFilmDesign(film).findings.filter((f) => f.rule === "inset" && f.severity === "error").map((f) => f.message);
 }
 
+// Creates a discontinuous SVG move whose visibility can be placed in chosen output crops.
+function continuityAtPositions(before: { x: number; y: number }, after: { x: number; y: number }): ReturnType<typeof checkFilmDesign> {
+  const film = stillTalking();
+  const probe = film.scene.props.find((asset: any) => asset.assetId === "probe");
+  const target = "probe-body";
+  probe.position = before;
+  probe.scale = 0.1;
+  probe.animation.clips = [
+    { clipId: "x-before", targets: [target], property: "translateX", from: 0, to: 0, startFrame: 10, durationFrames: 10 },
+    { clipId: "x-after", targets: [target], property: "translateX", from: after.x - before.x, to: after.x - before.x, startFrame: 60, durationFrames: 1 },
+    { clipId: "y-before", targets: [target], property: "translateY", from: 0, to: 0, startFrame: 10, durationFrames: 10 },
+    { clipId: "y-after", targets: [target], property: "translateY", from: after.y - before.y, to: after.y - before.y, startFrame: 60, durationFrames: 1 },
+  ];
+  film.scene.camera = { keyframes: [
+    { frame: 0, center: { x: 960, y: 960 }, zoom: 1 },
+    { frame: film.scene.durationFrames - 1, center: { x: 960, y: 960 }, zoom: 1 },
+  ] };
+  return checkFilmDesign(film);
+}
+
+test("DesignCheck: continuity visibility must overlap in the same output format", () => {
+  const crossFormat = continuityAtPositions({ x: -100, y: 960 }, { x: 960, y: 100 });
+  assert.equal(crossFormat.findings.some((finding) => finding.rule === "continuity" && finding.where.includes("probe-body")), false);
+  const sameFormat = continuityAtPositions({ x: 960, y: 960 }, { x: 1060, y: 960 });
+  assert.ok(sameFormat.findings.some((finding) => finding.rule === "continuity" && finding.where.includes("probe-body")));
+});
+
 test("DesignCheck: an inset shot over a stage that keeps clear of the region passes", () => {
   const report = checkFilmDesignById("inset-stage");
   assert.equal(report.ok, true, JSON.stringify(report.findings));
@@ -413,6 +440,11 @@ test("DesignCheck: the inset rule counts only art that is visible while the inse
   hidden.scene.props[0].animation.clips.push({ clipId: "rack-out", targets: ["rack"], property: "opacity", from: 1, to: 0, startFrame: 80, durationFrames: 8, easing: "expoOut" });
   hidden.scene.props[0].animation.clips.push({ clipId: "rack-back", targets: ["rack"], property: "opacity", from: 0, to: 1, startFrame: 215, durationFrames: 8, easing: "expoOut" });
   assert.deepEqual(insetErrors(hidden), []);
+
+  const faint = insetStage();
+  faint.scene.props[0].position = { x: 1500, y: 700 };
+  faint.scene.props[0].opacity = 0.1;
+  assert.ok(insetErrors(faint).some((message) => /wide cut/.test(message)), "opacity 0.1 is visible under the shared cutoff");
 });
 
 test("DesignCheck: a camera that pushes art into the inset region is caught", () => {
