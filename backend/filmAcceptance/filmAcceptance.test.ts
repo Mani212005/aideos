@@ -294,7 +294,7 @@ test("export acceptance: status follows the posted film when it differs from fil
     applyEvents(dir, "long", [
       { type: "rendered", filmHash: postedHash, mp4Hash: MP4, at: AT },
       { type: "measured", mp4Hash: MP4, passed: true, gateFailures: [], at: AT },
-      { type: "judged", draw: draw("posted", true), at: AT },
+      { type: "judged", draw: draw("posted", true) },
       { type: "approved", mp4Hash: MP4, at: AT },
     ]);
     const beforeFilm = fs.readFileSync(path.join(dir, "film.json"), "utf8");
@@ -320,7 +320,7 @@ test("export acceptance: derived reel status hashes the exact manifest bytes", (
     applyEvents(dir, "reel", [
       { type: "rendered", filmHash: reelHash, mp4Hash: MP4, at: AT },
       { type: "measured", mp4Hash: MP4, passed: true, gateFailures: [], at: AT },
-      { type: "judged", draw: draw("reel", true), at: AT },
+      { type: "judged", draw: draw("reel", true) },
       { type: "approved", mp4Hash: MP4, at: AT },
     ]);
 

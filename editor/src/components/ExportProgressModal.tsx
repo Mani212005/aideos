@@ -126,7 +126,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
     return () => {
       alive = false;
     };
-  }, [idleOpen, film.id, filmKey, format]);
+  }, [idleOpen, film, film.id, filmKey, format]);
 
   if (!isOpen) return null;
 
