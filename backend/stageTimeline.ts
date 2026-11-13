@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import { resolveRepoAssetPath } from "../src/dl/videoPackageLoader";
-import { buildTimeline } from "../src/dl/camera";
+import { buildTimeline, type TimedShot } from "../src/dl/camera";
 import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import type { Film } from "../src/dl/schema";
 import { compileScene, type CompiledScene, type CompiledEntity } from "../src/dl/scene/compile";
@@ -49,6 +49,18 @@ function compileStageLayer(scene: Scene): CompiledScene {
   return compileScene(layer, { clockMs: 0 });
 }
 
+// Lists the frames where FilmView draws shot blocks or timed clips over or behind the stage; their animation is not compiled, so their presence counts as motion.
+function overlayMotion(film: Film, shots: TimedShot[]): Array<{ from: number; to: number }> {
+  const clipRange = (clip: { position: number; start: number; end: number }) => {
+    const from = Math.round(clip.position * film.fps);
+    return { from, to: from + Math.max(1, Math.round((clip.end - clip.start) * film.fps)) };
+  };
+  return [
+    ...shots.filter(({ shot }) => shot.stage !== "none" && shot.blocks.length > 0).map(({ from, to }) => ({ from, to })),
+    ...[...(film.overlayClips ?? []), ...(film.videoClips ?? [])].filter((clip) => elementVisible(clip.opacity ?? 1)).map(clipRange),
+  ];
+}
+
 // Builds visible stage state from compiled curves, never from captions, pixels or a renderer's capture path.
 export function stageTimeline(film: Film, format: DeliveryFormat, options: { compiled?: CompiledScene } = {}) {
   const delivery = stageSegments(film, format);
@@ -84,11 +96,13 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
     });
   };
   const assets = new Map([...(scene?.background ? [scene.background] : []), ...(scene?.props ?? [])].map((asset) => [asset.assetId, asset]));
+  const shots = buildTimeline(film, film.voiceover?.durationSec);
+  const overlays = overlayMotion(film, shots);
   const spans: StageSpan[] = [];
   for (let frame = 0; compiled && frame < delivery.storyFrames; frame++) {
     const f = Math.min(frame, compiled.durationFrames - 1), n = Math.min(frame + 1, compiled.durationFrames - 1);
     const current = compiled.frames[f], next = compiled.frames[n];
-    let moving = JSON.stringify(current.camera) !== JSON.stringify(next.camera);
+    let moving = overlays.some((range) => frame >= range.from && frame < range.to) || JSON.stringify(current.camera) !== JSON.stringify(next.camera);
     for (let index = 0; !moving && index < current.entities.length; index++) {
       const before = current.entities[index], after = next.entities.find((entity) => entity.entityId === before.entityId)!;
       if (!elementVisible(before.transform.opacity) && !elementVisible(after.transform.opacity)) continue;
@@ -130,7 +144,6 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
     if (spans.length) transitionStage(spans[spans.length - 1], state);
     spans.push({ ...state, from: delivery.card.from, to: delivery.card.to });
   }
-  const shots = buildTimeline(film, film.voiceover?.durationSec);
   const holds = spans.filter((span) => span.segment === "story" && span.motion === "holding" && span.to - span.from > STORY_HOLD_MAX_SEC * film.fps)
     .map((span) => ({ start: span.from / film.fps, end: span.to / film.fps, shots: shots.filter((shot) => shot.to > span.from && shot.from < span.to).map((shot) => shot.shot.id) }));
   performanceGeometry?.dispose();
