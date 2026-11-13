@@ -97,9 +97,24 @@ test("machine: a re-review of unchanged bytes is a recorded second draw, and rep
   record = transition(record, { type: "judged", draw: draw("round-2", false) });
   assert.equal(currentDraws(record).length, 2, "both draws are kept");
   assert.equal(record.state, "revise", "the newest draw of these bytes decides (today's rule, kept in one place)");
+  assert.equal(record.drawsDisagree, true);
   assert.equal(record.approved, false, "new evidence withdraws an earlier approval");
+  const summary = summarize(record, FILM);
+  assert.equal(summary.state, "revise", "the current verdict rule remains the newest draw");
+  assert.equal(summary.drawsDisagree, true);
+  assert.match(summary.message, /2 reviews of these exact bytes disagree: ACCEPT 9\.3, REVISE 8\.6/);
   const replayed = transition(record, { type: "judged", draw: draw("round-2", false) });
   assert.equal(currentDraws(replayed).length, 2);
+});
+
+test("machine: review history is append-only beyond fifty draws", () => {
+  let record = run([RENDERED, MEASURED_OK]);
+  for (let i = 0; i < 60; i++) {
+    record = transition(record, { type: "judged", draw: draw(`round-${i}`, i % 2 === 0) });
+  }
+  assert.equal(record.judged.length, 60);
+  assert.equal(record.drawsDisagree, true);
+  assert.equal(record.state, "judged", "the newest passing draw still controls the existing verdict rule");
 });
 
 test("machine: new bytes start without evidence, and draws of the old bytes stay as history but do not decide", () => {
@@ -141,6 +156,7 @@ test("machine: hand edits are told apart from tool writes, and an unknown histor
   assert.equal(classifyFilmEdit(["h1"], null), "untracked");
   assert.deepEqual(filmDifferences({ title: "a", shots: [{ id: "s1", dur: 1 }, { id: "s2", dur: 2 }] }, { title: "b", shots: [{ id: "s1", dur: 1 }, { id: "s2", dur: 3 }, { id: "s3" }] }), ['field "title"', 'shot "s2"', 'shot "s3"']);
   assert.deepEqual(filmDifferences({ title: "a", shots: [] }, { title: "a", shots: [] }), []);
+  assert.deepEqual(filmDifferences({ shots: [{ id: "a" }, { id: "b" }] }, { shots: [{ id: "b" }, { id: "a" }] }), ["shot order"]);
 });
 
 // Makes a throwaway package folder with the given film text.
@@ -279,8 +295,12 @@ test("export acceptance: status follows the posted film when it differs from fil
       { type: "judged", draw: draw("posted", true), at: AT },
       { type: "frame-checked", mp4Hash: MP4, passed: true, issues: [], at: AT },
     ]);
+    const beforeFilm = fs.readFileSync(path.join(dir, "film.json"), "utf8");
+    const beforeAcceptance = fs.readFileSync(acceptancePath(dir), "utf8");
     assert.equal(acceptanceSummaryForFilm(dir, "long", posted).reviewed, true);
     assert.equal(acceptanceSummary(dir, "long", hashFileOrNull(path.join(dir, "film.json"))).reviewed, false);
+    assert.equal(fs.readFileSync(path.join(dir, "film.json"), "utf8"), beforeFilm);
+    assert.equal(fs.readFileSync(acceptancePath(dir), "utf8"), beforeAcceptance);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

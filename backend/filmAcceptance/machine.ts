@@ -59,6 +59,8 @@ export interface AcceptanceRecord {
   measured: MeasuredResult | null;
   /** Every draw ever recorded, newest last; only draws of the current mp4Hash decide the state. */
   judged: JudgeDraw[];
+  /** Whether reviews of the current mp4 bytes disagree on their verdict. */
+  drawsDisagree: boolean;
   /** True only while all checks of these exact bytes passed and the caller approved them. */
   approved: boolean;
   updatedAt: string | null;
@@ -85,17 +87,27 @@ export class ImpossibleTransitionError extends Error {
   }
 }
 
-/** The most draws kept per record; the oldest fall away first. */
-export const MAX_DRAWS = 50;
-
 // A record with no evidence yet.
 export function initialRecord(format: AcceptanceFormat): AcceptanceRecord {
-  return { format, state: "unreviewed", filmHash: null, mp4Hash: null, measured: null, judged: [], approved: false, updatedAt: null };
+  return { format, state: "unreviewed", filmHash: null, mp4Hash: null, measured: null, judged: [], drawsDisagree: false, approved: false, updatedAt: null };
 }
 
 // The draws of the bytes the record currently holds.
 export function currentDraws(record: AcceptanceRecord): JudgeDraw[] {
   return record.judged.filter((draw) => draw.mp4Hash === record.mp4Hash);
+}
+
+// Reports whether draws of one set of bytes contain conflicting verdicts.
+export function drawsDisagree(draws: readonly JudgeDraw[]): boolean {
+  return new Set(draws.map((draw) => draw.verdict)).size > 1;
+}
+
+// Adds the current byte set's disagreement summary without changing its state or verdict.
+function withDisagreement(summary: AcceptanceSummary, draws: JudgeDraw[]): AcceptanceSummary {
+  const disagree = drawsDisagree(draws);
+  if (!disagree) return { ...summary, drawsDisagree: false };
+  const evidence = `${draws.length} reviews of these exact bytes disagree: ${draws.map((item) => `${item.verdict} ${item.score.toFixed(1)}`).join(", ")}. `;
+  return { ...summary, drawsDisagree: true, message: `${evidence}${summary.message}` };
 }
 
 /**
@@ -134,7 +146,7 @@ export function transition(record: AcceptanceRecord, event: AcceptanceEvent): Ac
     case "rendered":
       // The same bytes rendered again keep their evidence; new bytes start without any (earlier draws stay as history).
       if (record.mp4Hash === event.mp4Hash && record.filmHash === event.filmHash) return record;
-      next = { ...record, filmHash: event.filmHash, mp4Hash: event.mp4Hash, measured: null, approved: false };
+      next = { ...record, filmHash: event.filmHash, mp4Hash: event.mp4Hash, measured: null, drawsDisagree: drawsDisagree(record.judged.filter((draw) => draw.mp4Hash === event.mp4Hash)), approved: false };
       break;
     case "measured":
       requireBytes(record, event, event.mp4Hash);
@@ -143,7 +155,8 @@ export function transition(record: AcceptanceRecord, event: AcceptanceEvent): Ac
     case "judged": {
       requireBytes(record, event, event.draw.mp4Hash);
       if (record.judged.some((draw) => draw.key === event.draw.key && draw.mp4Hash === event.draw.mp4Hash)) return record;
-      next = { ...record, judged: [...record.judged, event.draw].slice(-MAX_DRAWS), approved: false };
+      const judged = [...record.judged, event.draw];
+      next = { ...record, judged, drawsDisagree: drawsDisagree(judged.filter((draw) => draw.mp4Hash === record.mp4Hash)), approved: false };
       break;
     }
     case "approved": {
@@ -180,6 +193,8 @@ export interface AcceptanceSummary {
   state: EffectiveState;
   /** True only when these exact bytes passed every check. */
   reviewed: boolean;
+  /** True when recorded reviews of the current mp4 bytes have conflicting verdicts. */
+  drawsDisagree: boolean;
   /** One plain sentence for the Export dialog and the terminal. */
   message: string;
 }
@@ -187,24 +202,28 @@ export interface AcceptanceSummary {
 // Says in plain words whether the film that would be exported is the film that was reviewed.
 export function summarize(record: AcceptanceRecord | null, currentFilmHash: string | null): AcceptanceSummary {
   if (!record || record.state === "unreviewed") {
-    return { state: "unreviewed", reviewed: false, message: "This film has not been reviewed. Run aideos all-check to measure and review it." };
+    return { state: "unreviewed", reviewed: false, drawsDisagree: false, message: "This film has not been reviewed. Run aideos all-check to measure and review it." };
   }
   const state = effectiveState(record, currentFilmHash);
-  const score = currentDraws(record).slice(-1)[0]?.score;
+  const draws = currentDraws(record);
+  const score = draws.slice(-1)[0]?.score;
   const scoreText = score === undefined ? "" : ` (reviewer score ${score.toFixed(1)})`;
+  const result = (reviewed: boolean, message: string): AcceptanceSummary => withDisagreement({
+    state, reviewed, drawsDisagree: false, message,
+  }, draws);
   switch (state) {
     case "accepted":
-      return { state, reviewed: true, message: `Reviewed and accepted: the film being exported is the one that passed the measured checks and the reviewer${scoreText}.` };
+      return result(true, `Reviewed and accepted: the film being exported is the one that passed the measured checks and the reviewer${scoreText}.`);
     case "stale":
-      return { state, reviewed: false, message: "Changed since review: film.json is no longer the film that was reviewed, so the earlier verdict does not apply. Run aideos all-check again." };
+      return result(false, "Changed since review: film.json is no longer the film that was reviewed, so the earlier verdict does not apply. Run aideos all-check again.");
     case "revise":
-      return { state, reviewed: false, message: `Reviewed, and the reviewer asked for revisions${scoreText}. Fix the findings and run aideos all-check again.` };
+      return result(false, `Reviewed, and the reviewer asked for revisions${scoreText}. Fix the findings and run aideos all-check again.`);
     case "measured-failed":
-      return { state, reviewed: false, message: `The measured checks failed${record.measured?.gateFailures.length ? `: ${record.measured.gateFailures.join(", ")}` : ""}. Fix them and run aideos all-check again.` };
+      return result(false, `The measured checks failed${record.measured?.gateFailures.length ? `: ${record.measured.gateFailures.join(", ")}` : ""}. Fix them and run aideos all-check again.`);
     case "judged":
-      return { state, reviewed: false, message: "Reviewed, but the run was not finished: the frame check or another check still has to pass." };
+      return result(false, "Reviewed, but the run was not finished: the frame check or another check still has to pass.");
     default:
-      return { state, reviewed: false, message: "Rendered, but the review did not finish for this film. Run aideos all-check to complete it." };
+      return result(false, "Rendered, but the review did not finish for this film. Run aideos all-check to complete it.");
   }
 }
 
@@ -233,6 +252,7 @@ export function filmDifferences(onDisk: Record<string, unknown>, rebuilt: Record
     if (JSON.stringify(onDisk[key]) !== JSON.stringify(rebuilt[key])) differences.push(`field "${key}"`);
   }
   const shotsOf = (film: Record<string, unknown>): Array<{ id: string }> => (Array.isArray(film.shots) ? (film.shots as Array<{ id: string }>) : []);
+  if (shotsOf(onDisk).map((shot) => shot.id).join("\0") !== shotsOf(rebuilt).map((shot) => shot.id).join("\0")) differences.push("shot order");
   const before = new Map(shotsOf(onDisk).map((shot) => [shot.id, JSON.stringify(shot)]));
   const after = new Map(shotsOf(rebuilt).map((shot) => [shot.id, JSON.stringify(shot)]));
   for (const id of [...new Set([...before.keys(), ...after.keys()])]) {

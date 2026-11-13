@@ -501,7 +501,7 @@ export async function runProduction(
           ...compileOptions, textOnly: true, maxFootageShots: 0,
         });
         carryExistingSound(existing, skeleton.film);
-        writeFilm(slug, skeleton.film);
+        writeFilm(slug, skeleton.film, { owner: false, protectHandEdits: true });
         filmResult = skeleton.film;
         const outcome = await planFilmLook(slug, { ...delivery, onProgress: (message) => emit("look", "running", message) });
         if (!outcome.plan) {

@@ -12,7 +12,7 @@ import { prepareSoundtrack } from '../backend/soundtrack.ts';
 import { deliverReel } from '../backend/reelCut/writer.ts';
 import { loadReelContext, readReelCut, reelPackageDir } from '../backend/reelCut/brief.ts';
 import { checkReelCut } from '../backend/reelCut/check.ts';
-import { reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
+import { formatInputs, reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
 import { acceptanceSummaryForFilm, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
 import { REEL_MAX_SEC, reelCutSchema } from '../backend/reelCut/schema.ts';
 import { deliveryTimeline, DELIVERY_CONFIG } from '../src/dl/delivery.ts';
@@ -967,10 +967,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
             let exportFilm = postedFilm;
-            try {
-              exportFilm = (await ensureEndCardVoice(id, { film: postedFilm })).film;
-            } catch {
-              // Match export preparation: a failed voice attachment leaves the end card silent.
+            if (format === 'reel') {
+              const reelInputs = formatInputs(id, 'reel');
+              if (path.resolve(reelInputs.film) !== path.resolve(path.join(videosDir, id, 'film.json'))) {
+                exportFilm = JSON.parse(fs.readFileSync(reelInputs.film, 'utf8')) as Film;
+              }
             }
             sendJson(res, 200, acceptanceSummaryForFilm(path.join(videosDir, id), format, exportFilm));
           }).catch((err) => sendJson(res, 500, { error: String(err) }));

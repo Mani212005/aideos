@@ -94,24 +94,35 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen, runningStatus]);
 
-  // Whether the film about to be exported is the film that was reviewed, asked of the acceptance record each time the Start screen opens.
-  const [acceptance, setAcceptance] = useState<{ filmKey: string; summary: AcceptanceSummary } | null>(null);
+  const [acceptance, setAcceptance] = useState<{
+    filmKey: string;
+    status: "loading" | "ready" | "unavailable";
+    summary?: AcceptanceSummary;
+  } | null>(null);
   const filmKey = JSON.stringify(film);
   const idleOpen = isOpen && job === null;
   useEffect(() => {
     if (!idleOpen) return;
     let alive = true;
-    setAcceptance(null);
+    setAcceptance({ filmKey, status: "loading" });
     fetch(`/api/acceptance/${encodeURIComponent(film.id)}?format=${format}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ film }),
     })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (alive && data?.message) setAcceptance({ filmKey, summary: data as AcceptanceSummary });
+      .then((r) => {
+        if (!r.ok) throw new Error("review status unavailable");
+        return r.json();
       })
-      .catch(() => {});
+      .then((data) => {
+        if (!alive) return;
+        setAcceptance(data?.message
+          ? { filmKey, status: "ready", summary: data as AcceptanceSummary }
+          : { filmKey, status: "unavailable" });
+      })
+      .catch(() => {
+        if (alive) setAcceptance({ filmKey, status: "unavailable" });
+      });
     return () => {
       alive = false;
     };
@@ -138,7 +149,12 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
   let footer: React.ReactNode;
   if (status === "idle") {
     footer = (
-      <Button size="md" tone="primary" onClick={() => onStart(film)} disabled={starting}>
+      <Button
+        size="md"
+        tone="primary"
+        onClick={() => onStart(film)}
+        disabled={starting || (idleOpen && (!acceptance || acceptance.filmKey !== filmKey || acceptance.status === "loading"))}
+      >
         <Play className="h-4 w-4" />
         {starting ? "Starting" : "Start export"}
       </Button>
@@ -197,12 +213,19 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
           <Note tone="info">Nothing is rendered until you press Start. You can cancel at any time.</Note>
         ) : null}
 
-        {status === "idle" && acceptance?.filmKey === filmKey ? (
+        {status === "idle" && acceptance?.filmKey === filmKey && acceptance.status === "ready" && acceptance.summary ? (
           <Note
             tone={acceptance.summary.reviewed ? "success" : "warn"}
             icon={acceptance.summary.reviewed ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-4 w-4" />}
           >
             {acceptance.summary.message}
+            <span className="block pt-1">Export preparation may change the film, so this status may change.</span>
+          </Note>
+        ) : null}
+
+        {status === "idle" && acceptance?.filmKey === filmKey && acceptance.status === "unavailable" ? (
+          <Note tone="warn" icon={<AlertTriangle className="h-4 w-4" />}>
+            Review status unavailable.
           </Note>
         ) : null}
 

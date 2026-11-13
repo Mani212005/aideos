@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   classifyFilmEdit,
+  drawsDisagree,
   initialRecord,
   summarize,
   transition,
@@ -55,7 +56,14 @@ export function readAcceptance(pkgDir: string): AcceptanceFile {
   try {
     const parsed = JSON.parse(fs.readFileSync(acceptancePath(pkgDir), "utf8")) as Partial<AcceptanceFile>;
     if (parsed && parsed.schema === "aideos.acceptance/1") {
-      return { schema: parsed.schema, toolWrites: Array.isArray(parsed.toolWrites) ? parsed.toolWrites : [], formats: parsed.formats ?? {} };
+      const formats = parsed.formats ?? {};
+      for (const record of Object.values(formats)) {
+        if (record) {
+          const judged = Array.isArray(record.judged) ? record.judged : [];
+          record.drawsDisagree = drawsDisagree(judged.filter((draw) => draw.mp4Hash === record.mp4Hash));
+        }
+      }
+      return { schema: parsed.schema, toolWrites: Array.isArray(parsed.toolWrites) ? parsed.toolWrites : [], formats };
     }
   } catch {
     // Fall through to an empty file.

@@ -761,6 +761,10 @@ test("runProduction: changed narration refreshes base-film; forced upstream work
     await runProduction({ ...request, script, force: ["narrate"] }, (e) => forced.push(e));
     assert.ok(forced.some((e) => e.stage === "design" && e.status === "running"));
     assert.ok(forced.some((e) => e.stage === "assemble" && e.status === "running"));
+    const handEdit = { ...readFilm(slug)!, title: "Approved before look rebuild" };
+    fs.writeFileSync(path.join(VIDEOS_DIR, slug, "film.json"), JSON.stringify(handEdit, null, 2));
+    await runProduction({ ...request, force: ["look"] });
+    assert.equal(readFilm(slug)?.title, "Approved before look rebuild", "the look-stage skeleton write must preserve a hand edit");
   } finally { cleanProbe(slug); }
 });
 
