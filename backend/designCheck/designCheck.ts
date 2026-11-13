@@ -16,6 +16,7 @@ import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import { checkCaptionPlacements } from "./captionPlacement";
 import fs from "node:fs";
 import path from "node:path";
+import { Color } from "three";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { boundTheme, sameColour } from "../../src/projectTheme";
 import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
@@ -114,18 +115,42 @@ function isNeutral([r, g, b]: [number, number, number]): boolean {
   return Math.max(r, g, b) - Math.min(r, g, b) <= 4;
 }
 
+function colorChannels(value: string): [number, number, number] | undefined {
+  try {
+    const color = new Color(value);
+    return hexChannels(`#${color.getHexString()}`);
+  } catch {
+    return undefined;
+  }
+}
+
+function svgColours(svgText: string): Array<{ literal: string; channels: [number, number, number] }> {
+  const values = new Set<string>();
+  for (const match of svgText.matchAll(/#(?:[0-9A-Fa-f]{8}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{3})\b/g)) {
+    values.add(match[0].length === 5 ? match[0].slice(0, 4) : match[0].length === 9 ? match[0].slice(0, 7) : match[0]);
+  }
+  for (const match of svgText.matchAll(/(?:rgba?|hsla?)\([^)]*\)/gi)) values.add(match[0]);
+  for (const match of svgText.matchAll(/(?:fill|stroke|color|stop-color|flood-color|lighting-color)\s*[:=]\s*["']?([a-z]+)\b(?!\s*\()/gi)) {
+    if (!/^(none|currentcolor|context-fill|context-stroke|transparent|inherit|initial|unset|revert|revert-layer)$/i.test(match[1])) values.add(match[1]);
+  }
+  return [...values].flatMap((literal) => {
+    const channels = colorChannels(literal);
+    return channels ? [{ literal, channels }] : [];
+  });
+}
+
 // Lists every chromatic colour in an asset that is neither in the palette nor the film's accent.
-export function offPaletteColours(svgText: string, accent?: string): string[] {
-  const allowed = [...LOCKED_PALETTE, ...(accent ? [accent] : [])].map((h) => hexChannels(h.toUpperCase()).join(","));
+export function offPaletteColours(svgText: string, accent?: string, chosenAccent?: string): string[] {
+  const locked = chosenAccent && !sameColour(chosenAccent, DEFAULT_SYSTEM_ACCENT)
+    ? LOCKED_PALETTE.filter((colour) => !sameColour(colour, DEFAULT_SYSTEM_ACCENT))
+    : LOCKED_PALETTE;
+  const allowed = [...locked, ...(accent ? [accent] : [])].map((h) => colorChannels(h)?.join(",")).filter((v): v is string => Boolean(v));
   const found = new Set<string>();
   const consider = (literal: string, rgb: [number, number, number]) => {
     if (isNeutral(rgb) || allowed.includes(rgb.join(","))) return;
     found.add(literal);
   };
-  for (const m of svgText.matchAll(/#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b/g)) consider(m[0], hexChannels(m[0]));
-  for (const m of svgText.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)[^)]*\)/g)) {
-    consider(m[0], [Number(m[1]), Number(m[2]), Number(m[3])]);
-  }
+  for (const colour of svgColours(svgText)) consider(colour.literal, colour.channels);
   return [...found];
 }
 
@@ -133,10 +158,8 @@ export function offPaletteColours(svgText: string, accent?: string): string[] {
 export function foreignAccentColours(svgText: string, accent: string): string[] {
   if (sameColour(accent, DEFAULT_SYSTEM_ACCENT)) return [];
   const target = hexChannels(DEFAULT_SYSTEM_ACCENT).join(",");
-  const found = new Set<string>();
-  for (const m of svgText.matchAll(/#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b/g)) if (hexChannels(m[0]).join(",") === target) found.add(m[0]);
-  for (const m of svgText.matchAll(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)[^)]*\)/g)) if ([m[1], m[2], m[3]].join(",") === target) found.add(m[0]);
-  for (const m of svgText.matchAll(/(?:fill|stroke|color|stop-color|flood-color|lighting-color)\s*[:=]\s*["']?purple\b/gi)) found.add(m[0].match(/purple$/i)?.[0] ?? "purple");
+  const found = new Set(svgColours(svgText).filter(({ channels }) => channels.join(",") === target).map(({ literal }) => literal));
+  for (const match of svgText.matchAll(/(?:fill|stroke|color|stop-color|flood-color|lighting-color)\s*[:=]\s*["']?purple\b/gi)) found.add(match[0].match(/purple$/i)?.[0] ?? "purple");
   return [...found];
 }
 
@@ -178,7 +201,9 @@ function checkAsset(asset: EnvironmentAsset, accent: string | undefined, chosenA
   if (foreign.length) {
     findings.push({ rule: "accent", severity: "error", where, message: `draws with ${foreign.join(", ")}, the design system's default purple, but the user chose ${chosenAccent} for this project; recolour it to ${chosenAccent}.` });
   }
-  const off = offPaletteColours(text, accent);
+  const off = offPaletteColours(text, accent, chosenAccent).filter((colour) =>
+    !foreign.some((foreignColour) => colour === foreignColour || colorChannels(colour)?.join(",") === colorChannels(foreignColour)?.join(",")),
+  );
   if (off.length) {
     findings.push({ rule: "palette", severity: "error", where, message: `uses colours outside the palette and the film accent: ${off.slice(0, 6).join(", ")}${off.length > 6 ? ", ..." : ""}.` });
   }

@@ -80,14 +80,19 @@ export function sampleMeshDepth(subject: Mesh[], stageMeshes: Mesh[]): DepthEvid
 }
 
 // Checks finite declared base/outline shader colors rather than treating all Three colors as exempt.
-export function undeclaredMaterialColours(meshes: Mesh[], declared: readonly string[], forbidden: readonly string[] = []): string[] {
+export function undeclaredMaterialColours(meshes: Mesh[], declared: readonly string[], boundAccent?: string): string[] {
   const allowed = new Set(declared.map((c) => new Color(c).getHexString()));
-  const disallowed = new Set(forbidden.map((c) => new Color(c).getHexString()));
+  const accent = boundAccent ? new Color(boundAccent).getHexString() : undefined;
   const findings = new Set<string>();
   for (const mesh of meshes) for (const material of (Array.isArray(mesh.material) ? mesh.material : [mesh.material])) {
     const m = material as Material & { color?: Color; uniforms?: Record<string, { value: unknown }> };
     const colours = [m.color, ...Object.values(m.uniforms ?? {}).map((u) => u.value).filter((v): v is Color => v instanceof Color)].filter((v): v is Color => v instanceof Color);
-    for (const color of colours) if (!allowed.has(color.getHexString()) || disallowed.has(color.getHexString())) findings.add(`${mesh.name}: #${color.getHexString()}`);
+    for (const color of colours) {
+      const hex = color.getHexString();
+      const channels = [Number.parseInt(hex.slice(0, 2), 16), Number.parseInt(hex.slice(2, 4), 16), Number.parseInt(hex.slice(4, 6), 16)];
+      const neutral = Math.max(...channels) - Math.min(...channels) <= 4;
+      if (boundAccent ? !neutral && hex !== accent : !allowed.has(hex)) findings.add(`${mesh.name}: #${hex}`);
+    }
   }
   return [...findings];
 }

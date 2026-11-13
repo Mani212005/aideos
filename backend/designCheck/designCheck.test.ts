@@ -107,13 +107,18 @@ test("DesignCheck: palette allows neutrals and the film accent, and flags other 
   assert.deepEqual(offPaletteColours(`<rect fill="#00C2A8"/>`, "#00C2A8"), []);
 });
 
-test("DesignCheck: bound accents reject named purple SVG and palette-declared Three colours", () => {
+test("DesignCheck: bound accents reject foreign named SVG and palette-declared Three colours", () => {
   assert.deepEqual(foreignAccentColours('<path fill="purple"/>', "#FF6B00"), ["purple"]);
   assert.deepEqual(foreignAccentColours('<path style="fill: purple"/>', "#FF6B00"), ["purple"]);
   assert.deepEqual(foreignAccentColours('<path fill="purple"/>', "#635BFF"), []);
-  const mesh = new Mesh(new BoxGeometry(), new MeshBasicMaterial({ color: new Color("#635BFF") }));
-  assert.deepEqual(undeclaredMaterialColours([mesh], ["#635BFF"], ["#635BFF"]), [": #635bff"]);
-  assert.deepEqual(undeclaredMaterialColours([mesh], ["#635BFF"]), []);
+  assert.deepEqual(offPaletteColours('<path fill="blue"/>', "#FF6B00", "#FF6B00"), ["blue"]);
+  assert.deepEqual(offPaletteColours('<path fill="hsl(240, 100%, 50%)"/>', "#FF6B00", "#FF6B00"), ["hsl(240, 100%, 50%)"]);
+  const blue = new Mesh(new BoxGeometry(), new MeshBasicMaterial({ color: new Color("blue") }));
+  const purple = new Mesh(new BoxGeometry(), new MeshBasicMaterial({ color: new Color("#635BFF") }));
+  assert.deepEqual(undeclaredMaterialColours([blue], ["blue"], "#FF6B00"), [": #0000ff"]);
+  assert.deepEqual(undeclaredMaterialColours([purple], ["#635BFF"], "#FF6B00"), [": #635bff"]);
+  assert.deepEqual(undeclaredMaterialColours([purple], ["#635BFF"], "#635BFF"), []);
+  assert.deepEqual(undeclaredMaterialColours([purple], ["#635BFF"]), []);
 });
 
 test("DesignCheck: camera moves must be present and speed-capped", () => {
