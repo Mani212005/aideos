@@ -107,7 +107,9 @@ matching inset device overrides and camera keyframes. For a declared Three perfo
 must start before its decisive word and the evaluated contact must land on that word; no clip at the
 cue is required. Builds record provenance in `design/status.json`,
 defaulting CLI builds to `hand-built` (`--source <who>` overrides). Older packages without a look can
-still build directly; new production runs require one before design.
+still build directly; new production runs require one before design. A design rebuild refuses to overwrite
+differences from a hand-edited `film.json`; move the edit into `design/design.json` or the builder, or
+restore the manifest from `design/base-film.json` to knowingly start over.
 
 ## Soundtrack
 
