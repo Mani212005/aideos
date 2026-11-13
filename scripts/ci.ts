@@ -153,7 +153,7 @@ export const JOBS: CiJob[] = [
         todoCases: true,
       },
       {
-        name: "native render IR (cargo test)",
+        name: "native render IR and renderer (cargo test)",
         cmd: ["cargo", "test", "--locked", "--manifest-path", "native/Cargo.toml"],
         skip: cargoMissing,
       },

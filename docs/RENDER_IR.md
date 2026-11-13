@@ -7,13 +7,15 @@ File Description: Reference for the Render IR `aideos.render/1`: the planned ver
 The Render IR is the planned document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
 on and nothing else: no scripts, no clocks, no random seeds. A frame is a pure function of `(IR, frame
-number, format)`, so any frame can be rendered in any order. R1 provides its schema and loader; the
-pipeline emitter and renderer integration are later Phase 1 work.
+number, format)`, so any frame can be rendered in any order. R1 provides its schema and loader; R2
+provides the evaluator and raster. The pipeline emitter and renderer integration remain later Phase 1
+work.
 
 This is **R1** of Phase 1 of the native renderer plan: the schema, the TypeScript validator and the
-Rust loader. The evaluator and raster (R2), encode and audio mux (R3) and the film.json emitter plus
-Still Talking acceptance (R4) are separate ships. The IR is not coupled to Remotion or to the
-`RenderJob` state machine; later integration will hand a renderer an IR path and a format.
+Rust loader. The evaluator and raster are implemented in R2; encode and audio mux (R3), and the
+film.json emitter plus Still Talking acceptance (R4), remain separate ships. The IR is not coupled
+to Remotion or to the `RenderJob` state machine; integration will hand the renderer an IR path and a
+format.
 
 **Status: unfrozen.** `/1` may still change shape until R4 passes on Still Talking. After that, any
 change to the document shape is a new version number (see below), never a quiet edit.
@@ -31,7 +33,8 @@ change to the document shape is a new version number (see below), never a quiet 
 | TypeScript tests | `backend/renderIr/renderIr.test.ts` |
 | Rust tests | `native/aideos-render-ir/tests/fixtures.rs` |
 
-`native/` is the home of every native renderer crate. R2 and R3 add members to `native/Cargo.toml`.
+`native/` is the home of every native renderer crate. R2 added the renderer crate to
+`native/Cargo.toml`; R3 will add the encoder crate.
 
 ## Versioning and rejection
 
@@ -107,8 +110,9 @@ absent meaning 1. SVG `layer` is a signed 32-bit integer to match the Rust loade
 **Assets.** `svg` (`elementIds`), `font` (`family`, `weight`), `image` (`width`, `height`) and `audio`,
 each with an optional `sha256` for caching and incremental rendering. A path is relative to the package
 directory and may not be absolute, contain `..` or a backslash, or start with a drive letter. The
-loader checks the **string**; it does not open the file (R2 resolves it with `getVideosDir()` and
-friends). Fonts are vendored files, never fetched.
+loader checks the **string**; it does not open the file. The renderer (`native/aideos-render`, see
+[NATIVE_RENDERER.md](NATIVE_RENDERER.md)) opens it against the package directory its caller names and
+refuses a file that resolves outside it. Fonts are vendored files, never fetched.
 
 **Not in `/1`.** Transitions and effect stacks (paper curl, blur, masks, blend modes), springs and
 particles, footage clips, Lottie, 3D and the Three-stage character films. They arrive with the phases
@@ -167,7 +171,7 @@ Schema (embedded in the binary with `include_str!`), typed deserialization, then
 npm run render-ir:schema                    # regenerate the JSON Schema after editing schema.ts
 npm run render-ir:schema -- --check         # fail when the committed schema is out of date
 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test backend/renderIr/renderIr.test.ts
-cargo test --locked --manifest-path native/Cargo.toml      # the Rust loader against the same fixtures
+cargo test --locked --manifest-path native/Cargo.toml      # loader fixtures and renderer tests
 ```
 
 `npm test` finds the TypeScript suite by glob. `npm run ci -- unit` also runs the `cargo test` step
@@ -189,6 +193,7 @@ JSON file and its entry, then run both suites.
 
 ## Dependencies this adds
 
-Rust: `serde`, `serde_json` and `jsonschema` (built without HTTP or file resolution), 80 crates in
-all, in `native/Cargo.lock`, built into `native/target` (gitignored). No Skia yet: `skia-safe` arrives
-with R2. CI: one step in the existing `unit` job and a cache of the cargo registry and `native/target`.
+The loader uses `serde`, `serde_json` and `jsonschema` (built without HTTP or file resolution). Skia
+(`skia-safe`) is a dependency of the renderer crate only, not of this loader; see
+[NATIVE_RENDERER.md](NATIVE_RENDERER.md). CI runs the workspace tests in the existing `unit` job and
+caches the Cargo registry and `native/target`.
