@@ -17,6 +17,7 @@ import { BACKGROUND_THEMES } from "../../../src/dl/tokens";
 import { savedAccent } from "../../../src/projectTheme";
 
 import { ShotModal } from "./ShotModal";
+import { useFilmSave } from "../state/FilmSaveContext";
 import {
   Bot,
   Square,
@@ -268,6 +269,7 @@ export function Styleboard({
   onAccentChange,
   onUpdateFilm,
 }: StyleboardProps) {
+  const saveFilm = useFilmSave();
   const [activeTab, setActiveTab] = useState<
     "storyboard" | "primitives" | "spatial"
   >("storyboard");
@@ -425,18 +427,8 @@ export function Styleboard({
         },
       };
 
-      const res = await fetch(`/api/films/${film.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ film: filmToSave }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data.error || `HTTP ${res.status}: Failed to save film`,
-        );
-      }
+      const outcome = await saveFilm(filmToSave, "Save styleboard");
+      if (!outcome.ok) throw new Error(outcome.reason || "Failed to save film");
 
       setSaveToast(`Saved Storyboard & Themes to ${film.id}.ts`);
       setTimeout(() => setSaveToast(null), 4000);

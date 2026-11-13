@@ -9,7 +9,8 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import type { Film, SpeechInterval } from "../src/dl/schema";
-import { isLibrarySource, mergeSpeech, soundtrackItem, soundtrackItemSrc, usesSectionMixer } from "../src/dl/audio/sectionMixer";
+import { isActiveLevel, mergeVoicePhrases } from "../src/dl/audio/voiceActivity";
+import { isLibrarySource, soundtrackItem, soundtrackItemSrc, usesSectionMixer } from "../src/dl/audio/sectionMixer";
 import { resolveAudioSourcePath } from "./audio";
 
 const formats = new Map<string, { size: number; mtimeMs: number; channels: number }>();
@@ -43,7 +44,7 @@ function measureSpeech(file: string, start: number, end: number): { speech: Spee
   const pattern = /pts_time:([\d.e+-]+)\s*\r?\n(?:lavfi\.[^\r\n]*\r?\n)*?lavfi\.astats\.Overall\.RMS_level=([^\r\n]+)/g;
   for (const match of output.matchAll(pattern)) {
     const rmsDb = Number(match[2]);
-    if (!Number.isFinite(rmsDb) || rmsDb <= -40) continue;
+    if (!isActiveLevel(rmsDb)) continue;
     const startSec = Number(match[1]);
     windows.push({ startSec, endSec: startSec + 0.01 });
   }
@@ -96,7 +97,7 @@ export function prepareSoundtrack(film: Film): Film {
     }
   }
   return { ...prepared, soundtrack: {
-    ...soundtrack, sections, speech: mergeSpeech(speech), speechSource,
+    ...soundtrack, sections, speech: mergeVoicePhrases(speech), speechSource,
     narrationPeakDb: Number.isFinite(narrationPeakDb) ? narrationPeakDb : undefined,
   } };
 }

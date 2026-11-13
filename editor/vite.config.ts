@@ -12,7 +12,8 @@ import { prepareSoundtrack } from '../backend/soundtrack.ts';
 import { deliverReel } from '../backend/reelCut/writer.ts';
 import { loadReelContext, readReelCut, reelPackageDir } from '../backend/reelCut/brief.ts';
 import { checkReelCut } from '../backend/reelCut/check.ts';
-import { reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
+import { formatInputs, reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
+import { acceptanceSummary, acceptanceSummaryForFilm, hashFileOrNull, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
 import { REEL_MAX_SEC, reelCutSchema } from '../backend/reelCut/schema.ts';
 import { deliveryTimeline, DELIVERY_CONFIG } from '../src/dl/delivery.ts';
 import { stagePublicDir } from '../backend/pipeline/render.ts';
@@ -32,6 +33,7 @@ import { carryCaptionPlacement } from '../src/dl/captionPlacement.ts';
 import { dropLegacyFilmBlocks, filmSchema } from '../src/dl/schema.ts'
 import { newProjectFilmTheme } from '../src/projectTheme.ts';
 import type { Film } from '../src/dl/schema.ts'
+import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
 import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, ensureRetimedAudio } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
@@ -50,6 +52,7 @@ import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/co
 import { executeCritique } from '../backend/critique/engine.ts'
 import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
+  ScriptIntakeError,
   buildFilmPartsFromScript,
   hasScreenplayTags,
   plainTextToTaggedScript,
@@ -58,6 +61,7 @@ import {
   screenplayFromFilmShots,
 } from '../backend/scriptIntake.ts'
 import { narrationLines } from '../backend/storyScript.ts'
+import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
 import { recordedStatus, synthesizeLines, resampleLinear, type LineAudio } from '../backend/voiceLines.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
@@ -134,7 +138,7 @@ const studioFilmWrites = new Map<string, string>();
 // Persists a film to both the video package (authoritative, read by the editor Player)
 // and the generated src/dl/films/<id>.ts module (read by Remotion's CLI render/activeFilm
 // bundle), so the two never drift the way they did when B-roll auto-wiring only touched one.
-function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): void {
+function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; agentEdit?: boolean } = { owner: false }): string {
   const film = prepareSoundtrack(filmSchema.parse(carryCaptionPlacement(readFilm(filmId), incoming, options)));
   if (options.owner) persistStudioSoundtrack(film);
   const pkgDir = path.join(videosDir, filmId);
@@ -142,12 +146,36 @@ function writeFilm(filmId: string, incoming: Film, options: { owner: boolean; ag
   const contents = JSON.stringify(film, null, 2);
   studioFilmWrites.set(filmId, contents);
   fs.writeFileSync(path.join(pkgDir, 'film.json'), contents, 'utf8');
+  noteFilmWrite(pkgDir, contents);
 
   const filmPath = path.join(filmsDir, `${filmId}.ts`);
   if (fs.existsSync(filmPath)) {
     fs.writeFileSync(filmPath, filmModule(film), 'utf8');
   }
-  traceBus.notifyFilmUpdated(filmId, film);
+  const rev = filmRevision(contents);
+  traceBus.notifyFilmUpdated(filmId, film, rev);
+  return rev;
+}
+
+// The revision of the film.json on disk (the exact bytes every writer produced), or null when the
+// film has no package file yet. A studio save names the revision it started from; see decideSave.
+function diskFilmRevision(filmId: string): string | null {
+  const pkgFilmPath = path.join(resolvePackageDir(filmId), 'film.json');
+  try {
+    return filmRevision(fs.readFileSync(pkgFilmPath, 'utf8'));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+  const generatedPath = path.join(filmsDir, `${filmId}.ts`);
+  try {
+    const content = fs.readFileSync(generatedPath, 'utf8');
+    const jsonMatch = content.match(/=\s*(\{[\s\S]*\})\s*;/);
+    if (!jsonMatch) throw new Error(`Invalid film module format for ${filmId}`);
+    return revisionOfFilm(dropLegacyFilmBlocks(JSON.parse(jsonMatch[1])));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
 }
 
 // Wires a finished B-roll clip into a shot's blocks as an AnalogyInset, replacing any
@@ -460,7 +488,7 @@ function startFilmWatcher(): void {
           const parsedJson = JSON.parse(raw);
           const parsed = filmSchema.safeParse(parsedJson);
           if (parsed.success) {
-            traceBus.notifyFilmUpdated(slug, parsed.data);
+            traceBus.notifyFilmUpdated(slug, parsed.data, filmRevision(raw));
           }
         } catch (_) {}
       }, 100);
@@ -946,6 +974,34 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             .catch((err) => {
               sendJson(res, 500, { error: String(err) });
             });
+          return;
+        }
+
+        // Whether the posted film export will prepare and render is the film that was reviewed.
+        const acceptanceMatch = /^\/api\/acceptance\/([a-z0-9-]+)$/.exec(url.split('?')[0]);
+        if (acceptanceMatch && req.method === 'POST') {
+          const id = acceptanceMatch[1];
+          if (!FILM_ID.test(id)) {
+            sendJson(res, 400, { error: 'Valid film id is required' });
+            return;
+          }
+          const format = new URL(req.url ?? '', 'http://localhost').searchParams.get('format') === 'reel' ? 'reel' : 'long';
+          void readBody(req).then(async (body) => {
+            const postedFilm = (body as { film?: Film } | null)?.film;
+            if (!postedFilm || postedFilm.id !== id) {
+              sendJson(res, 400, { error: 'Film payload must match the requested id' });
+              return;
+            }
+            let exportFilm = postedFilm;
+            if (format === 'reel') {
+              const reelInputs = formatInputs(id, 'reel');
+              if (path.resolve(reelInputs.film) !== path.resolve(path.join(videosDir, id, 'film.json'))) {
+                sendJson(res, 200, acceptanceSummary(path.join(videosDir, id), format, hashFileOrNull(reelInputs.film)));
+                return;
+              }
+            }
+            sendJson(res, 200, acceptanceSummaryForFilm(path.join(videosDir, id), format, exportFilm));
+          }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;
         }
 
@@ -1501,7 +1557,15 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const shotTexts: string[] = film.shots?.map((s: any) => (s.scriptText || s.id || '').trim()).filter(Boolean) || [];
             const scriptInput = scriptText ? splitScriptIntoSegments(scriptText) : shotTexts.length > 0 ? shotTexts : [film.title];
             const pkgDir = path.join(videosDir, film.id);
-            const audioResult = await produceAudioPipeline(scriptInput, pkgDir);
+            const intake = checkVoiceoverIntake(scriptText || '');
+            if (!intake.ok) {
+              sendJson(res, intake.status, { error: intake.error, intakeNotices: intake.intakeNotices });
+              return;
+            }
+            const audioResult = await produceAudioPipeline(scriptInput, pkgDir, {
+              ...(scriptText ? { intakeSource: scriptText } : {}),
+              onIntakeNotice: () => {},
+            });
 
             // Update shot durations to match audio segments accurately (1:1 shot-level mapping)
             const updatedShots = film.shots.map((shot: any, idx: number) => {
@@ -1544,10 +1608,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               ],
             });
 
-            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult });
+            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult, intakeNotices: intake.intakeNotices });
           }).catch(err => {
             console.error('[API voiceover error]:', err);
-            sendJson(res, 500, { error: String(err) });
+            sendJson(res, err instanceof ScriptIntakeError ? 400 : 500, { error: err instanceof Error ? err.message : String(err) });
           });
           return;
         }
@@ -1978,6 +2042,14 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
 
+            let intakeNotices: string[] = [];
+            const intake = checkVoiceoverIntake(script || '');
+            intakeNotices = intake.intakeNotices;
+            if (!intake.ok) {
+              sendJson(res, intake.status, { error: intake.error, intakeNotices });
+              return;
+            }
+
             // The narration lines to record: only the spoken lines of a tagged script, the paragraphs of a plain
             // story, or the spoken text override, one recording per line.
             const narrationLinesToSpeak: string[] = spokenTextOverride && typeof spokenTextOverride === 'string' && spokenTextOverride.trim()
@@ -2151,6 +2223,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 estimatedDurationSec: Math.round(measuredDuration),
                 actualDurationSec: measuredDuration,
                 lines: lineSummary,
+                intakeNotices,
                 shots: updatedShots,
                 film: updatedFilm,
                 agentPrompt,
@@ -2550,8 +2623,9 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           const videoPkgFilmPath = path.join(resolvePackageDir(id), 'film.json');
           if (fs.existsSync(videoPkgFilmPath)) {
             try {
-              const film = dropLegacyFilmBlocks(JSON.parse(fs.readFileSync(videoPkgFilmPath, 'utf8')));
-              sendJson(res, 200, { ok: true, film });
+              const raw = fs.readFileSync(videoPkgFilmPath, 'utf8');
+              const film = dropLegacyFilmBlocks(JSON.parse(raw));
+              sendJson(res, 200, { ok: true, film, rev: filmRevision(raw), order: traceBus.getFilmUpdateOrder(id) });
               return;
             } catch (err) {
               console.warn(`Failed to parse ${videoPkgFilmPath}, falling back to .ts:`, err);
@@ -2568,7 +2642,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           if (jsonMatch) {
             try {
               const film = dropLegacyFilmBlocks(JSON.parse(jsonMatch[1]));
-              sendJson(res, 200, { ok: true, film });
+              sendJson(res, 200, { ok: true, film, rev: revisionOfFilm(film), order: traceBus.getFilmUpdateOrder(id) });
               return;
             } catch (err) {
               sendJson(res, 500, { error: `Failed to parse film JSON: ${String(err)}` });
@@ -2605,12 +2679,25 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
             const file = path.join(filmsDir, `${id}.ts`);
+            // A save names the revision it started from; a stale one is refused with the film now on
+            // disk so the studio can keep both versions instead of the last writer silently winning.
+            let currentRev: string | null;
+            try {
+              currentRev = diskFilmRevision(id);
+            } catch (error) {
+              sendJson(res, 500, { error: `Could not read current film revision: ${String(error)}` });
+              return;
+            }
+            if (decideSave(raw?.baseRev, currentRev) === 'stale') {
+              sendJson(res, 409, { error: 'conflict', code: 'stale_revision', rev: currentRev, order: traceBus.getFilmUpdateOrder(id), film: readFilm(id) });
+              return;
+            }
             // This studio save endpoint is the trusted owner path; placement locks bind agents and rebuilds.
-            writeFilm(id, parsed.data, { owner: true });
+            const rev = writeFilm(id, parsed.data, { owner: true });
 
             setActiveFilm(id);
 
-            sendJson(res, 200, { ok: true, file: path.relative(path.resolve(__dirname, '..'), file), film: parsed.data });
+            sendJson(res, 200, { ok: true, file: path.relative(path.resolve(__dirname, '..'), file), film: parsed.data, rev, order: traceBus.getFilmUpdateOrder(id) });
           })
           .catch((e: unknown) => {
             sendJson(res, 400, { error: e instanceof Error ? e.message : String(e) });

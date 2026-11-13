@@ -115,7 +115,7 @@ Run `aideos audio fetch` once before the first design build, because the default
    - `Long`: 1920x1080 landscape video for YouTube, desktop, and documentation.
    - `Reel`: 1080x1920 vertical format for mobile, TikTok, and social shorts.
 2. **Audio Stack**:
-   - <a id="2-soundtrack-mixing"></a>`src/dl/Soundtrack.tsx` is shared by Studio preview and rendered output. RMS measurements of narration audio determine speech intervals and pauses for music ducking; the mixer does not infer breaths from text timing. The soundtrack schema, library-backed section mixing, and legacy compatibility are documented in [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing). Layered timeline conversions preserve soundtrack metadata alongside explicit audio clips.
+   - <a id="2-soundtrack-mixing"></a>`src/dl/Soundtrack.tsx` is shared by Studio preview and rendered output. The shared voice activity timeline drives music ducking and music review windows; see [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing) for its speech, pause, and gap behavior. Layered timeline conversions preserve soundtrack metadata alongside explicit audio clips.
    - Kinetic Subtitles: Synchronized word-level karaoke text reveal across Long and Reel, using the active theme accent. Captions default to the bottom; owner placements can vary by format and shot. See [caption placement](../src/dl/README.md#owner-caption-cards). Captions can also be disabled with "off".
 
 3. **Autonomous Production Pipeline (`backend/pipeline/run.ts`, `backend/pipeline/director.ts`)**:
@@ -135,7 +135,7 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 6. **Stage 6: Captions (`CaptionsStage.tsx`)**: Word-level caption timing editor for word text and frame ranges. To move captions, click them in the Edit preview and drag.
 7. **Stage 7: Review (`ReviewStage.tsx`)**: AI Critique Studio drawer for natural-language feedback with Agent Bridge dispatch, and SVG data visualization charts (coverage map, duration distribution, pacing metrics).
 8. **Persistent Preview & Controls**: 60 FPS Remotion preview player with 16:9 Long and 9:16 Vertical Reel aspect ratio toggling, transport controls, and live studio hot-reload reflecting agent updates in real time.
-9. **Studio Export (`ExportProgressModal.tsx`, `useExportJob.ts`)**: Clicking Export in the header opens a dialog on a Start screen. Nothing renders until Start is pressed. Progress follows actual renderer frame counts, Cancel stops the render and deletes the partial video, the close cross hides the dialog while rendering (reopened via a header progress chip), and a finished render shows an explicit Download button (no automatic download).
+9. **Studio Export (`ExportProgressModal.tsx`, `useExportJob.ts`)**: Clicking Export in the header opens a dialog on a Start screen with the review status of the supplied film. Start waits for that read-only lookup to finish; if the lookup fails, the dialog says review status is unavailable and export remains available. The status can change if export preparation changes the film. Nothing renders until Start is pressed. Progress follows actual renderer frame counts, Cancel stops the render and deletes the partial video, the close cross hides the dialog while rendering (reopened via a header progress chip), and a finished render shows an explicit Download button (no automatic download). See [Review](REVIEW.md#3-the-whole-check-in-a-background-agent-aideos-all-check) for acceptance record semantics.
 
 ---
 

@@ -30,6 +30,8 @@ import { formatIssues } from "../../src/dl/characters/validate";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
 import { loadCharacter } from "../characters/library";
 import { resolveSoundtrack } from "./soundtrack";
+import { filmDifferences } from "../filmAcceptance/machine";
+import { filmEditState } from "../filmAcceptance/store";
 import { writeReelFilm } from "../reelCut/store";
 
 
@@ -321,7 +323,25 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   // The end card's spoken line comes from the narration, not the design (base-film.json may predate
   // it), so a rebuild keeps the line the current film carries.
   const endCardVoice = (JSON.parse(fs.readFileSync(filmFile, "utf8")) as { endCardVoice?: unknown }).endCardVoice;
-  writeFilm(filmId, endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm);
+  const finalFilm = endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm;
+
+  // A film.json no tool wrote is a hand edit (for example a fix made in an all-check round). The rebuild starts from the
+  // base film, so it would drop that edit without a word.
+  if (filmEditState(pkg) === "hand-edited") {
+    let lost: string[] = [];
+    try {
+      lost = filmDifferences(JSON.parse(JSON.stringify(parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8"))))), JSON.parse(JSON.stringify(parseFilm(finalFilm))));
+    } catch {
+      lost = ["the film (it could not be compared)"];
+    }
+    if (lost.length > 0) {
+      return fail([
+        `film.json was edited by hand after the last tool write, and this rebuild (which starts from design/base-film.json) would drop: ${lost.slice(0, 12).join(", ")}${lost.length > 12 ? `, and ${lost.length - 12} more` : ""}. ` +
+          `Move the fix into design/design.json (or the builder script), or restore film.json from design/base-film.json before running aideos design-build ${filmId} to knowingly start over.`,
+      ]);
+    }
+  }
+  writeFilm(filmId, finalFilm, { owner: false, protectHandEdits: true });
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
 
