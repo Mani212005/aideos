@@ -232,6 +232,7 @@ export function checkSemantics(ir: RenderIr): Issue[] {
         case "endCard":
           needAsset(at(p, "sansFont"), node.sansFont, "font");
           needAsset(at(p, "monoFont"), node.monoFont, "font");
+          if (node.chipFont !== undefined) needAsset(at(p, "chipFont"), node.chipFont, "font");
           checkFormats(at(p, "layout"), node.layout);
           if (node.pressFrame > duration) add("frame_out_of_range", at(p, "pressFrame"), `frame ${node.pressFrame} is past the film's ${duration} frames`);
           break;

@@ -219,6 +219,9 @@ impl<'a> Checker<'a> {
                 Node::EndCard(n) => {
                     self.need_asset(at(&p, &[&"sansFont"]), &n.sans_font, "font");
                     self.need_asset(at(&p, &[&"monoFont"]), &n.mono_font, "font");
+                    if let Some(chip) = &n.chip_font {
+                        self.need_asset(at(&p, &[&"chipFont"]), chip, "font");
+                    }
                     self.check_formats(&at(&p, &[&"layout"]), &n.layout);
                     if n.press_frame.0 > self.duration {
                         self.add("frame_out_of_range", at(&p, &[&"pressFrame"]), format!("frame {} is past the film's {} frames", n.press_frame.0, self.duration));

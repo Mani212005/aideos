@@ -29,7 +29,10 @@ async function main(): Promise<void> {
   const requested = requestedRenderer(process.argv.slice(3));
   const choice = selectRenderer(film, format, requested.name, {
     remotion: () => createRemotionRenderer({ caller: "manual", extraArgs: requested.rest }),
-    native: () => createNativeRenderer({ onLog: (message) => console.log(`[render] ${message}`) }),
+    native: () => createNativeRenderer({
+      onLog: (message) => console.log(`[render] ${message}`),
+      onReport: (r) => console.log(`[render] native: ${r.frames} frames in ${r.elapsedSec.toFixed(1)} s (${r.framesPerSecond.toFixed(1)} fps), encoder ${r.encoder}${r.fallbackReason ? ` (${r.fallbackReason})` : ""}`),
+    }),
   });
   if (choice.fallbackReason) console.warn(`[render] Native renderer not used, falling back to Remotion: ${choice.fallbackReason}`);
   console.log(`[render] Rendering active film "${activeFilm}" (${format}, ${choice.name}) to ${path.relative(REPO_ROOT, outPath)}...`);

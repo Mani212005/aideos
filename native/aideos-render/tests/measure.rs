@@ -1,4 +1,4 @@
-//! File Description: Behavioural tests of the R4 additions to drawing and measuring: `measure` reports single-line widths with letter spacing after every glyph (as CSS does) and line metrics, a variable font set to a heavier weight measures wider, an unknown font is refused; a gradient rect paints its stops top to bottom; a `scaleX` track scales a box about its centre; the rail's label row is drawn in its own `labelColor`.
+//! File Description: Behavioural tests of the R4 additions to drawing and measuring: `measure` reports single-line widths with letter spacing after every glyph (as CSS does) and line metrics, a variable font set to a heavier weight measures wider, an unknown font is refused; a gradient rect paints its stops top to bottom; a `scaleX` track scales a box about its centre; the rail's label row is drawn in its own `labelColor`; an explicit end card `surface` paints the panel.
 //! Inputs and outputs: the vendored variable fonts in native/fonts, the shared IR fixtures and the R2 fixture package -> asserted widths, metrics, pixels and errors.
 //! Used by: `cargo test --manifest-path native/Cargo.toml`.
 
@@ -120,4 +120,22 @@ fn the_rail_label_uses_its_own_colour() {
         p[0] > 200 && p[1] < 60
     });
     assert!(reds.count() > 50, "the label row is drawn in the label colour");
+}
+
+/// An end card's explicit `surface` paints the panel; without it the panel colour is derived as before.
+#[test]
+fn the_end_card_panel_uses_an_explicit_surface() {
+    let count_red = |surface: Option<&str>| {
+        let mut ir = common::tiny_scene();
+        ir.overlay.retain(|n| matches!(n, Node::EndCard(_)));
+        let Some(Node::EndCard(card)) = ir.overlay.first_mut() else { panic!("the fixture has an end card") };
+        card.surface = surface.map(String::from);
+        let r = Renderer::new(ir, &common::package_dir()).expect("load");
+        let frame = r.render_frame(Format::Long, 89).expect("render");
+        (0..frame.width).step_by(4).flat_map(|x| (0..frame.height).step_by(4).map(move |y| (x, y)))
+            .filter(|&(x, y)| close(pixel(&frame, x, y), [0xFF, 0, 0, 0xFF], 3))
+            .count()
+    };
+    assert_eq!(count_red(None), 0, "the derived panel is not red");
+    assert!(count_red(Some("#FF0000")) > 1000, "the explicit surface fills the panel");
 }

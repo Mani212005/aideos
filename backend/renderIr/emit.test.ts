@@ -56,7 +56,11 @@ test("the emitted document validates and spans the story plus the end card", () 
     const rail = byId(ir, "rail");
     assert.deepEqual(rail.visible, { fromFrame: 0, toFrame: delivery.card!.from }, "the rail leaves with the story");
     assert.equal(rail.kind === "rail" && rail.progressFrames, delivery.storyFrames, "the reel bar fills over the story");
-    assert.deepEqual(byId(ir, "end-card").visible, { fromFrame: delivery.card!.from, toFrame: delivery.totalFrames });
+    const endCard = byId(ir, "end-card");
+    assert.deepEqual(endCard.visible, { fromFrame: delivery.card!.from, toFrame: delivery.totalFrames });
+    if (endCard.kind === "endCard") {
+      assert.deepEqual([endCard.monoFont, endCard.chipFont, endCard.surface, endCard.hairline, endCard.muted], ["mono-400", "mono-700", "#141416", "#F5F5F51A", "#8A8A8E"], "the theme's own end card faces and colours");
+    }
     if (rail.kind === "rail") {
       assert.deepEqual(rail.chapters.map((c) => [c.title, c.startFrame]), [["Arrival", 0], ["Count", 180]], "one rail chapter per film chapter, from its first cut");
     }

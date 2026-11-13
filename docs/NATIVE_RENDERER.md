@@ -123,7 +123,7 @@ in the IR (a new field, never a quiet change) where parity with the Remotion ren
 | Caption words not yet spoken | the primary colour at 38% (KineticSubtitles uses white at 38%) |
 | Caption card | KineticSubtitles' card: 12 x 28 px padding, 16 px radius, 1 px white 12% border, the shadow, a 16 px backdrop blur (skipped while the phrase fades, as Chrome isolates a partly transparent element's backdrop), rows balanced to two lines |
 | Rail | the `scrim` colour fades out over the top 44% of `scrimHeight`; the label row is at the top of the box in `labelColor` and the bar at its bottom, filled in `ink` over `trackColor`; the reel's continuous bar fills over `progressFrames` (the film duration when absent); segment gap 8 px, bar 2 px (long) or 3 px (reel), scaled by width / 1920 (long) or width / 1080 (reel) like `useLayout().px`. `accent` is not drawn (Film.tsx fills with the label colour) |
-| End card colours the IR does not carry | panel surface: the dim colour made opaque and mixed 6% toward `ink`; hairline: `ink` at 12%; label and handle: `ink` at 60%; LIKE outline: `ink` at 35%; pill text: whichever of the opaque dim colour and `ink` contrasts more with `fill` (`readableInkOn`) |
+| End card colours and faces | `surface`, `hairline`, `muted` and `chipFont` when the IR gives them (the emitter always does: the theme's surface, hairline and muted, JetBrains Mono 700 chips over a 400 label and handle); when absent, panel surface: the dim colour made opaque and mixed 6% toward `ink`; hairline: `ink` at 12%; label and handle: `ink` at 60%; chips in `monoFont`; LIKE outline: `ink` at 35%; pill text: whichever of the opaque dim colour and `ink` contrasts more with `fill` (`readableInkOn`) |
 | End card timing | EndCard.tsx: the dim settles over 600 ms from `visible.fromFrame`, parts enter 150 ms in on the one entrance (400 ms, 70 ms stagger, 12 px rise), the pill presses for 360 ms from `pressFrame` |
 
 ### Fonts and text
@@ -238,7 +238,7 @@ differ per format.
 | `frame` shots' `TextReveal` | a scrim band (`gradient` rect), one `text` node per word laid out like the flex row (greedy wrap, rows centred, block centred in the stage margins) with the per-word entrance as per-frame `opacity` and `y` keyframes, the accent word's core and tail in their colours, and its underline as a rect whose `scaleX` and `x` keyframes draw it from the left |
 | `StatCounter` | one group per value on screen (number, muted suffix baseline-aligned in the number's letter spacing, uppercase label), visible while that value shows, inside the block's entrance |
 | The rail | `rail` with the label in the muted colour, the bar in ink, chapters spanning their shots, `progressFrames` set to the story |
-| The end card | `endCard` with the `getEndCardLayout` geometry, the configured copy and `subscribePressFrame` |
+| The end card | `endCard` with the `getEndCardLayout` geometry, the configured copy, `subscribePressFrame`, and the theme's surface, hairline, muted colour and faces |
 | The frame's 1 px hairline | a stroked `rect` |
 | Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` |
 

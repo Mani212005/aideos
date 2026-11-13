@@ -477,9 +477,21 @@ pub struct EndCardNode {
     pub opacity: Option<f64>,
     pub sans_font: String,
     pub mono_font: String,
+    /// Face of the chip labels; absent means `mono_font`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chip_font: Option<String>,
     pub fill: String,
     pub ink: String,
     pub dim: String,
+    /// The panel colour; absent means derived from `dim` and `ink`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface: Option<String>,
+    /// The panel's 1 px border; absent means `ink` at 12%.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hairline: Option<String>,
+    /// The label and handle colour; absent means `ink` at 60%.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub muted: Option<String>,
     pub copy: EndCardCopy,
     pub press_frame: Whole,
     pub layout: PerFormat<EndCardLayout>,

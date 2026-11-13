@@ -1563,6 +1563,10 @@
               "type": "string",
               "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
             },
+            "chipFont": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
             "fill": {
               "type": "string",
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
@@ -1572,6 +1576,18 @@
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
             },
             "dim": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+            },
+            "surface": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+            },
+            "hairline": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+            },
+            "muted": {
               "type": "string",
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
             },

@@ -164,9 +164,15 @@ export const endCardNodeSchema = z.strictObject({
   ...nodeBase,
   sansFont: id,
   monoFont: id,
+  /** Face of the LIKE and SUBSCRIBE chip labels; absent means `monoFont`. */
+  chipFont: id.optional(),
   fill: color,
   ink: color,
   dim: color,
+  /** The panel, its 1 px border and the label and handle colour; each absent one is derived from `dim` and `ink`. */
+  surface: color.optional(),
+  hairline: color.optional(),
+  muted: color.optional(),
   copy: z.strictObject({ label: text, headline: text, likeLabel: text, subscribeLabel: text, handle: text }),
   /** The frame the subscribe pill presses, from the spoken word or a fixed beat. */
   pressFrame: frame,

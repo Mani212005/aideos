@@ -14,7 +14,8 @@ flag, see [NATIVE_RENDERER.md](NATIVE_RENDERER.md). The IR is not coupled to Rem
 `RenderJob` state machine: the native adapter hands the renderer an IR path, a package and a format.
 
 R4 added, for Still Talking's text cards and chrome: `rect.gradient`, the `scaleX` and `scaleY` node
-track properties, the rail's `labelColor` (required) and `progressFrames` (optional).
+track properties, the rail's `labelColor` (required) and `progressFrames` (optional), and the end card's
+optional `chipFont`, `surface`, `hairline` and `muted`.
 
 **Status: unfrozen.** `/1` may still change shape until R4 passes on Still Talking. After that, any
 change to the document shape is a new version number (see below), never a quiet edit.
