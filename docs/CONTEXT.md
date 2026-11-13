@@ -509,7 +509,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `renderDesignBrief(film)`, `writeDesignBrief(filmId)` (`brief.ts`): Generates designer briefs (`design/BRIEF.md`) containing film contracts, shot narration, and asset specifications.
 * `compileDesign(film, spec, options)` (`compile.ts`): Compiles a `DesignSpec` and narration timing into a validated scene film, compiling camera poses through `Timeline.camera()`.
 * `buildDesign(filmId, source)` (`build.ts`): Compiles design specifications, executes design checks, and writes passing films.
-* `readCheckedLookPlan(film)`, `checkDesignAgainstLook(film, spec, words, pkg, plan)` (`build.ts`): Validates look plan completeness and checks design cast (supporting cast IDs matching elements across multiple assets), SVG carried motion starting within 0.4s of its cue, declared Three performance anticipation before its decisive word and contact on that word, inset device overrides, and camera against the accepted look.
+* `readCheckedLookPlan(film)`, `checkDesignAgainstLook(film, spec, words, pkg, plan)` (`build.ts`): Validates look plans and binds design evidence to their requirements; build acceptance and ledger behavior are documented in [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery).
 * `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
 * `planFilmLook(filmId, options)`, `designFilm(filmId, options)` (`designer.ts`): Delivers look planning and scene design through inline, agent, server, or templates policies.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
