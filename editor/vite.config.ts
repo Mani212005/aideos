@@ -1310,6 +1310,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               filmTitle,
               customInstruction,
               scriptText: script,
+              // A second click (or a client retry) while this task is open reuses it instead of adding another.
+              idempotent: true,
             });
             sendJson(res, 200, { ok: true, dispatch, prompt: dispatch.prompt });
           }).catch(err => sendJson(res, 500, { error: String(err) }));

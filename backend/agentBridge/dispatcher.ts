@@ -1,5 +1,9 @@
 /**
  * File Description: Multi-channel outbound dispatcher and hybrid fallback manager for the Aideos Agent Bridge.
+ * Supports idempotent Auto-Prompt dispatch where an existing task counts as open only while younger than
+ * OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created or last sent) regardless of whether
+ * it is pending, claimed, or timed out with a sent pane; completed or failed tasks, or those whose pane delivery
+ * failed, are not open. After the window a click creates a new task. Non-idempotent dispatches are never merged.
  * Inputs and outputs: agent task events and dispatch requests -> dispatched tasks and logged events.
  * Used by: backend/agentBridge/index.ts, backend/designSpec/designer.ts.
  */
@@ -11,7 +15,7 @@ import { ROOT } from "../pipeline/filmStore";
 import { buildDirectingPrompt, buildTaskContext } from "./contextBuilder";
 import { taskQueue } from "./taskQueue";
 import { agentLink } from "../agentLink/store";
-import { paneDelivery, type PaneDelivery, type PaneDeliveryDeps } from "./paneDelivery";
+import { OPEN_AFTER_TIMEOUT_MS, paneDelivery, type PaneDelivery, type PaneDeliveryDeps } from "./paneDelivery";
 import { remoteTaskPrompt } from "../agentLink/prompt";
 import type { AgentSessionInfo, AgentTask, DispatchChannel, DispatchOptions, DispatchResult } from "./types";
 
@@ -37,14 +41,18 @@ export const DEFAULT_AGENT_TIMEOUT_MS = 15000;
 const SESSION_FILE = path.join(ROOT, ".aideos_session.json");
 const EVENTS_LOG = path.join(ROOT, "state", "agent_events.jsonl");
 
+/** The equivalence key and dispatch time of each task created by an idempotent dispatch; weak, so it ends with the task. */
+const idempotencyKeys = new WeakMap<AgentTask, { key: string; atMs: number }>();
+
 /** Map storing active fallback timers by task identifier. */
 const activeFallbackTimers = new Map<string, NodeJS.Timeout>();
 
-// Automatically defuse fallback timers when a task is claimed or completed
+// Automatically defuse fallback timers when a task is claimed or completed, and let a settled task's prompt be sent again
 taskQueue.addListener((event, task) => {
   if (event === "claimed" || event === "completed" || event === "failed") {
     cancelFallbackTimer(task.id);
   }
+  if (event === "completed" || event === "failed") paneDelivery.release(task.id);
 });
 
 /** Reads the current active agent session configuration. */
@@ -174,7 +182,7 @@ Claim this task via MCP tool \`aideos_claim_task({ taskId: "${task.id}" })\` or 
  */
 export function dispatchLocalAndTmux(
   prompt: string,
-  opts?: { sessionName?: string; pane?: string; taskId?: string },
+  opts?: { sessionName?: string; pane?: string; taskId?: string; idempotent?: boolean },
   deps: DispatchDeps = {},
 ): { fileWritten: boolean; pane?: PaneDelivery } {
   let fileWritten = false;
@@ -203,13 +211,58 @@ export function dispatchLocalAndTmux(
   try {
     if (tmux(["has-session", "-t", targetSession]).status !== 0) return { fileWritten };
     const pane = paneDelivery.enqueue(
-      { pane: targetPane, agent: sessionInfo.agent, prompt, taskId: opts?.taskId },
+      { pane: targetPane, agent: sessionInfo.agent, prompt, taskId: opts?.taskId, idempotent: opts?.idempotent },
       { tmux, sleep: deps.sleep, now: deps.now, timing: deps.timing },
     );
     return { fileWritten, pane };
   } catch (_) {
     return { fileWritten };
   }
+}
+
+/** The key under which two dispatches count as the same request: owner, project, event and prompt text. */
+function idempotencyKey(opts: DispatchOptions, prompt: string): string {
+  return JSON.stringify([opts.ownerKey ?? null, opts.filmId, opts.eventType, prompt]);
+}
+
+/**
+ * The still-open task with this key and where its prompt stands in the agent's terminal, if there is one. An idempotent
+ * task counts as open only while younger than OPEN_AFTER_TIMEOUT_MS (10 minutes, measured from when the task was created
+ * or last sent) regardless of whether it is pending, claimed, or timed out with a sent pane; completed or failed tasks,
+ * or those whose pane delivery failed, are not open.
+ */
+function findOpenTask(key: string, nowMs: number): { task: AgentTask; pane?: PaneDelivery } | undefined {
+  const panes = paneDelivery.list();
+  for (const task of taskQueue.listAllTasks()) {
+    const record = idempotencyKeys.get(task);
+    if (record?.key !== key) continue;
+    if (task.status === "completed" || task.status === "failed") continue;
+    const pane = panes.find((p) => p.taskId === task.id);
+    if (pane?.state === "failed") continue;
+    if (task.status === "timed_out" && !pane && !task.inboxMessagePath) continue;
+    const age = nowMs - (pane?.sentAtMs ?? record.atMs);
+    const waiting = pane?.state === "queued" || pane?.state === "sending";
+    if (waiting || age <= OPEN_AFTER_TIMEOUT_MS) return { task, pane };
+  }
+  return undefined;
+}
+
+/** What an idempotent dispatch returns when it reuses the open task: nothing new is created or sent. */
+function reusedDispatch(task: AgentTask, pane: PaneDelivery | undefined): DispatchResult {
+  const standing = task.status === "claimed" ? "running" : pane?.state === "sent" ? "sent to your agent" : "queued";
+  return {
+    ok: true,
+    duplicate: true,
+    taskId: task.id,
+    task,
+    channels: [...task.dispatchedChannels],
+    inboxMessagePath: task.inboxMessagePath,
+    prompt: task.prompt,
+    fallbackScheduled: false,
+    fallbackTimeoutMs: task.timeoutMs,
+    pane: pane && { ...pane, duplicate: true },
+    message: `Task ${task.id} is already ${standing}, so it was not queued twice`,
+  };
 }
 
 /** Dispatches a rich task across all active channels with automatic hybrid fallback. */
@@ -219,6 +272,13 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
   const prompt = buildDirectingPrompt(opts, context);
 
   const channels: DispatchChannel[] = ["mcp_queue", "file_inbox"];
+
+  // 0. Idempotent callers reuse an equivalent open task. The lookup and the create below run with no await
+  // between them, so concurrent requests (a double click, a client retry) are serialized and one task results.
+  const nowMs = (deps.now ?? Date.now)();
+  const key = opts.idempotent ? idempotencyKey(opts, prompt) : undefined;
+  const open = key ? findOpenTask(key, nowMs) : undefined;
+  if (open) return reusedDispatch(open.task, open.pane);
 
   // 1. Channel B: Enqueue task in TaskQueue
   const task = taskQueue.createTask({
@@ -230,6 +290,7 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
     dispatchedChannels: channels,
     timeoutMs,
   });
+  if (key) idempotencyKeys.set(task, { key, atMs: nowMs });
 
   // 1b. The owner's connected agent (aideos connect). When it takes the task, the local channels
   // are skipped so a machine with both a connector and a tmux session never runs a task twice.
@@ -265,6 +326,7 @@ export async function dispatchTask(opts: DispatchOptions, deps: DispatchDeps = {
     sessionName: opts.sessionName,
     pane: opts.pane,
     taskId: task.id,
+    idempotent: opts.idempotent,
   }, deps);
   const pane = localResult.pane;
   if (pane && pane.state !== "failed") {
