@@ -1,0 +1,32 @@
+{
+  "schema": "aideos.render/1",
+  "film": { "id": "layer-range", "fps": 30, "durationFrames": 1 },
+  "scene": { "width": 1920, "height": 1920 },
+  "formats": { "long": { "width": 1920, "height": 1080 } },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "stage-art",
+      "path": "visuals/stage.svg",
+      "sha256": "9f2c6a1e5b7d4c8a0e3f1b2d6c9a8e7f4b5d3c2a1e0f9a8b7c6d5e4f3a2b1c0d",
+      "elementIds": []
+    }
+  ],
+  "stage": [
+    {
+      "kind": "svg",
+      "id": "stage",
+      "asset": "stage-art",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 2147483648,
+      "tracks": [],
+      "elementTracks": []
+    }
+  ],
+  "overlay": [],
+  "audio": []
+}

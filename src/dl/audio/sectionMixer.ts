@@ -6,7 +6,8 @@
 
 import committedLibrary from "../../../audio/library.json";
 import type { DeliveryTimeline } from "../delivery";
-import type { Soundtrack, SoundtrackMix, SoundtrackSfx, SpeechInterval } from "../schema";
+import type { Soundtrack, SoundtrackMix, SoundtrackSfx } from "../schema";
+import { HOLD_SEC, voiceContextAt, type VoiceTimeline } from "./voiceActivity";
 
 type LibraryItem = (typeof committedLibrary.items)[number];
 
@@ -62,41 +63,21 @@ export function soundtrackItemSrc(item: LibraryItem): string {
   return `videos/.audio-library/${item.id}${extension}`;
 }
 
-// Sorts and joins phrases separated by less than 0.6 s, including overlaps from edited narration.
-export function mergeSpeech(intervals: SpeechInterval[]): SpeechInterval[] {
-  const merged: SpeechInterval[] = [];
-  for (const interval of [...intervals].sort((a, b) => a.startSec - b.startSec)) {
-    if (interval.endSec <= interval.startSec) continue;
-    const previous = merged[merged.length - 1];
-    if (previous && interval.startSec - previous.endSec < 0.6 - 1e-9) {
-      previous.endSec = Math.max(previous.endSec, interval.endSec);
-    } else {
-      merged.push({ ...interval });
-    }
-  }
-  return merged;
-}
-
 // Bounds a ramp's progress to its endpoints.
 function progress(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-// Pre-ducks over 0.25 s and releases over 0.6 s, keeping word gaps inside a merged phrase flat.
-export function speechGain(timeSec: number, speech: SpeechInterval[], mix: SoundtrackMix, storySec: number): number {
-  let previousEnd = -Infinity;
-  let nextStart = Infinity;
-  for (const interval of speech) {
-    if (timeSec >= interval.startSec && timeSec <= interval.endSec) return dbGain(mix.duckDb);
-    if (interval.endSec < timeSec) previousEnd = Math.max(previousEnd, interval.endSec);
-    if (interval.startSec > timeSec) nextStart = Math.min(nextStart, interval.startSec);
-  }
-  const musicOnly = previousEnd === -Infinity || nextStart === Infinity;
+// Pre-ducks over 0.25 s and releases over 0.6 s, keeping speech and pauses inside a phrase flat.
+export function speechGain(timeSec: number, voice: VoiceTimeline, mix: SoundtrackMix, storySec: number): number {
+  const { state, previousEndSec, nextStartSec } = voiceContextAt(voice, timeSec);
+  if (state !== "gap") return dbGain(mix.duckDb);
+  const musicOnly = previousEndSec === -Infinity || nextStartSec === Infinity;
   const cardRise = progress((timeSec - storySec + 0.25) / 0.25);
   const openDb = musicOnly ? mix.musicOnlyGainDb :
     mix.pauseGainDb + (mix.musicOnlyGainDb - mix.pauseGainDb) * cardRise;
-  const release = mix.duckDb + (openDb - mix.duckDb) * progress((timeSec - previousEnd) / 0.6);
-  const attack = mix.duckDb + (openDb - mix.duckDb) * progress((nextStart - timeSec) / 0.25);
+  const release = mix.duckDb + (openDb - mix.duckDb) * progress((timeSec - previousEndSec) / HOLD_SEC);
+  const attack = mix.duckDb + (openDb - mix.duckDb) * progress((nextStartSec - timeSec) / 0.25);
   return dbGain(Math.min(openDb, release, attack));
 }
 
