@@ -109,6 +109,9 @@ export interface ProductionRequest {
 /** Lifecycle of one stage within a run. */
 export type StageStatus = "pending" | "running" | "done" | "skipped" | "failed" | "needs_input";
 
+/** The persisted state of one stage; `skipped` exists only as a progress event. */
+export type StageState = Exclude<StageStatus, "skipped">;
+
 /** A progress event emitted as the run advances. */
 export interface ProductionProgress {
   stage: ProductionStage;
@@ -124,13 +127,15 @@ export interface ProductionProgress {
 /** What one stage did, recorded in the run state so a resume can skip it. */
 export interface StageRecord {
   stage: ProductionStage;
-  status: StageStatus;
+  status: StageState;
   startedAt?: string;
   finishedAt?: string;
   durationMs?: number;
   /** Fingerprint of the stage's inputs; a change invalidates the cached result. */
   fingerprint?: string;
   error?: string;
+  /** Set only while the stage is running: which process and run own it. */
+  owner?: { pid: number; runId: string };
 }
 
 /** One rendered deliverable. */

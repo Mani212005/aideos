@@ -16,6 +16,8 @@ import test from "node:test";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { parseFilm } from "../../src/dl/schema";
 import { listMotionRequests, requestMotion, revertMotion } from "./motionRequests";
+import { buildDesign, readDesignStatus } from "./build";
+import { readOpenBuildRequest } from "./buildRecord";
 import { buildSvgSources } from "../scene/buildSvgSources";
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -59,8 +61,9 @@ test("MotionRequests: an agent request is settled by the next design build", asy
     assert.equal(listMotionRequests(ID)[0].state, "sent", "no build yet");
 
     // The agent's first build fails; it is still working, so that is not the answer yet.
-    const status = (state: string, errors: string[], offset: number) =>
-      fs.writeFileSync(path.join(PKG, "design/status.json"), JSON.stringify({ state, source: "agent", at: new Date(Date.now() + offset).toISOString(), errors, findings: [] }));
+    // A build answers a request by carrying its id, as `aideos design-build` does for the open request.
+    const status = (state: string, errors: string[], offset: number, requestId: string = r.id) =>
+      fs.writeFileSync(path.join(PKG, "design/status.json"), JSON.stringify({ state, source: "agent", at: new Date(Date.now() + offset).toISOString(), errors, findings: [], requestId }));
     status("failed", ["clips.9.easing: invalid"], 1000);
     const [working] = listMotionRequests(ID);
     assert.equal(working.state, "sent");
@@ -72,7 +75,7 @@ test("MotionRequests: an agent request is settled by the next design build", asy
 
     // An agent that never gets it right is given up on after 30 minutes.
     const second = await requestMotion(film, "beat-03", "another", { dispatch: agentDispatch });
-    status("failed", ["still wrong"], 3000);
+    status("failed", ["still wrong"], 3000, second.id);
     assert.equal(listMotionRequests(ID)[0].state, "sent");
     const late = listMotionRequests(ID, () => Date.parse(second.at) + 31 * 60 * 1000)[0];
     assert.deepEqual([late.state, late.message], ["failed", "still wrong"]);
@@ -147,6 +150,51 @@ test("MotionRequests: revert puts the replaced design back and rebuilds the film
     assert.equal(JSON.parse(fs.readFileSync(path.join(PKG, "design/status.json"), "utf8")).state, "passed");
     assert.equal(JSON.parse(fs.readFileSync(path.join(PKG, "film.json"), "utf8")).design.source, "hand-built", "a revert keeps who made the design");
     assert.throws(() => revertMotion(ID, "m-missing"), /no motion request/);
+  } finally {
+    teardown();
+  }
+});
+
+test("MotionRequests: only a build that carries the request's id settles it", async () => {
+  const film = setup();
+  try {
+    const r = await requestMotion(film, "beat-02", "drop a tile per word", { dispatch: agentDispatch });
+    assert.equal(readOpenBuildRequest(ID)?.requestId, r.id, "the request is open before the agent is asked");
+
+    // A build from any other cause (a pipeline resume, a hand build) is not the agent's answer.
+    const other = buildDesign(ID, "hand-built");
+    assert.equal(other.state, "passed");
+    assert.equal(other.requestId, null);
+    assert.equal(listMotionRequests(ID)[0].state, "sent", "a passing build with no request id does not settle it");
+
+    // A build run on the agent's behalf takes the open request's id and does.
+    const answer = buildDesign(ID, "agent", { attribute: "open-request" });
+    assert.equal(answer.requestId, r.id);
+    assert.equal(readDesignStatus(ID)?.requestId, r.id);
+    assert.equal(listMotionRequests(ID)[0].state, "passed");
+    assert.equal(readOpenBuildRequest(ID), null, "a settled request is closed");
+
+    // A later rebuild of identical inputs keeps the attribution; a rebuild of changed inputs does not.
+    assert.equal(buildDesign(ID, "agent").requestId, r.id);
+    const spec = path.join(PKG, "design/design.json");
+    const changed = JSON.parse(fs.readFileSync(spec, "utf8"));
+    changed.clips = changed.clips.slice(0, -1);
+    fs.writeFileSync(spec, JSON.stringify(changed));
+    assert.equal(buildDesign(ID, "agent").requestId, null);
+  } finally {
+    teardown();
+  }
+});
+
+test("MotionRequests: a newer request supersedes the open one, and a build answers only the newest", async () => {
+  const film = setup();
+  try {
+    const first = await requestMotion(film, "beat-02", "one", { dispatch: agentDispatch });
+    const second = await requestMotion(film, "beat-03", "two", { dispatch: agentDispatch });
+    assert.equal(readOpenBuildRequest(ID)?.requestId, second.id);
+    buildDesign(ID, "agent", { attribute: "open-request" });
+    const states = Object.fromEntries(listMotionRequests(ID).map((x) => [x.id, x.state]));
+    assert.deepEqual(states, { [first.id]: "sent", [second.id]: "passed" });
   } finally {
     teardown();
   }

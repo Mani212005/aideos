@@ -569,7 +569,7 @@ program
     const { buildDesign, formatBuildStatus } = await import("./designSpec/build");
     const source = options.source as "agent" | "server-model" | "hand-built";
     if (!["agent", "server-model", "hand-built"].includes(source)) throw new Error(`unknown --source "${options.source}"`);
-    const status = buildDesign(film, source);
+    const status = buildDesign(film, source, { attribute: "open-request" });
     if (status.state === "passed") {
       const { prepareDefaultSoundtrack } = await import("./defaultSoundtrack");
       const { readFilm, writeFilm } = await import("./pipeline/filmStore");
