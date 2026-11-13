@@ -126,3 +126,21 @@ test("BuildRecord: the input hash follows what a build is made from, and request
     teardown();
   }
 });
+
+test("BuildRecord: a generated default canvas does not change the authored input hash", () => {
+  const spec = setup();
+  try {
+    const designFile = path.join(PKG, "design/design.json");
+    const design = JSON.parse(spec);
+    delete design.background;
+    fs.writeFileSync(designFile, JSON.stringify(design));
+    const canvas = path.join(PKG, "visuals/canvas.svg");
+    fs.rmSync(canvas, { force: true });
+    const beforeBuild = designInputHash(ID);
+    buildDesign(ID, "hand-built");
+    assert.equal(fs.existsSync(canvas), true, "the build creates its default canvas");
+    assert.equal(designInputHash(ID), beforeBuild, "the generated default is not an authored input");
+  } finally {
+    teardown();
+  }
+});

@@ -120,6 +120,11 @@ export function applyStageEvent(record: StageRecord, event: StageEvent): StageRe
       break;
     case "invalidate":
       delete next.owner;
+      delete next.startedAt;
+      delete next.finishedAt;
+      delete next.durationMs;
+      delete next.error;
+      delete next.fingerprint;
       break;
     case "reuse":
       break;
