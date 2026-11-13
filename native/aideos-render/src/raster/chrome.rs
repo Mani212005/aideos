@@ -1,4 +1,4 @@
-//! File Description: Draws the film chrome of the overlay: the chapter rail (Film.tsx `Rail`), the kinetic captions (KineticSubtitles.tsx: a blurred-backdrop card with word karaoke, glow and the active word's spring settle) and the like-and-subscribe end card (EndCard.tsx: the dim, the staggered entrances, the chips and the subscribe press). Geometry comes from the IR's per-format placement and layout; what the IR does not carry (the end card's surface, hairline and muted colours) is derived from its colours as documented in docs/NATIVE_RENDERER.md.
+//! File Description: Draws the film chrome of the overlay: the chapter rail (Film.tsx `Rail`), the kinetic captions (KineticSubtitles.tsx: a blurred-backdrop card with word karaoke, glow and the active word's spring settle) and the like-and-subscribe end card (EndCard.tsx: the dim, the staggered entrances, the chips and the subscribe press). Geometry comes from the IR's per-format placement and layout; the end card's surface, hairline and muted colours come from the IR when it carries them and are otherwise derived from its colours, as documented in docs/NATIVE_RENDERER.md.
 //! Inputs and outputs: a canvas, the overlay context and a rail, captions or end card node -> pixels on the canvas.
 //! Used by: crate::raster (overlay drawing).
 
@@ -57,7 +57,8 @@ pub fn draw_rail(canvas: &Canvas, ctx: &OverlayCtx, node: &RailNode) {
     let Some(b) = ctx.format.pick(&node.placement) else {
         return;
     };
-    let state = eval::rail_state(&node.chapters, ctx.fps(), ctx.frame, ctx.dur());
+    let progress_frames = node.progress_frames.map_or(ctx.dur(), |f| f.0);
+    let state = eval::rail_state(&node.chapters, ctx.fps(), ctx.frame, progress_frames);
     let (w, h) = (f64::from(ctx.width), f64::from(ctx.height));
     let k = ctx.k();
     super::with_opacity(canvas, node.opacity.unwrap_or(1.0), || {
@@ -87,12 +88,13 @@ pub fn draw_rail(canvas: &Canvas, ctx: &OverlayCtx, node: &RailNode) {
         }
         // The label row: chapter name on the left, timestamp on the right.
         let ink = ir_color(&node.ink);
+        let label_color = ir_color(&node.label_color);
         let row = |text: &str, align: TextAlign| {
             let spec = TextSpec {
                 text,
                 font: &node.font,
                 size: b.font_size,
-                color: ink,
+                color: label_color,
                 letter_spacing: 0.14 * b.font_size,
                 line_height: None,
                 align,
@@ -537,10 +539,11 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
     let ink = ir_color(&node.ink);
     let accent = ir_color(&node.fill);
     let canvas_rgb = Rgba { a: 1.0, ..dim };
-    // Derived colours (the IR carries the dim, ink and accent only): see docs/NATIVE_RENDERER.md.
-    let surface = mix(canvas_rgb, ink, 0.06);
-    let hairline = Rgba { a: 0.12, ..ink };
-    let muted = Rgba { a: 0.6, ..ink };
+    // The IR's explicit colours, else derived from the dim and ink: see docs/NATIVE_RENDERER.md.
+    let surface = node.surface.as_deref().map_or_else(|| mix(canvas_rgb, ink, 0.06), ir_color);
+    let hairline = node.hairline.as_deref().map_or(Rgba { a: 0.12, ..ink }, ir_color);
+    let muted = node.muted.as_deref().map_or(Rgba { a: 0.6, ..ink }, ir_color);
+    let chip_font = node.chip_font.as_deref().unwrap_or(&node.mono_font);
     let pill_ink = if contrast(accent, canvas_rgb) > contrast(accent, ink) {
         canvas_rgb
     } else {
@@ -583,7 +586,7 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
         );
         let like = text(
             node.copy.like_label.to_uppercase(),
-            &node.mono_font,
+            chip_font,
             geo.type_sizes.chip,
             0.08,
             1.0,
@@ -591,7 +594,7 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
         );
         let sub = text(
             node.copy.subscribe_label.to_uppercase(),
-            &node.mono_font,
+            chip_font,
             geo.type_sizes.chip,
             0.08,
             1.0,

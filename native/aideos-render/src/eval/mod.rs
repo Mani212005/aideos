@@ -107,12 +107,16 @@ pub fn is_visible(visible: Option<&Visible>, frame: u32) -> bool {
     visible.is_none_or(|v| frame >= v.from_frame.0 && frame < v.to_frame.0)
 }
 
-/// A node's resolved placement: translation, uniform scale, rotation in degrees and opacity.
+/// A node's resolved placement: translation, scale (uniform, times a per-axis factor), rotation in degrees and opacity.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NodeTransform {
     pub x: f64,
     pub y: f64,
     pub scale: f64,
+    /// Horizontal factor multiplying `scale` (a `scaleX` track; 1 without one).
+    pub scale_x: f64,
+    /// Vertical factor multiplying `scale` (a `scaleY` track; 1 without one).
+    pub scale_y: f64,
     pub rotation: f64,
     pub opacity: f64,
 }
@@ -145,6 +149,8 @@ pub fn placed_transform(
         x: pick(NodeProperty::X, base.x),
         y: pick(NodeProperty::Y, base.y),
         scale: pick(NodeProperty::Scale, base.scale),
+        scale_x: pick(NodeProperty::ScaleX, base.scale_x),
+        scale_y: pick(NodeProperty::ScaleY, base.scale_y),
         rotation: pick(NodeProperty::Rotation, base.rotation),
         opacity: (static_opacity.unwrap_or(1.0) * pick(NodeProperty::Opacity, 1.0)).clamp(0.0, 1.0),
     }
@@ -161,6 +167,8 @@ pub fn boxed_transform(
         x: 0.0,
         y: 0.0,
         scale: 1.0,
+        scale_x: 1.0,
+        scale_y: 1.0,
         rotation: 0.0,
         opacity: 1.0,
     };
@@ -263,11 +271,11 @@ pub struct RailState {
     pub label: String,
     /// "MM:SS" of the frame.
     pub stamp: String,
-    /// Fraction of the film duration played, 0 to 1 (the reel's continuous bar).
+    /// Fraction of `duration_frames` played, 0 to 1 (the reel's continuous bar).
     pub progress: f64,
 }
 
-/// Evaluates the rail's chapter, label, timestamp and progress at a frame.
+/// Evaluates the rail's chapter, label, timestamp and progress at a frame; progress runs over `duration_frames` (the film, or the rail's `progressFrames`).
 pub fn rail_state(chapters: &[Chapter], fps: u32, frame: u32, duration_frames: u32) -> RailState {
     let chapter_index = chapters
         .iter()

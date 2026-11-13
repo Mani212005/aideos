@@ -81,7 +81,7 @@ fi
 design_usage() {
   echo "Usage: aideos design check <film...> [--all] [--stills] [--json]"
   echo "       aideos design brief <film>"
-  echo "       aideos design build <film> [--source agent|server-model|hand-built]"
+  echo "       aideos design build <film> [--source agent|server-model|hand-built] [--request <id>]"
 }
 
 # Prints the usage of `aideos look`.
@@ -223,7 +223,7 @@ if [ "$#" -gt 0 ]; then
       esac
       ;;
     render)
-      cd "$AIDEOS_DIR" && npm run render "$@"
+      cd "$AIDEOS_DIR" && npm run render -- "$@"
       exit 0
       ;;
     reel)

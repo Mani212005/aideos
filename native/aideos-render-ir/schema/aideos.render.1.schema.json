@@ -565,6 +565,8 @@
                       "x",
                       "y",
                       "scale",
+                      "scaleX",
+                      "scaleY",
                       "rotation",
                       "opacity"
                     ]
@@ -749,6 +751,38 @@
               "type": "string",
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
             },
+            "gradient": {
+              "type": "object",
+              "properties": {
+                "stops": {
+                  "minItems": 2,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "offset": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "color": {
+                        "type": "string",
+                        "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+                      }
+                    },
+                    "required": [
+                      "offset",
+                      "color"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "stops"
+              ],
+              "additionalProperties": false
+            },
             "stroke": {
               "type": "object",
               "properties": {
@@ -782,6 +816,8 @@
                       "x",
                       "y",
                       "scale",
+                      "scaleX",
+                      "scaleY",
                       "rotation",
                       "opacity"
                     ]
@@ -969,6 +1005,8 @@
                       "x",
                       "y",
                       "scale",
+                      "scaleX",
+                      "scaleY",
                       "rotation",
                       "opacity"
                     ]
@@ -1141,6 +1179,10 @@
               "type": "string",
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
             },
+            "labelColor": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+            },
             "accent": {
               "type": "string",
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
@@ -1181,6 +1223,11 @@
                 ],
                 "additionalProperties": false
               }
+            },
+            "progressFrames": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 26000000
             },
             "placement": {
               "type": "object",
@@ -1266,6 +1313,7 @@
             "id",
             "font",
             "ink",
+            "labelColor",
             "accent",
             "trackColor",
             "scrim",
@@ -1515,6 +1563,10 @@
               "type": "string",
               "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
             },
+            "chipFont": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
             "fill": {
               "type": "string",
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
@@ -1524,6 +1576,18 @@
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
             },
             "dim": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+            },
+            "surface": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+            },
+            "hairline": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+            },
+            "muted": {
               "type": "string",
               "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
             },
@@ -1882,6 +1946,8 @@
                       "x",
                       "y",
                       "scale",
+                      "scaleX",
+                      "scaleY",
                       "rotation",
                       "opacity"
                     ]

@@ -44,9 +44,12 @@ dependencies = [
 name = "aideos-render"
 version = "0.1.0"
 dependencies = [
+ "aideos-encode",
  "aideos-render-ir",
  "khronos-egl",
  "roxmltree",
+ "serde",
+ "serde_json",
  "skia-safe",
 ]
 

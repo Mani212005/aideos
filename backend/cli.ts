@@ -565,11 +565,12 @@ program
   .description("Compile videos/<film>/design/design.json into the film; writes it only when the design check passes, then completes the compulsory music and sound effects with the default soundtrack")
   .argument("<film>", "film id under videos/")
   .option("--source <who>", "who made the design: agent, server-model or hand-built", "hand-built")
-  .action(async (film: string, options: { source: string }) => {
+  .option("--request <id>", "open design or motion request answered by this build")
+  .action(async (film: string, options: { source: string; request?: string }) => {
     const { buildDesign, formatBuildStatus } = await import("./designSpec/build");
     const source = options.source as "agent" | "server-model" | "hand-built";
     if (!["agent", "server-model", "hand-built"].includes(source)) throw new Error(`unknown --source "${options.source}"`);
-    const status = buildDesign(film, source);
+    const status = buildDesign(film, source, options.request ? { requestId: options.request } : {});
     if (status.state === "passed") {
       const { prepareDefaultSoundtrack } = await import("./defaultSoundtrack");
       const { readFilm, writeFilm } = await import("./pipeline/filmStore");

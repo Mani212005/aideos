@@ -45,7 +45,6 @@ import {
   readFilm,
   restoreActiveFilmSource,
   slugify,
-  wireFootageIntoFilm,
   writeFilm,
   withFootage,
 } from "./filmStore";
@@ -56,6 +55,8 @@ import { filmEditState } from "../filmAcceptance/store";
 import { boundTheme } from "../../src/projectTheme";
 import { createRenderJob } from "../renderJob";
 import { createRemotionRenderer } from "../remotionRenderer";
+import { createRunMachine, inputNeeded, isInputNeeded, type InputNeeded } from "./runMachine";
+import { loadRunState, saveRunState } from "./runState";
 import {
   PRODUCTION_STAGES,
   DESIGN_MODES,
@@ -67,21 +68,7 @@ import {
   type ProductionResult,
   type ProductionStage,
   type RenderedOutput,
-  type RunState,
-  type StageRecord,
 } from "./types";
-
-/** A resumable authoring stop, kept distinct from a production failure. */
-class NeedsInput extends Error {
-  readonly status: "needs_look" | "needs_design" | "needs_reel_cut";
-  readonly nextSteps: string[];
-  // Carries the missing authoring stage and exact continuation instructions.
-  constructor(status: "needs_look" | "needs_design" | "needs_reel_cut", nextSteps: string[], message: string) {
-    super(message);
-    this.status = status;
-    this.nextSteps = nextSteps;
-  }
-}
 
 /** Called for every progress event a run emits. */
 export type ProgressHandler = (event: ProductionProgress) => void;
@@ -148,42 +135,6 @@ export function lookPlanFingerprint(slug: string): string | null {
     return [id, candidate ? crypto.createHash("sha256").update(fs.readFileSync(candidate)).digest("hex") : null];
   });
   return fingerprint(raw, characters);
-}
-
-/** Where the run state for a package lives. */
-function statePath(slug: string): string {
-  return path.join(packageDir(slug), "run-state.json");
-}
-
-/** Loads previous run state, or an empty one when there is none. */
-function loadState(slug: string, title: string): RunState {
-  const file = statePath(slug);
-  if (fs.existsSync(file)) {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as RunState;
-      if (Array.isArray(parsed.stages)) return parsed;
-    } catch {
-      // A corrupt state file is not worth failing a run over; start clean.
-    }
-  }
-  return { slug, title, updatedAt: new Date().toISOString(), stages: [], brollClips: [], outputs: [] };
-}
-
-/** Persists run state so the next invocation can resume. */
-function saveState(state: RunState): void {
-  state.updatedAt = new Date().toISOString();
-  fs.mkdirSync(packageDir(state.slug), { recursive: true });
-  fs.writeFileSync(statePath(state.slug), JSON.stringify(state, null, 2), "utf8");
-}
-
-/** Finds a stage's record in the run state, creating it if this is its first run. */
-function stageRecord(state: RunState, stage: ProductionStage): StageRecord {
-  let record = state.stages.find((s) => s.stage === stage);
-  if (!record) {
-    record = { stage, status: "pending" };
-    state.stages.push(record);
-  }
-  return record;
 }
 
 /**
@@ -278,8 +229,13 @@ export async function runProduction(
   // and then blocked polling them.
   const wantsBroll = request.broll === true;
 
-  const state = loadState(slug, title);
+  const runId = crypto.randomUUID();
+  const owner = { pid: process.pid, runId };
+  const loaded = loadRunState(slug, title, runId);
+  const state = loaded.state;
   state.title = title;
+  const machine = createRunMachine(state, saveRunState);
+  warnings.push(...loaded.notices);
 
   let current: ProductionStage = "intake";
   let narrationResult: ProduceAudioResult | null = null;
@@ -352,23 +308,26 @@ export async function runProduction(
   };
 
   /**
-   * Runs one stage, honouring resume. A stage whose recorded fingerprint still matches its
-   * inputs is skipped; everything else runs, and its outcome is written to the run state
-   * before the next stage starts, so a crash never loses completed work.
+   * Runs one stage through the run state machine, honouring resume. A stage whose recorded
+   * fingerprint still matches its inputs is reused; everything else runs, and every transition
+   * (including `running`) is saved before the work continues. A stage that needs authoring input
+   * returns an InputNeeded value (a state, not an exception); a failure throws a ProductionError.
    */
   const runStage = async <T>(
     stage: ProductionStage,
     inputFingerprint: string,
     cached: () => T | null,
-    work: () => Promise<T>,
-  ): Promise<T> => {
+    work: () => Promise<T | InputNeeded>,
+    completedFingerprint?: () => string,
+    refreshedFingerprints?: () => Array<{ stage: ProductionStage; fingerprint: string }>,
+  ): Promise<T | InputNeeded> => {
     current = stage;
-    const record = stageRecord(state, stage);
+    const record = machine.record(stage);
 
     if (resume && !forced.has(stage) && record.status === "done" && record.fingerprint === inputFingerprint) {
       const reused = cached();
       if (reused !== null) {
-        record.status = "done";
+        machine.reuse(stage);
         emit(stage, "skipped", "reusing the result from the previous run");
         return reused;
       }
@@ -378,33 +337,45 @@ export async function runProduction(
 
     // A stage that runs again invalidates every later stage, even if its output hashes identically.
     // Forced narration/design must not leave a completed assembly or render attached to old inputs.
-    for (const later of state.stages) {
-      if (PRODUCTION_STAGES.indexOf(later.stage) > PRODUCTION_STAGES.indexOf(stage)) later.status = "pending";
-    }
-    if (PRODUCTION_STAGES.indexOf(stage) < PRODUCTION_STAGES.indexOf("render")) state.outputs = [];
-    record.status = "running";
-    record.startedAt = new Date().toISOString();
-    record.fingerprint = inputFingerprint;
-    record.error = undefined;
+    machine.begin(stage, inputFingerprint, owner);
     emit(stage, "running", `${stage} started`);
 
     try {
       const result = await work();
-      record.status = "done";
-      record.finishedAt = new Date().toISOString();
-      record.durationMs = Date.parse(record.finishedAt) - Date.parse(record.startedAt);
-      saveState(state);
+      if (isInputNeeded(result)) {
+        machine.needInput(stage, result.message);
+        emit(stage, "needs_input", result.message);
+        return result;
+      }
+      machine.complete(stage, completedFingerprint?.() ?? inputFingerprint, refreshedFingerprints?.());
       emit(stage, "done", `${stage} complete`);
       return result;
     } catch (err) {
-      record.status = err instanceof NeedsInput ? "needs_input" : "failed";
-      record.finishedAt = new Date().toISOString();
-      record.error = err instanceof Error ? err.message : String(err);
-      saveState(state);
-      emit(stage, record.status, record.error);
-      if (err instanceof NeedsInput) throw err;
-      throw err instanceof ProductionError ? err : new ProductionError(stage, record.error, err);
+      const message = err instanceof Error ? err.message : String(err);
+      machine.fail(stage, message);
+      emit(stage, "failed", message);
+      throw err instanceof ProductionError ? err : new ProductionError(stage, message, err);
     }
+  };
+
+  /** Runs a stage that can never ask for authoring input (its work returns a plain value). */
+  const runPlainStage = async <T>(
+    stage: ProductionStage,
+    inputFingerprint: string,
+    cached: () => T | null,
+    work: () => Promise<T>,
+    completedFingerprint?: () => string,
+    refreshedFingerprints?: () => Array<{ stage: ProductionStage; fingerprint: string }>,
+  ): Promise<T> => {
+    const result = await runStage<T>(stage, inputFingerprint, cached, work, completedFingerprint, refreshedFingerprints);
+    if (isInputNeeded(result)) throw new ProductionError(stage, "stage returned an input request but cannot accept one");
+    return result;
+  };
+
+  /** Ends the run at a stage that needs authoring input, with the exact continuation steps. */
+  const haltForInput = (needed: InputNeeded): ProductionResult => {
+    filmResult = readFilm(slug);
+    return { ...buildResult(), status: needed.status, nextSteps: needed.nextSteps };
   };
 
   try {
@@ -412,7 +383,7 @@ export async function runProduction(
     // A plain-text story is converted to the internal tagged script right here, deterministically and with no
     // agent, so the user's narration is never reformatted later; a tagged script passes through unchanged.
     const script = plainTextToTaggedScript(request.script ?? "", { speed: request.speed ?? DEFAULT_KOKORO_SPEED });
-    await runStage(
+    await runPlainStage(
       "intake",
       fingerprint(script, title, slug),
       () => (fs.existsSync(path.join(pkgDir, "script.md")) ? true : null),
@@ -435,15 +406,14 @@ export async function runProduction(
     // A package that already carries narration spoken from this script (a recorded voice, or one made
     // before run-state.json existed or was copied along) is resumed as is: re-synthesizing it would
     // replace the voice and move every cue the design was timed to. A deliberate re-narration is force.
-    const narrateRecord = stageRecord(state, "narrate");
+    const narrateRecord = machine.record("narrate");
     const recorded = resume && !forced.has("narrate") && !narrateRecord.fingerprint ? readRecordedNarration(pkgDir, script) : null;
     if (recorded) {
-      narrateRecord.status = "done";
-      narrateRecord.fingerprint = narrationFingerprint;
+      machine.adopt("narrate", narrationFingerprint);
       emit("narrate", "running", `using the recorded narration in the package (voiceover.wav, ${recorded.totalAudioDuration.toFixed(2)}s, ${recorded.ttsBackend}); not synthesizing it again`);
     }
 
-    const narration = await runStage<ProduceAudioResult>(
+    const narration = await runPlainStage<ProduceAudioResult>(
       "narrate",
       narrationFingerprint,
       () => readRecordedNarration(pkgDir, script),
@@ -492,7 +462,7 @@ export async function runProduction(
       ...(chosenTheme ? { theme: chosenTheme } : {}),
     };
     const lookFingerprint = fingerprint(script, narration.shotDurations, title, mode);
-    const look = await runStage<LookPlan | false>(
+    const lookRun = await runStage<LookPlan | false>(
       "look", lookFingerprint,
       () => {
         if (mode === "templates") return false;
@@ -513,7 +483,7 @@ export async function runProduction(
         const outcome = await planFilmLook(slug, { ...delivery, onProgress: (message) => emit("look", "running", message) });
         if (!outcome.plan) {
           warnings.push(outcome.note, ...outcome.errors);
-          throw new NeedsInput("needs_look", [
+          return inputNeeded("needs_look", [
             `Read ${path.join(designDir(slug), "LOOK_BRIEF.md")}`,
             `Write ${path.join(designDir(slug), "look.json")}`,
             `Run aideos look check ${slug}`,
@@ -523,6 +493,8 @@ export async function runProduction(
         return outcome.plan;
       },
     );
+    if (isInputNeeded(lookRun)) return haltForInput(lookRun);
+    const look = lookRun;
     filmResult = readFilm(slug);
     if (shouldStop("look")) return buildResult("look");
 
@@ -531,7 +503,7 @@ export async function runProduction(
     const designFingerprint = () => fingerprint(script, narration.shotDurations, request.music ?? null,
       wantsBroll, mode, lookHash, "look-contract-v1", "default-soundtrack-v1", mode === "templates" ? null : designFilesFingerprint(slug));
 
-    const design = await runStage(
+    const designRun = await runStage(
       "design",
       designFingerprint(),
       () => {
@@ -582,7 +554,7 @@ export async function runProduction(
         if (outcome.source === "needs_design" || outcome.judge && designAcceptance(outcome.judge) === "needs_design") {
           warnings.push(outcome.note);
           if (outcome.status) warnings.push(formatBuildStatus(slug, outcome.status));
-          throw new NeedsInput("needs_design", [
+          return inputNeeded("needs_design", [
             `Read ${path.join(designDir(slug), "BRIEF.md")}`,
             `Write ${path.join(designDir(slug), "design.json")} and its visuals/*.svg assets`,
             `Run aideos design build ${slug}`,
@@ -593,22 +565,31 @@ export async function runProduction(
         if (!designed || (mode !== "templates" && !designed.scene)) throw new Error("design did not produce a scene film");
         return { ...compiled, film: designed };
       },
+      () => designFingerprint(),
     );
+    if (isInputNeeded(designRun)) return haltForInput(designRun);
+    const design = designRun;
     const scoredDesign = await prepareDefaultSoundtrack(design.film, "long", (message) => {
       warnings.push(message);
       emit("design", "done", message);
     });
     if (scoredDesign !== design.film) design.film = writeFilm(slug, scoredDesign);
-    // Agent/server work writes authoring files during the stage. Cache their resulting hashes,
-    // so an unchanged rerun reuses them while a later authoring edit invalidates the stage.
-    stageRecord(state, "design").fingerprint = designFingerprint();
-    saveState(state);
     filmResult = design.film;
     if (shouldStop("design")) return buildResult("design");
 
+    // The reel fingerprint includes film.json, so finish its end-card input before recording the
+    // reel stage. Assembly reuses this same value when it writes the long and reel films.
+    try {
+      const endCardLine = await ensureEndCardVoice(slug, { film: design.film });
+      design.film = endCardLine.film;
+      if (endCardLine.notice) warnings.push(`end card: ${endCardLine.notice}`);
+    } catch (err) {
+      warnings.push(`end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`);
+    }
+
     // ---- reel: same picture and voice, separate condensed narration when the long does not fit.
     const reelFingerprint = () => fingerprint(reelSourceFingerprint(slug), request.reel ?? mode, formats.includes("reel"));
-    let reelFilm = await runStage<Film | false>("reel", reelFingerprint(), () => {
+    const reelRun = await runStage<Film | false>("reel", reelFingerprint(), () => {
       if (!formats.includes("reel")) return false;
       if (!fs.existsSync(path.join(pkgDir, "reel/status.json")) || !fs.existsSync(path.join(pkgDir, "reel/film.json"))) return null;
       try { return reelForRender(slug); } catch { return null; }
@@ -620,11 +601,11 @@ export async function runProduction(
         synthesize: request.reelSynthesizer,
         onProgress: (message) => emit("reel", "running", message),
       });
-      if (outcome.status === "needs_reel_cut") throw new NeedsInput(outcome.status, outcome.nextSteps, outcome.note);
+      if (outcome.status === "needs_reel_cut") return inputNeeded(outcome.status, outcome.nextSteps, outcome.note);
       return outcome.film;
-    });
-    stageRecord(state, "reel").fingerprint = reelFingerprint();
-    saveState(state);
+    }, () => reelFingerprint());
+    if (isInputNeeded(reelRun)) return haltForInput(reelRun);
+    let reelFilm = reelRun;
     if (shouldStop("reel")) return buildResult("reel");
 
     // ---- broll: render footage on the GPU and wire it into the film --------------------------
@@ -644,7 +625,7 @@ export async function runProduction(
               seconds: Math.min(footageBudget, Math.max(3, s.dur + FOOTAGE_HEADROOM_SEC)),
             })) ?? [];
 
-    const brollClips = await runStage<BrollClip[]>(
+    const brollClips = await runPlainStage<BrollClip[]>(
       "broll",
       fingerprint(footageRequests, wantsBroll, request.brollEngine ?? "ssh-wangp"),
       () => !wantsBroll || footageRequests.length === 0 ? [] :
@@ -652,6 +633,7 @@ export async function runProduction(
       async () => {
         if (!wantsBroll || footageRequests.length === 0) {
           emit("broll", "running", "no footage requested");
+          state.brollClips = [];
           return [];
         }
         const engineName = request.brollEngine ?? "ssh-wangp";
@@ -681,29 +663,34 @@ export async function runProduction(
             height: probe.height,
           });
         }
+        state.brollClips = clips;
         return clips;
       },
     );
-    state.brollClips = brollClips;
-    saveState(state);
     clipResults = brollClips;
     if (shouldStop("broll")) return buildResult("broll");
 
     // ---- assemble: wire footage in, install as the active film, validate ---------------------
-    let assembled = await runStage<Film>(
+    // Predict the deterministic wired output so a completed assembly is compared by its final films on resume.
+    const footageForAssembly = (film: Film): Film => brollClips.reduce((current, clip) => {
+      const shot = current.shots.find((candidate) => candidate.id === clip.shotId);
+      if (!shot || clip.durationSec + 0.05 < shot.dur) return current;
+      const inset = shot.blocks.find((block) => block.c === "AnalogyInset");
+      const caption = inset && "caption" in inset ? inset.caption : shot.ch ?? "";
+      return withFootage(current, clip.shotId, clip.staticPath, caption);
+    }, film);
+    const expectedAssembled = footageForAssembly(design.film);
+    const expectedReel = reelFilm ? footageForAssembly(reelFilm) : false;
+    const assemblyFingerprint = (long: Film, reel: Film | false) => fingerprint(
+      withoutEndCardVoice(long), reel && withoutEndCardVoice(reel), brollClips.map((clip) => clip.staticPath),
+    );
+    const assembled = await runPlainStage<Film>(
       "assemble",
-      // Fingerprinted on the compiled film itself, not on the inputs that produced it: a
-      // change to the design compiler produces a different film from identical inputs, and
-      // hashing the inputs alone let a stale assembly survive the change. The end card line is
-      // attached after assembly from the narration, so it is not part of the design's identity.
-      fingerprint(withoutEndCardVoice(design.film), reelFilm && withoutEndCardVoice(reelFilm), brollClips.map((c) => c.staticPath)),
+      assemblyFingerprint(expectedAssembled, expectedReel),
       () => readFilm(slug),
       async () => {
-        let film = readFilm(slug);
-        if (!film) throw new Error(`design produced no film for "${slug}"`);
-
         for (const clip of brollClips) {
-          const shot = film.shots.find((s) => s.id === clip.shotId);
+          const shot = design.film.shots.find((s) => s.id === clip.shotId);
           if (!shot) {
             warnings.push(`clip for "${clip.shotId}" has no matching shot and was not wired in`);
             continue;
@@ -715,43 +702,22 @@ export async function runProduction(
             );
             continue;
           }
-          // The caption the design stage already put on the placeholder inset came from the
-          // screenplay's on-screen copy. The visual direction is an instruction to the
-          // generator, and printing it under the plate puts a stage direction on screen.
-          const existing = shot.blocks.find((b) => b.c === "AnalogyInset");
-          const caption = existing && "caption" in existing ? existing.caption : shot.ch ?? "";
-          film = wireFootageIntoFilm(slug, clip.shotId, clip.staticPath, caption);
         }
 
+        const film = writeFilm(slug, expectedAssembled);
+        if (expectedReel) {
+          reelFilm = writeReelFilm(slug, { ...expectedReel, endCardVoice: film.endCardVoice });
+          const status = JSON.parse(fs.readFileSync(path.join(pkgDir, "reel/status.json"), "utf8")) as ReelBuildStatus;
+          recordReelStatus(slug, { ...status, fingerprint: reelSourceFingerprint(slug) });
+        }
         const wired = film.shots.filter((s) => s.blocks.some((b) => b.c === "AnalogyInset" && Boolean(b.src))).length;
         emit("assemble", "running", `${wired} shot(s) carry B-roll`);
         return film;
       },
+      () => assemblyFingerprint(readFilm(slug)!, reelFilm || false),
+      () => [{ stage: "reel", fingerprint: reelFingerprint() }],
     );
-    // The end card speaks in the film's own voice: attach its line (synthesizing it when missing),
-    // so the studio preview and the render both carry it. A failure leaves the card silent.
-    try {
-      const endCardLine = await ensureEndCardVoice(slug, { film: assembled });
-      assembled = endCardLine.film;
-      if (endCardLine.notice) warnings.push(`end card: ${endCardLine.notice}`);
-    } catch (err) {
-      warnings.push(`end card line could not be attached (${err instanceof Error ? err.message : String(err)}); the card stays silent`);
-    }
     filmResult = assembled;
-    if (reelFilm) {
-      for (const clip of brollClips) {
-        const shot = reelFilm.shots.find((s) => s.id === clip.shotId);
-        if (!shot || clip.durationSec + 0.05 < shot.dur) continue;
-        const block = shot.blocks.find((b) => b.c === "AnalogyInset");
-        reelFilm = withFootage(reelFilm, shot.id, clip.staticPath, block?.caption ?? shot.ch ?? "");
-      }
-      reelFilm = writeReelFilm(slug, { ...reelFilm, endCardVoice: assembled.endCardVoice });
-      const statusPath = path.join(pkgDir, "reel/status.json");
-      const status = JSON.parse(fs.readFileSync(statusPath, "utf8")) as ReelBuildStatus;
-      recordReelStatus(slug, { ...status, fingerprint: reelSourceFingerprint(slug) });
-    }
-    stageRecord(state, "reel").fingerprint = reelFingerprint();
-    saveState(state);
     if (shouldStop("assemble")) return buildResult("assemble");
 
     // ---- render: produce the deliverables ----------------------------------------------------
@@ -765,7 +731,7 @@ export async function runProduction(
       ...(request.renderFrames ? [request.renderFrames] : []),
     );
 
-    const outputs = await runStage<RenderedOutput[]>(
+    const outputs = await runPlainStage<RenderedOutput[]>(
       "render",
       renderFingerprint,
       () => {
@@ -796,7 +762,7 @@ export async function runProduction(
     if (shouldStop("render")) return buildResult("render");
 
     // ---- verify: probe what actually came out ------------------------------------------------
-    await runStage(
+    await runPlainStage(
       "verify",
       fingerprint(outputs.map((o) => [o.path, o.sizeBytes])),
       () => null,
@@ -839,17 +805,15 @@ export async function runProduction(
       },
     );
 
-    saveState(state);
+    machine.save();
     return buildResult();
   } catch (err) {
-    saveState(state);
-    if (err instanceof NeedsInput) {
-      filmResult = readFilm(slug);
-      return { ...buildResult(), status: err.status, nextSteps: err.nextSteps };
-    }
     throw err instanceof ProductionError
       ? err
       : new ProductionError(current, err instanceof Error ? err.message : String(err), err);
+  } finally {
+    // A stage this run still holds as running (an exit outside runStage) must not stay running on disk.
+    machine.release(runId, "interrupted: the run ended before this stage finished");
   }
 }
 

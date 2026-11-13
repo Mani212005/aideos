@@ -212,8 +212,10 @@ const channels = (hex: string): string => {
  * headlines that were technically drawn and practically invisible. Reading through the theme
  * context instead makes each component correct on whichever canvas it lands.
  */
-export const useTokens = (): ThemeTokens => {
-  const theme = useTheme();
+export const useTokens = (): ThemeTokens => tokensFor(useTheme());
+
+/** The theme tokens of one background theme, outside React (the pure core of `useTokens`). */
+export function tokensFor(theme: BackgroundTheme): ThemeTokens {
   const inkAt = (alpha: number) => `rgba(${channels(theme.ink)}, ${alpha})`;
   return {
     canvas: theme.canvas,
@@ -226,7 +228,7 @@ export const useTokens = (): ThemeTokens => {
     faint: inkAt(0.45),
     sunken: theme.canvas === theme.surface ? inkAt(0.06) : theme.surface,
   };
-};
+}
 
 /**
  * Hairline at a multiple of its base strength. `1` is the token; `2` is the
@@ -311,7 +313,11 @@ export const useLayout = (): DLLayout => {
   } catch {
     // Fallback when rendered outside Remotion composition context
   }
+  return layoutFor(width, height, theme);
+};
 
+/** The layout of a frame of this size in one background theme, outside React (the pure core of `useLayout`). */
+export function layoutFor(width: number, height: number, theme: BackgroundTheme): DLLayout {
   const format: Format = width < height ? "reel" : "long";
   const k = width / REFERENCE_WIDTH[format];
   const typeScale = FORMAT_TYPE_SCALE[format];
@@ -352,4 +358,4 @@ export const useLayout = (): DLLayout => {
       color: theme.muted,
     }),
   };
-};
+}

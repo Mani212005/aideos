@@ -30,7 +30,7 @@ export function hasExplicitEffects(film: Film): boolean {
 }
 
 // Removes generated music and generated effects while preserving every piece of owner-authored soundtrack data.
-function withoutGenerated(film: Film): Film {
+export function withoutGenerated(film: Film): Film {
   const soundtrack = film.soundtrack;
   if (!soundtrack || (!soundtrack.defaultScore && !soundtrack.sfx.some((effect) => effect.generated))) return film;
   const sections = soundtrack.defaultScore ? [] : soundtrack.sections;

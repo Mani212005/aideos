@@ -4,10 +4,11 @@
  * every part of it, and which ink reads on the accent fill. A plain module like
  * fullScreenHeroLayout.ts, with no Remotion imports, so it is unit testable.
  * Inputs and outputs: format, frame size, rectangles to avoid and the card copy -> EndCardLayout (card rect, slot and part sizes).
- * Used by: src/dl/EndCard.tsx, backend/endCardLayout.test.ts.
+ * Used by: src/dl/EndCard.tsx, backend/renderIr/emit.ts, backend/endCardLayout.test.ts.
  */
 
 import type { Format } from "./tokens";
+import type { CardWord, EndCardSpan } from "./delivery";
 import { getFrameMargins, getStageSafeRegion, subtitleCardBottom, SUBTITLE_BAND_TOP_RATIO } from "./fullScreenHeroLayout";
 
 /** A rectangle in render pixels. */
@@ -174,4 +175,16 @@ export function contrastRatio(a: string, b: string): number {
 // The candidate ink that reads best on a fill, so a light accent gets dark type and a dark one light type.
 export function readableInkOn(fill: string, candidates: string[]): string {
   return candidates.reduce((best, c) => (contrastRatio(fill, c) > contrastRatio(fill, best) ? c : best), candidates[0]);
+}
+
+/** With no spoken line the pill presses this long into the card, after the parts have arrived. */
+const SILENT_PRESS_MS = 1400;
+
+// Lowercases a word and strips punctuation, so "subscribe." matches the configured SUBSCRIBE.
+const bare = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// The frame the SUBSCRIBE pill presses: its spoken word when the line says it, else a fixed beat.
+export function subscribePressFrame(card: EndCardSpan, cardWords: CardWord[], subscribe: string, fps: number): number {
+  const spoken = cardWords.find((w) => bare(w.text) === bare(subscribe));
+  return spoken ? spoken.startFrame : card.from + Math.round((SILENT_PRESS_MS / 1000) * fps);
 }

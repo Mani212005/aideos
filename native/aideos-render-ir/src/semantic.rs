@@ -183,6 +183,13 @@ impl<'a> Checker<'a> {
                 Node::Rect(n) => {
                     self.check_node_tracks(&p, &n.tracks);
                     self.check_formats(&at(&p, &[&"placement"]), &n.placement);
+                    if let Some(g) = &n.gradient {
+                        for (j, pair) in g.stops.windows(2).enumerate() {
+                            if pair[1].offset < pair[0].offset {
+                                self.add("stops_unordered", at(&p, &[&"gradient", &"stops", &(j + 1), &"offset"]), "gradient stop offsets may not decrease".into());
+                            }
+                        }
+                    }
                 }
                 Node::Text(n) => {
                     self.need_asset(at(&p, &[&"font"]), &n.font, "font");
@@ -191,6 +198,12 @@ impl<'a> Checker<'a> {
                 }
                 Node::Rail(n) => {
                     self.need_asset(at(&p, &[&"font"]), &n.font, "font");
+                    if let Some(total) = n.progress_frames {
+                        if total.0 > self.duration {
+                            let d = self.duration;
+                            self.add("frame_out_of_range", at(&p, &[&"progressFrames"]), format!("progressFrames {} is past the film's {d} frames", total.0));
+                        }
+                    }
                     self.check_formats(&at(&p, &[&"placement"]), &n.placement);
                     let mut prev_end = 0u32;
                     for (j, c) in n.chapters.iter().enumerate() {
@@ -206,6 +219,9 @@ impl<'a> Checker<'a> {
                 Node::EndCard(n) => {
                     self.need_asset(at(&p, &[&"sansFont"]), &n.sans_font, "font");
                     self.need_asset(at(&p, &[&"monoFont"]), &n.mono_font, "font");
+                    if let Some(chip) = &n.chip_font {
+                        self.need_asset(at(&p, &[&"chipFont"]), chip, "font");
+                    }
                     self.check_formats(&at(&p, &[&"layout"]), &n.layout);
                     if n.press_frame.0 > self.duration {
                         self.add("frame_out_of_range", at(&p, &[&"pressFrame"]), format!("frame {} is past the film's {} frames", n.press_frame.0, self.duration));

@@ -1,4 +1,4 @@
-# File Description: Manifest of the native frame renderer: evaluates an aideos.render/1 Render IR per frame and draws it with Skia (CPU raster reference, optional GPU), with the `aideos-render` CLI that renders one frame to a PNG.
+# File Description: Manifest of the native frame renderer: evaluates an aideos.render/1 Render IR per frame and draws it with Skia (CPU raster reference, optional GPU), with the `aideos-render` CLI that renders one frame to a PNG, a whole film to an mp4 (through aideos-encode) or measures text.
 # Inputs and outputs: none -> the aideos-render library and binary.
 # Used by: native/Cargo.toml (workspace member), docs/NATIVE_RENDERER.md, the CI unit job's cargo step.
 [package]
@@ -15,6 +15,9 @@ gpu = ["dep:khronos-egl"]
 
 [dependencies]
 aideos-render-ir = { path = "../aideos-render-ir" }
+aideos-encode = { path = "../aideos-encode" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 # Pinned exactly: the feature set below selects one prebuilt Skia binary
 # (skia-binaries-<hash>-<target>-ftembed-ganesh-gl-jpegd-jpege-pdf-textlayout); see docs/NATIVE_RENDERER.md.
 skia-safe = { version = "=0.157.0", features = ["gl", "textlayout", "embed-freetype"] }

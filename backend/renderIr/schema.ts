@@ -38,8 +38,8 @@ export const keyframeSchema = z.strictObject({
   ease: easeSchema.optional(),
 });
 
-/** Properties a node-level track may drive (scene units on the stage, render pixels in the overlay). */
-export const NODE_PROPERTIES = ["x", "y", "scale", "rotation", "opacity"] as const;
+/** Properties a node-level track may drive (scene units on the stage, render pixels in the overlay); `scaleX` and `scaleY` multiply `scale` on one axis. */
+export const NODE_PROPERTIES = ["x", "y", "scale", "scaleX", "scaleY", "rotation", "opacity"] as const;
 export const nodeTrackSchema = z.strictObject({
   property: z.enum(NODE_PROPERTIES),
   keyframes: z.array(keyframeSchema).min(1),
@@ -87,10 +87,17 @@ export const svgNodeSchema = z.strictObject({
   elementTracks: z.array(elementTrackSchema),
 });
 
+/** A vertical linear gradient across a box: offset 0 is the box top and 1 its bottom; offsets never decrease. */
+export const gradientSchema = z.strictObject({
+  stops: z.array(z.strictObject({ offset: unit, color })).min(2),
+});
+
 export const rectNodeSchema = z.strictObject({
   kind: z.literal("rect"),
   ...nodeBase,
   fill: color.optional(),
+  /** Painted over `fill` and under `stroke`. */
+  gradient: gradientSchema.optional(),
   stroke: z.strictObject({ color, width: z.number().gt(0) }).optional(),
   radius: z.number().min(0),
   tracks: z.array(nodeTrackSchema),
@@ -115,10 +122,14 @@ export const railNodeSchema = z.strictObject({
   ...nodeBase,
   font: id,
   ink: color,
+  /** Colour of the chapter label and timestamp row (the bar's filled part is `ink`). */
+  labelColor: color,
   accent: color,
   trackColor: color,
   scrim: color,
   chapters: z.array(z.strictObject({ title: text, startFrame: frame, endFrame: count })).min(1),
+  /** Frames the reel's continuous bar fills over (the story, when an end card follows it); absent means the film duration. */
+  progressFrames: count.optional(),
   placement: perFormat(z.strictObject({ x: z.number(), y: z.number(), w: z.number().min(0), h: z.number().min(0), fontSize: z.number().gt(0), scrimHeight: z.number().min(0) })),
 });
 
@@ -153,9 +164,15 @@ export const endCardNodeSchema = z.strictObject({
   ...nodeBase,
   sansFont: id,
   monoFont: id,
+  /** Face of the LIKE and SUBSCRIBE chip labels; absent means `monoFont`. */
+  chipFont: id.optional(),
   fill: color,
   ink: color,
   dim: color,
+  /** The panel, its 1 px border and the label and handle colour; each absent one is derived from `dim` and `ink`. */
+  surface: color.optional(),
+  hairline: color.optional(),
+  muted: color.optional(),
   copy: z.strictObject({ label: text, headline: text, likeLabel: text, subscribeLabel: text, handle: text }),
   /** The frame the subscribe pill presses, from the spoken word or a fixed beat. */
   pressFrame: frame,
@@ -224,7 +241,7 @@ export const audioClipSchema = z.strictObject({
   durationFrames: count,
   sourceStartMs: z.number().min(0),
   gain: z.number().min(0).max(4),
-  /** Optional gain envelope; each value is a gain in [0, 4]. Empty means the static gain applies throughout. */
+  /** Optional gain envelope keyed in film frames (not clip-local); each value is a gain in [0, 4]. Empty means the static gain applies throughout. */
   gainEnvelope: z.array(keyframeSchema),
 });
 

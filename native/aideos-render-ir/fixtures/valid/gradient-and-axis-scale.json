@@ -1,0 +1,38 @@
+{
+  "schema": "aideos.render/1",
+  "film": { "id": "gradient-and-axis-scale", "fps": 30, "durationFrames": 30 },
+  "scene": { "width": 1920, "height": 1920 },
+  "formats": { "long": { "width": 1920, "height": 1080 } },
+  "background": "#0A0A0B",
+  "assets": [],
+  "stage": [],
+  "overlay": [
+    {
+      "kind": "rect",
+      "id": "band",
+      "radius": 0,
+      "gradient": {
+        "stops": [
+          { "offset": 0, "color": "#0A0A0B00" },
+          { "offset": 0.26, "color": "#0A0A0BDB" },
+          { "offset": 0.74, "color": "#0A0A0BDB" },
+          { "offset": 1, "color": "#0A0A0B00" }
+        ]
+      },
+      "tracks": [],
+      "placement": { "long": { "x": 96, "y": 389, "w": 1728, "h": 300 } }
+    },
+    {
+      "kind": "rect",
+      "id": "underline",
+      "fill": "#635BFF",
+      "radius": 0,
+      "tracks": [
+        { "property": "scaleX", "keyframes": [{ "frame": 0, "value": 0, "ease": "expoOut" }, { "frame": 12, "value": 1 }] },
+        { "property": "scaleY", "keyframes": [{ "frame": 0, "value": -1 }] }
+      ],
+      "placement": { "long": { "x": 800, "y": 620, "w": 400, "h": 2 } }
+    }
+  ],
+  "audio": []
+}

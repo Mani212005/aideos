@@ -148,11 +148,11 @@ export function registerDesignTools(server: McpServer): void {
       title: "Build a film's design",
       description:
         "Compile design/design.json onto the film, run the design check, and write the film only when it passes. Returns PASS or every error to fix. The studio reloads the film on a pass.",
-      inputSchema: { filmId: z.string() },
+      inputSchema: { filmId: z.string(), requestId: z.string().optional().describe("Open request id this build answers") },
     },
-    async ({ filmId }) => {
+    async ({ filmId, requestId }) => {
       if (!FILM_ID.test(filmId)) return text(`"${filmId}" is not a film id`, true);
-      const status = buildDesign(filmId, "agent");
+      const status = buildDesign(filmId, "agent", requestId ? { requestId } : {});
       return text(formatBuildStatus(filmId, status), status.state !== "passed");
     },
   );
