@@ -1,0 +1,40 @@
+{
+  "schema": "aideos.render/1",
+  "film": {
+    "id": "minimal",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {},
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "orbit",
+      "path": "visuals/orbit.svg",
+      "elementIds": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "kind": "font",
+      "id": "sans",
+      "path": "fonts/Geist-SemiBold.ttf",
+      "family": "Geist",
+      "weight": 600
+    },
+    {
+      "kind": "audio",
+      "id": "voice",
+      "path": "voice.wav"
+    }
+  ],
+  "stage": [],
+  "overlay": [],
+  "audio": []
+}

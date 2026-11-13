@@ -656,3 +656,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`Panel.tsx`**: Bordered containers and sections with hard shadows.
 * **`Tabs.tsx`**: Segmented switches and tab lists.
 * **`Toolbar.tsx`**: Grouped action strips and icon button bars.
+
+---
+
+## 8. Render IR for the native renderer (`backend/renderIr/`, `native/aideos-render-ir/`)
+
+* **`aideos.render/1`**: the planned versioned, data-only boundary for the native renderer. R1 provides its schema and validators; the pipeline emitter and renderer integration are later Phase 1 work. See [RENDER_IR.md](RENDER_IR.md) for the contract, issue codes and commands.
