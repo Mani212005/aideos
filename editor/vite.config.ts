@@ -2576,7 +2576,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             try {
               const raw = fs.readFileSync(videoPkgFilmPath, 'utf8');
               const film = dropLegacyFilmBlocks(JSON.parse(raw));
-              sendJson(res, 200, { ok: true, film, rev: filmRevision(raw) });
+              sendJson(res, 200, { ok: true, film, rev: filmRevision(raw), order: traceBus.getFilmUpdateOrder(id) });
               return;
             } catch (err) {
               console.warn(`Failed to parse ${videoPkgFilmPath}, falling back to .ts:`, err);
@@ -2593,7 +2593,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           if (jsonMatch) {
             try {
               const film = dropLegacyFilmBlocks(JSON.parse(jsonMatch[1]));
-              sendJson(res, 200, { ok: true, film, rev: revisionOfFilm(film) });
+              sendJson(res, 200, { ok: true, film, rev: revisionOfFilm(film), order: traceBus.getFilmUpdateOrder(id) });
               return;
             } catch (err) {
               sendJson(res, 500, { error: `Failed to parse film JSON: ${String(err)}` });
@@ -2640,7 +2640,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               return;
             }
             if (decideSave(raw?.baseRev, currentRev) === 'stale') {
-              sendJson(res, 409, { error: 'conflict', code: 'stale_revision', rev: currentRev, film: readFilm(id) });
+              sendJson(res, 409, { error: 'conflict', code: 'stale_revision', rev: currentRev, order: traceBus.getFilmUpdateOrder(id), film: readFilm(id) });
               return;
             }
             // This studio save endpoint is the trusted owner path; placement locks bind agents and rebuilds.
@@ -2648,7 +2648,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
             setActiveFilm(id);
 
-            sendJson(res, 200, { ok: true, file: path.relative(path.resolve(__dirname, '..'), file), film: parsed.data, rev });
+            sendJson(res, 200, { ok: true, file: path.relative(path.resolve(__dirname, '..'), file), film: parsed.data, rev, order: traceBus.getFilmUpdateOrder(id) });
           })
           .catch((e: unknown) => {
             sendJson(res, 400, { error: e instanceof Error ? e.message : String(e) });

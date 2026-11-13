@@ -77,6 +77,7 @@ export interface FilmUpdateEvent {
   film: Film;
   /** Revision of the film.json this event describes, so a studio can tell its own echo from another writer. */
   rev: string;
+  order: number;
   timestamp: string;
 }
 
@@ -105,6 +106,7 @@ export class TraceBus {
   private maxSteps: number;
   private listeners: Set<TraceStepListener> = new Set();
   private filmListeners: Set<FilmUpdateListener> = new Set();
+  private filmOrders = new Map<string, number>();
 
   /** Initializes the trace bus with an optional max history buffer size. */
   constructor(maxSteps: number = 200) {
@@ -213,9 +215,11 @@ export class TraceBus {
   }
 
   /** Notifies all registered subscribers of a film change and records an authoring trace step. */
-  notifyFilmUpdated(filmId: string, film: Film, rev: string = revisionOfFilm(film)): void {
+  notifyFilmUpdated(filmId: string, film: Film, rev: string = revisionOfFilm(film)): number {
     const timestamp = new Date().toISOString();
-    const event: FilmUpdateEvent = { filmId, film, rev, timestamp };
+    const order = (this.filmOrders.get(filmId) ?? 0) + 1;
+    this.filmOrders.set(filmId, order);
+    const event: FilmUpdateEvent = { filmId, film, rev, order, timestamp };
     for (const listener of this.filmListeners) {
       try {
         listener(event);
@@ -238,6 +242,12 @@ export class TraceBus {
         `Edges: ${film.canvas?.edges?.length || 0}`,
       ],
     });
+    return order;
+  }
+
+  /** Returns the latest order assigned to an update for a film. */
+  getFilmUpdateOrder(filmId: string): number {
+    return this.filmOrders.get(filmId) ?? 0;
   }
 
   /** Returns the current count of active film update subscribers. */

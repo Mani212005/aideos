@@ -95,7 +95,7 @@ export interface FilmProject {
 }
 
 type PersistResult =
-  | { kind: "saved"; rev: string | null }
+  | { kind: "saved"; rev: string | null; order: number }
   | { kind: "conflict"; remote: RemoteFilm<Film> }
   | { kind: "failed"; error: string };
 
@@ -108,26 +108,26 @@ async function persistFilm(film: Film, baseRev: string | null): Promise<PersistR
       body: JSON.stringify(baseRev ? { film, baseRev } : { film }),
     });
     const payload = (await res.json().catch(() => null)) as
-      | { file?: string; error?: string; issues?: string[]; rev?: string; film?: Film; code?: string }
+      | { file?: string; error?: string; issues?: string[]; rev?: string; order?: number; film?: Film; code?: string }
       | null;
     if (res.status === 409 && payload?.code === "stale_revision" && payload.film) {
-      return { kind: "conflict", remote: { rev: payload.rev ?? null, film: parseFilm(payload.film), sameAsLocal: false } };
+      return { kind: "conflict", remote: { rev: payload.rev ?? null, order: payload.order ?? 0, film: parseFilm(payload.film), sameAsLocal: false } };
     }
     if (!res.ok) {
       return { kind: "failed", error: payload?.issues?.join("\n") ?? payload?.error ?? `Save failed (${res.status})` };
     }
-    return { kind: "saved", rev: payload?.rev ?? null };
+    return { kind: "saved", rev: payload?.rev ?? null, order: payload?.order ?? 0 };
   } catch (err) {
     return { kind: "failed", error: err instanceof Error ? err.message : String(err) };
   }
 }
 
 /** Fetch a film and the revision it has on disk, or null when it cannot be read. */
-async function fetchFilm(id: string): Promise<{ rev: string | null; film: Film } | null> {
+async function fetchFilm(id: string): Promise<{ rev: string | null; order: number; film: Film } | null> {
   const res = await fetch(`/api/films/${id}`);
-  const data = (await res.json()) as { ok?: boolean; film?: Film; rev?: string };
+  const data = (await res.json()) as { ok?: boolean; film?: Film; rev?: string; order?: number };
   if (!data.ok || !data.film) return null;
-  return { rev: data.rev ?? null, film: data.film };
+  return { rev: data.rev ?? null, order: data.order ?? 0, film: data.film };
 }
 
 /** True when two films hold the same content, or differ only by the measurements the backend adds when it writes one. */
@@ -307,8 +307,8 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
 
   /** Make the open film another writer's film (project switch or registration): history restarts, the machine is told the revision. */
   const openFilmState = useCallback(
-    (next: Film, rev: string | null, seq: number) => {
-      const result = dispatchSync({ type: "loaded", seq, rev });
+    (next: Film, rev: string | null, order: number, seq: number) => {
+      const result = dispatchSync({ type: "loaded", seq, rev, order });
       if (result.rejected) return false;
       writeHistory([{ film: next, label: "Opened project", at: Date.now() }], 0);
       return true;
@@ -349,7 +349,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
       const run = (async (): Promise<SaveOutcome> => {
         const res = await persistFilm(target, base);
         if (res.kind === "saved") {
-          dispatchSync({ type: "save_succeeded", seq, rev: res.rev });
+          dispatchSync({ type: "save_succeeded", seq, rev: res.rev, order: res.order });
           setLastSavedAt(Date.now());
           if (announce) notify("success", `Saved ${target.id}`);
           return { ok: true };
@@ -421,12 +421,12 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
       if (started.rejected) return false;
       try {
         const loaded = await fetchFilm(id);
-        if (loaded) return openFilmState(loaded.film, loaded.rev, seq);
-        if (fallback) return openFilmState(fallback, null, seq);
+        if (loaded) return openFilmState(loaded.film, loaded.rev, loaded.order, seq);
+        if (fallback) return openFilmState(fallback, null, 0, seq);
         dispatchSync({ type: "load_failed", seq });
         notify("danger", `Could not open ${id}`);
       } catch (err) {
-        if (fallback) return openFilmState(fallback, null, seq);
+        if (fallback) return openFilmState(fallback, null, 0, seq);
         dispatchSync({ type: "load_failed", seq });
         notify("danger", `Could not open ${id}: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -515,7 +515,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
 
         const loaded = await fetchFilm(activeId);
         if (live && loaded) {
-          opened = openFilmState(loaded.film, loaded.rev, seq);
+          opened = openFilmState(loaded.film, loaded.rev, loaded.order, seq);
           localStorage.setItem("aideos_active_film_id", activeId);
         }
       } catch {
@@ -551,10 +551,11 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
     let isMounted = true;
 
     /** Hand a film written by anyone to the sync machine, which decides whether it is ours, new, or a conflict. */
-    const deliver = (rev: string | null, incoming: Film) => {
+    const deliver = (rev: string | null, order: number, incoming: Film) => {
       if (!isMounted) return;
       const remote: RemoteFilm<Film> = {
         rev,
+        order,
         film: incoming,
         sameAsLocal: sameFilmContent(filmRef.current, incoming),
       };
@@ -571,7 +572,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
         es.addEventListener("connected", () => {
           void fetchFilm(activeId)
             .then((remote) => {
-              if (remote) deliver(remote.rev, parseFilm(remote.film));
+              if (remote) deliver(remote.rev, remote.order, parseFilm(remote.film));
             })
             .catch(() => undefined);
         });
@@ -581,7 +582,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
           try {
             const data = JSON.parse(event.data);
             if (data.filmId === activeId && data.film) {
-              deliver(typeof data.rev === "string" ? data.rev : null, parseFilm(data.film));
+              deliver(typeof data.rev === "string" ? data.rev : null, typeof data.order === "number" ? data.order : 0, parseFilm(data.film));
             }
           } catch (err) {
             console.warn("[useFilmProject] Error parsing live film update:", err);

@@ -13,6 +13,7 @@
 /** A version of the film written by someone, as the server reports it (revision plus the film). */
 export interface RemoteFilm<F> {
   rev: string | null;
+  order: number;
   film: F;
   /** True when this version holds the same content as the studio's open film (so there is nothing to choose between). */
   sameAsLocal: boolean;
@@ -22,6 +23,7 @@ export interface RemoteFilm<F> {
 interface Known {
   /** Revision of the film on disk that the open film was loaded or last saved from; null when unknown. */
   rev: string | null;
+  order: number;
   /** Revision produced by this studio's own last save, so its echo over the event stream is not mistaken for another writer. */
   ownRev: string | null;
 }
@@ -43,11 +45,11 @@ export type SyncPhase = SyncState<unknown>["phase"];
 
 export type SyncEvent<F> =
   | { type: "load_started"; seq: number }
-  | { type: "loaded"; seq: number; rev: string | null }
+  | { type: "loaded"; seq: number; rev: string | null; order: number }
   | { type: "load_failed"; seq: number }
   | { type: "edited" }
   | { type: "save_started"; seq: number }
-  | { type: "save_succeeded"; seq: number; rev: string | null }
+  | { type: "save_succeeded"; seq: number; rev: string | null; order: number }
   | { type: "save_failed"; seq: number }
   | { type: "save_conflicted"; seq: number; remote: RemoteFilm<F> }
   | { type: "external_update"; remote: RemoteFilm<F> }
@@ -95,36 +97,47 @@ function ignore<F>(state: SyncState<F>): Transition<F> {
 
 /** Strip the phase-specific fields so a state can resume as another phase on the same revisions. */
 function known<F>(state: Exclude<SyncState<F>, { phase: "loading" }>): Known {
-  return { rev: state.rev, ownRev: state.ownRev };
+  return { rev: state.rev, order: state.order, ownRev: state.ownRev };
 }
 
 /** Apply another writer's film to a state that is not saving: our own echo is absorbed, anything else adopted or kept as a conflict. */
 function applyExternal<F>(state: SyncState<F>, remote: RemoteFilm<F>): Transition<F> {
   if (state.phase === "loading") return ignore(state);
-  if (remote.rev !== null && remote.rev === state.ownRev) {
-    return { state, effects: [{ kind: "absorb", film: remote.film }] };
+  if (state.phase === "saving") {
+    if (remote.order <= state.order) return ignore(state);
+    return { state: { ...state, held: [...state.held, remote] }, effects: [] };
   }
-  if (remote.rev !== null && remote.rev === state.rev) return ignore(state);
+  if (remote.order < state.order) return ignore(state);
+  if (remote.order === state.order) {
+    return remote.rev !== null && remote.rev === state.ownRev
+      ? { state, effects: [{ kind: "absorb", film: remote.film }] }
+      : ignore(state);
+  }
+  if (remote.rev !== null && remote.rev === state.ownRev) {
+    return { state: { ...state, order: remote.order }, effects: [{ kind: "absorb", film: remote.film }] };
+  }
+  if (remote.rev !== null && remote.rev === state.rev) return { state: { ...state, order: remote.order }, effects: [] };
   if (remote.sameAsLocal && state.phase !== "saving") {
     // The disk already holds what the studio holds (a server step wrote the film the studio also committed): just follow the revision.
-    return { state: { phase: "clean", rev: remote.rev, ownRev: state.ownRev }, effects: [] };
+    return {
+      state: { phase: "clean", rev: remote.rev, order: remote.order, ownRev: state.ownRev },
+      effects: [{ kind: "absorb", film: remote.film }],
+    };
   }
   switch (state.phase) {
     case "clean":
       return {
-        state: { phase: "clean", rev: remote.rev, ownRev: state.ownRev },
+        state: { phase: "clean", rev: remote.rev, order: remote.order, ownRev: state.ownRev },
         effects: [{ kind: "adopt", film: remote.film, rev: remote.rev, source: "live" }],
       };
     case "dirty":
       return {
-        state: { phase: "conflict", rev: state.rev, ownRev: state.ownRev, remote },
+        state: { phase: "conflict", rev: state.rev, order: remote.order, ownRev: state.ownRev, remote },
         effects: [{ kind: "conflict", remote, reason: "editing" }],
       };
     case "conflict":
-      if (remote.rev !== null && remote.rev === state.remote.rev) return ignore(state);
-      return { state: { ...state, remote }, effects: [] };
-    case "saving":
-      return { state: { ...state, held: [...state.held, remote] }, effects: [] };
+      if (remote.order <= state.remote.order) return ignore(state);
+      return { state: { ...state, order: remote.order, remote }, effects: [] };
   }
 }
 
@@ -152,13 +165,13 @@ export function transition<F>(state: SyncState<F>, event: SyncEvent<F>): Transit
     case "loaded": {
       if (state.phase !== "loading") return reject(state, "no load is in progress");
       if (state.seq !== event.seq) return reject(state, "a newer load superseded this one");
-      return { state: { phase: "clean", rev: event.rev, ownRev: null }, effects: [] };
+      return { state: { phase: "clean", rev: event.rev, order: event.order, ownRev: null }, effects: [] };
     }
 
     case "load_failed": {
       if (state.phase !== "loading") return reject(state, "no load is in progress");
       if (state.seq !== event.seq) return reject(state, "a newer load superseded this one");
-      const back = state.resume ?? { rev: null, ownRev: null };
+      const back = state.resume ?? { rev: null, order: 0, ownRev: null };
       return { state: { phase: "clean", ...back }, effects: [] };
     }
 
@@ -192,8 +205,8 @@ export function transition<F>(state: SyncState<F>, event: SyncEvent<F>): Transit
       if (state.phase !== "saving") return reject(state, "no save is in flight");
       if (state.seq !== event.seq) return reject(state, "this is not the save in flight");
       const settled: SyncState<F> = state.editedWhileSaving
-        ? { phase: "dirty", failed: false, rev: event.rev, ownRev: event.rev }
-        : { phase: "clean", rev: event.rev, ownRev: event.rev };
+        ? { phase: "dirty", failed: false, rev: event.rev, order: event.order, ownRev: event.rev }
+        : { phase: "clean", rev: event.rev, order: event.order, ownRev: event.rev };
       return replayHeld({ state: settled, effects: [] }, state.held);
     }
 
@@ -208,13 +221,16 @@ export function transition<F>(state: SyncState<F>, event: SyncEvent<F>): Transit
       if (state.phase !== "saving") return reject(state, "no save is in flight");
       if (state.seq !== event.seq) return reject(state, "this is not the save in flight");
       // The newest version of the film on disk is the one to keep beside the studio's own.
-      const newest = state.held.length > 0 ? state.held[state.held.length - 1] : event.remote;
+      const newest = state.held.reduce((latest, update) => update.order > latest.order ? update : latest, event.remote);
       if (newest.sameAsLocal) {
         // Someone wrote the same content: there is nothing to choose, so base the next save on the disk revision.
-        return { state: { phase: "dirty", failed: false, rev: newest.rev, ownRev: state.ownRev }, effects: [] };
+        return {
+          state: { phase: "dirty", failed: false, rev: newest.rev, order: newest.order, ownRev: state.ownRev },
+          effects: [{ kind: "absorb", film: newest.film }],
+        };
       }
       return {
-        state: { phase: "conflict", rev: state.rev, ownRev: state.ownRev, remote: newest },
+        state: { phase: "conflict", rev: state.rev, order: newest.order, ownRev: state.ownRev, remote: newest },
         effects: [{ kind: "conflict", remote: newest, reason: "saving" }],
       };
     }
@@ -225,13 +241,13 @@ export function transition<F>(state: SyncState<F>, event: SyncEvent<F>): Transit
     case "keep_mine": {
       if (state.phase !== "conflict") return reject(state, "there is no conflict to resolve");
       // The studio's film stays; the next save is based on what is now on disk, so it replaces it on purpose.
-      return { state: { phase: "dirty", failed: false, rev: state.remote.rev, ownRev: state.ownRev }, effects: [] };
+      return { state: { phase: "dirty", failed: false, rev: state.remote.rev, order: state.remote.order, ownRev: state.ownRev }, effects: [] };
     }
 
     case "take_theirs": {
       if (state.phase !== "conflict") return reject(state, "there is no conflict to resolve");
       return {
-        state: { phase: "clean", rev: state.remote.rev, ownRev: state.ownRev },
+        state: { phase: "clean", rev: state.remote.rev, order: state.remote.order, ownRev: state.ownRev },
         effects: [{ kind: "adopt", film: state.remote.film, rev: state.remote.rev, source: "resolved" }],
       };
     }
