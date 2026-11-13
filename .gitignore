@@ -8,6 +8,9 @@ dist
 # Legacy render folder kept for existing local checkout renders.
 out
 
+# Rust build output of the native renderer crates (native/Cargo.toml).
+/native/target
+
 # Proof stills and large frame sequence directories.
 .frames/
 .tmp_audio/

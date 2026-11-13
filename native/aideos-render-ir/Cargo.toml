@@ -1,0 +1,16 @@
+# File Description: Manifest of the Render IR loader crate: serde types for `aideos.render/1`, the embedded JSON Schema check and the cross-reference rules.
+# Inputs and outputs: none -> the aideos-render-ir library.
+# Used by: the native renderer crates (R2 and later), native/Cargo.toml.
+[package]
+name = "aideos-render-ir"
+description = "Loader and validator for the aideos.render/1 Render IR"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Validates a document against the committed JSON Schema; no network or file resolution is needed.
+jsonschema = { version = "0.61", default-features = false }
