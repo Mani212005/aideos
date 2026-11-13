@@ -740,6 +740,9 @@ fn cli_encodes_a_png_directory_with_narration_and_music() {
 #[test]
 fn cli_reads_raw_frames_from_stdin_and_an_audio_plan_file() {
     let dir = TempDir::new("cli-raw");
+    let ignored_flag = cli(&["--raw-stdin", "--size", "128x72", "--frame-count", "20", "--audio-plan", "missing-plan.json", "--no-duck", "--out", dir.join("ignored.mp4").to_str().unwrap()]);
+    assert_eq!(ignored_flag.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&ignored_flag.stderr).contains("--no-duck"));
     write_pcm16(&dir.join("a.wav"), SAMPLE_RATE, &tone(330.0, 0.3, 1.0, &[]));
     fs::write(dir.join("plan.json"), r#"{ "clips": [ { "path": "a.wav", "role": "voice", "gain": 0.5, "startSec": 0.2 } ] }"#).unwrap();
     let out = dir.join("raw.mp4");

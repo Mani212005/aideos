@@ -138,8 +138,8 @@ fn open_source(args: &Args) -> Result<Box<dyn FrameSource>, Usage> {
 fn build_audio(args: &Args) -> Result<Option<(AudioPlan, PathBuf)>, Usage> {
     let shortcuts = args.audio.is_some() || args.voiceover.is_some() || args.music.is_some();
     if let Some(path) = &args.audio_plan {
-        if shortcuts {
-            return Err(Usage("--audio-plan cannot be combined with --audio, --voiceover or --music".to_string()));
+        if shortcuts || args.no_duck {
+            return Err(Usage("--audio-plan cannot be combined with --audio, --voiceover, --music or --no-duck".to_string()));
         }
         let text = std::fs::read_to_string(path).map_err(|e| Usage(format!("cannot read {}: {e}", path.display())))?;
         let plan: AudioPlan = serde_json::from_str(&text).map_err(|e| Usage(format!("{} is not a valid audio plan: {e}", path.display())))?;
