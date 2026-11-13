@@ -40,7 +40,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 |---|---|---|---|
 | 1 | **One persistent stage** | pixels (ink layout correlation with 2 s earlier, stage-clear events) and film data (beats that keep the previous elements on stage) | median correlation >= 0.65, <= 2.2 stage clears per 30 s, >= 60% of beat boundaries keep their elements |
 | 2 | Carry-over with transformation | film data only: an element stays across a beat boundary and is transformed | >= 1 per 20 s |
-| 13 | Look plan adherence | when `design/look.json` is available, scene motion, carried objects, camera poses, device spacing and stage treatment are checked against the plan as a non-gate score; on a character film each planned performance is checked by its evaluated contact frame against its decisive word (anticipation may start earlier, no clip at the cue is needed), its character id and version, and its actor and prop on stage in this output | all planned shots follow the plan; this remains non-gating until calibrated on the proof and two or three more films |
+| 13 | Look plan adherence | when `design/look.json` is available, scene motion, carried objects, camera poses, device spacing and stage treatment are checked against the plan as a non-gate score; on a character film each planned performance is checked by its evaluated contact frame against its decisive word (anticipation may start earlier, no clip at the cue is needed), its character id and version, and its actor and prop on stage in this output | all planned shots follow the plan; this rendered-output score remains non-gating until calibrated on the proof and two or three more films. Design build acceptance is a separate gate; see [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery) |
 | 3 | Cues aimed at spoken words | film clips against word timings, compared with chance; declared Three performances contribute their evaluated contact events | clip starts and performance contacts land on word starts clearly more often than chance |
 | 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 20 s, none faster than 20% of the frame width per second (a scene camera also fails the design check on a zoom jump over 0.8% a frame or a pan acceleration over 0.3 widths per second squared) |
 | 5 | **Captions at placed position (default bottom)** | OCR of full-resolution frames every 2 s | caption band in its declared rectangle (bottom quarter when absent) in >= 60% of narrated moments, <= 2 lines, words match the narration |
@@ -49,7 +49,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 8 | **Audio sync** | audio vs video length, film length, shot boundaries vs word timings | lengths within 0.1 s, no shot boundary through a spoken word |
 | 9 | Pacing | frame difference (static holds, hard cuts), word timings or silence (dead air, pace) | no hold over 3 s, <= 2 hard cuts per minute, no pause over 0.7 s, 120 to 180 wpm |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
-| 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms audible-speech windows | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
+| 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms windows overlapping speech on the shared voice activity timeline | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
 | 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
 | 15 | Reel hook | timed narration words (`punctuated_word` for sentence ends) | first word starts under 0.3 s, first sentence is 10 to 16 words, no greeting or intro opener; evaluated on reel reviews, non-gating |
 
@@ -93,8 +93,9 @@ never measured by pixel overlap in place, and captions are skipped for a silent 
 narration. Every threshold lives in `backend/review/thresholds.ts`.
 
 For a film with configured soundtrack music, criterion 12 measures music against narration from the
-review mixer's isolated stems, considering only audible narration windows. Missing or unusable stem
-data fails the mix criterion instead of silently passing it. A film with no music skips this part
+review mixer's isolated stems, considering only 400 ms windows with any speech overlap according to
+the shared voice activity timeline documented in [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
+Missing or unusable stem data fails the mix criterion instead of silently passing it. A film with no music skips this part
 of the criterion. MP4 loudness and true peak are measured from the delivered file, including any
 post-render mastering. The delivery master targets -16 LUFS integrated within 0.5 LU and -1 dBTP;
 the review rubric keeps its wider -18 to -14 LUFS acceptance window.
@@ -201,6 +202,14 @@ To eliminate model position bias and multimodal cross-alignment hallucinations w
 "good" on **both formats**: it composes render, `aideos review`, `aideos gemini-review`, the pairwise
 cross-review and the fix-and-repeat loop.
 
+All-check also maintains `videos/<slug>/acceptance.json`, with one acceptance record for each format. Each
+record binds the measured result and judge draws to the hashes of the film manifest and rendered MP4, so a
+changed film is reported as stale and an earlier verdict does not apply. Measured gates settle first; the
+latest judge draw for the same MP4 determines the judge result, and each new draw is retained. If those
+draws disagree, the summary says so without changing that verdict rule. Export status is summarized
+against the film supplied by Studio, and may change if export preparation changes the film. See the [Studio
+workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for what the Export dialog displays.
+
 ```bash
 aideos all-check hnsw                                     # defaults: 6 rounds, 9.0 target
 aideos all-check hnsw --reference ref.mp4 --rounds 8 --target 9.2
@@ -301,7 +310,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
 
-Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating check (non-gate until calibrated on the proof and two or three more films). For reel reviews, deterministic facts also enforce the hard gate `reel_length`: container duration <= 179 s including the end card. This gate overrides any model pass when exceeded.
+Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating rendered-output check (non-gate until calibrated on the proof and two or three more films). This review score is separate from the design build gate; see [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery). For reel reviews, deterministic facts also enforce the hard gate `reel_length`: container duration <= 179 s including the end card. This gate overrides any model pass when exceeded.
 
 Run `npm run eval:look -- --plans <look.json-or-directory> [--min percent]` before changing look-treatment criteria wording.
 

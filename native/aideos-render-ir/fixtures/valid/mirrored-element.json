@@ -1,0 +1,30 @@
+{
+  "schema": "aideos.render/1",
+  "film": { "id": "mirrored-element", "fps": 30, "durationFrames": 90 },
+  "scene": { "width": 1920, "height": 1920 },
+  "formats": { "long": { "width": 1920, "height": 1080 } },
+  "background": "#0B0D10",
+  "assets": [{ "kind": "svg", "id": "art", "path": "visuals/art.svg", "elementIds": ["element"] }],
+  "stage": [
+    {
+      "kind": "svg",
+      "id": "stage",
+      "asset": "art",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "tracks": [],
+      "elementTracks": [
+        {
+          "target": "element",
+          "property": "scaleX",
+          "keyframes": [{ "frame": 0, "value": -1 }]
+        }
+      ]
+    }
+  ],
+  "overlay": [],
+  "audio": []
+}

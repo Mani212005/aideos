@@ -347,6 +347,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `readFilm(slug)`: Reads and parses `videos/<slug>/film.json` as authoritative `Film`.
 * `writeFilm(slug, film)`: Validates and persists `Film` to both `videos/<slug>/film.json` and its shadow `src/dl/films/<slug>.ts` module simultaneously, and broadcasts `traceBus.notifyFilmUpdated` for live Studio synchronization.
 * `setActiveFilm(slug)`: Points the generated, gitignored `src/dl/activeFilm.ts` at the target film package.
+* `packageDir(slug)`: Absolute path of a package directory for a slug, resolved dynamically from `getVideosDir()` so changing `AIDEOS_VIDEOS_DIR` updates subsequent writes live.
 * `ensureGenerated()` (`generatedFiles.ts`): Rebuilds every generated file (`src/dl/films/<slug>.ts` shadows, `svgSources.generated.ts`, `activeFilm.ts`) from the packages on disk; run by `npm run ensure:generated`, postinstall and the pre-hooks of the scripts that bundle them.
 * `wireFootageIntoFilm(slug, shotId, relPath, promptText)`: Wires rendered B-roll video clip into a shot as an `AnalogyInset` block and saves to both storage targets.
 
@@ -534,7 +535,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `renderDesignBrief(film)`, `writeDesignBrief(filmId)` (`brief.ts`): Generates designer briefs (`design/BRIEF.md`) containing film contracts, shot narration, and asset specifications.
 * `compileDesign(film, spec, options)` (`compile.ts`): Compiles a `DesignSpec` and narration timing into a validated scene film, compiling camera poses through `Timeline.camera()`.
 * `buildDesign(filmId, source)` (`build.ts`): Compiles design specifications, executes design checks, and writes passing films.
-* `readCheckedLookPlan(film)`, `checkDesignAgainstLook(film, spec, words, pkg, plan)` (`build.ts`): Validates look plan completeness and checks design cast (supporting cast IDs matching elements across multiple assets), SVG carried motion starting within 0.4s of its cue, declared Three performance anticipation before its decisive word and contact on that word, inset device overrides, and camera against the accepted look.
+* `readCheckedLookPlan(film)`, `checkDesignAgainstLook(film, spec, words, pkg, plan)` (`build.ts`): Validates look plans and binds design evidence to their requirements; build acceptance and ledger behavior are documented in [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery).
 * `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
 * `planFilmLook(filmId, options)`, `designFilm(filmId, options)` (`designer.ts`): Delivers look planning and scene design through inline, agent, server, or templates policies.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
@@ -632,7 +633,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`ReviewStage.tsx` (`CritiqueStudio.tsx`)**: AI critique drawer executing natural-language feedback and patches via `/api/critique`, dispatching review critiques to connected agents, and pacing and coverage health charts (`Charts.tsx`).
 
 ### State & Integration Layer (`editor/src/state/`)
-* **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, single labelled undo/redo transaction stack, and live studio hot-reload subscribing to `film_updated` SSE events from `/api/agent/trace` to reflect external agent modifications instantly without manual refresh.
+* **`useFilmProject.ts`**: Owns the active `Film` document, autosave debounce, single labelled undo/redo transaction stack, and the `filmSyncMachine.ts` state machine (loading, clean, dirty, saving, conflict). Saves include the revision they started from; the server checks it against the current disk revision and returns the current film when stale. The studio keeps both versions available for an explicit keep-mine or use-theirs resolution. `film_updated` SSE events and reconnect snapshots from `/api/agent/trace` enter the same machine, which orders updates and presents detected external edits as conflicts rather than silently replacing unsaved edits. Input surfaces are disabled while the stored film loads.
 * **`useLayeredTimeline.ts`**: Derives `LayeredFilm`, executes layer engine mutations (`moveClip`, `trimClip`, `rippleTrimClip`, `splitClip`, `removeClip`, `rippleRemoveClip`), folds changes back losslessly via `convertLayeredFilmToFilm`, and computes `renderFilm` for preview and export.
 * **`useExportJob.ts`**: Manages studio export dialog visibility, background polling against `/api/export/:id` and `/api/export/current`, start and cancel actions, and completion notification callbacks while retaining finished jobs until reset.
 * **`agentLink.ts`**: Manages browser owner key state (`readOwnerKey`, `writeOwnerKey`, `rotateOwnerKey`), remembers expected active links across server restarts (`readExpectedLink`, `writeExpectedLink`, `linkPhase`), and installs global `X-Aideos-Owner` fetch headers (`installOwnerHeader`).
@@ -655,3 +656,9 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`Panel.tsx`**: Bordered containers and sections with hard shadows.
 * **`Tabs.tsx`**: Segmented switches and tab lists.
 * **`Toolbar.tsx`**: Grouped action strips and icon button bars.
+
+---
+
+## 8. Render IR and native renderer (`backend/renderIr/`, `native/`)
+
+* **`aideos.render/1`**: the versioned, data-only boundary for the native renderer. R1 provides its schema and validators; R2 provides the evaluator and raster. The pipeline emitter and renderer integration remain later Phase 1 work. See [RENDER_IR.md](RENDER_IR.md) for the contract and [NATIVE_RENDERER.md](NATIVE_RENDERER.md) for renderer behavior and commands.

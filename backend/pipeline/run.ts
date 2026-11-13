@@ -16,6 +16,7 @@ import { DOT_RESOURCES, STAGE_RESOURCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } fr
 import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { characterCandidates } from "../characters/library";
 import type { LookPlan } from "../lookPlan/schema";
+import { designAcceptance } from "../lookPlan/contract";
 import { writeLookMd } from "../lookPlan/render";
 import crypto from "crypto";
 import fs from "fs";
@@ -50,6 +51,7 @@ import {
 import { analyseAudio, contactSheet, describeVideo, FORMAT_SPECS } from "./render";
 import { writeDescriptionCredits } from "../masterAudio";
 import { assertDeliverable } from "../deliveryGate";
+import { filmEditState } from "../filmAcceptance/store";
 import { boundTheme } from "../../src/projectTheme";
 import { createRenderJob } from "../renderJob";
 import { createRemotionRenderer } from "../remotionRenderer";
@@ -265,6 +267,7 @@ export async function runProduction(
   const delivery = {
     mode, skipAgent: request.skipAgent ?? Boolean(process.env.NODE_TEST_CONTEXT),
     agentTimeoutMs: request.designAgentTimeoutMs, llmCaller: request.designLlmCaller,
+    judgeRunner: request.designJudgeRunner,
     ...(request.ownerKey ? { ownerKey: request.ownerKey } : {}),
   };
 
@@ -301,6 +304,7 @@ export async function runProduction(
     outputs: outputResults,
     stages: state.stages,
     warnings,
+    ...(state.designJudge ? { designJudge: state.designJudge } : {}),
     ...(stoppedAfter ? { stoppedAfter } : {}),
   });
 
@@ -368,6 +372,8 @@ export async function runProduction(
         return reused;
       }
     }
+
+    if (PRODUCTION_STAGES.indexOf(stage) <= PRODUCTION_STAGES.indexOf("design")) state.designJudge = undefined;
 
     // A stage that runs again invalidates every later stage, even if its output hashes identically.
     // Forced narration/design must not leave a completed assembly or render attached to old inputs.
@@ -442,12 +448,14 @@ export async function runProduction(
       () => readRecordedNarration(pkgDir, script),
       async () => {
         const result = await produceAudioPipeline(script, pkgDir, {
+          intakeSource: request.script ?? "",
           backend: request.ttsBackend,
           voice: request.voice,
           speed: request.speed,
           syncToPreview: request.syncToPreview,
           onProgress: (done, total, label) =>
             emit("narrate", "running", `synthesizing ${done}/${total}: "${label}"`, done / total),
+          onIntakeNotice: (issue) => emit("narrate", "running", issue.message),
         });
         await fsp.writeFile(narrationCachePath, JSON.stringify(result, null, 2), "utf8");
         emit(
@@ -499,7 +507,7 @@ export async function runProduction(
           ...compileOptions, textOnly: true, maxFootageShots: 0,
         });
         carryExistingSound(existing, skeleton.film);
-        writeFilm(slug, skeleton.film);
+        writeFilm(slug, skeleton.film, { owner: false, protectHandEdits: true });
         filmResult = skeleton.film;
         const outcome = await planFilmLook(slug, { ...delivery, onProgress: (message) => emit("look", "running", message) });
         if (!outcome.plan) {
@@ -520,19 +528,26 @@ export async function runProduction(
     // ---- design: the accepted plan controls treatments and invalidates changed designs -------
     const lookHash = look ? lookPlanFingerprint(slug) : null;
     const designFingerprint = () => fingerprint(script, narration.shotDurations, request.music ?? null,
-      wantsBroll, mode, lookHash, "default-soundtrack-v1", mode === "templates" ? null : designFilesFingerprint(slug));
+      wantsBroll, mode, lookHash, "look-contract-v1", "default-soundtrack-v1", mode === "templates" ? null : designFilesFingerprint(slug));
 
     const design = await runStage(
       "design",
       designFingerprint(),
       () => {
+        if (!state.designJudge || designAcceptance(state.designJudge) === "needs_design") return null;
         if (mode !== "templates") {
           try {
             // Rebuild under the source that made the film, so an unchanged design writes an identical film and later stages stay reused.
             const source = readFilm(slug)?.design?.source;
             const status = buildDesign(slug, source === "server-model" || source === "hand-built" ? source : "agent");
-            if (status.state !== "passed") return null;
-          } catch { return null; }
+            if (status.state !== "passed") {
+              if (filmEditState(packageDir(slug)) === "hand-edited") throw new Error(status.errors.join("; "));
+              return null;
+            }
+          } catch (err) {
+            if (filmEditState(packageDir(slug)) === "hand-edited") throw err;
+            return null;
+          }
         }
         const film = readFilm(slug);
         return film && (mode === "templates" || (film.scene && film.design?.source !== "templates"))
@@ -546,15 +561,12 @@ export async function runProduction(
         });
         const existing = readFilm(slug);
         carryExistingSound(existing, compiled.film);
-        writeFilm(slug, compiled.film);
+        writeFilm(slug, compiled.film, { owner: false, protectHandEdits: true });
         // Every new compile becomes the build's base. A stale first-build snapshot must never
         // resurrect narration, timing or treatments from an earlier run.
         fs.mkdirSync(designDir(slug), { recursive: true });
         fs.writeFileSync(path.join(designDir(slug), "base-film.json"), JSON.stringify(compiled.film, null, 2) + "\n");
         writeVisualChoices(slug, compiled.film, compiled.shotVisuals, compiled.deviceReports);
-        for (const [shotId, report] of compiled.deviceReports) {
-          if (look && report.state !== "authored") warnings.push(`${shotId}: ${report.reason}`);
-        }
         emit(
           "design",
           "running",
@@ -564,8 +576,9 @@ export async function runProduction(
         const outcome = await designFilm(slug, {
           ...delivery, onProgress: (message) => emit("design", "running", message),
         });
+        state.designJudge = outcome.judge;
         emit("design", "running", `design: ${outcome.note}`);
-        if (outcome.source === "needs_design") {
+        if (outcome.source === "needs_design" || outcome.judge && designAcceptance(outcome.judge) === "needs_design") {
           warnings.push(outcome.note);
           if (outcome.status) warnings.push(formatBuildStatus(slug, outcome.status));
           throw new NeedsInput("needs_design", [

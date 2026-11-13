@@ -91,6 +91,12 @@ function ruffStep(name: string, args: string[]): CiStep {
   };
 }
 
+/** Reason to skip a step that needs a Rust toolchain: none under CI (the runner ships one and a missing cargo must fail), a hint on a laptop without it. */
+const cargoMissing = (): string | null =>
+  inCi() || spawnSync("cargo", ["--version"], { stdio: "ignore", cwd: ROOT }).status === 0
+    ? null
+    : "cargo is not installed (see https://rustup.rs); CI always runs it";
+
 /** Rendering steps use software GL unless the caller chose one, so pixels do not depend on a GPU. */
 const softwareGl = (): Record<string, string> => ({ AIDEOS_GL: process.env.AIDEOS_GL ?? "swangle" });
 
@@ -145,6 +151,11 @@ export const JOBS: CiJob[] = [
           "scripts/**/*.test.ts",
         ],
         todoCases: true,
+      },
+      {
+        name: "native render IR and renderer (cargo test)",
+        cmd: ["cargo", "test", "--locked", "--manifest-path", "native/Cargo.toml"],
+        skip: cargoMissing,
       },
       { name: "validate hello-scene", cmd: ["npm", "run", "validate", "--silent", "--", "examples/hello-scene/film.json"] },
       {

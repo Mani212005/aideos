@@ -37,6 +37,7 @@ import { Badge } from "./ui";
 import { usePaneDelivery, type PaneDeliveryView } from "../state/paneDelivery";
 import { autoPromptBadge, createSingleFlight } from "../state/autoPromptState";
 import { generateAgentPrompt } from "../../../backend/scriptIntake";
+import { useFilmSave } from "../state/FilmSaveContext";
 import { narrationLines, scriptToStory, storyToScript } from "../../../backend/storyScript";
 import type { StoryParagraph, StorySection } from "../../../backend/storyScript";
 
@@ -262,6 +263,7 @@ export function ScriptEditor({
   onUpdateFilm,
   onNavigateToVideo,
 }: ScriptEditorProps) {
+  const saveFilm = useFilmSave();
   // The story is the editable model; the tagged script is derived from it only when saving or recording,
   // so typing never round-trips through the parser (which would trim a trailing space as it is typed).
   const [story, setStory] = useState<StorySection[]>([]);
@@ -606,11 +608,8 @@ export function ScriptEditor({
 
       onUpdateFilm(updatedFilm);
 
-      await fetch(`/api/films/${film.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ film: updatedFilm }),
-      });
+      const saved = await saveFilm(updatedFilm, "Update script");
+      if (!saved.ok) throw new Error(saved.reason);
 
       const prompt = data.agentPrompt || generateAgentPrompt({
         projectId: film.id,
@@ -725,11 +724,7 @@ export function ScriptEditor({
       void refreshNarration(true);
 
       // Persist the updated film with voiceover to server
-      await fetch(`/api/films/${film.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ film: updatedFilm }),
-      }).catch(() => {});
+      await saveFilm(updatedFilm, "Update script");
 
       if (audioRef.current) {
         audioRef.current.load();

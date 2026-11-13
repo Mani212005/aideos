@@ -1,0 +1,52 @@
+{
+  "schema": "aideos.render/1",
+  "film": {
+    "id": "minimal",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "font",
+      "id": "a",
+      "path": "../outside.ttf",
+      "family": "X",
+      "weight": 400
+    },
+    {
+      "kind": "font",
+      "id": "b",
+      "path": "/abs.ttf",
+      "family": "X",
+      "weight": 400
+    },
+    {
+      "kind": "font",
+      "id": "c",
+      "path": "C:\\win.ttf",
+      "family": "X",
+      "weight": 400
+    },
+    {
+      "kind": "font",
+      "id": "d",
+      "path": "ok/fine.ttf",
+      "family": "X",
+      "weight": 400
+    }
+  ],
+  "stage": [],
+  "overlay": [],
+  "audio": []
+}

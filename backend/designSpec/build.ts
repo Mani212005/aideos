@@ -20,17 +20,21 @@ import { buildSvgSources } from "../scene/buildSvgSources";
 import { checkFilmDesign, type DesignFinding, type DesignCheckContext } from "../designCheck/designCheck";
 import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
 import { designSpecSchema, type DesignSpec } from "./spec";
-import { checkLookPlan, packageCharacterResolver, parseLookPlan, plannedCharacterId, type LookPlan } from "../lookPlan";
+import { checkLookPlan, packageCharacterResolver, parseLookPlan, type LookPlan } from "../lookPlan";
 import { fieldIssues } from "../../src/dl/schemaIssues";
 import { createCues } from "../sceneKit";
 import { readVisualChoices } from "../pipeline/visualChoices";
-import { performanceStartIssue, resolveCue } from "./cues";
+import { resolveCue } from "./cues";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { formatIssues } from "../../src/dl/characters/validate";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
 import { loadCharacter } from "../characters/library";
 import { resolveSoundtrack } from "./soundtrack";
+import { filmDifferences } from "../filmAcceptance/machine";
+import { filmEditState } from "../filmAcceptance/store";
 import { writeReelFilm } from "../reelCut/store";
+import { bindLookContract, contractErrors, matchCameraPose, realizeLookContract, type PlanItem } from "../lookPlan/contract";
+import { CAMERA_CUE_LANDING_TOLERANCE_SECONDS } from "../../src/dl/scene/cameraTrack";
 
 
 /** The outcome of one build, as written to design/status.json. */
@@ -40,6 +44,7 @@ export interface DesignBuildStatus {
   at: string;
   errors: string[];
   findings: DesignFinding[];
+  ledger?: PlanItem[];
 }
 
 /** The plain canvas-colour backdrop used when a spec names none. */
@@ -118,91 +123,25 @@ export function resolveDesignCharacters(spec: DesignSpec, pkg: string): { charac
   return { characters, errors };
 }
 
-// Checks the design's cast, carried motion, device overrides and camera against its look plan.
-export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan, options: { collapsed?: ReadonlyMap<string, number> } = {}): string[] {
-  const errors: string[] = [];
+// Loads artwork evidence and binds the look contract without performing renderer work.
+export function bindDesignLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan, options: { collapsed?: ReadonlyMap<string, number> } = {}) {
   const idsByAsset = new Map<string, string[]>(spec.assets.map((a): [string, string[]] => [a.id,
     "file" in a ? collectSvgElementIds(parseSvgDocument(fs.readFileSync(path.join(pkg, a.file), "utf8"))) : [],
   ]));
-  for (const item of plan.film.cast) {
-    if (!idsByAsset.has(item.id) && ![...idsByAsset.values()].some((ids) => ids.includes(item.id))) {
-      errors.push(`look cast "${item.id}" has no asset or SVG element in design.json`);
-    }
-  }
   const cues = createCues(narrationTimingForFilm(film, words), film.fps, options);
-  if (plan.schema === "aideos.look/2") {
-    if (!("performances" in spec)) return ["Three look requires aideos.design/2 performances."];
-    if ((spec.treatment ?? "cel-v1") !== (plan.film.treatment ?? "cel-v1")) errors.push("design.treatment: differs from look film.treatment");
-    for (const shot of plan.shots) if ((spec.shots?.[shot.id]?.stageTreatment ?? spec.treatment ?? "cel-v1") !== (shot.stageTreatment ?? plan.film.treatment ?? "cel-v1")) errors.push(`design.shots.${shot.id}.stageTreatment: differs from look shot stageTreatment`);
-    const designIds = new Set<string>();
-    for (const delivered of spec.performances) {
-      if (designIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" is duplicated`);
-      designIds.add(delivered.id);
-    }
-    const lookIds = new Set(plan.film.performances.map((performance) => performance.id));
-    for (const intended of plan.film.performances) {
-      const delivered = spec.performances.find((p) => p.id === intended.id);
-      const sameDecisiveCue = delivered && delivered.decisive.shotId === intended.decisive.shotId && delivered.decisive.phrase === intended.decisive.phrase && delivered.decisive.edge === intended.decisive.edge && delivered.decisive.event === intended.decisive.event;
-      if (!delivered || ["action", "actor", "prop", "start", "afterState"].some((key) => delivered[key as keyof typeof delivered] !== intended[key as keyof typeof intended]) || !sameDecisiveCue) errors.push(`look performance ${intended.id}: design differs from action, actor, prop, start, decisive cue or after-state intention`);
-      for (const id of [intended.actor, intended.prop]) {
-        const authored = spec.assets.find((a) => a.id === id);
-        const planned = plan.film.cast.find((a) => a.id === id);
-        const sameIdentity = authored && "renderer" in authored && authored.renderer === "three" && planned?.renderer === "three" && (authored.treatment ?? spec.treatment ?? "cel-v1") === (planned.treatment ?? plan.film.treatment ?? "cel-v1") &&
-          (authored.kind === "character" ? authored.character === plannedCharacterId(planned) : authored.asset === planned.asset);
-        if (!sameIdentity) errors.push(`look cast ${id}: design identity or treatment mismatch`);
-      }
-      try {
-        const issue = performanceStartIssue(intended, cues);
-        if (issue) errors.push(`look performance ${intended.id}: ${issue}`);
-      }
-      catch (err) { errors.push(`look performance ${intended.id}: ${String(err)}`); }
-    }
-    for (const delivered of spec.performances) if (!lookIds.has(delivered.id)) errors.push(`design performance "${delivered.id}" has no matching look performance`);
-  }
-  for (const shot of plan.shots) {
-    if (options.collapsed?.has(shot.id)) continue;
-    if (shot.treatment === "scene") {
-      if (plan.schema === "aideos.look/2" && "performances" in shot && shot.performances.length) continue;
-      const start = cues.from(shot.id);
-      const end = cues.to(shot.id);
-      let cueFrame: number | null = null;
-      try {
-        cueFrame = cues.word(shot.id, shot.cue);
-      } catch {
-        errors.push(`look scene shot "${shot.id}" cue "${shot.cue}" was not found in narration word timings`);
-      }
-      const hasTimelyMotion = cueFrame !== null && spec.clips.some((clip) => {
-        const frame = resolveCue(clip.start, cues);
-        const carried = shot.carries.some((id) => id === clip.asset ||
-          (idsByAsset.get(clip.asset)?.includes(id) && clip.targets.some((target) => target === id || target === "*")));
-        return carried && clip.from !== clip.to && frame >= start && frame < end &&
-          Math.abs(frame - cueFrame) / film.fps <= 0.4;
-      });
-      if (cueFrame !== null && !hasTimelyMotion) {
-        errors.push(`look scene shot "${shot.id}" cue "${shot.cue}" needs a changing clip on a carried object starting within 0.4s of the cue`);
-      }
-    }
-    if (shot.treatment === "device") {
-      const override = spec.shots?.[shot.id];
-      const refused = readVisualChoices(film.id)?.shots[shot.id];
-      const refusalMatches = refused?.device?.state === "refused" &&
-        (refused.rawChoice ?? refused.visual) === shot.device;
-      const fallback = override ?? film.shots.find((s) => s.id === shot.id);
-      const showsCard = fallback && (fallback.stage === "frame" || fallback.stage === "none") &&
-        fallback.blocks?.every((b) => b.c === "TextReveal" || b.c === "Body");
-      if (refusalMatches && showsCard) continue;
-      if (!override?.blocks?.some((b) => b.c === shot.device) || override.stage !== "inset") {
-        errors.push(`look device shot "${shot.id}" needs a matching "${shot.device}" shots override with stage "inset"`);
-      }
-    }
-  }
-  if (plan.schema !== "aideos.look/2" && plan.film.camera.length && !spec.camera?.length) errors.push("look camera poses require camera keyframes in design.json");
-  return errors;
+  return bindLookContract(film, spec, plan, { idsByAsset, cues, choices: readVisualChoices(film.id)?.shots ?? {}, collapsed: options.collapsed });
+}
+
+// Preserves the existing validation interface while deriving its errors from the contract ledger.
+export function checkDesignAgainstLook(film: Film, spec: DesignSpec, words: TimedWord[], pkg: string, plan: LookPlan, options: { collapsed?: ReadonlyMap<string, number> } = {}): string[] {
+  return bindDesignLook(film, spec, words, pkg, plan, options).errors;
 }
 
 // Writes the status file and returns it.
 function record(filmId: string, status: DesignBuildStatus): DesignBuildStatus {
   fs.mkdirSync(designDir(filmId), { recursive: true });
+  if (status.ledger) fs.writeFileSync(path.join(designDir(filmId), "plan-ledger.json"), JSON.stringify(status.ledger, null, 2) + "\n");
+  else fs.rmSync(path.join(designDir(filmId), "plan-ledger.json"), { force: true });
   fs.writeFileSync(path.join(designDir(filmId), "status.json"), JSON.stringify(status, null, 2) + "\n");
   return status;
 }
@@ -210,9 +149,10 @@ function record(filmId: string, status: DesignBuildStatus): DesignBuildStatus {
 // Builds a film's design from its spec and writes the film only when the design check passes.
 export function buildDesign(filmId: string, source: DesignSource = "agent"): DesignBuildStatus {
   const at = new Date().toISOString();
+  let ledger: PlanItem[] | undefined;
   const pkg = resolvePackageDir(filmId);
   const fail = (errors: string[], findings: DesignFinding[] = []) =>
-    record(filmId, { state: "failed", source, at, errors, findings });
+    record(filmId, { state: "failed", source, at, errors, findings, ...(ledger ? { ledger } : {}) });
 
   const specFile = path.join(pkg, "design", "design.json");
   if (!fs.existsSync(specFile)) return fail([`no design spec at videos/${filmId}/design/design.json`]);
@@ -268,10 +208,29 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
   const wordsFile = path.join(pkg, "voiceover_words.json");
   const words: TimedWord[] = fs.existsSync(wordsFile) ? (JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? []) : [];
 
+  // Legacy packages without a plan still build; new production runs always require one first.
   const resolved = resolveDesignCharacters(spec, pkg);
   if (resolved.errors.length) return fail(resolved.errors);
+  let lookPlan: LookPlan | undefined;
+  const lookFindings: DesignFinding[] = [];
+  if (fs.existsSync(path.join(designDir(filmId), "look.json"))) {
+    const look = readCheckedLookPlan(buildFilm);
+    if (!look.plan) return fail(look.errors, (look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
+    lookPlan = look.plan;
+    lookFindings.push(...(look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
+  }
+
   const compiled = compileDesign(buildFilm, spec, words, source, { characters: resolved.characters });
   if (!compiled.film) return fail(compiled.errors);
+  if (lookPlan) {
+    try {
+      const binding = bindDesignLook(buildFilm, spec, words, pkg, lookPlan);
+      ledger = binding.ledger;
+      if (binding.errors.length) return fail(binding.errors);
+    } catch (err) {
+      return fail([`look/design check: ${err instanceof Error ? err.message : String(err)}`]);
+    }
+  }
   const builtFilm: Film = {
     ...compiled.film,
     shots: compiled.film.shots.flatMap((shot) => {
@@ -282,31 +241,13 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
     }),
   };
 
-  // Legacy packages without a plan still build; new production runs always require one first.
-  let lookPlan: LookPlan | undefined;
-  const lookFindings: DesignFinding[] = [];
-  if (fs.existsSync(path.join(designDir(filmId), "look.json"))) {
-    const look = readCheckedLookPlan(buildFilm);
-    if (!look.plan) return fail(look.errors, (look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
-    lookPlan = look.plan;
-    lookFindings.push(...(look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
-    try {
-      const errors = checkDesignAgainstLook(buildFilm, spec, words, pkg, lookPlan);
-      if (errors.length) return fail(errors);
-    } catch (err) {
-      return fail([`look/design check: ${err instanceof Error ? err.message : String(err)}`]);
-    }
-  }
-
   const cues = createCues(narrationTimingForFilm(buildFilm, words), buildFilm.fps);
   let cameraTargets: DesignCheckContext["cameraTargets"] = [];
   try {
     const authoredPoses = (spec.camera ?? []).map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus }));
     cameraTargets = (lookPlan?.film.camera ?? []).map((pose) => {
       const frame = resolveCue(pose.at, cues);
-      const authoredPose = authoredPoses.length ? authoredPoses.reduce((nearest, candidate) =>
-        Math.abs(candidate.frame - frame) < Math.abs(nearest.frame - frame) ? candidate : nearest,
-      ) : undefined;
+      const authoredPose = matchCameraPose({ frame, focus: pose.focus }, authoredPoses, CAMERA_CUE_LANDING_TOLERANCE_SECONDS * buildFilm.fps);
       return { frame, focus: pose.focus, authoredFocus: authoredPose?.focus };
     });
   } catch (err) {
@@ -317,11 +258,40 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
     ...(lookPlan ? { lookPlan } : {}),
   });
   if (!report.ok) return fail([], report.findings);
+  if (ledger) {
+    const failures = new Map<string, string>();
+    for (const item of ledger) {
+      if (item.kind !== "change") continue;
+      const finding = report.findings.find((entry) => entry.rule === "carry-over" && entry.where.includes(item.subject));
+      if (finding) failures.set(item.id, finding.message);
+    }
+    ledger = realizeLookContract(ledger, failures);
+    const errors = contractErrors(ledger);
+    if (errors.length) return fail(errors, report.findings);
+  }
 
   // The end card's spoken line comes from the narration, not the design (base-film.json may predate
   // it), so a rebuild keeps the line the current film carries.
   const endCardVoice = (JSON.parse(fs.readFileSync(filmFile, "utf8")) as { endCardVoice?: unknown }).endCardVoice;
-  writeFilm(filmId, endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm);
+  const finalFilm = endCardVoice ? { ...builtFilm, endCardVoice } as typeof builtFilm : builtFilm;
+
+  // A film.json no tool wrote is a hand edit (for example a fix made in an all-check round). The rebuild starts from the
+  // base film, so it would drop that edit without a word.
+  if (filmEditState(pkg) === "hand-edited") {
+    let lost: string[] = [];
+    try {
+      lost = filmDifferences(JSON.parse(JSON.stringify(parseFilm(JSON.parse(fs.readFileSync(filmFile, "utf8"))))), JSON.parse(JSON.stringify(parseFilm(finalFilm))));
+    } catch {
+      lost = ["the film (it could not be compared)"];
+    }
+    if (lost.length > 0) {
+      return fail([
+        `film.json was edited by hand after the last tool write, and this rebuild (which starts from design/base-film.json) would drop: ${lost.slice(0, 12).join(", ")}${lost.length > 12 ? `, and ${lost.length - 12} more` : ""}. ` +
+          `Move the fix into design/design.json (or the builder script), or restore film.json from design/base-film.json before running aideos design-build ${filmId} to knowingly start over.`,
+      ]);
+    }
+  }
+  writeFilm(filmId, finalFilm, { owner: false, protectHandEdits: true });
   // The browser bundle reads artwork through the generated source map, so refresh it.
   buildSvgSources();
 
@@ -348,7 +318,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent"): Des
     }
   }
 
-  return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings] });
+  return record(filmId, { state: "passed", source, at, errors: [], findings: [...lookFindings, ...report.findings], ...(ledger ? { ledger } : {}) });
 }
 
 // Formats a build status for the terminal (and for an agent to read and act on).

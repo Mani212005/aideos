@@ -1,5 +1,5 @@
 /**
- * File Description: J3 studio edit journeys in a real headless Chrome: (1) the AI edit Apply gesture, (2) new project, script save and reload. Before this, Apply Edits rolled back in the browser on a Node-only import (`path.resolve` externalized by Vite) while every Node test passed, and the script-save path had no browser coverage at all.
+ * File Description: J3 studio edit journeys in a real headless Chrome: (1) the AI edit Apply gesture, (2) new project, script save and reload, (3) the story inputs staying unavailable until the stored script has loaded. Before this, Apply Edits rolled back in the browser on a Node-only import (`path.resolve` externalized by Vite) while every Node test passed, and the script-save path had no browser coverage at all.
  * The journey makes the model-backed `/api/ai-edit` endpoint deterministic by answering it from the test (a valid `set_accent` plan) and leaves every other request real: the click on Apply Edits runs the real interpreter in the page, and the save, the edit log and the reload hit the real dev server and disk.
  * Inputs and outputs: a throwaway videos folder with a film made by the real pipeline (tone narration, template design, no model or key) -> asserts the edit is applied, written to film.json, logged, and still there after a reload; a new project's script is on disk and in the editor after a reload.
  * Used by: npm run test:journeys and npm run ci journeys (needs Chrome; AIDEOS_SMOKE_REQUIRED=1 turns a missing Chrome into a failure).
@@ -158,6 +158,26 @@ journey("J3 studio: a new project's script saves to disk and is still there afte
     await page.reload();
     await page.waitFor(`document.querySelector('textarea[aria-label="Narration paragraph"]')`, "the story after reload");
     await page.waitFor(`document.querySelector('textarea[aria-label="Narration paragraph"]').value.includes('A cache keeps recent answers')`, "the saved story to be shown after reload");
+    assertNoErrors(page, serverLog());
+  });
+});
+
+journey("J3 studio: the story takes no input until the stored script has loaded, then replaces it cleanly", async () => {
+  await withStudio([AI_SLUG], async ({ page, url, serverLog }) => {
+    // The stored script's answer is held in flight, which is what a slow or loaded server looks like to a user.
+    const releaseScript = await page.hold("GET", `/api/scripts/${AI_SLUG}`);
+    await openProject(page, url, AI_SLUG, "script");
+    await page.waitFor(`document.querySelector('[data-testid="story-editor"]')?.textContent.includes('Loading the story...')`, "the story editor waiting for its stored script");
+    assert.equal(await page.eval<number>(`document.querySelectorAll('[data-testid="story-editor"] textarea').length`), 0, "the editor exposed an input before the stored script had loaded");
+
+    // Once the script arrives, selecting and typing replaces the narration exactly.
+    releaseScript();
+    await page.waitFor(`document.querySelector('textarea[aria-label="Narration paragraph"]')?.value.includes('A load balancer shares incoming requests')`, "the stored script to load into an editable paragraph");
+    const replacement = "Only this text should remain in the field.";
+    await page.focus('textarea[aria-label="Narration paragraph"]');
+    await page.eval(`document.querySelector('textarea[aria-label="Narration paragraph"]').select()`);
+    await page.typeText(replacement);
+    assert.equal(await page.eval<string>(`document.querySelector('textarea[aria-label="Narration paragraph"]').value`), replacement, "typing over the selected narration did not replace it");
     assertNoErrors(page, serverLog());
   });
 });

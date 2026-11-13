@@ -26,6 +26,7 @@ journey("J9 an existing template film still renders through the real pipeline", 
     ...journeyRequest("j9-template", { script: SCRIPT, title: "Load balancing", formats: ["long"], renderFrames: [30, 59], design: "templates" }),
   });
   assert.equal(result.status, "completed", JSON.stringify(result.warnings));
+  assert.equal(result.designJudge, "skipped");
   // Captain-approved edit (Option 1, 2026-11-01): music and effects are compulsory and the test environment caches a synthetic audio library, so no cache-miss warning remains.
   assert.deepEqual(result.warnings, []);
   const out = result.outputs[0];

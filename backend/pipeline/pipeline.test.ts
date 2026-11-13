@@ -269,6 +269,24 @@ test("packageDir refuses a slug that could escape the videos directory", async (
   assert.ok(os.tmpdir().length > 0);
 });
 
+// Resolve each package against the current environment even after filmStore was imported.
+test("packageDir follows directory changes between production runs", async () => {
+  const { packageDir } = await import("./filmStore");
+  const previous = process.env.AIDEOS_VIDEOS_DIR;
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-package-dir-"));
+  try {
+    for (const directory of ["first", "second", "third"]) {
+      const videosDirectory = path.join(temporary, directory);
+      process.env.AIDEOS_VIDEOS_DIR = videosDirectory;
+      assert.equal(packageDir("same-film"), path.join(videosDirectory, "same-film"));
+    }
+  } finally {
+    if (previous === undefined) delete process.env.AIDEOS_VIDEOS_DIR;
+    else process.env.AIDEOS_VIDEOS_DIR = previous;
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 // Regression test for the defect that hung a validation run: B-roll is opt-in, and a caller
 // that does not ask for it must never reach the GPU engine. The engine name here is deliberately
 // one createEngine() rejects, so if the stage ever runs the test fails loudly instead of
@@ -554,7 +572,7 @@ function writeProbeDesign(slug: string, look: LookPlan = probeLook(slug)): void 
     brief: { concept: look.film.stage }, accent: look.film.palette.accent,
     assets: [{ id: "carrier", file: "visuals/carrier.svg", position: [960, 760], scale: 1 }],
     clips: look.shots.map((shot, i) => ({ id: `motion-${i}`, asset: "carrier", targets: ["carrier"], property: "translateX", from: i % 2 ? 20 : 0, to: i % 2 ? 0 : 20, start: `${shot.id}:"${shot.cue}"`, end: `${shot.id}@end`, easing: "expoOut" })),
-    camera: [{ at: look.shots[0].id, center: [960, 960], zoom: 1 }, { at: "end", center: [980, 960], zoom: 1 }],
+    camera: [{ at: look.shots[0].id, center: [960, 960], zoom: 1 }, { at: look.film.camera[look.film.camera.length - 1].at, center: [980, 960], zoom: 1 }],
     shots: Object.fromEntries(look.shots.map((s) => [s.id, { blocks: [], stage: "none" }])),
   }));
 }
@@ -571,6 +589,29 @@ function inlineRequest(slug: string): ProductionRequest {
     skipAgent: true, deviceCaller: null, designLlmCaller: async () => { throw new Error("inline must never call the server"); },
     syncToPreview: false, stopAfter: "assemble" };
 }
+
+test("runProduction rechecks title leaks at synthesis when intake was cached and narration is forced", async () => {
+  const slug = `probe-forced-title-leak-${Date.now().toString(36)}`;
+  const request: ProductionRequest = {
+    script: "## Closing\n[NARRATION]\nClosing.",
+    title: "Probe Film",
+    slug,
+    ttsBackend: "tone",
+    broll: false,
+    syncToPreview: false,
+    resume: true,
+    stopAfter: "intake",
+  };
+  try {
+    await runProduction(request);
+    const events: ProductionProgress[] = [];
+    await assert.rejects(runProduction({ ...request, stopAfter: "narrate", force: ["narrate"] }, (event) => events.push(event)), /would read the heading aloud/);
+    assert.ok(events.some((event) => event.stage === "intake" && event.status === "skipped"));
+    assert.ok(!events.some((event) => event.message.includes("synthesizing 1/")), "forced narration is rejected before TTS");
+  } finally {
+    cleanProbe(slug);
+  }
+});
 
 test("runProduction: default needs_look has exact next steps and resumes an externally built agent design", async () => {
   const slug = `probe-look-${Date.now().toString(36)}`;
@@ -693,6 +734,10 @@ test("runProduction: valid look without a design stops at needs_design and never
     const resumed = await runProduction(request);
     assert.equal(resumed.stoppedAfter, "assemble", JSON.stringify(resumed.warnings));
     assert.equal(readFilm(slug)?.design?.source, "agent");
+    const approved = { ...readFilm(slug)!, title: "Approved pipeline fix" };
+    fs.writeFileSync(path.join(VIDEOS_DIR, slug, "film.json"), JSON.stringify(approved, null, 2));
+    await assert.rejects(runProduction({ ...request, force: ["design"] }), /refusing to overwrite hand-edited film\.json/);
+    assert.equal(readFilm(slug)?.title, "Approved pipeline fix", "a resumed design stage must preserve an approved hand edit");
   } finally { cleanProbe(slug); }
 });
 
@@ -739,6 +784,10 @@ test("runProduction: changed narration refreshes base-film; forced upstream work
     await runProduction({ ...request, script, force: ["narrate"] }, (e) => forced.push(e));
     assert.ok(forced.some((e) => e.stage === "design" && e.status === "running"));
     assert.ok(forced.some((e) => e.stage === "assemble" && e.status === "running"));
+    const handEdit = { ...readFilm(slug)!, title: "Approved before look rebuild" };
+    fs.writeFileSync(path.join(VIDEOS_DIR, slug, "film.json"), JSON.stringify(handEdit, null, 2));
+    await assert.rejects(runProduction({ ...request, force: ["look"] }), /refusing to overwrite hand-edited film\.json/);
+    assert.equal(readFilm(slug)?.title, "Approved before look rebuild", "the look-stage skeleton write must preserve a hand edit");
   } finally { cleanProbe(slug); }
 });
 
@@ -1093,7 +1142,7 @@ test("Look intake: every narrated shot needs a treatment and camera phrase cues 
   } finally { cleanProbe(slug); }
 });
 
-test("runProduction: an honesty-refused planned device completes as scene+card with its warning", async () => {
+test("runProduction: an honesty-refused planned device stops for design with a dropped ledger row", async () => {
   const slug = `probe-refused-device-${Date.now().toString(36)}`;
   try {
     const request = inlineRequest(slug);
@@ -1104,10 +1153,15 @@ test("runProduction: an honesty-refused planned device completes as scene+card w
     plan.shots[3].device = "StatCounter";
     fs.writeFileSync(path.join(VIDEOS_DIR, slug, "design/look.json"), JSON.stringify(plan));
     const result = await runProduction(request);
-    assert.equal(result.stoppedAfter, "assemble", JSON.stringify(result.warnings));
-    assert.ok(result.warnings.some((w) => /beat-04:.*using scene\+card/.test(w)));
-    assert.equal(readFilm(slug)?.design?.source, "agent");
-    assert.deepEqual(readFilm(slug)?.shots[3].blocks, []);
+    assert.equal(result.status, "needs_design", JSON.stringify(result.warnings));
+    assert.equal(result.stoppedAfter, undefined, "a refused plan cannot complete assembly");
+    assert.ok(!result.stages.some((stage) => stage.stage === "assemble" && stage.status === "done"));
+    const ledger = JSON.parse(fs.readFileSync(path.join(result.packageDir, "design/plan-ledger.json"), "utf8"));
+    const device = ledger.find((item: { id: string }) => item.id === "device:beat-04:StatCounter");
+    assert.equal(device?.state, "dropped");
+    assert.equal(device.subject, "StatCounter");
+    assert.match(device.reason, /matching "StatCounter".*stage "inset"/);
+    assert.match(device.reason, /using scene\+card/);
   } finally { cleanProbe(slug); }
 });
 
@@ -1162,4 +1216,60 @@ test("runProduction: the named device compiles and builds as an inset over the c
     assert.equal(refused.status, "needs_design");
     assert.match(refused.warnings.join("\n"), /matching "StatCounter" shots override with stage "inset"/);
   } finally { cleanProbe(slug); }
+});
+
+
+// Exercises the build's persisted ledger with a missing planned camera arrival and its repair.
+test("Design build: every planned camera cue must be realized before the film is replaced", async () => {
+  const slug = `probe-camera-contract-${Date.now().toString(36)}`;
+  try {
+    await runProduction(inlineRequest(slug));
+    writeProbeDesign(slug);
+    const pkg = path.join(VIDEOS_DIR, slug);
+    const lookFile = path.join(pkg, "design/look.json");
+    const plan = probeLook(slug);
+    plan.film.camera.splice(1, 0, { at: "beat-03", pose: "middle hold", why: "show the middle beat" });
+    fs.writeFileSync(lookFile, JSON.stringify(plan));
+    const before = fs.readFileSync(path.join(pkg, "film.json"), "utf8");
+    const missing = buildDesign(slug);
+    assert.equal(missing.state, "failed");
+    assert.equal(missing.ledger?.find((item) => item.id === "camera:1")?.state, "dropped");
+    assert.match(missing.errors.join("\n"), /beat-03.*within 1.5s/);
+    assert.equal(fs.readFileSync(path.join(pkg, "film.json"), "utf8"), before);
+    plan.film.camera.splice(1, 1);
+    fs.writeFileSync(lookFile, JSON.stringify(plan));
+    const repaired = buildDesign(slug);
+    assert.equal(repaired.state, "passed", JSON.stringify(repaired));
+    assert.ok(repaired.ledger?.length);
+    assert.ok(repaired.ledger.every((item) => item.state === "realized"));
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(pkg, "design/plan-ledger.json"), "utf8")), repaired.ledger);
+  } finally { cleanProbe(slug); }
+});
+
+// Keeps visual judgment visible through the executable production interface and cached resumes.
+test("runProduction: failed judgment stops design; skipped and passing judgment remain explicit", async () => {
+  for (const ruling of [false, null, true] as const) {
+    const slug = `probe-judge-contract-${String(ruling)}-${Date.now().toString(36)}`;
+    try {
+      const request = inlineRequest(slug);
+      await runProduction(request);
+      writeProbeDesign(slug);
+      let calls = 0;
+      request.designJudgeRunner = async () => {
+        calls++;
+        return { filmId: slug, passed: ruling, ...(ruling === null ? { skipped: "test renderer has no image evidence" } : {}), agentRound: "skipped", samples: [], failures: [] };
+      };
+      const result = await runProduction(request);
+      assert.equal(calls, 1);
+      assert.equal(result.designJudge, ruling === null ? "skipped" : ruling ? "passed" : "failed");
+      assert.equal(result.status, ruling === false ? "needs_design" : "stopped");
+      if (ruling === false) {
+        assert.ok(!result.stages.some((stage) => stage.stage === "assemble" && stage.status === "done"));
+      } else {
+        const resumed = await runProduction(request);
+        assert.equal(resumed.designJudge, result.designJudge);
+        assert.equal(calls, 1, "a valid cached design retains the explicit judgment");
+      }
+    } finally { cleanProbe(slug); }
+  }
 });

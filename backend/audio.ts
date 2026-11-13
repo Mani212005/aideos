@@ -3,7 +3,8 @@
  * synthesizes each through a pluggable TTS backend with per-line caching (voiceover_lines/),
  * assembles the result in the sample domain (trim, fade, exact-offset concatenation, loudness
  * and peak normalization), and emits voiceover.wav, captions.vtt, voiceover_words.json and the
- * shot duration spine the film timeline is locked to.
+ * shot duration spine the film timeline is locked to. Script-to-synthesis callers share the
+ * script-intake assertion, with this boundary covering pipeline resumes and Studio /api/voiceover.
  * Inputs and outputs: screenplay text and audio options -> voiceover.wav, captions.vtt, voiceover_words.json, and shot duration spine.
  * Used by: backend/pipeline/run.ts, backend/cli.ts, editor/vite.config.ts.
  *
@@ -19,7 +20,8 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { type Film, parseFilm } from "../src/dl/schema";
 import { getRetimedAudioFilename } from "../src/dl/audio/retime";
-import { detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags, plainTextToTaggedScript } from "./scriptIntake";
+import { assertScriptReadyForSynthesis, detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags, plainTextToTaggedScript } from "./scriptIntake";
+import type { ScriptIssue } from "./screenplayLines";
 import { synthesizeLines } from "./voiceLines";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import * as fsSync from "fs";
@@ -82,6 +84,10 @@ export interface ProduceAudioResult {
 
 /** Knobs the production pipeline and the editor both drive the narration synthesis with. */
 export interface ProduceAudioOptions {
+  /** Original user input when the caller has already normalized the script for synthesis. */
+  intakeSource?: string;
+  /** Receives non-blocking line-classifier notices before any synthesis begins. */
+  onIntakeNotice?: (issue: ScriptIssue) => void;
   /** Silence between two segments, in milliseconds. */
   gapMs?: number;
   /** Silence between segments at a chapter boundary, in milliseconds (decision D4). */
@@ -353,6 +359,8 @@ export async function produceAudioPipeline(
   outDir: string,
   options?: ProduceAudioOptions,
 ): Promise<ProduceAudioResult> {
+  const intakeSource = options?.intakeSource ?? (Array.isArray(script) ? script.join("\n") : script);
+  assertScriptReadyForSynthesis(intakeSource, options?.onIntakeNotice);
   const segmentTexts = splitScriptIntoSegments(script);
   const gapMs = options?.gapMs ?? DEFAULT_ASSEMBLE_OPTIONS.segmentGapMs;
   const chapterGapMs = options?.chapterGapMs ?? DEFAULT_ASSEMBLE_OPTIONS.chapterGapMs;

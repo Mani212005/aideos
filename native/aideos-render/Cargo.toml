@@ -1,0 +1,22 @@
+# File Description: Manifest of the native frame renderer: evaluates an aideos.render/1 Render IR per frame and draws it with Skia (CPU raster reference, optional GPU), with the `aideos-render` CLI that renders one frame to a PNG.
+# Inputs and outputs: none -> the aideos-render library and binary.
+# Used by: native/Cargo.toml (workspace member), docs/NATIVE_RENDERER.md, the CI unit job's cargo step.
+[package]
+name = "aideos-render"
+description = "Native frame evaluator and Skia rasterizer for the aideos.render/1 Render IR"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+# The GPU path: draws the same frame through an EGL OpenGL context (libEGL loaded at run time).
+gpu = ["dep:khronos-egl"]
+
+[dependencies]
+aideos-render-ir = { path = "../aideos-render-ir" }
+# Pinned exactly: the feature set below selects one prebuilt Skia binary
+# (skia-binaries-<hash>-<target>-ftembed-ganesh-gl-jpegd-jpege-pdf-textlayout); see docs/NATIVE_RENDERER.md.
+skia-safe = { version = "=0.157.0", features = ["gl", "textlayout", "embed-freetype"] }
+roxmltree = "0.21"
+khronos-egl = { version = "6", features = ["dynamic", "1_5"], optional = true }

@@ -47,6 +47,19 @@ journey("J8 a cue phrase that is not spoken names the phrase and the shot, and w
   assert.ok(filmUnchanged, "a failed build must leave film.json exactly as it was");
 });
 
+journey("J8 a not-spoken cue keeps its diagnostic ahead of an unrealized look item", async () => {
+  const pkg = await preparedPackage("j8-cue-before-look-ledger");
+  const { status, filmUnchanged } = buildBroken(
+    "j8-cue-before-look-ledger",
+    pkg,
+    (d) => { d.performances[0].decisive.phrase = "never spoken here"; },
+    (look) => { look.film.cast[0].changes[0].state = "unrealized-state"; },
+  );
+  assert.equal(status.state, "failed");
+  assert.match(status.errors.join("\n"), /"never spoken here" is not spoken in shot "beat-02"/);
+  assert.ok(filmUnchanged, "a failed build must leave film.json exactly as it was");
+});
+
 journey("J8 a cue naming a shot that does not exist says which shot", async () => {
   const pkg = await preparedPackage("j8-bad-shot");
   const { status, filmUnchanged } = buildBroken("j8-bad-shot", pkg, (d) => {
