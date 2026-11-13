@@ -105,7 +105,7 @@ with the time. Issues are work for the next round. Be strict; the reviewer will 
 
 - Edit the film at \`videos/${slug}/film.json\`. If the package has builder scripts that generate film.json (for example buildFilm.ts, scene.ts, beats.ts),
   edit those and rebuild instead, or your edit is overwritten. Each round backs film.json up to all-check/backups/.
-  A film.json you edit directly is recorded as hand-edited: \`aideos design-build\` then refuses to overwrite it and names what it would drop, so move the fix into design/design.json instead.
+  A film.json you edit directly is recorded as hand-edited: \`aideos design build\` then refuses to overwrite it and names what it would drop, so move the fix into design/design.json instead.
 - Fix the cause named in the feedback, not the symptom, and change as little as needed so a fix for one finding does not break another.
 - After editing, the next \`round\` re-generates the render shadows itself; you do not need to run anything else.
 - Keep the long narration and its timing intact unless a finding is about audio. Edit reel/cut.json for reel narration, run \`aideos reel check ${slug}\` and \`aideos reel build ${slug}\`; never hand-edit the derived reel/film.json. Shot drops are explicit and checked.
