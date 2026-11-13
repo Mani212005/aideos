@@ -105,6 +105,7 @@ export function designInputHash(filmId: string): string {
     soundtrack?: unknown;
     music?: unknown;
     captionPlacement?: unknown;
+    endCardVoice?: unknown;
     shots?: Array<{ id?: unknown; captionPlacement?: unknown }>;
   } | null;
   const activeSoundtrack = active?.soundtrack as { defaultScore?: boolean } | undefined;
@@ -114,6 +115,7 @@ export function designInputHash(filmId: string): string {
     soundtrack: activeSoundtrack?.defaultScore ? undefined : active.soundtrack,
     music: active.music,
     captionPlacement: active.captionPlacement,
+    endCardVoice: active.endCardVoice,
     shots: active.shots?.map(({ id, captionPlacement }) => ({ id, captionPlacement })),
   } : null)}\n`);
   const visuals = path.join(pkg, "visuals");
