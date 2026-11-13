@@ -62,9 +62,10 @@ Hidden or off-frame SVG animation does not count as motion. SVG rendering uses t
 authored/animated opacity resolver; continuity and stage/review visibility use that resolver with
 the shared 0.05 cutoff.
 
-Inset checking uses the same 0.05 visibility cutoff. Before this change, an inset SVG element at
-opacity 0.1 was ignored as faint art; it now counts as visible and can fail when it overlaps the
-device inset region.
+Projected SVG occupancy (`prepareSvgProjection` in `backend/designCheck/insetRegion.ts`, used by the
+inset, caption placement, Three foreground and reel visible-text checks) defaults to the same 0.05
+cutoff, so faint art such as a 0.1 opacity ghost grid counts as visible and can fail when it
+overlaps a region it must keep clear.
 
 Measured pacing combines these scene spans with pixel freeze measurements. Both are clipped to the
 story before applying the same three-second limit. A run crossing into the end card keeps only its
