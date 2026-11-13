@@ -330,8 +330,8 @@ export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): 
   }
   if (mode !== "server") {
     const status = await tryAgent(filmId, opts, "design", () => {
-      const built = buildDesign(filmId, "agent");
-      return built.state === "passed" ? built : null;
+      const built = readDesignStatus(filmId);
+      return built?.state === "passed" ? built : null;
     });
     if (status) return judgeDesign(filmId, { source: "agent", note: "designed by the connected coding agent", status }, opts);
   } else {

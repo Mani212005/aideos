@@ -92,6 +92,33 @@ test("BuildRecord: a passing build from another cause, newer than the request, d
   }
 });
 
+test("BuildRecord: polling a failed request does not rebuild files while the agent edits them", async () => {
+  const spec = setup();
+  let filmChangedBeforeAgentBuild: boolean | undefined;
+  try {
+    const outcome = await designWithFakeAgent(() => {
+      const requestId = readOpenBuildRequest(ID)?.requestId;
+      assert.ok(requestId);
+      const designFile = path.join(PKG, "design/design.json");
+      const filmFile = path.join(PKG, "film.json");
+      const filmBefore = fs.readFileSync(filmFile, "utf8");
+      fs.writeFileSync(designFile, JSON.stringify({ schema: "invalid" }));
+      assert.equal(buildDesign(ID, "agent", { requestId }).state, "failed");
+      setTimeout(() => {
+        fs.writeFileSync(designFile, spec);
+        setTimeout(() => {
+          filmChangedBeforeAgentBuild = fs.readFileSync(filmFile, "utf8") !== filmBefore;
+          buildDesign(ID, "agent", { requestId });
+        }, 100);
+      }, 40);
+    }, spec, 4000);
+    assert.equal(outcome.status?.state, "passed");
+    assert.equal(filmChangedBeforeAgentBuild, false, "the waiter only reads the failed build while the agent is editing");
+  } finally {
+    teardown();
+  }
+});
+
 test("BuildRecord: the input hash follows what a build is made from, and requests open, supersede and close", () => {
   const spec = setup();
   try {
@@ -129,6 +156,13 @@ test("BuildRecord: the input hash follows what a build is made from, and request
     film.theme.accentChosen = "#654321";
     fs.writeFileSync(filmFile, JSON.stringify(film));
     assert.notEqual(designInputHash(ID), beforeThemeEdit, "the active film theme is an input");
+
+    film.endCardVoice = { src: "first.wav", durationSec: 1 };
+    fs.writeFileSync(filmFile, JSON.stringify(film));
+    const withEndCardVoice = designInputHash(ID);
+    film.endCardVoice.src = "second.wav";
+    fs.writeFileSync(filmFile, JSON.stringify(film));
+    assert.notEqual(designInputHash(ID), withEndCardVoice, "the active end-card voice is a build input");
 
     const a = openBuildRequest(ID, "design");
     const b = openBuildRequest(ID, "motion", "m-b");
