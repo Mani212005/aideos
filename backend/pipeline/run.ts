@@ -30,7 +30,6 @@ import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../
 import { readRecordedNarration } from "./recordedNarration";
 import { deliverReel } from "../reelCut/writer";
 import { reelForRender, reelSourceFingerprint, writeReelFilm } from "../reelCut/store";
-import { recordReelStatus, type ReelBuildStatus } from "../reelCut/build";
 import { parseClaudeScript, plainTextToTaggedScript } from "../scriptIntake";
 import { createEngine } from "../engine";
 import { traceBus } from "../agentBridge";
@@ -315,6 +314,7 @@ export async function runProduction(
     inputFingerprint: string,
     cached: () => T | null,
     work: () => Promise<T | InputNeeded>,
+    completedFingerprint?: () => string,
   ): Promise<T | InputNeeded> => {
     current = stage;
     const record = machine.record(stage);
@@ -340,7 +340,7 @@ export async function runProduction(
         emit(stage, "needs_input", result.message);
         return result;
       }
-      machine.complete(stage);
+      machine.complete(stage, completedFingerprint?.() ?? inputFingerprint);
       emit(stage, "done", `${stage} complete`);
       return result;
     } catch (err) {
@@ -546,6 +546,7 @@ export async function runProduction(
         if (!designed || (mode !== "templates" && !designed.scene)) throw new Error("design did not produce a scene film");
         return { ...compiled, film: designed };
       },
+      () => designFingerprint(),
     );
     if (isInputNeeded(designRun)) return haltForInput(designRun);
     const design = designRun;
@@ -554,9 +555,6 @@ export async function runProduction(
       emit("design", "done", message);
     });
     if (scoredDesign !== design.film) design.film = writeFilm(slug, scoredDesign);
-    // Agent/server work writes authoring files during the stage. Cache their resulting hashes,
-    // so an unchanged rerun reuses them while a later authoring edit invalidates the stage.
-    machine.restamp("design", designFingerprint());
     filmResult = design.film;
     if (shouldStop("design")) return buildResult("design");
 
@@ -576,10 +574,9 @@ export async function runProduction(
       });
       if (outcome.status === "needs_reel_cut") return inputNeeded(outcome.status, outcome.nextSteps, outcome.note);
       return outcome.film;
-    });
+    }, () => reelFingerprint());
     if (isInputNeeded(reelRun)) return haltForInput(reelRun);
     let reelFilm = reelRun;
-    machine.restamp("reel", reelFingerprint());
     if (shouldStop("reel")) return buildResult("reel");
 
     // ---- broll: render footage on the GPU and wire it into the film --------------------------
@@ -701,11 +698,7 @@ export async function runProduction(
         reelFilm = withFootage(reelFilm, shot.id, clip.staticPath, block?.caption ?? shot.ch ?? "");
       }
       reelFilm = writeReelFilm(slug, { ...reelFilm, endCardVoice: assembled.endCardVoice });
-      const statusPath = path.join(pkgDir, "reel/status.json");
-      const status = JSON.parse(fs.readFileSync(statusPath, "utf8")) as ReelBuildStatus;
-      recordReelStatus(slug, { ...status, fingerprint: reelSourceFingerprint(slug) });
     }
-    machine.restamp("reel", reelFingerprint());
     if (shouldStop("assemble")) return buildResult("assemble");
 
     // ---- render: produce the deliverables ----------------------------------------------------

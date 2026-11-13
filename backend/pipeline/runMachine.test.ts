@@ -47,6 +47,18 @@ test("RunMachine: a stage walks pending -> running -> done and saves at every st
   assert.ok(record.finishedAt && record.durationMs !== undefined);
 });
 
+test("RunMachine: completion persists the final fingerprint in the same transition", () => {
+  let persisted: RunState | null = null;
+  const machine = createRunMachine(emptyState(), (state) => { persisted = structuredClone(state); });
+  machine.begin("design", "initial", OWNER);
+  machine.complete("design", "final");
+  assert.equal(persisted?.stages[0].status, "done");
+  assert.equal(persisted?.stages[0].fingerprint, "final");
+
+  const resumed = createRunMachine(persisted!, () => {});
+  assert.deepEqual([resumed.record("design").status, resumed.record("design").fingerprint], ["done", "final"]);
+});
+
 test("RunMachine: failure and needs_input are states, and each can be started again", () => {
   const machine = createRunMachine(emptyState(), () => {});
   machine.begin("look", "a", OWNER);

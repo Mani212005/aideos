@@ -114,6 +114,22 @@ test("BuildRecord: the input hash follows what a build is made from, and request
     fs.writeFileSync(characterFile, "changed character specification");
     assert.notEqual(designInputHash(ID), withCharacter, "referenced character specs are build inputs");
 
+    const baseFile = path.join(PKG, "design/base-film.json");
+    const beforeBaseEdit = designInputHash(ID);
+    const base = JSON.parse(fs.readFileSync(baseFile, "utf8"));
+    base.title = `${base.title} changed`;
+    fs.writeFileSync(baseFile, JSON.stringify(base));
+    assert.notEqual(designInputHash(ID), beforeBaseEdit, "the build base film is an input");
+
+    const filmFile = path.join(PKG, "film.json");
+    const film = JSON.parse(fs.readFileSync(filmFile, "utf8"));
+    film.theme = { ...(film.theme ?? {}), accentChosen: "#123456" };
+    fs.writeFileSync(filmFile, JSON.stringify(film));
+    const beforeThemeEdit = designInputHash(ID);
+    film.theme.accentChosen = "#654321";
+    fs.writeFileSync(filmFile, JSON.stringify(film));
+    assert.notEqual(designInputHash(ID), beforeThemeEdit, "the active film theme is an input");
+
     const a = openBuildRequest(ID, "design");
     const b = openBuildRequest(ID, "motion", "m-b");
     assert.equal(readOpenBuildRequest(ID)?.requestId, "m-b", "a newer request supersedes the open one");
