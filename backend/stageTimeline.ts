@@ -99,6 +99,7 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
   const shots = buildTimeline(film, film.voiceover?.durationSec);
   const overlays = overlayMotion(film, shots);
   const spans: StageSpan[] = [];
+  let geometryAt: { frame: number; key: string } | undefined;
   for (let frame = 0; compiled && frame < delivery.storyFrames; frame++) {
     const f = Math.min(frame, compiled.durationFrames - 1), n = Math.min(frame + 1, compiled.durationFrames - 1);
     const current = compiled.frames[f], next = compiled.frames[n];
@@ -130,8 +131,11 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
           ...(propParts.length ? [["prop", propParts.map((part) => [part.name, part.bounds, part.signature])] as const] : []),
         ];
       });
-      const before = visibleParts(f), after = visibleParts(n);
-      moving = (before.length > 0 || after.length > 0) && JSON.stringify(before) !== JSON.stringify(after);
+      // Each frame is evaluated once: this frame's end state is the next frame's start state.
+      const before = geometryAt && geometryAt.frame === f ? geometryAt.key : JSON.stringify(visibleParts(f));
+      const afterParts = visibleParts(n), after = JSON.stringify(afterParts);
+      geometryAt = { frame: n, key: after };
+      moving = (before !== "[]" || after !== "[]") && before !== after;
     }
     const state: StageState = { segment: "story", motion: moving ? "moving" : "holding" };
     const last = spans[spans.length - 1];

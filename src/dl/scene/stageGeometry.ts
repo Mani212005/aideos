@@ -22,6 +22,9 @@ export function meshIsDrawn(mesh: Mesh): boolean {
   return (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).some((m) => m.visible && (!m.transparent || elementVisible(m.opacity)));
 }
 
+const scratch = new Float64Array(2);
+const scratchBits = new Uint32Array(scratch.buffer);
+
 // Measures every posed vertex plus conservative normal-extrusion allowance through the shared projector.
 export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: number, height: number, size: { w: number; h: number }, outline: number, includeSignature = false): ProjectedPart[] {
   const point = new Vector3();
@@ -29,7 +32,8 @@ export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: n
   return meshes.filter(meshIsDrawn).map((mesh) => {
     const vertices = mesh.geometry.getAttribute("position");
     if (!vertices?.count) throw new Error(`mesh ${mesh.name || mesh.uuid}: missing position geometry`);
-    const signature: number[] | undefined = includeSignature ? [] : undefined;
+    // Folds each projected coordinate's exact bits into two 32-bit hashes, so a change is detected without building a string per vertex.
+    let h1 = 0x811c9dc5, h2 = 0x9747b28c;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < vertices.count; i++) {
       mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld);
@@ -38,11 +42,14 @@ export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: n
       const p = projectStagePoint({ x: point.x + size.w / 2, y: size.h / 2 - point.y }, pose, width, height, size);
       if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) throw new Error(`mesh ${mesh.name || mesh.uuid}: non-finite evaluated geometry`);
       x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
-      signature?.push(p.x, p.y);
+      if (includeSignature) {
+        scratch[0] = p.x; scratch[1] = p.y;
+        for (let k = 0; k < 4; k++) { h1 = Math.imul(h1 ^ scratchBits[k], 0x01000193); h2 = Math.imul(h2 + scratchBits[k], 0x85ebca6b) ^ (h2 >>> 13); }
+      }
     }
     mesh.getWorldScale(scale);
     const allowance = outline * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z)) * pose.zoom * stageViewport(width, height, size).fit;
-    return { name: mesh.name, bounds: { x0: x0 - allowance, y0: y0 - allowance, x1: x1 + allowance, y1: y1 + allowance }, ...(signature ? { signature: signature.join(",") } : {}) };
+    return { name: mesh.name, bounds: { x0: x0 - allowance, y0: y0 - allowance, x1: x1 + allowance, y1: y1 + allowance }, ...(includeSignature ? { signature: `${(h1 >>> 0).toString(36)}.${(h2 >>> 0).toString(36)}` } : {}) };
   });
 }
 
