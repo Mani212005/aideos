@@ -31,7 +31,7 @@ adapter in `backend/nativeRenderer.ts` hands it an IR path, a package directory 
 | Text measurement for the emitter | `native/aideos-render/src/measure.rs` |
 | CLI (`<ir> --frame`, `video`, `measure`) | `native/aideos-render/src/main.rs` |
 | Vendored variable fonts (Geist, JetBrains Mono) used by every emitted film | `native/fonts/` (provenance in its README) |
-| The IR emitter (film.json to `aideos.render/1`) | `backend/renderIr/emit.ts` |
+| The IR emitter (film.json to `aideos.render/1`, or `/2` for a Three-stage film) | `backend/renderIr/emit.ts`, `backend/renderIr/emitStage3d.ts` |
 | RenderJob adapter and the renderer flag | `backend/nativeRenderer.ts`, `backend/rendererSelection.ts` |
 | Linux fontconfig link shim | `native/aideos-render/build.rs` |
 | Test package (vendored OFL fonts, artwork, IR) | `native/aideos-render/fixtures/package/` |
