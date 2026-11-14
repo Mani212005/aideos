@@ -4,6 +4,7 @@
  * Used by: backend/reelCut/check.ts, brief.ts and cli.ts.
  */
 import { z } from "zod";
+import { SPLICE_MAX_FRAMES, SPLICE_MIN_FRAMES } from "./splice";
 
 const shotId = z.string().regex(/^[a-z0-9-]+$/);
 const spokenText = z
@@ -39,6 +40,8 @@ export const reelCutSchema = z.strictObject({
       ]),
     )
     .min(1),
+  /** Opt in to smooth splices at dropped shots instead of collapsing them; `frames` overrides the default window. */
+  splice: z.strictObject({ frames: z.number().int().min(SPLICE_MIN_FRAMES).max(SPLICE_MAX_FRAMES).optional() }).optional(),
   approved: z
     .strictObject({
       by: z.literal("captain"),

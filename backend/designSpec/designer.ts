@@ -1,12 +1,12 @@
 /**
  * File Description: Delivers look planning and scene design through explicit inline, agent, server
  * or templates policies. Inline stops for the invoking agent when nobody listens; server uses the
- * configured generation model. Every authored design passes the shared build before reaching film.json.
+ * film's own agent session (else the explicit generation override). Every authored design passes the shared build before reaching film.json.
  * Inputs and outputs: Film, briefs and delivery policy -> validated look plan or scene design outcome.
  * Used by: backend/pipeline/run.ts, backend/designSpec/motionRequests.ts.
  */
 
-import { generationCaller } from "../aideosConfig";
+import { generationCallerOrNull } from "../aideosConfig";
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm } from "../../src/dl/schema";
@@ -51,7 +51,7 @@ export interface DesignFilmOptions {
   pollMs?: number;
   /** Skip the agent even when one is connected. */
   skipAgent?: boolean;
-  /** Model used in server mode; omit to use videoModels.generation. */
+  /** Model used in server mode; omit to use the film's own agent session (else the videoModels.generation override). */
   llmCaller?: DesignLlmCaller | null;
   /** Server-model attempts, counting repairs (default 3). */
   maxServerAttempts?: number;
@@ -145,7 +145,7 @@ export async function planFilmLook(filmId: string, opts: DesignFilmOptions = {})
   }
   if (!checked.plan && opts.mode === "server") {
     try {
-      const caller = opts.llmCaller === undefined ? await defaultCaller() : opts.llmCaller;
+      const caller = opts.llmCaller === undefined ? await defaultCaller(filmId) : opts.llmCaller;
       if (!caller) return { note: "server look caller is disabled", errors: checked.errors };
       const system = renderLookBrief(film, availableCharacters(resolvePackageDir(filmId))) + "\nReply with the complete look.json object and nothing else.";
       let prompt = `Plan the look of "${film.title}".`;
@@ -256,9 +256,9 @@ export async function designWithServerModel(
   return status.state === "passed" ? status : null;
 }
 
-/** The configured generation model used for explicit server design. */
-export async function serverDesignCaller(): Promise<DesignLlmCaller | null> {
-  return defaultCaller();
+/** The server text caller for a film: its own agent session, else the explicit generation override. */
+export async function serverDesignCaller(filmId?: string): Promise<DesignLlmCaller | null> {
+  return generationCallerOrNull(filmId);
 }
 
 // Marks a film as keeping its template design so the studio can flag it.
@@ -339,7 +339,7 @@ export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): 
     if (status) return judgeDesign(filmId, { source: "agent", note: "designed by the connected coding agent", status }, opts);
   } else {
     try {
-      const caller = opts.llmCaller === undefined ? await defaultCaller() : opts.llmCaller;
+      const caller = opts.llmCaller === undefined ? await defaultCaller(filmId) : opts.llmCaller;
       if (caller) {
         const status = await tryServerModel(filmId, caller, opts);
         if (status.state === "passed") return judgeDesign(filmId, { source: "server-model", note: "designed by the configured generation model", status }, { ...opts, llmCaller: caller });
@@ -354,7 +354,7 @@ export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): 
   return { source: "needs_design", note, status: readDesignStatus(filmId) ?? undefined };
 }
 
-// Uses the committed generation policy for server mode, with no implicit reviewer fallback.
-async function defaultCaller(): Promise<DesignLlmCaller> {
-  return generationCaller();
+// Uses the film's own agent session for server mode (else the explicit generation override), with no implicit reviewer fallback.
+async function defaultCaller(filmId: string): Promise<DesignLlmCaller | null> {
+  return serverDesignCaller(filmId);
 }

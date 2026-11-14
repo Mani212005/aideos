@@ -29,12 +29,12 @@ const FORWARDED_ENV = [
 ];
 
 // Writes the agent environment and command, followed by the measured-record finish fallback.
-export function writeLaunchScript(slug: string, agent: AgentName, briefPath: string, model: string, env: NodeJS.ProcessEnv = process.env): string {
+export function writeLaunchScript(slug: string, agent: AgentName, briefPath: string, model: string | null, env: NodeJS.ProcessEnv = process.env): string {
   const cmd = buildAgentCommand(agent, briefPath, slug, model);
   const scriptPath = path.join(allCheckDir(slug), "launch.sh");
   const script = [
     "#!/usr/bin/env bash",
-    `# File Description: Starts the all-check ${agent} agent (${model}) for "${slug}" with its brief (written by aideos all-check).`,
+    `# File Description: Starts the all-check ${agent} agent (${model ?? "its own default model"}) for "${slug}" with its brief (written by aideos all-check).`,
     "# Inputs and outputs: saved brief and caller environment -> terminal agent and final result.",
     "# Used by: the all-check Herdr workspace root pane.",
     ...FORWARDED_ENV.map((key) => env[key] === undefined ? `unset ${key}` : `export ${key}=${shellQuote(env[key])}`),

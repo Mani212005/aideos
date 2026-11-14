@@ -96,7 +96,7 @@ This long take measures ${context.wordsPerSec.toFixed(3)} words/s. Aim for at mo
 Rules:
 - Include every long shot id exactly once, in order, with narration or {"id":"...","drop":true,"reason":"..."}.
 - Condense evenly first. Drop the least load-bearing shots only when condensing cannot meet the budget. Every drop needs a reason.
-- Keep the first-shot hook, last-shot payoff and every decisive performance. A dropped shot must later pass the reel design check without a visible snap.
+- Keep the first-shot hook, last-shot payoff and every decisive performance. A dropped shot must later pass the reel design check without a visible snap. To drop a shot that holds a camera move or a visible change, add "splice": {} to the cut (optional "frames", 6 to 45, default 18): the build then eases the camera and carried state across each cut instead of collapsing it.
 - Keep every locked phrase verbatim under the cue matcher's case and punctuation normalization. Decisive phrases must occur exactly once in their shot.
 - Condense, never add a fact or number. New content words will be flagged by \`aideos reel check\` for the captain's review. Every on-screen number in a kept shot must still be spoken there. The on-screen text below tells you which picture the narration must explain.
 - Keep more narration when the estimate falls below a shot's motion floor. Floors come from the compiled long camera curve under uniform retiming; the compiled reel design check is the final authority at shot boundaries and phrase cues.

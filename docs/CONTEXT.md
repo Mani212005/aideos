@@ -415,10 +415,11 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `spokenNumbers(text)` (`backend/review/speech.ts`): Extracts numbers from digits and spoken English number phrases, including year expressions ("nineteen eighty four", "twenty twenty four") and cardinal amounts ("twenty five").
 
 ### `backend/aideosConfig.ts` (Video Model Policy & Config Loader)
-* `loadAideosConfig(file?)`: Loads and validates `aideos.config.json` containing the committed video model policy (generation agent/model, reviewer agent/model, forbidden generation models).
+* `loadAideosConfig(file?)`: Loads and validates `aideos.config.json` containing the committed video model policy (optional generation override, reviewer agent/model, forbidden generation models).
 * `reviewerModel(explicit?, env?, file?)`: Resolves the active reviewer model from explicit options, environment variables (`AIDEOS_GEMINI_REVIEW_MODEL`, `GEMINI_MODEL`), or `aideos.config.json`.
 * `forbiddenGenerationMatch(model, policy)`: Checks if a model ID matches any configured forbidden generation models (e.g. `gemini-3.1-pro`).
-* `generationCaller(file?, runner?)`: Creates the server text generation caller from `videoModels.generation`, enforcing an allowed Claude model.
+* `generationCaller(file?, runner?, filmId?)`: Creates the server text generation caller from the film's recorded agent session, else the optional `videoModels.generation` override, enforcing an allowed Claude model; throws `NoGenerationModelError` when none is usable.
+* `generationCallerOrNull(filmId?, runner?, notify?, file?)`: Same, but yields `null` after one notice line when server-side generation is unavailable, so callers fall back to agent or inline delivery.
 
 ### `backend/geminiReview/` (Gemini 3.8 Flash Video Quality Review & Rubric)
 * `reviewVideo(videoPath, options)` (`backend/geminiReview/geminiReview.ts`): Evaluates rendered mp4 video and audio against the 12-criterion rubric via the configured agy reviewer in an isolated workspace with neutral `video.mp4`, with deterministic facts extraction (including `design/LOOK.md` shot treatments for unscored plan checking), timestamp evidence validation, and pairwise comparison support.
@@ -431,11 +432,11 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `RUBRIC_CRITERIA`, `RUBRIC_SYSTEM_PROMPT`, `SINGLE_REVIEW_JSON_SCHEMA`, `PAIRWISE_WATCH_JSON_SCHEMA`, `PAIRWISE_EXCHANGE_JSON_SCHEMA` (`backend/geminiReview/rubric.ts`): The 12-criterion rubric definitions, structured JSON schemas, and review prompts enforcing the 6 hard gates.
 
 ### `backend/allCheck/` (End-to-End Review & Repair Background Agent)
-* `startAllCheck(options, deps)` (`backend/allCheck/index.ts`): Orchestrates preflight, locking, brief generation, and launching the background agent in its own unfocused Herdr workspace to review and repair long and reel formats.
-* `resolveAgent(env)` (`backend/allCheck/agent.ts`): Resolves the background agent and model from `aideos.config.json` or CLI flags, enforcing the forbidden generation model policy.
-* `buildAgentCommand(agent, briefPath, slug, model)` (`backend/allCheck/agent.ts`): Builds the interactive invocation command for the background agent with the specified model and brief.
+* `startAllCheck(options, deps)` (`backend/allCheck/index.ts`): Orchestrates preflight, locking, origin-session recording and brief generation; the caller's own agent session fixes in-session, and a replacement agent (inheriting the recorded harness and model) is launched in its own unfocused Herdr workspace only when no session is running.
+* `resolveAgent(env)` (`backend/allCheck/agent.ts`): Resolves the replacement agent and model from CLI flags, the film's recorded origin session, then the optional config override (else refuses), enforcing the forbidden generation model policy.
+* `buildAgentCommand(agent, briefPath, slug, model)` (`backend/allCheck/agent.ts`): Builds the interactive invocation command for a replacement agent (claude, codex, opencode or agy; a null model leaves the choice to the harness) with the specified model and brief.
 * `formatAllCheckReport(result)` (`backend/allCheck/index.ts`): Formats final all-check outcomes and round summaries into human-readable markdown.
-* `runPreflight(slug, options, deps)` (`backend/allCheck/preflight.ts`): Validates video package, voiceover, ffmpeg, tesseract, Herdr 0.8.0+ and its server, agent CLI, and agy login before starting the background agent.
+* `runPreflight(slug, options, deps)` (`backend/allCheck/preflight.ts`): Validates video package, voiceover, ffmpeg, tesseract, Herdr 0.8.0+ and its server, agent CLI, and agy login (Herdr and the agent CLI only when a replacement must start) before the run.
 * `acquireLock(record, deps)`, `releaseLock(slug)`, `lockIsLive(lock, deps)` (`backend/allCheck/lock.ts`): Manages the per-video lock in `videos/<slug>/all-check/lock.json` tied to the recorded Herdr socket and foreground process in its pane.
 * `generateAgentBrief(context)` (`backend/allCheck/brief.ts`): Generates structured instructions and review constraints for the background coding agent (`videos/<slug>/all-check/brief.md`).
 * `launchAgentWorkspace(slug, scriptPath, opts)` (`backend/allCheck/launch.ts`): Creates a dedicated Herdr workspace and launches the coding agent (Claude Code or Antigravity) with pre-approved permissions. The workspace stays open, and the next start closes only its previous idle workspace.
@@ -557,6 +558,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `writer.ts`: `deliverReel(slug, options)`. Delivers reel cut inline (`needs_reel_cut`), via connected agent, or via server model with checked retry loop.
 * `constraints.ts`: `createReelContext(options)`, `countWords(text)`, `groundedNumbers(text)`.
 * `motion.ts`: `minShotDurationSec(camera, startSec, endSec, fps)`. Computes shortest safe shot duration satisfying camera speed, zoom step, and acceleration caps.
+* `splice.ts`: `spliceOptionsFor(splice)`, `planSpliceWindow(input)`, `spacePosesAtCuts(frames, cuts, gap)`, `SPLICE_DEFAULT_FRAMES`, `SPLICE_MIN_FRAMES`, `SPLICE_MAX_FRAMES`, `SPLICE_EASING`. Pure rules for the opt-in `splice` marker of `cut.json`; `compileDesign` applies them (see the splice paragraph in `docs/PRODUCTION_PIPELINE.md`, "Build and review").
 * `visibleText.ts`: `visibleReelText(film)`. Extracts on-screen text and numbers across scene stage elements, SVG assets, and text overlays.
 * `cli.ts`: `registerReelCommands(program)`. Registers CLI commands for `aideos reel brief`, `aideos reel check`, and `aideos reel build`.
 

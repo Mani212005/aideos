@@ -1,5 +1,5 @@
 /**
- * File Description: Writes the brief the all-check background agent is started with. The brief is a
+ * File Description: Writes the brief the all-check agent (the session that started the film, or its replacement) works from. The brief is a
  * file under videos/<slug>/all-check/ so a person can read exactly what the agent was told: the hard
  * rules (touch only videos/<slug>/, code changes go through a worktree and a PR, never self-score),
  * the settings of the run, the long-then-reel-then-final protocol and the exact commands to run.
@@ -17,12 +17,19 @@ const CLI = "npx tsx backend/cli.ts";
 export function buildBrief(config: AllCheckConfig, repoRoot: string): string {
   const { slug, rounds, target, reference } = config;
   const dir = allCheckDir(slug);
+  const role = config.inSession
+    ? `You are the agent session that started this film, and you now run its all-check yourself: no other
+agent was started, so every fix below is made by you, with your own model. Your job: take the film "${slug}"
+to a state where BOTH its long cut (16:9) and its reel (9:16) are good, as judged by tools, and report that
+honestly. The reviewer's feedback comes back to you as the output of each \`round\` command (and as a message
+in your session if a round was run elsewhere). Work through it round by round.`
+    : `You are the all-check replacement agent: the session that started this film is gone, so you carry on
+with its agent and model. Your job: take the film "${slug}" to a state where BOTH its long cut (16:9) and its
+reel (9:16) are good, as judged by tools, and report that honestly. The person who started the film has gone
+back to other work; they get a notification and a result file when you finish. Work alone, do not wait for answers.`;
   return `# all-check brief: ${slug}
 
-You are the all-check background agent. Your job: take the film "${slug}" to a state where BOTH its
-long cut (16:9) and its reel (9:16) are good, as judged by tools, and report that honestly. The
-person who started you has gone back to other work; they get a notification and a result file when
-you finish. Work alone, do not wait for answers.
+${role}
 
 ## Hard rules
 
@@ -47,7 +54,7 @@ you finish. Work alone, do not wait for answers.
 - Target: reviewer score ${target.toFixed(1)} or more on each format, all hard gates passing.
 - Round budget: ${rounds} rounds in total (long, reel and the final re-check all count).
 ${reference ? `- Reference video: ${reference}. The long cut must also win or tie the cross-review against it.` : "- No reference video: there is no cross-review."}
-- Files you write go in \`${dir}/\`. The calling agent is waiting for \`${dir}/result.json\`.
+- Files you write go in \`${dir}/\`. The run ends when \`finish\` has written \`${dir}/result.json\`${config.inSession ? "" : " (the person who started the film is waiting for it)"}.
 
 ## Commands (all from the repo root)
 
