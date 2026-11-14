@@ -150,6 +150,7 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 | `aideos exit` | Gracefully stops the active channel's dev server | Terminal output |
 | `aideos validate` | Runs strict schema & pacing validation | Runsheet & status in terminal |
 | `aideos look brief <film>` | Writes look planning brief answering the 6 look questions | `videos/<film>/design/LOOK_BRIEF.md` |
+| `aideos study <mp4...> [--name <n>] [--into <film>]` | Measures local reference videos as numbers only (two methods per pixel metric, disagreements excluded) and writes a style bible plus a look seed proposal; local files only, never downloads ([STUDY.md](STUDY.md)) | `.frames/study/<name>/<reference>/bible.json, bible.md, seed.json, seed.md` (and `design/look.seed.json` with `--into`) |
 | `aideos look check <film> [--json]` | Validates look.json against schema and semantic rules; writes LOOK.md on PASS | `videos/<film>/design/LOOK.md` |
 | `aideos design brief <film>` | Writes bespoke design brief for scene compilation | `videos/<film>/design/BRIEF.md` |
 | `aideos design check <film>` | Validates bespoke film design and renders review stills | Terminal report, `.frames/<film>/` |

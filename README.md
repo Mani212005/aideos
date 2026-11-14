@@ -221,6 +221,7 @@ Promotion requires passing full CI, dual-format production, measured rubric revi
 - [Local Release Channels](docs/RELEASES.md): Setting up stable clones, release promotion, and rollback.
 - [Director Screenplay Guide](docs/DIRECTOR_GUIDE.md): Screenplay authoring rules, tags, and LLM director prompts.
 - [Video Review & Rubric](docs/REVIEW.md): 12-criterion Good Video rubric, measured facts, and Gemini evaluation.
+- [Reference Study](docs/STUDY.md): `aideos study`, numbers-only reference measurement with two-method agreement and a look seed proposal.
 - [Audio Library & Soundtrack](docs/AUDIO_LIBRARY.md): Soundtrack mixing, dynamic music ducking, and cache verification.
 - [Video Design System](src/dl/README.md): Token palettes, contrast requirements, and motion easing specs.
 - [Vector Scene Engine](src/dl/scene/README.md): Declarative SVG animation clips, scene stages, and continuous camera tracks.
