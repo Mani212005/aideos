@@ -192,8 +192,9 @@ export function compileDesign(
       }
       if (options.splice && next && !next.allowJump && slotKey(carry.target, next.property) === key && Math.abs(next.from - carry.to) <= 1e-6) return carry.from;
       for (const entry of carry.clips) {
-        collapsedClips.push({ asset: a.id, clipId: carry.clips.length === 1 && entry.clip.targets.length === 1 ? entry.clip.id : `${entry.clip.id}-${carry.target}`, shotId: entry.shotId, frame: entry.frame });
-        addClip(entry.clip, { targets: [carry.target], id: entry.clip.targets.length === 1 ? entry.clip.id : `${entry.clip.id}-${carry.target}`, start: Math.max(0, entry.start - 1), end: Math.max(1, entry.end), dropped: true });
+        const clipId = entry.clip.targets.length === 1 ? entry.clip.id : `${entry.clip.id}-${carry.target}`;
+        collapsedClips.push({ asset: a.id, clipId, shotId: entry.shotId, frame: entry.frame });
+        addClip(entry.clip, { targets: [carry.target], id: clipId, start: Math.max(0, entry.start - 1), end: Math.max(1, entry.end), dropped: true });
       }
     };
     for (const clip of spec.clips.filter((c) => c.asset === a.id)) {
@@ -206,7 +207,7 @@ export function compileDesign(
           if (dropped && !clip.allowJump) {
             for (const target of clip.targets) {
               const key = slotKey(target, clip.property);
-              const carry = pending.get(key) ?? { target, property: clip.property, from: held.get(key) ?? (clip.property === "scale" || clip.property === "scaleX" || clip.property === "scaleY" || clip.property === "opacity" || clip.property === "drawOn" ? 1 : 0), to: clip.to, cutFrame: start, clips: [] };
+              const carry = pending.get(key) ?? { target, property: clip.property, from: held.get(key) ?? clip.from, to: clip.to, cutFrame: start, clips: [] };
               carry.to = clip.to;
               carry.cutFrame = start;
               if (clip.origin) carry.origin = clip.origin;
