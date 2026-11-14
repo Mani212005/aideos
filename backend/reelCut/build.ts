@@ -25,6 +25,7 @@ import { writeJsonAtomic } from "../designSpec/buildRecord";
 import { loadReelContext, readReelCut, reelPackageDir } from "./brief";
 import { checkReelCut, formatReelReport } from "./check";
 import { reelCutSchema, type ReelCut } from "./schema";
+import { spliceOptionsFor } from "./splice";
 import { assertReelCap, reelBudgetFor, reelSourceFingerprint, writeReelFilm } from "./store";
 
 export interface ReelBuildStatus {
@@ -181,7 +182,7 @@ export function compileReel(input: {
     if (!spec) return { errors: ["scene reel needs the shared design/design.json to re-resolve its narration cues"], findings: [] };
     const resolved = resolveDesignCharacters(spec, pkg);
     if (resolved.errors.length) return { errors: resolved.errors, findings: [] };
-    const compiled = compileDesign(reel, spec, words, long.design?.source === "server-model" ? "server-model" : "agent", { characters: resolved.characters, collapsed, format: "reel" });
+    const compiled = compileDesign(reel, spec, words, long.design?.source === "server-model" ? "server-model" : "agent", { characters: resolved.characters, collapsed, format: "reel", splice: spliceOptionsFor(cut.splice) });
     if (!compiled.film) return { errors: compiled.errors, findings: [] };
     reel = compiled.film;
     collapsedClips = compiled.collapsedClips ?? [];
