@@ -327,12 +327,11 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 ## Video model policy
 
-- Generate and fix with Claude Sonnet 5.5 (`claude`, `claude-sonnet-5-5`).
-- Review with Gemini 3.8 Flash (`agy`).
+- Generate and fix in the agent session the user started the film with, on its own harness and model. Never hard-code a fix or generation model.
+- A replacement agent starts only when that session is gone, and inherits its harness and model (`backend/agentSession/originSession.ts`).
+- Review with Gemini 3.8 Flash (`agy`). Read `aideos.config.json` through `backend/aideosConfig.ts`.
 - Do not use Gemini 3.1 Pro for generation unless the captain explicitly asks.
-- Never hard-code a video model. Read `aideos.config.json` through `backend/aideosConfig.ts`.
-- `aideos all-check` launches its agent from that config with an explicit `--model`.
-- Per-run `--agent` and `--model` override the config.
+- `aideos all-check` run from an agent session starts no agent. Per-run `--agent` and `--model` start a replacement on purpose.
 - A forbidden generation model needs `--allow-forbidden-model`.
 - See `docs/REVIEW.md`, section 5.
 

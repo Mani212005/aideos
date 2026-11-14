@@ -53,7 +53,7 @@ export async function deliverReel(slug: string, opts: ReelWriterOptions = {}): P
   }
   const mode = opts.mode ?? "inline";
   if (mode === "server") {
-    const caller = opts.llmCaller === undefined ? await generationCaller() : opts.llmCaller;
+    const caller = opts.llmCaller === undefined ? await generationCaller(undefined, undefined, slug) : opts.llmCaller;
     if (!caller) throw new ProductionError("reel", "server reel writer is disabled");
     const system = fs.readFileSync(briefFile, "utf8") + "\nReturn only the complete reel/cut.json object. Never record captain approval.";
     let previous = fs.existsSync(cutFile) ? fs.readFileSync(cutFile, "utf8") : "No cut yet.";

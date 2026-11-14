@@ -15,9 +15,11 @@ import { attachCommand, herdrLocationSchema, type HerdrLocation } from "./herdr"
 
 const lockSchema = z.object({
   slug: z.string(),
-  agent: z.enum(["claude", "agy"]),
+  agent: z.string().min(1),
   startedAt: z.string(),
   launcherPid: z.number().int(),
+  /** True when the fixes run in the session that started the film: the lock names that session, and no workspace of ours exists. */
+  inSession: z.boolean().optional(),
   herdr: herdrLocationSchema.optional(),
 });
 /** Who holds the video, with a location once the Herdr workspace has been created. */
@@ -67,12 +69,17 @@ export function readLock(slug: string): LockRecord | null {
 // Decides whether the run a lock names is still going.
 export function lockIsLive(lock: LockRecord, deps: LockDeps): boolean {
   if (lock.herdr) return deps.paneLive(lock.herdr);
+  // An in-session run lives as long as the user's own agent process does (launcherPid is that agent's pid).
+  if (lock.inSession) return deps.pidAlive(lock.launcherPid);
   const age = deps.now() - Date.parse(lock.startedAt);
   return age < STARTING_GRACE_MS && deps.pidAlive(lock.launcherPid);
 }
 
 // Describes where a live run is, for the refusal message and the status command.
 export function describeLock(lock: LockRecord): string {
+  if (lock.inSession) {
+    return `${lock.agent} session since ${lock.startedAt}, the one that started the film${lock.herdr ? ` (Herdr pane ${lock.herdr.paneId})` : ""}`;
+  }
   const where = lock.herdr
     ? `Herdr workspace "all-check: ${lock.slug}", pane ${lock.herdr.paneId} (attach: ${attachCommand(lock.herdr)})`
     : "a run that is still starting";
@@ -126,6 +133,12 @@ export function readOwnedWorkspace(slug: string): HerdrLocation | null {
   } catch {
     return null;
   }
+}
+
+// Records where the session that owns an in-session run lives, without claiming a workspace as ours to close.
+export function attachSessionToLock(slug: string, herdr: HerdrLocation | undefined): void {
+  const lock = readLock(slug);
+  if (lock && herdr) fs.writeFileSync(lockPath(slug), JSON.stringify({ ...lock, herdr }, null, 2) + "\n");
 }
 
 // Releases a video's lock.

@@ -1,6 +1,6 @@
 /**
  * File Description: Registers the `aideos all-check` commands on the backend CLI: `all-check <slug>`
- * launches the background agent, and `all-check round|frames|finish|status|wait|rollback <slug>` are
+ * starts a run (in the caller's own agent session, or a replacement agent when that session is gone), and `all-check round|frames|finish|status|wait|rollback <slug>` are
  * the commands that agent (and the calling agent) run. Also rewrites `all-check <sub> ...` into the
  * hyphenated command names so both spellings work. Exit codes: 0 good, 1 not all good, 2 could not
  * run (bad input, preflight, a tool failed), 3 wait timed out, 4 the agent stopped without a result.
@@ -11,6 +11,7 @@
 import { formatScore } from "../geminiReview/verdictPolicy";
 import path from "node:path";
 import type { Command } from "commander";
+import { deliverFeedbackToOrigin } from "./feedback";
 import {
   AllCheckError,
   finishRun,
@@ -82,27 +83,34 @@ export function describeResult(result: AllCheckResult): string {
 export function registerAllCheckCommands(program: Command): void {
   program
     .command("all-check")
-    .description("Run the whole video check (render long and reel, measured review, Gemini review, fix, repeat) in a background agent in its own Herdr workspace")
+    .description("Run the whole video check (render long and reel, measured review, Gemini review, fix, repeat). The agent session you run it from does the fixing; a replacement agent is started only when no session is running")
     .argument("<slug>", "film slug under videos/")
     .option("--reference <mp4>", "reference video the long cut must win or tie against in the cross-review")
     .option("--rounds <n>", "round budget (default 6)")
     .option("--target <score>", "reviewer score both formats must reach (default 9.0)")
-    .option("--agent <name>", "background agent: claude or agy (default: videoModels.generation.agent in aideos.config.json)")
-    .option("--model <id>", "generation model for this run (default: videoModels.generation.model in aideos.config.json)")
+    .option("--agent <name>", "start a replacement agent of this kind: claude, agy, codex or opencode (default: the session you run this from; else the harness recorded for the film)")
+    .option("--model <id>", "model for the replacement agent (default: the model of the session it replaces)")
     .option("--allow-forbidden-model", "allow a generation model the config forbids (gemini-3.1-pro) for this run")
     .option("--wait", "stay and wait for the result, then print it")
     .action(async (slug: string, flags: { reference?: string; rounds?: string; target?: string; agent?: string; model?: string; allowForbiddenModel?: boolean; wait?: boolean }) => {
       try {
         const options = parseAllCheckOptions(slug, flags);
         const started = startAllCheck(options);
-        console.log(`all-check started for "${slug}" with the ${started.agent.agent} agent on ${started.agent.model}${started.agent.note ? ` (${started.agent.note})` : ""}.`);
-        console.log(`  workspace: all-check: ${slug}, pane ${started.workspace.paneId} (watch or step in: ${started.workspace.attachCommand})`);
-        if (started.workspace.warning) console.log(`  ${started.workspace.warning}`);
+        const model = started.agent.model ?? "its own default model";
+        if (started.mode === "in-session") {
+          console.log(`all-check set up for "${slug}". No new agent was started: THIS ${started.agent.agent} session (${model}) runs the rounds and makes the fixes.`);
+          console.log(`  next:    read the brief below, then run: aideos all-check round ${slug} --format long`);
+        } else {
+          console.log(`all-check started for "${slug}" with a replacement ${started.agent.agent} agent on ${model}${started.agent.note ? ` (${started.agent.note})` : ""}: ${started.agent.source === "session" ? "the session that started the film is gone, so it inherits that session's agent and model" : "as requested"}.`);
+          console.log(`  workspace: all-check: ${slug}, pane ${started.workspace?.paneId} (watch or step in: ${started.workspace?.attachCommand})`);
+          if (started.workspace?.warning) console.log(`  ${started.workspace.warning}`);
+        }
         console.log(`  brief:   ${started.briefPath}`);
         console.log(`  result:  ${started.resultPath}`);
-        console.log(`  wait:    aideos all-check wait ${slug}`);
+        if (started.mode === "launched") console.log(`  wait:    aideos all-check wait ${slug}`);
         if (started.tookOverStaleLock) console.log("  (the earlier pane is no longer running its agent, so its lock was replaced)");
-        if (flags.wait) await runWait(slug, 240, 20);
+        if (flags.wait && started.mode === "launched") await runWait(slug, 240, 20);
+        else if (flags.wait) console.log("  (--wait has no effect here: this session is the one doing the work, so there is nothing to wait for)");
       } catch (err) {
         fail(err);
       }
@@ -126,6 +134,8 @@ export function registerAllCheckCommands(program: Command): void {
           deps,
         );
         const round = records[0].round;
+        const delivery = deliverFeedbackToOrigin(slug, records);
+        if (delivery.delivered) console.error(`review feedback: ${delivery.reason}`);
         const note = settleRound(slug, round, readRecords(slug));
         const config = readConfig(slug);
         const strays = strayFiles(slug, REPO_ROOT);

@@ -12,9 +12,9 @@ import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 /** The two deliverables of a film: 16:9 long-form and 9:16 reel. */
 export type CheckFormat = "long" | "reel";
 
-/** Coding agents that can run as the background agent. */
-export type AgentName = "claude" | "agy";
-export const AGENT_NAMES: readonly AgentName[] = ["claude", "agy"];
+/** Coding agents aideos can start as a replacement agent (the same list as the harnesses it recognizes as an originating session). */
+export type AgentName = "claude" | "agy" | "codex" | "opencode";
+export const AGENT_NAMES: readonly AgentName[] = ["claude", "agy", "codex", "opencode"];
 
 export const DEFAULT_ROUNDS = 6;
 export const DEFAULT_TARGET = 9.0;
@@ -33,7 +33,7 @@ export interface AllCheckOptions {
   target: number;
   /** Background agent, when named on the command line. */
   agent?: AgentName;
-  /** Generation model for this run, overriding aideos.config.json. */
+  /** Model for a replacement agent started by this run (default: the originating session's own model). */
   model?: string;
   /** Lets a model the config forbids for generation (gemini-3.1-pro) run anyway. */
   allowForbiddenModel?: boolean;
@@ -46,9 +46,12 @@ export interface AllCheckConfig {
   reference?: string;
   rounds: number;
   target: number;
-  agent: AgentName;
-  /** The generation model the background agent was started with. */
-  model?: string;
+  /** The agent doing the fixing: the originating session itself (inSession) or a replacement started because that session was gone. */
+  agent: string;
+  /** The model that agent runs, when known (null: the harness's own default). */
+  model?: string | null;
+  /** True when the fixes run in the session that started the film and no new agent was started. */
+  inSession?: boolean;
   startedAt: string;
   /** Whether the studio was already listening when the run started: only a studio all-check owns is shut down at the end. */
   studioWasRunning: boolean;
@@ -126,7 +129,7 @@ export interface AllCheckResult {
   roundBudget: number;
   roundsUsed: number;
   reference?: string;
-  agent: AgentName;
+  agent: string;
   /** The round the verdict is taken from (the passing re-check of both, or the best round). */
   bestRound: number | null;
   long: { score: number | null; passed: boolean; round: number | null; finalPath: string | null } | null;

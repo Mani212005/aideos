@@ -1,8 +1,9 @@
 /**
  * File Description: Loads `aideos.config.json` (repo root), the committed home of the video model
- * policy: which agent and model generate and fix a film (all-check's background agent), which
- * agent and model review it (gemini-review, all-check, pairwise), and which generation models are
- * refused unless a run passes an explicit override. It also validates the delivery settings (the
+ * policy: which agent and model review a film (gemini-review, all-check, pairwise), which generation
+ * models are refused unless a run passes an explicit override, and an optional `generation` override.
+ * Generation and fixing follow the user's own agent session by default (the agent and model recorded
+ * in backend/agentSession/originSession.ts); `generation` is used only when no session is recorded. It also validates the delivery settings (the
  * end card and the reel length budget) through `src/dl/delivery.ts`, which owns their shape so the
  * browser bundle and Node agree. Node-only, with the file path injectable so tests never read the
  * real config.
@@ -14,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { parseDeliveryConfig, type DeliveryConfig } from "../src/dl/delivery";
+import { readOriginSession } from "./agentSession/originSession";
 
 /** An agent CLI plus the model id it is run with. */
 export interface AgentModel {
@@ -23,7 +25,11 @@ export interface AgentModel {
 
 /** The video model policy. */
 export interface VideoModelPolicy {
-  generation: AgentModel;
+  /**
+   * Optional override for generation and fixing when no agent session is recorded (a headless step). Absent by
+   * default: a fix runs in, or inherits, the session the user started the film with, never a model fixed here.
+   */
+  generation?: AgentModel;
   reviewer: AgentModel;
   /** Model id fragments refused for generation (case-insensitive, "." and "-" interchangeable). */
   forbiddenGenerationModels: string[];
@@ -39,6 +45,9 @@ export interface AideosConfig {
 
 /** An unusable config or a refused model, as one clear message. */
 export class AideosConfigError extends Error {}
+
+/** No agent session is recorded for the film and no generation override is configured: there is no model to run. */
+export class NoGenerationModelError extends AideosConfigError {}
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 
@@ -73,7 +82,7 @@ export function loadAideosConfig(file: string = configPath()): AideosConfig {
   return {
     schema: "aideos.config/1",
     videoModels: {
-      generation: parseAgentModel(models.generation, "videoModels.generation"),
+      ...(models.generation === undefined ? {} : { generation: parseAgentModel(models.generation, "videoModels.generation") }),
       reviewer: parseAgentModel(models.reviewer, "videoModels.reviewer"),
       forbiddenGenerationModels: forbidden as string[],
     },
@@ -118,15 +127,25 @@ function runGeneration(command: string, args: string[]): Promise<string> {
   });
 }
 
-// Creates the server text caller from the committed generation policy, never the reviewer model.
-export function generationCaller(file?: string, runner: GenerationRunner = runGeneration): (prompt: string, system: string) => Promise<string> {
+// Creates the server text caller for a film: the film's recorded originating session (agent and model) when
+// there is one, else the explicit videoModels.generation override, else a clear refusal. Never the reviewer model.
+export function generationCaller(file?: string, runner: GenerationRunner = runGeneration, filmId?: string): (prompt: string, system: string) => Promise<string> {
   const policy = loadAideosConfig(file).videoModels;
-  const { agent, model } = policy.generation;
-  if (agent !== "claude" || /gemini/i.test(model) || forbiddenGenerationMatch(model, policy)) {
-    throw new AideosConfigError(`server design requires an allowed Claude generation model; configured ${agent} ${model}`);
+  const origin = filmId ? readOriginSession(filmId) : null;
+  const chosen: { agent: string; model: string | null } | undefined = origin ?? policy.generation;
+  if (!chosen) {
+    throw new NoGenerationModelError(
+      `server design needs a model to run and none is known: no agent session is recorded for ${filmId ? `"${filmId}"` : "this film"} ` +
+        `(aideos all-check records the session you start it from) and aideos.config.json has no videoModels.generation override. ` +
+        `Use the connected-agent design mode, or set videoModels.generation.`,
+    );
+  }
+  const { agent, model } = chosen;
+  if (agent !== "claude" || (model !== null && (/gemini/i.test(model) || forbiddenGenerationMatch(model, policy)))) {
+    throw new AideosConfigError(`server design requires an allowed Claude generation model; ${origin ? "the session recorded for this film" : "configured"} is ${agent} ${model ?? "(its own default model)"}`);
   }
   return (prompt, system) => runner("claude", [
-    "--print", "--model", model, "--output-format", "text", "--tools", "",
+    "--print", ...(model ? ["--model", model] : []), "--output-format", "text", "--tools", "",
     "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence",
     "--system-prompt", system, prompt,
   ]);

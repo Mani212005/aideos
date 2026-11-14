@@ -220,7 +220,7 @@ To eliminate model position bias and multimodal cross-alignment hallucinations w
 
 ---
 
-## 3. The whole check in a background agent (`aideos all-check`)
+## 3. The whole check in your own agent session (`aideos all-check`)
 
 `aideos all-check <slug>` is the single command (and the `all-check` skill, see below) that takes a film to
 "good" on **both formats**: it composes render, `aideos review`, `aideos gemini-review`, the pairwise
@@ -240,7 +240,7 @@ workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for what the Exp
 ```bash
 aideos all-check hnsw                                     # defaults: 6 rounds, 9.0 target
 aideos all-check hnsw --reference ref.mp4 --rounds 8 --target 9.2
-aideos all-check hnsw --agent claude                      # background agent: claude or agy
+aideos all-check hnsw --agent codex --model <id>          # start a replacement agent on purpose: claude, agy, codex or opencode
 aideos all-check wait hnsw                                # block until the result file exists, print scores and paths
 aideos all-check status hnsw                              # rounds so far
 ```
@@ -248,19 +248,32 @@ aideos all-check status hnsw                              # rounds so far
 ### What happens
 
 1. **Preflight** (before any agent starts; one message listing each problem with its exact fix): the video
-   package, its voiceover, ffmpeg/ffprobe, tesseract, Herdr 0.8.0+ with a reachable server, the background agent's CLI, and the agy login (the
+   package, its voiceover, ffmpeg/ffprobe, tesseract, Herdr 0.8.0+ with a reachable server, the replacement agent's CLI (only when one must be started; Herdr and that CLI are skipped for an in-session run), and the agy login (the
    Gemini review runs plain `agy`, checked with `agy models`).
-2. **One run per video.** `videos/<slug>/all-check/lock.json` records the Herdr socket, workspace and pane running the agent. A second
+2. **One run per video.** `videos/<slug>/all-check/lock.json` records the Herdr socket, workspace and pane running the agent (for an in-session run: the user's own session, live while its pane or agent process is). A second
    run is refused and pointed at it. A pane that is gone or has returned to its shell makes the lock stale.
    If Herdr cannot confirm pane or process state, all-check keeps the lock and reports the query error with a retry hint;
    it never treats an indeterminate result as stale.
    A tmux-era lock is refused with its exact deletion path; remove it only after that old run is over.
-3. **Launch.** The brief (`all-check/brief.md`, readable, it is exactly what the agent is told) and `launch.sh`
-   are written and a new unfocused Herdr workspace named `all-check: <slug>` starts the agent with all permissions pre-approved: `claude
-   --model <model> --dangerously-skip-permissions "<prompt>"` or `agy --model <model> --prompt-interactive "<prompt>"
-   --dangerously-skip-permissions`. The agent and model come from the video model policy in `aideos.config.json`
-   (see "Video model policy" below): Claude Sonnet 5.5, whichever agent invoked all-check. Only `--agent` / `--model`
-   change it for one run. Inside Herdr, the workspace opens on the caller's server. From a plain terminal,
+3. **Who fixes: the session that started the film.** Start records that session in `videos/<slug>/origin-session.json`
+   (`backend/agentSession/originSession.ts`): its harness (claude, codex, agy, opencode, from `AIDEOS_AGENT`, the
+   Herdr pane's detected agent, `AI_AGENT` or the harness's own variables), its model (`AIDEOS_AGENT_MODEL`,
+   `ANTHROPIC_MODEL` for claude, or the `--model` on the agent's own command line; otherwise `null`, because
+   some harnesses do not expose it, and then the harness uses the model the user configured for it) and its Herdr pane.
+   - **In-session (the normal case).** Run from that agent session, all-check starts no agent. The brief
+     (`all-check/brief.md`) is addressed to the session itself: it runs `all-check round`, reads the REVISE
+     feedback in the output, and fixes the film with its own harness and model. A round run from another terminal
+     types the review result into the originating session's Herdr pane (`herdr agent prompt`, `backend/allCheck/feedback.ts`)
+     instead of starting anything.
+   - **Replacement (only when no agent session is running, or `--agent`/`--model` is passed).** `brief.md` and
+     `launch.sh` are written and a new unfocused Herdr workspace named `all-check: <slug>` starts the agent with all
+     permissions pre-approved, for example `claude [--model <model>] --dangerously-skip-permissions "<prompt>"`,
+     `codex [--model <model>] --dangerously-bypass-approvals-and-sandbox "<prompt>"`, `opencode [--model <model>] --prompt "<prompt>"`
+     or `agy --model <model> --prompt-interactive "<prompt>" --dangerously-skip-permissions`. It inherits the recorded
+     session's harness and model; precedence is the flags, then the recorded session, then the optional
+     `videoModels.generation` override (see "Video model policy" below), else all-check refuses and says to pass
+     `--agent`/`--model`. A model that is not recorded is left to the harness (agy always needs an explicit model).
+   Inside Herdr, the replacement workspace opens on the caller's server. From a plain terminal,
    it opens on the running default server. If no server is reachable, preflight tells you to start `herdr`
    and detach with `ctrl+b q`. Install Herdr with `brew install herdr`.
    Click the workspace or use the printed server-specific `herdr agent attach` command to watch or step in.
@@ -348,13 +361,14 @@ The committed `aideos.config.json` at the repo root is the one place the video m
 
 | Role | Agent | Model | Read by |
 |---|---|---|---|
-| Generation and fixing | `claude` | `claude-sonnet-5-5` | `aideos all-check` (background agent launch command), server look and design (`backend/aideosConfig.ts`) |
+| Generation and fixing | the user's own agent session | its own model (recorded in `origin-session.json`) | `aideos all-check` (in-session, or a replacement that inherits it), server look and design (`backend/aideosConfig.ts`) |
+| Optional `generation` override | `claude` or `agy` | any model id | only when no session is recorded for the film; absent by default (not set in the committed config) |
 | Reviewer | `agy` | `gemini-3.8-flash-low` | `aideos gemini-review`, `aideos all-check`, `--pairwise` (an explicit model option, then `AIDEOS_GEMINI_REVIEW_MODEL` / `GEMINI_MODEL`, still win) |
 
 Gemini 3.1 Pro is not part of this: `forbiddenGenerationModels` lists `gemini-3.1-pro`, and `all-check` refuses it
 (exit 2, with the message naming the override) unless the run passes `--allow-forbidden-model`. Per-run overrides:
 `aideos all-check <slug> --agent agy --model <id>`. `--agent agy` without `--model` runs the configured reviewer model,
-never agy's own default. A missing or malformed config is an error, not a silent default.
+never agy's own default. No fix or revision model is hard-coded: if you work in Codex, Codex fixes; in Opus, Opus fixes. A missing or malformed config is an error, not a silent default.
 
 ## Dots stage evidence
 
@@ -405,7 +419,7 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 - Look planning and design delivery live in `backend/designSpec/designer.ts`; `ProductionRequest.design`
   (`backend/pipeline/types.ts`) selects inline, agent, server or explicit templates. Inline is the
   default: follow the `needs_look` / `needs_design` result's next steps and rerun the same command.
-  Server mode uses `videoModels.generation` through `backend/aideosConfig.ts`. Node tests skip live
+  Server mode uses the film's recorded agent session (claude only, headless), else the optional `videoModels.generation` override, through `backend/aideosConfig.ts`; with neither it reports that no model is known. Node tests skip live
   agent delivery while retaining the inline stop behavior; choose templates explicitly for legacy
   compiler tests. See [docs/PRODUCTION_PIPELINE.md](PRODUCTION_PIPELINE.md) for resume semantics.
 - Any module the editor dev server can reach (vite.config imports the pipeline) must be safe to bundle as ESM: no bare `require.main === module` guards (use the `typeof require` form in `backend/scene/buildSvgSources.ts`) and no Remotion bundler or renderer imports (which is why `backend/sceneKit/reviewStills.ts` is not re-exported from the kit index).
@@ -421,7 +435,7 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 
 ### All-check (the whole review in one background agent)
 
-- `aideos all-check <slug>` (`backend/allCheck/`, [docs/REVIEW.md](REVIEW.md) section 3, skill `.agents/skills/all-check/SKILL.md`, linked from `.claude/skills`) preflights, takes a per-video lock, writes a brief and opens an unfocused Herdr workspace with a pre-approved `claude` or `agy` that loops render, measured review, Gemini review, frame check, fix on `videos/<slug>/` until long and reel both pass. Pass/fail comes only from the tool-written records in `videos/<slug>/all-check/`; the agent never scores or writes them. A code fix goes through a treehouse worktree and a PR, never main.
+- `aideos all-check <slug>` (`backend/allCheck/`, [docs/REVIEW.md](REVIEW.md) section 3, skill `.agents/skills/all-check/SKILL.md`, linked from `.claude/skills`) preflights, takes a per-video lock, records the originating agent session and writes a brief; the session it was run from (or, only when none is running, a replacement that inherits its harness and model in an unfocused Herdr workspace) loops render, measured review, Gemini review, frame check, fix on `videos/<slug>/` until long and reel both pass. Pass/fail comes only from the tool-written records in `videos/<slug>/all-check/`; the agent never scores or writes them. A code fix goes through a treehouse worktree and a PR, never main.
 - The tool, not the prompt, keeps a run honest: a worse round is rolled back to the best film automatically, a new round needs the previous frame check recorded, `finish` restores the best round's film when nothing passed, `wait` closes a run whose agent went quiet, and files the agent creates outside `videos/<slug>/` are reported (`backend/allCheck/best.ts`).
 - Every outside effect (Herdr, agy, render, notifications, studio) is injected, so `backend/allCheck/allCheck.test.ts` covers parsing, preflight, lock, rounds and verdict with no model or window. Keep it that way for new steps.
 - `cleanModelJsonResponse` strips a code fence with any language tag (a `python` fence crashed a pairwise run); extend it rather than parsing reviewer JSON anywhere else.
@@ -435,8 +449,8 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 
 ### Video model policy (`aideos.config.json`)
 
-- Generation and fixing is Claude Sonnet 5.5 (`claude`, `claude-sonnet-5-5`); review is Gemini 3.8 Flash (`agy`). Gemini 3.1 Pro is out for generation unless the captain explicitly asks. Both live in the committed `aideos.config.json`, loaded by `backend/aideosConfig.ts`; never hard-code a video model elsewhere, read the config.
-- `aideos all-check` launches its background agent from that config with an explicit `--model` regardless of which agent invoked it (the old "invoking agent / saved default" choice is gone); `backend/geminiReview` takes the reviewer model from it. Per-run `--agent`/`--model` override; a forbidden generation model needs `--allow-forbidden-model`. See [docs/REVIEW.md](REVIEW.md) section 5.
+- Generation and fixing follow the user's own agent session (its harness and model, recorded in `videos/<slug>/origin-session.json`); review is Gemini 3.8 Flash (`agy`). Gemini 3.1 Pro is out for generation unless the captain explicitly asks. The reviewer lives in the committed `aideos.config.json`, loaded by `backend/aideosConfig.ts`; never hard-code a fix or generation model.
+- `aideos all-check` starts no agent when run from an agent session: that session does the fixing. A replacement agent starts only when no session is running, inherits the recorded harness and model, and fails loudly when none is recorded; `backend/geminiReview` takes the reviewer model from the config. Per-run `--agent`/`--model` override; a forbidden generation model needs `--allow-forbidden-model`. See [docs/REVIEW.md](REVIEW.md) section 5.
 
 ### Gemini 3.8 Flash video quality review loop (9.0+ bar)
 

@@ -2510,7 +2510,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const film = posted?.success ? posted.data : fs.existsSync(file) ? filmSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8'))) : null;
             if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });
             const { serverDesignCaller } = await import('../backend/designSpec/designer.ts');
-            const request = await motion.requestMotion(film, shotId, String(body?.prompt ?? ''), { ownerKey: ownerOf(req), llmCaller: await serverDesignCaller() });
+            const request = await motion.requestMotion(film, shotId, String(body?.prompt ?? ''), { ownerKey: ownerOf(req), llmCaller: await serverDesignCaller(filmId) });
             sendJson(res, 200, { ok: true, request });
           })().catch((err) => sendJson(res, 400, { error: err instanceof Error ? err.message : String(err) }));
           return;

@@ -1,7 +1,10 @@
 /**
  * File Description: The entry points of `aideos all-check`: start a run (preflight, lock, config,
- * brief, Herdr workspace for the background agent), read its status, wait for its result, and roll the
- * film back to a round's backup. Rounds and the finish step live in round.ts and finish.ts.
+ * brief), read its status, wait for its result, and roll the film back to a round's backup. The fixing
+ * agent is the session the user started the film with: when all-check is run from that agent session
+ * nothing new is started and the session itself runs the rounds and fixes (so its own harness and model
+ * do the work). Only when the caller is no agent session (or names --agent / --model) is a replacement
+ * agent started in its own Herdr workspace, inheriting the recorded session's harness and model. Rounds and the finish step live in round.ts and finish.ts.
  * Inputs and outputs: slug and options -> full multi-round all-check execution result.
  * Used by: backend/allCheck/cli.ts, backend/allCheck/agent.ts.
  */
@@ -12,14 +15,15 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { writeRepoBaseline } from "./best";
 import { resolveAgent, type ResolvedAgent } from "./agent";
+import { detectOriginSession, readOriginSession, realDetectDeps, recordOriginSession, type OriginSession } from "../agentSession/originSession";
 import { buildBrief } from "./brief";
 import { launchAgentWorkspace, writeLaunchScript, type LaunchedWorkspace } from "./launch";
 import { attachCommand, closeIdleWorkspace, herdrSocket, paneInfo, paneLive, readPane, realHerdr, type AgentStatus, type HerdrLocation, type HerdrRun } from "./herdr";
-import { acquireLock, attachWorkspaceToLock, readOwnedWorkspace, recordOwnedWorkspace, describeLock, lockIsLive, readLock, realLockDeps, releaseLock, type LockDeps } from "./lock";
+import { acquireLock, attachSessionToLock, attachWorkspaceToLock, readOwnedWorkspace, recordOwnedWorkspace, describeLock, lockIsLive, readLock, realLockDeps, releaseLock, type LockDeps } from "./lock";
 import { formatPreflight, packageProblems, REAL_PREFLIGHT_DEPS, runPreflight, type PreflightDeps } from "./preflight";
 import { finishRun } from "./finish";
 import { latestRound, readConfig, readRecords } from "./round";
-import { allCheckDir, AllCheckError, type AllCheckConfig, type AllCheckOptions, type AllCheckResult } from "./types";
+import { allCheckDir, AllCheckError, type AgentName, type AllCheckConfig, type AllCheckOptions, type AllCheckResult } from "./types";
 
 export * from "./types";
 export { parseAllCheckOptions } from "./options";
@@ -37,8 +41,10 @@ export interface StartDeps {
   herdr: HerdrRun;
   studioRunning: () => boolean;
   now: () => Date;
+  /** The agent session this command runs in, or null when it is not one (a plain terminal, a script). */
+  session?: () => OriginSession | null;
   /** Opens only the run's own workspace; tests replace it. */
-  launch: (slug: string, scriptPath: string, agent: AllCheckConfig["agent"], onCreated: (location: HerdrLocation) => void) => LaunchedWorkspace;
+  launch: (slug: string, scriptPath: string, agent: AgentName, onCreated: (location: HerdrLocation) => void) => LaunchedWorkspace;
 }
 
 // The real dependencies of a start.
@@ -54,15 +60,22 @@ export function realStartDeps(): StartDeps {
       return r.status === 0 && r.stdout.trim().length > 0;
     },
     now: () => new Date(),
+    session: () => detectOriginSession(realDetectDeps()),
     launch: (slug, scriptPath, agent, onCreated) => launchAgentWorkspace(slug, scriptPath, { agent, onCreated, env: process.env, herdr }),
   };
 }
 
+/** The agent doing the fixing and how it was chosen. */
+export type StartedAgent = Omit<ResolvedAgent, "agent"> & { agent: string };
+
 /** What a start reports back. */
 export interface StartResult {
   slug: string;
-  agent: ResolvedAgent;
-  workspace: LaunchedWorkspace;
+  agent: StartedAgent;
+  /** "in-session": the caller's own session runs the rounds and fixes, nothing was started. "launched": a replacement agent was started. */
+  mode: "in-session" | "launched";
+  /** The replacement agent's Herdr workspace; null in-session. */
+  workspace: LaunchedWorkspace | null;
   briefPath: string;
   resultPath: string;
   tookOverStaleLock: boolean;
@@ -80,10 +93,21 @@ function archivePreviousRun(slug: string, stamp: string): void {
   for (const name of old) fs.renameSync(path.join(dir, name), path.join(dest, name));
 }
 
-// Starts a run: refuses a second one, checks preflight, then opens the agent's Herdr workspace.
+// True when the lock names the very session that is starting again (same pane or same agent process).
+function isSameSession(lock: ReturnType<typeof readLock>, live: OriginSession): boolean {
+  if (!lock?.inSession) return false;
+  return (lock.herdr && live.herdr && lock.herdr.paneId === live.herdr.paneId && lock.herdr.socketPath === live.herdr.socketPath) || (live.pid !== undefined && lock.launcherPid === live.pid);
+}
+
+// Starts a run: refuses a second one, checks preflight, records the originating session, then either keeps the work in that session or (when it is gone) opens a replacement agent's Herdr workspace.
 export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realStartDeps()): StartResult {
   const slug = options.slug;
-  const agent = resolveAgent({ flag: options.agent, modelFlag: options.model, allowForbiddenModel: options.allowForbiddenModel });
+  const live = deps.session?.() ?? null;
+  // Naming an agent or model is an explicit request for that agent; otherwise the session the user is in does the work.
+  const inSession = live !== null && !options.agent && !options.model;
+  const agent: StartedAgent = inSession
+    ? { agent: live.agent, model: live.model, source: "session" }
+    : resolveAgent({ flag: options.agent, modelFlag: options.model, allowForbiddenModel: options.allowForbiddenModel, origin: live ?? readOriginSession(slug) });
   const startedAt = deps.now().toISOString();
 
   // One run per video: the lock is taken first so a second start is refused before any slower check.
@@ -91,13 +115,19 @@ export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realSt
   const missingPackage = packageProblems(slug);
   if (missingPackage.length) throw new AllCheckError(formatPreflight(slug, missingPackage));
   const previousWorkspace = readOwnedWorkspace(slug);
-  const { tookOverStale } = acquireLock({ slug, agent: agent.agent, startedAt, launcherPid: process.pid }, deps.lock);
+  // The session that holds the lock asking again is a restart, not a second run.
+  if (live && isSameSession(readLock(slug), live)) releaseLock(slug);
+  const { tookOverStale } = acquireLock(
+    { slug, agent: agent.agent, startedAt, launcherPid: inSession ? (live.pid ?? process.ppid) : process.pid, ...(inSession ? { inSession: true } : {}) },
+    deps.lock,
+  );
   try {
-    const problems = runPreflight({ slug, agent: agent.agent, socketPath: herdrSocket(deps.env) }, deps.preflight, deps.herdr);
+    const problems = runPreflight({ slug, agent: inSession ? null : (agent.agent as AgentName), socketPath: herdrSocket(deps.env) }, deps.preflight, deps.herdr);
     if (problems.length) throw new AllCheckError(formatPreflight(slug, problems));
 
     if (previousWorkspace) closeIdleWorkspace(previousWorkspace, deps.herdr);
     archivePreviousRun(slug, startedAt);
+    if (live) recordOriginSession(slug, live);
     const config: AllCheckConfig = {
       schema: "aideos.all-check.config/1",
       slug,
@@ -106,6 +136,7 @@ export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realSt
       target: options.target,
       agent: agent.agent,
       model: agent.model,
+      inSession,
       startedAt,
       studioWasRunning: deps.studioRunning(),
     };
@@ -114,11 +145,16 @@ export function startAllCheck(options: AllCheckOptions, deps: StartDeps = realSt
     writeRepoBaseline(slug, REPO_ROOT);
     const briefPath = path.join(dir, "brief.md");
     fs.writeFileSync(briefPath, buildBrief(config, REPO_ROOT));
-    const scriptPath = writeLaunchScript(slug, agent.agent, briefPath, agent.model, deps.env);
+    const resultPath = path.join(dir, "result.json");
 
-    const workspace = deps.launch(slug, scriptPath, agent.agent, (location) => recordOwnedWorkspace(slug, location));
+    if (inSession) {
+      attachSessionToLock(slug, live.herdr);
+      return { slug, agent, mode: "in-session", workspace: null, briefPath, resultPath, tookOverStaleLock: tookOverStale };
+    }
+    const scriptPath = writeLaunchScript(slug, agent.agent as AgentName, briefPath, agent.model, deps.env);
+    const workspace = deps.launch(slug, scriptPath, agent.agent as AgentName, (location) => recordOwnedWorkspace(slug, location));
     attachWorkspaceToLock(slug, workspace);
-    return { slug, agent, workspace, briefPath, resultPath: path.join(dir, "result.json"), tookOverStaleLock: tookOverStale };
+    return { slug, agent, mode: "launched", workspace, briefPath, resultPath, tookOverStaleLock: tookOverStale };
   } catch (err) {
     releaseLock(slug);
     throw err;
@@ -222,7 +258,7 @@ export async function waitForResult(
     if (status.state === "finished") return { outcome: "result", result: status.result, status };
     if (status.state === "stopped") return { outcome: "stopped", status };
     if (status.state === "idle") return { outcome: "idle", status };
-    if (opts.idle) {
+    if (opts.idle && !readLock(slug)?.inSession) {
       const location = readLock(slug)?.herdr;
       const agentStatus = location ? opts.idle.agentStatus(location) : "unknown";
       const fallback = agentStatus === "unknown";
