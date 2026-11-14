@@ -3,8 +3,8 @@
  * to the agent session the user started the film with, as a prompt in that session's Herdr pane, so the
  * fix happens there with that agent's own harness and model and no new agent is started. When the round
  * runs inside that very session the command output already is the delivery, so nothing is typed twice.
- * Inputs and outputs: slug, round records and the recorded origin session -> a prompt in the origin pane, or a stated reason it was not sent.
- * Used by: backend/allCheck/cli.ts.
+ * Inputs and outputs: slug, round records (or a ready message) and the recorded origin session -> a prompt in the origin pane, or a stated reason it was not sent.
+ * Used by: backend/allCheck/cli.ts, backend/compare/cli.ts.
  */
 
 import { readOriginSession } from "../agentSession/originSession";
@@ -39,18 +39,13 @@ export function formatFeedbackMessage(slug: string, records: FormatRoundRecord[]
   return lines.join("\n");
 }
 
-// Sends the review result to the originating session's pane when that session is alive and is not the caller.
-export function deliverFeedbackToOrigin(
-  slug: string,
-  records: FormatRoundRecord[],
-  deps: FeedbackDeps = { herdr: realHerdr, env: process.env },
-): FeedbackOutcome {
-  if (records.every((r) => r.passed)) return { delivered: false, reason: "the round passed: nothing to revise" };
+// Sends a message to the originating session's pane when that session is alive and is not the caller. It starts no agent: it only types into the pane of the session that started the film.
+export function deliverMessageToOrigin(slug: string, message: string, deps: FeedbackDeps = { herdr: realHerdr, env: process.env }, subject = "round"): FeedbackOutcome {
   const origin = readOriginSession(slug);
   if (!origin?.herdr) return { delivered: false, reason: "no originating session pane is recorded for this film" };
   const here = deps.env.HERDR_ENV === "1" ? deps.env.HERDR_PANE_ID : undefined;
   if (here && here === origin.herdr.paneId && herdrSocket(deps.env) === origin.herdr.socketPath) {
-    return { delivered: false, reason: "this round ran in the originating session itself: its output is the delivery" };
+    return { delivered: false, reason: `this ${subject} ran in the originating session itself: its output is the delivery` };
   }
   let pane: ReturnType<typeof paneInfo>;
   try {
@@ -60,9 +55,19 @@ export function deliverFeedbackToOrigin(
   }
   if (!pane?.agent) return { delivered: false, reason: `the originating session's pane ${origin.herdr.paneId} is gone or no longer runs an agent` };
   try {
-    herdrJson(deps.herdr, origin.herdr.socketPath, ["agent", "prompt", origin.herdr.paneId, formatFeedbackMessage(slug, records)], z.object({ result: z.unknown() }).passthrough());
+    herdrJson(deps.herdr, origin.herdr.socketPath, ["agent", "prompt", origin.herdr.paneId, message], z.object({ result: z.unknown() }).passthrough());
   } catch (err) {
     return { delivered: false, reason: `sending to the originating session failed: ${err instanceof Error ? err.message : String(err)}` };
   }
   return { delivered: true, reason: `sent to the ${pane.agent} session that started the film (pane ${origin.herdr.paneId})` };
+}
+
+// Sends the review result to the originating session's pane when that session is alive and is not the caller.
+export function deliverFeedbackToOrigin(
+  slug: string,
+  records: FormatRoundRecord[],
+  deps: FeedbackDeps = { herdr: realHerdr, env: process.env },
+): FeedbackOutcome {
+  if (records.every((r) => r.passed)) return { delivered: false, reason: "the round passed: nothing to revise" };
+  return deliverMessageToOrigin(slug, formatFeedbackMessage(slug, records), deps, "round");
 }

@@ -132,5 +132,5 @@ captain's request for this tool (reference follow-up, ideas 1 and 13).
 
 ## Next step
 
-`aideos compare <ours.mp4> <ref.mp4>` (side by side against a reference, a diff table of these same metrics) is the next, separate step. Reading a seed
-into `aideos look brief` is not done yet.
+`aideos compare <ours.mp4> <ref.mp4>` (side by side against a reference, a diff table of these same metrics, with the same two-method rule) is documented in [COMPARE.md](COMPARE.md).
+Reading a seed into `aideos look brief` is not done yet.

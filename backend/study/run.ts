@@ -46,7 +46,7 @@ export function slugify(name: string): string {
 }
 
 // Finds the word list next to a reference (<name>.words.json), if any.
-function sidecarWords(file: string): string | undefined {
+export function sidecarWords(file: string): string | undefined {
   const candidate = path.join(path.dirname(file), `${path.basename(file).replace(/\.[^.]+$/, "")}.words.json`);
   return fs.existsSync(candidate) ? candidate : undefined;
 }
