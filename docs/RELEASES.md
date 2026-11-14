@@ -135,7 +135,7 @@ A gate is reused only when **all** of these hold, each checked now rather than t
 - Its key matches exactly. The key is the sha256 of: the candidate commit, the release version, a content hash
   of every film input the gate reads (the file contents of the acceptance package in a stable order, minus the
   renders and review output that the acceptance copy already skips; for the later gates the produced package
-  and the rendered mp4), the gate's own configuration (platform and Node version for CI; the production
+  and the rendered mp4), the gate's own configuration (platform, architecture, Node version and browser executable for CI; the production
   settings and the committed `aideos.config.json`; the measured-review thresholds; the Gemini reviewer agent and model and the
   verdict policy numbers: the 9.0 bar, the 0.5 second-draw band, the two-draw cap and the failed-gate cap), and the key of the gate before
   it. Any change to the commit, one byte of film, or a threshold or policy value re-runs that gate.
