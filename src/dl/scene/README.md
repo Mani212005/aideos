@@ -238,3 +238,72 @@ Scene length is derived from the narration, never chosen. `framesForAudioMs` con
 length to frames; `alignSceneToAudio` re-clocks a whole scene to a new take, retiming keyframe
 tracks and every animation clip proportionally so visuals stay on their beats instead of
 drifting. Validation Rule 14 holds the two within 50ms.
+
+## Scene engine and scene film rules (moved from AGENTS.md)
+
+### Scene graph and custom SVG animation
+
+- The scene engine renders a static `.svg` asset plus a separate declarative animation timeline. The clip format, its rules and the determinism contract are documented in [src/dl/scene/README.md](README.md); read that before touching `src/dl/scene/**`.
+- `src/dl/scene/**` is browser bundle code and must stay free of Node imports, because Remotion bundles it. The filesystem half lives in `src/dl/scene/validateSceneNode.ts` and `backend/scene/loadSceneAssets.ts`, which are the Node-only modules by design. `SceneView` therefore takes asset source text as a prop rather than reading it.
+- Rasterize review stills with headless Chrome via `backend/scene/renderStill.ts`, never `qlmanage`: qlmanage ignores the document aspect ratio and emits a square thumbnail, so stills made with it are a misleading record of the frame. `renderFrameStill` verifies the PNG dimensions and throws if they are wrong.
+
+### Scene films (a film whose canvas is a scene)
+
+- Characters are data (`aideos.character/1`): author, check and draw them with `characters/README.md` and
+  `aideos character check|sheet`; architecture and the retargeted receive are in `docs/CHARACTER_ENGINE.md`.
+  After any spec edit re-stamp its hash (`--stamp`); after editing an engine file listed in
+  `src/dl/scene/rigs/registry.ts` run `npx tsx scripts/freeze_stage_resources.ts`.
+- For Three stage contracts, resource freezes, cue binding or stage review evidence, read
+  `docs/THREE_STAGE_P0.md`. Rendering and fixture tests must run sequentially because both rewrite
+  the generated active-film module.
+
+- A film's canvas is either the node graph (`film.canvas`) or a vector scene (`film.scene`), never
+  both: `src/dl/Film.tsx` renders `SceneStage` in place of `CanvasGraph` when `scene` is present.
+  `examples/hello-scene/` is the tiny worked example (see its [README](../../../examples/hello-scene/README.md))
+  and `test_fixtures/packages/still-talking/` the full-length one; `backend/stillTalking/` rebuilds it
+  into `videos/still-talking/` on the shared kit.
+- One `Scene` spans the whole film, not one per shot. That is what makes continuity real, because
+  the engine holds each element's last value until another clip takes over. Shots then carry only
+  the text cards that overlay it.
+- `SceneView` is pure and cannot read disk, so committed assets reach the Remotion bundle through
+  the generated, gitignored `src/dl/scene/assets/svgSources.generated.ts`. Regenerate it with
+  `npm run ensure:generated` whenever a `visuals/*.svg` changes.
+- Compose a scene film on a **square** scene space (1920 x 1920). Each format takes a 1080-wide
+  strip through the centre, so the shared safe area is the centre 1080 square; the wide cut also
+  sees the left and right wings, and the reel also sees the top and bottom bands. `SceneStage`
+  covers rather than contains, so a scene of any other aspect would be cropped, not letterboxed.
+- Two rules the engine cannot check, both enforced by the `Timeline` builder in the scene-film kit
+  (`backend/sceneKit/`, which every scene film builds on): a clip must start from the value the previous clip on that
+  property left behind (otherwise the value snaps on screen), and one element may only ever be
+  given one transform `origin` (the compiler applies the last origin it sees to every frame).
+  `Timeline.camera()` likewise enforces camera track continuity from the previous camera clip,
+  preventing visual snaps on camera movement.
+- `backend/sceneKit/` is also the authoring layer, so a new scene film writes no kit code of its own:
+  `Canvas` (`canvas.ts`: markup plus continuity-checked motion, and `lyric()` kinetic type that
+  throws when a row no longer matches the narration or overflows its bounds; a token like `HNSW{4}`
+  covers four spoken words), `svg.ts` (palette, `el`/`g`/`text`, seeded `rng`), `typeMetrics.ts` plus
+  `wordWidths.json` (kerned Geist word widths measured in Chrome; add a film's new words with
+  `measureWords.ts`, which merges rather than replaces), `wrap.ts` (`wrapBalanced`), `chrome.ts`
+  (corners, backdrop, readouts), and the Node-only tools `voiceover.ts` (`produceVoiceover({slug,
+  beats, alignment})`: synthesize, master, optional Whisper word alignment, write the spine),
+  `preview.ts` (fast Chrome frames) and `reviewFrames.ts` (`npx tsx backend/sceneKit/reviewFrames.ts
+  <slug>`). A film supplies its beats, artwork and accent; topic scenes stay in the film's own folder.
+- Aim a cue at a spoken word, not at a fraction of its shot: the payoff word of a sentence is
+  usually near its end. The kit's `createCues(timing).word()` reads the narration's own offsets and throws
+  when the phrase is no longer in that shot, so rewriting a line cannot silently mis-time the film.
+- Chrome drawn over a scene needs its own ground. A node graph leaves the bottom of the frame
+  empty, but a star field will put a dot straight through a glyph of the chapter rail, so `Rail`
+  carries its own scrim rather than trusting what is behind it.
+- Opacity has one trap worth knowing: an authored `opacity` attribute and a clip that drives
+  opacity both want the same attribute. The compiled state wins only when a clip actually drives
+  it (`SvgElementState.opacityDriven`), so an element authored `opacity="0"` can be faded fully in,
+  and an element authored faint can be translated without being forced opaque.
+- An asset meant to live in one format's exclusive band (the reel's top/bottom, or the wide cut's
+  left/right wings) has to fit its whole bounding box, not just its placement anchor, inside that
+  band. `SceneStage` covers with a single fixed window per format, so anchoring an element at the
+  band's edge is not enough if the artwork's own extent (control points, stroke half-width) reaches
+  back across the 1500-world-unit line into the shared safe square: it leaks a truncated fragment
+  into the other format. Compute the local bounding box (not just the authored viewBox, which can
+  be smaller than what a curve's control points actually draw) and choose `position`/`scale` so
+  the whole thing clears the line with margin, the way `backend/stillTalking/scene.ts`'s
+  `trajectory` asset does.

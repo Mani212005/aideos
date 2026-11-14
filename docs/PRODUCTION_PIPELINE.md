@@ -406,3 +406,63 @@ fails with `caption-placement` and names the shot instead of losing the exceptio
 Agents and the MCP AI edit flow use `set_caption_placement` through the transactional edit
 interpreter. The operation takes `format`, `scope` (`{kind:"film"}` or `{kind:"shot",shotId}`),
 and `placement` (`{x,y,w}` or `{preset:"top"|"middle"|"bottom"}`). Locked targets are refused.
+
+## Agent rules detail (moved from AGENTS.md)
+
+### Claude screenplay intake
+
+- `backend/scriptIntake.ts` is the single source of truth for parsing/serializing Claude-style screenplays (`## timestamp - Title` headers, `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` tag blocks, plus legacy `VO:`/`Voiceover:`/`Narrator:` conventions), extracting zero-leakage spoken narration, deterministically converting a user's plain-text story (paragraphs plus `#Start`/`#Conclusion` style markers) into the internal tagged form via `plainTextToTaggedScript` (tagged scripts pass through unchanged, `[VISUAL]`/`[ON SCREEN]` slots start empty, and agents fill only those), and compiling sub-shots and animated primitive blocks (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) for Remotion using TypeSafe Jev (`backend/jev.ts`) for semantic primitive selection with confidence gating and deterministic fallback.
+- Jev is asked once per film, not once per beat: `backend/jev.ts`'s `prefetchShotVisualAnswers`/`prefetchPrimitiveAnswers` send every beat in one batched request and `resolveShotVisual`/`resolvePrimitive` gate each answer against the beat's live state. Never call `selectShotVisual`/`selectPrimitive` in a per-beat loop; they remain the path for a single decision and for test mocks.
+- `npm run eval:visuals [-- --jev]` scores shot-visual choice on the labelled beats in `backend/eval/shot_visual_cases.json` (heuristic, raw Jev, and what ships after gating and grounding). Re-run it before changing a threshold, the criteria wording or the model, and add a labelled case only for a bad pick the captain identified, with his label.
+- It has no Node-only imports, so `editor/src/components/ScriptEditor.tsx` (browser bundle), `editor/vite.config.ts` (dev server), and `backend/audio.ts` all import it directly instead of re-implementing screenplay parsing. Extend this module rather than adding another parser copy.
+
+### Transcription and edit context
+
+- `backend/transcribe.ts`'s `transcribe(src, opts, deps)` transcribes a video/audio source into
+  word-level timings: Deepgram's prerecorded `listen` API (`smart_format`, `punctuate`,
+  `filler_words`, `utterances` all on) when a key is configured, else a local Whisper CLI
+  fallback. Both paths return the same `TranscribedWord[]` shape (the existing `WordInfo` plus a
+  per-word `confidence`), so downstream code never needs to know which backend ran. The network
+  fetch, the API key resolution, the ffmpeg extraction and the Whisper subprocess are all
+  injectable via `deps`, mirroring the `llmCaller` injection convention elsewhere, so tests
+  exercise real routing/parsing logic without ever touching the network, .env files or a real
+  ASR process. `writeImportWords` persists the result
+  to `videos/<slug>/import_words.json` (`{words: TranscribedWord[]}`, each carrying a `filler`
+  flag once a detection pass has run) plus `import_captions.vtt` via `audio.ts`'s `buildCaptionsVtt`.
+- `backend/editContext/` holds the pure signal-detection and context-assembly modules
+  `detectFillers`, `detectSilences` and `buildEditContext`, each taking plain data and a
+  `TranscribedWord[]`/`LayeredFilm` and returning a typed result with no I/O. `detectFillers`
+  always flags a fixed strong-filler lexicon ("um", "uh", ...) and only flags a context-dependent
+  word or phrase ("like", "you know") when the ASR backend's own confidence for every word in the
+  span falls below a threshold, so a clearly-spoken "I like this" is never touched.
+- `backend/audio.ts`'s `resolveAudioSourcePath` resolves candidates against both `process.cwd()`
+  and a `REPO_ROOT` computed from `__dirname`. The editor dev server is launched with
+  `cd editor && npm run dev`, so its `process.cwd()` is `editor/`, not the repo root every other
+  caller (the pipeline CLI, `npm test`) runs from; a cwd-only lookup silently failed to find any
+  asset resolved from inside the editor (media upload playback, footage audio peaks, and now
+  transcription) whenever the source was a relative path like `media/<file>`. Any new code that
+  resolves a repo-relative asset path from within `editor/vite.config.ts` should reuse this helper
+  rather than building its own `process.cwd()`-relative lookup.
+
+### Production pipeline notes
+
+- `backend/pipeline/run.ts`'s `runProduction` is the one programmatic entry point from a script to finished mp4s (intake, narrate, look, design, reel, b-roll, assemble, render, verify), with typed progress, per-stage resume via `videos/<slug>/run-state.json`, and stage-tagged errors. `backend/mcp/server.ts` exposes the same thing as MCP tools over stdio. Both are documented in [docs/PRODUCTION_PIPELINE.md](PRODUCTION_PIPELINE.md); drive a film through `runProduction`.
+- `backend/pipeline/director.ts`'s `runDirector` is the auto-prompt entry point above `runProduction`: it drafts a screenplay from a raw prompt with an LLM briefed on [docs/DIRECTOR_GUIDE.md](DIRECTOR_GUIDE.md), validates the draft with `backend/scriptIntake.ts`'s own parser (retrying a rejected draft with the specific reason fed back), then hands a passing draft to `runProduction` unchanged. `transformProseToScreenplay` is deprecated and unused: a user's plain-text story is converted deterministically by `plainTextToTaggedScript`, never reformatted by a model. `generateScreenplay` is the injection point tests use instead of a real model call; the real path always calls the model, so the plan is never a canned or templated screenplay. Reachable via `npm run backend -- direct "<prompt>"` or `aideos direct "<prompt>"`; like `aideos film` it stops at a draft after `assemble` unless `--final-export` is passed.
+- The render stage's disk guard and its fixed PNG settings are documented in [docs/CI.md](CI.md).
+- Narration is assembled in the sample domain (`backend/pcm.ts`), never by concatenating encoded files: trim, boundary fade, exact gap insertion and peak normalization on Float32 samples. That is what keeps segment offsets exact and boundaries click-free, and `backend/voiceover_stutter.test.ts` holds each defect class closed. Speech synthesis backends live in `backend/tts.ts`; Kokoro is the offline default and runs in a separate process (`backend/kokoroWorker.mjs`) because its voice-file resolution and ONNX thread pool both break under the TypeScript loader.
+- Components must read colour through `useTokens()` from `src/dl/tokens.ts`, not the module-level `PALETTE`/`rule()`/`FAINT`/`SUNKEN` constants: those are derived from the paper-white theme and paint near-black text on the dark canvases every film actually uses. `useLayout().label()` now resolves its muted colour from the rendering theme too, so mono labels are correct without each call site overriding `color`.
+- `src/dl/camera.ts` rounds cumulative timeline position, not individual shot durations, and `CanvasGraph`'s camera transform needs `transform-origin: 0 0` to agree with `solveCam`/`projectBox`. Both are load-bearing for audio-visual sync and framing; see the comments at each site before changing them.
+- Voiceover audio and captions are resolved directly within each video package under `videos/<slug>/` (accessible via the tracked `public/videos` symlink). `produceAudioPipeline` (`backend/audio.ts`) writes `voiceover.wav`, `captions.vtt`, and `voiceover_words.json` directly into the package directory without copying into `public/`, keeping `public/` limited to tracked files.
+- Library-backed soundtrack behavior and audio commands are documented in [Audio Library and Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
+
+- `/api/generate-voiceover` synthesizes through `backend/voiceSynthesis.ts` (Kokoro, Deepgram, Google, `say`). Kokoro holds ~400 MB, so it is skipped on hosts under 1.5 GB (`AIDEOS_KOKORO=1/0` overrides): loading it in the studio server OOM-killed the 512 MB Render free container and every request 502'd. A total failure returns 503 with per-provider reasons.
+
+### Jev shot-visual choice
+
+- `backend/jev.ts` is the single shared decision client (CHOICE plus confidence gating plus heuristic fallback): primitive choice plus `selectShotVisual` (Text/StatCounter/TokenStrip/Plot/MatrixGrid/Distribution/LayerStack/ScaleBar). Do not fork a second client; reuse its endpoint/timeout/mock shape.
+- `backend/pipeline/design.ts`'s `compileFilmFromScreenplayAsync` is the compile path: model-authored visuals validated against `blockSchema`, footage precedence preserved. `backend/pipeline/run.ts` design stage uses it.
+- The Jev endpoint is text-only (no image input), so it cannot judge rendered stills. SVG asset routing is deliberately not part of this compile path yet. Rendered frames are judged after the design by the vision judge (see below), which gives Jev text only.
+
+### Long dashes and screenplay parsing
+
+- `backend/scriptIntake.ts` legitimately matches literal em/en dash characters as part of normalizing user-authored screenplay input (e.g. bare timestamp headers like "0:00" through "0:20" followed by a dash-separated title). To keep the module free of literal dash bytes while preserving that behavior, it and its test (`backend/claude_script_intake.test.ts`) use `\u2014`/`\u2013` escapes inside regex and template-literal fixtures instead of the raw characters. Follow the same pattern (escape sequence, not raw character) whenever dash-handling code or its test fixtures genuinely need to represent an em/en dash.
