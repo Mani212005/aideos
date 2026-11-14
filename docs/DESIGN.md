@@ -120,3 +120,71 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 - **Vector Graphics**: Pure SVG scene engine (`src/dl/scene/`).
 - **Typography & Motion**: Remotion `@remotion/layout-utils` `measureText`, Remotion `useCurrentFrame()`, `interpolate()`, `spring()`.
 - **Backend & CLI**: Node.js, `tsx`, Express REST API, Remotion CLI.
+
+## Editor rules detail (moved from AGENTS.md)
+
+### Editor design system (editor/**)
+
+- The editor chrome has its own design system, entirely separate from the rendered-video design
+  language in `src/dl/README.md`. Tokens live in `editor/src/styles/tokens.css`, are exposed to
+  Tailwind through `editor/tailwind.config.js`, and are consumed through the primitives in
+  `editor/src/components/ui/`. Never hard-code a hex value in an editor component: add or use a token.
+- The editor is a light application end to end. The one dark token is `--nb-matte`, reserved for the
+  matte directly behind the video frame and for previews *of* rendered video (for example the kinetic
+  caption preview). Everything else is paper, sunken paper or ink.
+- Tailwind's JIT caches generated classes: after editing `tailwind.config.js` or adding a token,
+  restart the Vite dev server or new utility classes silently resolve to their defaults.
+- Screens live in `editor/src/screens/` (one per stage in the left rail) and compose the components
+
+### Imported video and standalone overlay clips
+
+- `Film` carries `videoClips`/`overlayClips` arrays (`src/dl/schema.ts`), mirroring the `audioClips`
+  pattern: they are the authority for `video`/`image`/`text`/non-derived-`subtitle` layer clips once
+  any exist, written out by `convertLayeredFilmToFilm` and read back by `convertFilmToLayeredFilm`
+  (`src/dl/convertFilm.ts`) with `linkedClipId` kept symmetric between a video clip and its footage
+  audio counterpart in `audioClips`. A derived subtitle clip (from the voiceover words) is recognized
+  by its synthesized id (`clip-sub-<n>-...`) and never written out; only a standalone caption cue is.
+- `src/dl/Film.tsx`'s `FilmView` renders `film.videoClips` as full-bleed `<Sequence>`/`<OffthreadVideo>`
+  layers *behind* everything else, making the enclosing canvas background transparent (and skipping
+  the paper-grain/blueprint-grid/dot textures) whenever any exist, so the existing canvas/shot content
+  composites on top of the user's own footage instead of hiding it. `film.overlayClips` render above
+  that as simple text/image cards. Both are no-ops on a film with neither array, so every pre-existing
+  film renders unchanged. This is the one render tree both the editor's `<Player>` preview and the
+  Remotion CLI export (`Video.tsx` wraps `FilmView`) share, so a compositor change here reaches both.
+- `backend/timeline/layer_engine.ts`'s `importMediaAssetToLayeredFilm` always creates/uses a dedicated
+  `layer-audio-footage` lane for imported footage audio; it must never fall back to matching
+  `layer-audio-spine`, or the collision resolver ripples the import behind an existing voiceover clip.
+- `/api/media/upload` (`editor/vite.config.ts`) probes width/height/fps for a video via a second
+  `ffprobe` call and returns them alongside `duration`; `AssetBin`'s `MediaAsset` and `EditStage`'s
+  `insertAsset` thread `width`/`height` through to `importMediaAssetToLayeredFilm` so an imported
+  video's dimensions are known without re-probing.
+
+### Editor state and the timeline layer model
+
+- `editor/src/state/useFilmProject.ts` owns the open film, the single labelled undo history and
+  autosave. Screens never mutate the film directly: they call `commit(nextFilm, label)` so one user
+  gesture is always one undo step.
+- `editor/src/state/useLayeredTimeline.ts` is the only path from editor UI into
+  `backend/timeline/layer_engine.ts` and `layer_manager.ts`. It derives a `LayeredFilm`, applies one
+  engine operation, folds the result back with `convertLayeredFilmToFilm(next, film)` and commits it.
+  It also exposes `renderFilm`, the film with hidden lanes removed and muted lanes silenced, which is
+  what both the preview player and export use so the two always agree.
+- `convertLayeredFilmToFilm` takes the originating Film as a `base` argument. Passing it is required
+  for a lossless round trip: captions, voiceover metadata and per-shot fields the layer model does not
+  model are carried through from that base.
+- The pointer-drag state machine is pure and lives in `backend/timeline/drag_machine.ts` (not in the
+  editor) so its transitions can be regression tested in `drag_machine.test.ts`. The timeline attaches
+  its window pointer listeners unconditionally; attaching them only while a drag is open leaves a race
+  in which a fast release is missed and the gesture sticks.
+- The editor must not import `src/dl/films/*`. Those modules are rewritten on every autosave, so
+  importing them makes Vite hot-reload the whole page mid-edit. `editor/vite.config.ts` also lists
+  them (and `videos/**`) under `server.watch.ignored` for the same reason.
+- `src/dl/validateLayeredFilm.ts` and `backend/editPlanner/interpreter.ts` run in the page (the AI edit Apply gesture), so they
+  must stay free of Node built-ins and `process`: the on-disk source check lives in `backend/timeline/layerAssetCheck.ts`.
+  A Node import on a browser path passes every Node test and only fails in Chrome, so `backend/editPlanner/browserSafety.test.ts`
+  bundles the apply path and the whole studio and fails on an externalized module, and `backend/journeys/j3_studio_edit.journey.ts`
+  clicks Apply Edits in a real browser.
+- `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
+  built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
+  fetches peaks via `/api/audio/peaks` and falls back to in-browser decoding (`editor/src/components/timeline/useAudioPeaks.ts`).
+- `npm test` discovers every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob, so a new suite is run
