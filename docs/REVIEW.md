@@ -267,10 +267,10 @@ aideos all-check status hnsw                              # rounds so far
    `launch.sh` exports the caller's `HOME`, `PATH`, `AIDEOS_VIDEOS_DIR` and review model variables before starting
    the agent. Each Gemini review remains a bounded headless `agy -p` child process.
 4. **The agent runs the loop** with these commands (all `aideos all-check <sub> <slug>`, also spelled
-   `all-check-<sub>`): `round --format long|reel|both` renders through Remotion, backs up `film.json`
+   `all-check-<sub>`): `round --format long|reel|both` renders the film (natively when the native renderer supports it, else through Remotion), backs up `film.json`
    and the reel package (`all-check/backups/`), runs the measured review and the Gemini review (the measured `review.json` or `review.reel.json` is handed to
    the reviewer as context), runs the cross-review for the long cut when `--reference` was given, and extracts stills
-   every 4 s. Each render points Remotion at the requested film package and restores the previous active-film
+   every 4 s. A render that falls back to Remotion points it at the requested film package and restores the previous active-film
    selection afterward, including when rendering fails. `frames --round N --format F --clean | --issue "..."` records the agent's own frame check;
    `rollback --round N` restores a backup; `finish` closes the run. Order: long until it passes, then reel, then one
    final `round --format both`. Two rules are enforced by the tool, not the prompt: a round that scores lower than

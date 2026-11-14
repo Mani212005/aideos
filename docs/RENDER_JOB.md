@@ -11,13 +11,13 @@ and removes the partial video, render sidecar and mastering report. Cleanup runs
 The job copies its input film, checks delivery requirements and pending B-roll, prepares retimed
 audio, asks the backend to check its disk budget, renders, masters audio, probes the finished file,
 then writes `<output>.render.json`. That sidecar records the prepared film's canonical SHA-256 hash,
-requested profile policy, a per-setting `profileSettingsApplied` map, and probed video stream facts
+requested profile policy, the renderer that drew the file (`renderer`: `native` or `remotion`), a per-setting `profileSettingsApplied` map, and probed video stream facts
 (codec, pixel format and color range). This is input provenance, not an acceptance verdict or a hash
 of external footage, fonts or audio assets.
 
 `RENDER_PROFILES` is the shared policy table for `draft`, `review` and `final`. All currently request
-lossless intermediates, H.264 CRF 16, limited-range yuv420p and AAC at 320 kbps. A future native
-encoder can consume this data directly. The Remotion adapter expresses that policy for every caller
+lossless intermediates, H.264 CRF 16, limited-range yuv420p and AAC at 320 kbps. The native
+renderer consumes this data directly ([NATIVE_ENCODE.md](NATIVE_ENCODE.md)). The Remotion adapter expresses that policy for every caller
 through `FINAL_ENCODE_FLAGS` in `backend/pipeline/render.ts` (PNG frames, h264, CRF 16, yuv420p,
 AAC 320k), so its sidecar reports `profileSettingsApplied` true for each setting, alongside the
 actual probed stream facts. Extra arguments passed to `npm run render` follow those flags and can
@@ -29,6 +29,11 @@ its own measured disk budget, encodes, and releases resources. A Rust, Skia or f
 can replace this interface without changing lifecycle states or importing capture-framework types.
 The existing audio and probe functions are default services; tests use short synthetic services and
 encoders through the same public interface.
+
+Every caller hands the job `createSelectedRenderer` (`backend/rendererSelection.ts`), which chooses when the
+job prepares: the native renderer (`backend/nativeRenderer.ts`) for a film it supports, Remotion for every other
+film with the reasons logged; `AIDEOS_RENDERER=remotion` keeps every film on Remotion and `AIDEOS_RENDERER=native`
+requires native. A native failure fails the job. See [The renderer flag](NATIVE_RENDERER.md#the-renderer-flag).
 
 `backend/remotionRenderer.ts` is the thin Remotion compatibility adapter. It keeps the old pipeline,
 studio, review and manual commands, with the shared final encode flags and each caller's existing

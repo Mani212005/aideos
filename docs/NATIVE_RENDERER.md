@@ -1,5 +1,5 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer flag, determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
@@ -12,8 +12,9 @@ R2 of Phase 1 added the evaluator and the raster, with a CLI that renders one fr
 encoder and audio mux (`native/aideos-encode`, [NATIVE_ENCODE.md](NATIVE_ENCODE.md)). R4 connects them:
 `aideos-render video` renders a whole film to an mp4 through the R3 encoder, `aideos-render measure` gives
 the TypeScript emitter the raster's own text metrics, and the emitter (`backend/renderIr/emit.ts`) turns a
-scene film into the IR. Remotion stays the default renderer; `--renderer native` selects this one (see
-[The renderer flag](#the-renderer-flag)). The crate knows nothing of the `RenderJob` state machine: the
+scene film into the IR. Every render job (pipeline final render, studio Export, review and all-check renders,
+`aideos render` and `aideos reel`) draws a film natively when the emitter supports it in that format and renders
+every other film on Remotion as before (see [The renderer flag](#the-renderer-flag)). The crate knows nothing of the `RenderJob` state machine: the
 adapter in `backend/nativeRenderer.ts` hands it an IR path, a package directory and a format.
 
 ## Where things live
@@ -49,7 +50,9 @@ native/target/release/aideos-render video <ir.json> --format long|reel --out fil
     [--profile draft|review|final] [--backend auto|software|vaapi|videotoolbox] [--threads N] [--encoder-threads N]
 native/target/release/aideos-render measure <request.json>
 
-AIDEOS_RENDERER=native aideos render        # or: aideos render --renderer native; aideos reel --renderer native
+aideos render                               # native when it can draw the film, else Remotion (the reason is printed)
+AIDEOS_RENDERER=remotion aideos render      # kill switch: every film on Remotion (or --renderer remotion)
+AIDEOS_RENDERER=native aideos render        # require native: a film it cannot draw fails (or --renderer native)
 ```
 
 The CLI writes one PNG and prints one line (`wrote frame.png (1920x1080, long, frame 43, cpu) in 246 ms`).
@@ -297,15 +300,38 @@ music and audio clips, panels other than `frame`, more than one block per shot a
 
 ## The renderer flag
 
-`aideos render` and `aideos reel` (`scripts/render_active.ts`) take `--renderer remotion|native`, or read
-`AIDEOS_RENDERER`; Remotion is the default. Native is used only when the emitter supports the film in that
-format and the binary is built (`native/target/release/aideos-render`, or `AIDEOS_RENDER_BIN`); otherwise
-the render falls back to Remotion and prints why. The native adapter (`backend/nativeRenderer.ts`)
+Every render job chooses its renderer through `createSelectedRenderer` (`backend/rendererSelection.ts`): the
+pipeline's render stage (`backend/pipeline/run.ts`), the studio Export (`backend/exportJobs.ts`), the review and
+all-check render (`backend/geminiReview/render.ts`) and `aideos render` / `aideos reel`
+(`scripts/render_active.ts`, which also takes `--renderer`). The choice is made when the job prepares, on the film
+the job actually renders (after the studio's preparation), and is read from `AIDEOS_RENDERER`:
+
+| `AIDEOS_RENDERER` | Behaviour |
+| --- | --- |
+| unset or `auto` (default) | native when `nativeSupport` accepts the film in that format and the binary is built (`native/target/release/aideos-render`, or `AIDEOS_RENDER_BIN`); otherwise Remotion renders it exactly as before, and the log names every reason |
+| `remotion` | the kill switch: every film on Remotion |
+| `native` | native is required: a film it cannot draw, or a missing binary, fails the job with every reason |
+
+A failure of the native renderer on a film it accepted fails the job; it never falls back to Remotion. The job
+sidecar (`<output>.render.json`) records the renderer that drew the file (`renderer`), next to the profile
+settings it applied.
+
+**Encoder policy.** The job's profile decides the encode (the R3 policy in [NATIVE_ENCODE.md](NATIVE_ENCODE.md)):
+the pipeline's render stage, the studio Export and `aideos render` are `final` (x264 CRF 16, yuv420p, limited
+range); the review and all-check render is `review` (VAAPI or VideoToolbox after the conformance probe, else x264).
+The Remotion path keeps its own unchanged flags (`FINAL_ENCODE_FLAGS`).
+
+The native adapter (`backend/nativeRenderer.ts`)
 implements the RenderJob `Renderer` interface: `prepare` emits the IR and stages the package (IR, artwork,
 fonts, hard-linked audio) inside the job's attempt directory, `checkDiskBudget` needs room for the mp4 plus
 the shared 3 GiB reserve (no frame images are written), and `render` runs `aideos-render video` through the
 shared subprocess runner, which owns cancellation and the disk watchdog. The job's delivery checks,
-mastering, probe and sidecar are unchanged; the sidecar records the CRF as applied only when x264 encoded.
+mastering, probe and sidecar are shared; the sidecar records the CRF as applied only when x264 encoded. The
+studio's progress bar reads the binary's `frames D/T` lines (a frame counts once it is encoded).
+
+**Which films are native today.** Three-stage character films, node-graph films and the other refusals listed in
+[The emitter](#the-emitter-r4) stay on Remotion. In the headless journeys every render job renders a Three-stage
+or node-graph film, so the journeys still render on Remotion and the CI journeys job needs no Rust binary.
 
 ## Not yet native
 

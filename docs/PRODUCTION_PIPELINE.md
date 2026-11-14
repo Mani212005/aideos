@@ -67,8 +67,10 @@ package at `videos/<slug>/renders/<format>.mp4`. When `ProductionRequest.outDir`
 is written as `<outDir>/<slug>-<format>.mp4` instead.
 
 The shared render lifecycle, profile policy, cancellation behavior, and render sidecar format are
-documented in the [RenderJob reference](RENDER_JOB.md). The Remotion adapter retains the legacy
-active-film setup and renderer options.
+documented in the [RenderJob reference](RENDER_JOB.md). The render stage draws a film with the native renderer
+when it supports the film in that format and with Remotion otherwise, and its progress events name the choice and
+every reason ([The renderer flag](NATIVE_RENDERER.md#the-renderer-flag); `AIDEOS_RENDERER=remotion` is the kill
+switch). The Remotion adapter retains the legacy active-film setup and renderer options.
 
 After each render, the master stage measures the delivered MP4 with `ebur128` and targets -16 LUFS
 integrated within 0.5 LU and true peak at or below -1 dBTP. If limiting is needed, it encodes an AAC

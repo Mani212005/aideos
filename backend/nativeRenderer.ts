@@ -1,7 +1,7 @@
 /**
  * File Description: The native renderer behind the RenderJob `Renderer` interface (R4 of the native renderer plan). `prepare` emits the film's Render IR for the requested format and stages a self-contained render package (the IR, its SVG artwork, the vendored fonts and the narration) beside the job's output; `render` runs `aideos-render video` on it through the shared, renderer-neutral subprocess runner, which owns cancellation and the disk reserve. It imports no Remotion type and never touches the Remotion path.
  * Inputs and outputs: a renderer-neutral RenderRequest -> an encoded mp4 at the request's output path, with the encode policy it actually applied reported through `profileSettingsApplied`.
- * Used by: backend/rendererSelection.ts (the `AIDEOS_RENDERER=native` flag), scripts/render_active.ts, backend/nativeRenderer.test.ts.
+ * Used by: backend/rendererSelection.ts (the renderer choice), backend/pipeline/run.ts, backend/exportJobs.ts, backend/geminiReview/render.ts, scripts/render_active.ts, backend/nativeRenderer.test.ts.
  */
 
 import { execFileSync } from "node:child_process";
@@ -122,6 +122,7 @@ export function createNativeRenderer(options: NativeRendererOptions = {}, deps: 
     audioBitrate: true,
   };
   return {
+    name: "native",
     profileSettingsApplied: applied,
     /** Emits and stages the render package inside the job's attempt directory. */
     prepare(request) {
