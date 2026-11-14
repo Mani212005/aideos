@@ -1,17 +1,20 @@
 //! File Description: The public renderer: loads a Render IR and its package's assets once (SVG artwork parsed into the retained model, vendored fonts, caption phrases per format), checks what the IR loader cannot (asset files exist inside the package, declared element ids exist in the artwork, every SVG text resolves to a vendored font), then renders any frame of either format on Skia's CPU rasterizer, the deterministic reference. A frame is a pure function of (IR, assets, format, frame number), so frames render in any order and a cold render is byte-identical to a warm one.
-//! Inputs and outputs: an IR file or `RenderIr` plus the package directory -> `Renderer`; (format, frame) -> `RenderedFrame` (straight-alpha RGBA8) and its PNG bytes.
+//! Inputs and outputs: an IR file or `RenderIr` plus the package directory -> `Renderer`; (format, frame) -> `RenderedFrame` (straight-alpha RGBA8) and its PNG bytes. A `stage3d` node (the Three stage, `aideos.render/2`) loads its mesh asset here and is drawn by the CPU rasterizer in `raster::stage3d`.
 //! Used by: the `aideos-render` CLI (src/main.rs), tests/*.rs, and later the encode stage (R3) and the RenderJob runner.
 
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
+use aideos_render_ir::mesh::decode_mesh;
 use aideos_render_ir::types::{Asset, Node, RenderIr};
 use aideos_render_ir::{load_from_path, LoadError};
 use skia_safe::{surfaces, AlphaType, Canvas, ColorType, ImageInfo, Pixmap};
 
 use crate::eval::captions::build_phrases;
 use crate::eval::Format;
+use crate::raster::stage3d::Stage3dScene;
 use crate::raster::text::{Fonts, TextSpec};
 use crate::raster::{self, Loaded};
 use crate::svg::{self, SvgDocument};
@@ -37,8 +40,10 @@ pub enum RenderError {
     FrameOutOfRange { frame: u32, duration_frames: u32 },
     /// Skia could not create a surface or encode the image.
     Skia(String),
-    /// The IR is valid but uses something this renderer does not draw yet (the Three stage until P4.2).
+    /// The IR is valid but uses something this renderer does not draw.
     Unsupported(String),
+    /// The Three stage could not be loaded or drawn.
+    Stage3d(String),
 }
 
 impl fmt::Display for RenderError {
@@ -50,6 +55,7 @@ impl fmt::Display for RenderError {
             RenderError::Svg { id, message } => write!(f, "svg asset {id:?}: {message}"),
             RenderError::Font(m) => write!(f, "font: {m}"),
             RenderError::Unsupported(m) => write!(f, "not drawn natively yet: {m}"),
+            RenderError::Stage3d(m) => write!(f, "stage3d: {m}"),
             RenderError::FormatNotDeclared(format) => {
                 write!(f, "the Render IR declares no {} format", format.name())
             }
@@ -142,6 +148,44 @@ fn read_asset(package: &Path, asset: &Asset) -> Result<Vec<u8>, RenderError> {
     })
 }
 
+/// The Three stage of an IR (at most one, at the top of the stage), loaded with its mesh file from the package.
+fn load_stage3d(
+    ir: &RenderIr,
+    package_dir: &Path,
+) -> Result<Option<Arc<Stage3dScene>>, RenderError> {
+    let Some(Node::Stage3d(node)) = ir
+        .stage
+        .iter()
+        .find(|n| matches!(n, Node::Stage3d(_)))
+    else {
+        return Ok(None);
+    };
+    let asset = ir
+        .assets
+        .iter()
+        .find(|a| a.id() == node.mesh)
+        .ok_or_else(|| {
+            RenderError::Stage3d(format!(
+                "{}: the mesh asset {:?} is not declared",
+                node.id, node.mesh
+            ))
+        })?;
+    let Asset::Mesh(mesh) = asset else {
+        return Err(RenderError::Stage3d(format!(
+            "{}: asset {:?} is not a mesh",
+            node.id, node.mesh
+        )));
+    };
+    let bytes = read_asset(package_dir, asset)?;
+    let parts = decode_mesh(&bytes, mesh).map_err(|e| RenderError::Asset {
+        id: mesh.id.clone(),
+        path: mesh.path.clone(),
+        reason: e.0,
+    })?;
+    let scene = Stage3dScene::load(node, parts).map_err(RenderError::Stage3d)?;
+    Ok(Some(Arc::new(scene)))
+}
+
 /// Visits every node of a tree, depth first.
 fn walk<'a>(nodes: &'a [Node], out: &mut Vec<&'a Node>) {
     for n in nodes {
@@ -171,13 +215,32 @@ impl Renderer {
 
     /// Loads a validated IR's assets from the package directory and prepares every frame-independent input.
     pub fn new(ir: RenderIr, package_dir: &Path) -> Result<Renderer, RenderError> {
-        // `aideos.render/2` carries the Three stage; drawing it is P4.2, so a document with one is refused whole.
-        if let Some(stage) = ir.stage.iter().find(|n| matches!(n, Node::Stage3d(_))) {
-            return Err(RenderError::Unsupported(format!(
-                "stage3d node {:?}: the Three stage is drawn by Remotion until P4.2 of the native renderer",
-                stage.id()
-            )));
-        }
+        Renderer::new_sharing(ir, package_dir, None)
+    }
+
+    /// Opens an IR file like `open`, reusing the Three stage another renderer of the same IR already loaded (its mesh and its painted faces, from `stage3d_scene`), so worker threads paint each face program once.
+    pub fn open_sharing(
+        ir_path: impl AsRef<Path>,
+        package_dir: Option<&Path>,
+        stage: Option<Arc<Stage3dScene>>,
+    ) -> Result<Renderer, RenderError> {
+        let ir_path = ir_path.as_ref();
+        let ir = load_from_path(ir_path).map_err(RenderError::Ir)?;
+        let package = match package_dir {
+            Some(p) => p.to_path_buf(),
+            None => ir_path
+                .parent()
+                .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
+        };
+        Renderer::new_sharing(ir, &package, stage)
+    }
+
+    /// Loads a validated IR like `new`; `shared` is a Three stage loaded from the same IR, used instead of loading it again.
+    fn new_sharing(
+        ir: RenderIr,
+        package_dir: &Path,
+        shared: Option<Arc<Stage3dScene>>,
+    ) -> Result<Renderer, RenderError> {
         let mut svgs: BTreeMap<String, SvgDocument> = BTreeMap::new();
         let mut font_files = Vec::new();
         for asset in &ir.assets {
@@ -210,7 +273,7 @@ impl Renderer {
                         read_asset(package_dir, asset)?,
                     ));
                 }
-                // Images and audio are not drawn by the frame raster; a mesh only serves a stage3d node, refused above.
+                // Images and audio are not drawn by the frame raster; a mesh is read below, for the stage3d node that names it.
                 Asset::Image(_) | Asset::Audio(_) | Asset::Mesh(_) => {}
             }
         }
@@ -225,15 +288,25 @@ impl Renderer {
             }
         }
         let phrases = caption_phrases(&ir, &fonts);
+        let stage3d = match shared {
+            Some(scene) => Some(scene),
+            None => load_stage3d(&ir, package_dir)?,
+        };
         Ok(Renderer {
             loaded: Loaded {
                 ir,
                 svgs,
                 fonts,
                 phrases,
+                stage3d,
             },
             package_dir: package_dir.to_path_buf(),
         })
+    }
+
+    /// The loaded Three stage, to hand to `open_sharing` so other renderers of the same IR reuse it.
+    pub fn stage3d_scene(&self) -> Option<Arc<Stage3dScene>> {
+        self.loaded.stage3d.clone()
     }
 
     /// The loaded IR.
@@ -270,8 +343,7 @@ impl Renderer {
     /// Draws a frame onto any canvas of the format's size (a CPU raster or a GPU surface).
     pub fn draw(&self, canvas: &Canvas, format: Format, frame: u32) -> Result<(), RenderError> {
         let (w, h) = self.check(format, frame)?;
-        raster::draw_frame(canvas, &self.loaded, format, frame, w, h);
-        Ok(())
+        raster::draw_frame(canvas, &self.loaded, format, frame, w, h)
     }
 
     /// Renders a frame on Skia's CPU rasterizer, the deterministic reference.
@@ -279,7 +351,7 @@ impl Renderer {
         let (w, h) = self.check(format, frame)?;
         let mut surface = surfaces::raster_n32_premul((w as i32, h as i32))
             .ok_or_else(|| RenderError::Skia(format!("cannot create a {w}x{h} raster surface")))?;
-        raster::draw_frame(surface.canvas(), &self.loaded, format, frame, w, h);
+        raster::draw_frame(surface.canvas(), &self.loaded, format, frame, w, h)?;
         read_rgba(&mut surface, w, h)
     }
 }

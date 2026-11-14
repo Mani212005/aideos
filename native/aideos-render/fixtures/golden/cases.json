@@ -33,5 +33,25 @@
     "frames": [
       1848
     ]
+  },
+  {
+    "film": "iona-receive",
+    "format": "long",
+    "ir": "iona-receive/render.long.json",
+    "frames": [
+      30,
+      111,
+      180,
+      285
+    ]
+  },
+  {
+    "film": "iona-receive",
+    "format": "reel",
+    "ir": "iona-receive/render.reel.json",
+    "frames": [
+      111,
+      240
+    ]
   }
 ]

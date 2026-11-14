@@ -1,4 +1,4 @@
-//! File Description: Behavioural tests of the CPU raster through the public `Renderer`: cold renders are byte-identical across processes, any frame renders the same whatever was rendered before it (deterministic seeking), both formats have their sizes, element tracks and the camera move the pixels they should, and every load-time refusal (unknown format, frame out of range, missing or escaping asset, unsupported SVG, undeclared element, unvendored font, a Three stage it does not draw yet) names its cause.
+//! File Description: Behavioural tests of the CPU raster through the public `Renderer`: cold renders are byte-identical across processes, any frame renders the same whatever was rendered before it (deterministic seeking), both formats have their sizes, element tracks and the camera move the pixels they should, and every load-time refusal (unknown format, frame out of range, missing or escaping asset, unsupported SVG, undeclared element, unvendored font) names its cause.
 //! Inputs and outputs: the fixture package and scratch packages -> asserted frames, pixels and errors.
 //! Used by: `cargo test --manifest-path native/Cargo.toml`.
 
@@ -444,21 +444,6 @@ fn a_scratch_package_renders_from_the_ir_files_directory() {
     // 320 x 180 shows the scene at fit 1/6: the 200 unit square spans about 33 px round the centre.
     assert_eq!(pixel(&frame, 160, 90), [0xFF, 0, 0, 0xFF]);
     assert_eq!(pixel(&frame, 10, 10), [0, 0, 0, 0xFF]);
-}
-
-/// Checks that an aideos.render/2 document with a Three stage loads but the renderer refuses it, naming the step that draws it.
-#[test]
-fn a_three_stage_is_refused_until_it_is_drawn_natively() {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../aideos-render-ir/fixtures/valid/stage3d-minimal.json");
-    let ir = aideos_render_ir::load_from_path(&path).expect("the /2 example loads");
-    match Renderer::new(ir, &common::package_dir()) {
-        Err(e @ RenderError::Unsupported(_)) => {
-            let text = e.to_string();
-            assert!(text.contains("stage3d node \"stage\"") && text.contains("P4.2"), "{text}");
-        }
-        Err(other) => panic!("refused for another reason: {other}"),
-        Ok(_) => panic!("a stage3d document was accepted"),
-    }
 }
 
 /// Checks that a /2 document without a Three stage renders exactly like the same /1 document.

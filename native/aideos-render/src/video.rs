@@ -19,6 +19,7 @@ use aideos_render_ir::types::{Asset, Ease, RenderIr};
 use serde::Serialize;
 
 use crate::eval::Format;
+use crate::raster::stage3d::Stage3dScene;
 use crate::renderer::{RenderError, Renderer};
 
 /// How to render and encode.
@@ -178,8 +179,9 @@ struct ParallelSource {
 }
 
 impl ParallelSource {
-    /// Starts `threads` workers, each opening its own renderer, drawing frames `first..=last`.
-    fn start(ir_path: &Path, package: &Path, opts: &VideoOptions, first: u32, last: u32, size: (u32, u32), fps: u32) -> ParallelSource {
+    /// Starts `threads` workers, each opening its own renderer (sharing the Three stage, if the film has one), drawing frames `first..=last`.
+    fn start(ir_path: &Path, package: &Path, opts: &VideoOptions, frames: (u32, u32), size: (u32, u32), fps: u32, stage: Option<Arc<Stage3dScene>>) -> ParallelSource {
+        let (first, last) = frames;
         let threads = opts.threads.max(1);
         let window_size = (threads as u32) * 3;
         let counter = Arc::new(AtomicU32::new(first));
@@ -188,9 +190,9 @@ impl ParallelSource {
         let mut workers = Vec::new();
         for _ in 0..threads {
             let (tx, counter, window, cancel) = (tx.clone(), counter.clone(), window.clone(), opts.cancel.clone());
-            let (ir_path, package, format) = (ir_path.to_path_buf(), package.to_path_buf(), opts.format);
+            let (ir_path, package, format, stage) = (ir_path.to_path_buf(), package.to_path_buf(), opts.format, stage.clone());
             workers.push(std::thread::spawn(move || {
-                let renderer = match Renderer::open(&ir_path, Some(&package)) {
+                let renderer = match Renderer::open_sharing(&ir_path, Some(&package), stage) {
                     Ok(r) => r,
                     Err(e) => {
                         let _ = tx.send((counter.load(Ordering::SeqCst), Err(e.to_string())));
@@ -314,6 +316,7 @@ pub fn render_video(ir_path: &Path, package_dir: Option<&Path>, out: &Path, mut 
     let probe = Renderer::open(ir_path, Some(&package)).map_err(|e| e.to_string())?;
     let size = probe.frame_size(opts.format).map_err(|e| e.to_string())?;
     let ir = probe.ir().clone();
+    let stage = probe.stage3d_scene();
     drop(probe);
     let duration = ir.film.duration_frames.0;
     let (first, last) = opts.frames.unwrap_or((0, duration - 1));
@@ -321,7 +324,7 @@ pub fn render_video(ir_path: &Path, package_dir: Option<&Path>, out: &Path, mut 
         return Err(format!("frames {first}-{last} are not inside the film (frames 0 to {})", duration - 1));
     }
     let plan = audio_plan(&ir, &package, first, last)?;
-    let mut source = ParallelSource::start(ir_path, &package, &opts, first, last, size, ir.film.fps.0);
+    let mut source = ParallelSource::start(ir_path, &package, &opts, (first, last), size, ir.film.fps.0, stage);
     let mut encode_opts = EncodeOptions::new(opts.profile);
     encode_opts.backend = opts.backend;
     encode_opts.threads = opts.encoder_threads;
