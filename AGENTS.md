@@ -307,7 +307,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Keep every threshold in `backend/review/thresholds.ts`.
 - Re-run `npm run calibrate:review` after you change a threshold.
 - Review a character film in the own crop of each output. `backend/review/stageTruth.ts` is the one per-output summary.
-- Run `aideos all-check <slug>` for the whole review in one background agent.
+- Run `aideos all-check <slug>` for the whole review in your own agent session.
 - Take pass or fail only from the tool-written records in `videos/<slug>/all-check/`. Never score or write them yourself.
 - Fix code through a treehouse worktree and a PR. Never fix it on main.
 - Inject every outside effect of all-check (Herdr, agy, render, notifications, studio). Keep it that way for new steps.

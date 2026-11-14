@@ -4,7 +4,7 @@
 
 This document is the single source of truth for what makes a good aideos video. 
 
-Before you make or change any video: read this document, run deterministic checks with `aideos review <slug>`, and validate through the Gemini 3.8 Flash review with the full background agent check, `aideos all-check <slug>` (or one review of a rendered mp4 with `aideos gemini-review <mp4>`).
+Before you make or change any video: read this document, run deterministic checks with `aideos review <slug>`, and validate through the Gemini 3.8 Flash review with the full check, `aideos all-check <slug>` (run in your own agent session) (or one review of a rendered mp4 with `aideos gemini-review <mp4>`).
 
 ## Compulsory finishing steps
 

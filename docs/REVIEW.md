@@ -314,7 +314,7 @@ aideos all-check status hnsw                              # rounds so far
    `aideos all-check wait` exits 0 all good, 1 not all good, 3 still running at the timeout, 4 the agent pane
    closed or returned to its shell without a result.
 
-### Rules for the background agent
+### Rules for the fixing agent
 
 It works in the main aideos folder on `videos/<slug>/` only (`videos/` is gitignored, so a git worktree would
 not contain the video). A fix that needs aideos code (`src/`, `backend/`, `editor/`) goes into a treehouse worktree
@@ -420,7 +420,7 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 - Look planning and design delivery live in `backend/designSpec/designer.ts`; `ProductionRequest.design`
   (`backend/pipeline/types.ts`) selects inline, agent, server or explicit templates. Inline is the
   default: follow the `needs_look` / `needs_design` result's next steps and rerun the same command.
-  Server mode uses the film's recorded agent session (claude only, headless), else the optional `videoModels.generation` override, through `backend/aideosConfig.ts`; with neither it reports that no model is known. Node tests skip live
+  Server mode uses the film's recorded agent session (claude only, headless), else the optional `videoModels.generation` override, through `backend/aideosConfig.ts`; with neither, or when the recorded harness is not Claude or its model is unusable, it prints one notice line and falls back to agent or inline delivery (`generationCallerOrNull`) rather than failing. Node tests skip live
   agent delivery while retaining the inline stop behavior; choose templates explicitly for legacy
   compiler tests. See [docs/PRODUCTION_PIPELINE.md](PRODUCTION_PIPELINE.md) for resume semantics.
 - Any module the editor dev server can reach (vite.config imports the pipeline) must be safe to bundle as ESM: no bare `require.main === module` guards (use the `typeof require` form in `backend/scene/buildSvgSources.ts`) and no Remotion bundler or renderer imports (which is why `backend/sceneKit/reviewStills.ts` is not re-exported from the kit index).
@@ -434,7 +434,7 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 - A character film (Three stage) is reviewed in each output's own crop: presence, camera and each performance's evaluated contact against its decisive word come from `backend/review/source.ts`, and `backend/review/stageTruth.ts` is the one per-output summary both `review.json` and the Gemini facts read. A look performance pins `character: {id, version, hash}` (see `docs/THREE_STAGE_P3.md`).
 - Camera comes from film data and carry-over from element identity, never from pixels (global phase correlation and overlap in place both mislead, see the audit lessons in docs/REVIEW.md). A criterion with missing inputs is `skipped`, never a pass. Every threshold is in `backend/review/thresholds.ts` and was set from the three reference videos: re-run `npm run calibrate:review` (paths in env vars, the mp4s are never committed) after changing one.
 
-### All-check (the whole review in one background agent)
+### All-check (the whole review in the user's own agent session)
 
 - `aideos all-check <slug>` (`backend/allCheck/`, [docs/REVIEW.md](REVIEW.md) section 3, skill `.agents/skills/all-check/SKILL.md`, linked from `.claude/skills`) preflights, takes a per-video lock, records the originating agent session and writes a brief; the session it was run from (or, only when none is running, a replacement that inherits its harness and model in an unfocused Herdr workspace) loops render, measured review, Gemini review, frame check, fix on `videos/<slug>/` until long and reel both pass. Pass/fail comes only from the tool-written records in `videos/<slug>/all-check/`; the agent never scores or writes them. A code fix goes through a treehouse worktree and a PR, never main.
 - The tool, not the prompt, keeps a run honest: a worse round is rolled back to the best film automatically, a new round needs the previous frame check recorded, `finish` restores the best round's film when nothing passed, `wait` closes a run whose agent went quiet, and files the agent creates outside `videos/<slug>/` are reported (`backend/allCheck/best.ts`).
