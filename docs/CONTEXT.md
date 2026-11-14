@@ -558,6 +558,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `writer.ts`: `deliverReel(slug, options)`. Delivers reel cut inline (`needs_reel_cut`), via connected agent, or via server model with checked retry loop.
 * `constraints.ts`: `createReelContext(options)`, `countWords(text)`, `groundedNumbers(text)`.
 * `motion.ts`: `minShotDurationSec(camera, startSec, endSec, fps)`. Computes shortest safe shot duration satisfying camera speed, zoom step, and acceleration caps.
+* `splice.ts`: `spliceOptionsFor(splice)`, `planSpliceWindow(input)`, `spacePosesAtCuts(frames, cuts, gap)`, `SPLICE_DEFAULT_FRAMES`, `SPLICE_MIN_FRAMES`, `SPLICE_MAX_FRAMES`, `SPLICE_EASING`. Pure rules for the opt-in `splice` marker of `cut.json`; `compileDesign` applies them (see the splice paragraph in `docs/PRODUCTION_PIPELINE.md`, "Build and review").
 * `visibleText.ts`: `visibleReelText(film)`. Extracts on-screen text and numbers across scene stage elements, SVG assets, and text overlays.
 * `cli.ts`: `registerReelCommands(program)`. Registers CLI commands for `aideos reel brief`, `aideos reel check`, and `aideos reel build`.
 

@@ -14,7 +14,7 @@ import { DEVICE_BLOCKS, type Film } from "../../src/dl/schema";
 import type { CameraTrack, EnvironmentAsset, Scene } from "../../src/dl/scene/types";
 import { FPS, SCENE_SIZE, Timeline, createCues, type Cues, type NarrationTiming } from "../sceneKit";
 import { resolveCue, collapsedCueShot } from "./cues";
-import type { DesignSpec, SpecCamera } from "./spec";
+import type { DesignSpec, SpecCamera, SpecClip } from "./spec";
 import { fitReceiveSpan } from "../performance/bindReceive";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
@@ -23,6 +23,7 @@ import { validateStage } from "../../src/dl/scene/validateStage";
 import { receiveSchema } from "../../src/dl/scene/stageContract";
 import { captionWordsToVtt } from "../../src/dl/captionsParser";
 import { resolveSoundtrack } from "./soundtrack";
+import { planSpliceWindow, spacePosesAtCuts, SPLICE_EASING, type SpliceOptions } from "../reelCut/splice";
 
 /** One narrated word with its offsets in seconds, as voiceover_words.json stores it. */
 export interface TimedWord {
@@ -60,7 +61,12 @@ export function narrationTimingForFilm(film: Film, words: TimedWord[]): Narratio
 export type DesignSource = "agent" | "server-model" | "hand-built";
 
 // Compiles camera poses into a keyframe track: each pose becomes a Timeline.camera() move from the previous one.
-function compileCamera(poses: SpecCamera[], cues: Cues, errors: string[]): CameraTrack | undefined {
+function compileCamera(inputPoses: SpecCamera[], cues: Cues, errors: string[], splice?: SpliceOptions): CameraTrack | undefined {
+  // A spliced reel drops the poses of dropped shots: the camera eases between the kept poses instead of collapsing them onto one frame.
+  const poses = splice && cues.collapsed?.size ? inputPoses.filter((pose) => !collapsedCueShot(pose.at, cues)) : inputPoses;
+  const spaced = splice && cues.collapsed?.size ? spacePosesAtCuts(poses.map((pose) => {
+    try { return Math.min(resolveCue(pose.at, cues), cues.durationFrames - 1); } catch { return undefined; }
+  }), [...cues.collapsed.values()], splice.frames) : new Map<number, number>();
   const timeline = new Timeline("camera", cues.durationFrames);
   const lastFrame = cues.durationFrames - 1;
   const seen = new Set<string>();
@@ -72,7 +78,7 @@ function compileCamera(poses: SpecCamera[], cues: Cues, errors: string[]): Camer
     let frame: number;
     try {
       // A cue on the film's end resolves one past the last frame; the camera must arrive on a real one.
-      frame = Math.min(resolveCue(pose.at, cues), lastFrame);
+      frame = spaced.get(i) ?? Math.min(resolveCue(pose.at, cues), lastFrame);
     } catch (err) {
       errors.push(`camera "${id}": ${err instanceof Error ? err.message : String(err)}`);
       return;
@@ -114,7 +120,7 @@ export function compileDesign(
   spec: DesignSpec,
   words: TimedWord[],
   source: DesignSource,
-  options: { characters?: Readonly<Record<string, CharacterSpec>>; collapsed?: ReadonlyMap<string, number>; format?: "long" | "reel" } = {},
+  options: { characters?: Readonly<Record<string, CharacterSpec>>; collapsed?: ReadonlyMap<string, number>; format?: "long" | "reel"; splice?: SpliceOptions } = {},
 ): { film?: Film; errors: string[]; collapsedClips?: Array<{ asset: string; clipId: string; shotId: string; frame: number }> } {
   const errors: string[] = [];
   const collapsedClips: Array<{ asset: string; clipId: string; shotId: string; frame: number }> = [];
@@ -138,30 +144,92 @@ export function compileDesign(
   const props: EnvironmentAsset[] = spec.assets.filter((a) => "file" in a).map((a) => {
     if (!("file" in a)) throw new Error("SVG asset requires a file");
     const timeline = new Timeline(`${a.id}-motion`, cues.durationFrames);
+    // Spliced reel state: per element slot, the value it holds, when its last kept clip ended and the dropped clips awaiting one eased carry.
+    // Names the element slot a property writes (scale is tracked by its X slot).
+    const slotKey = (target: string, property: string) => `${target}::${property === "scale" ? "scaleX" : property}`;
+    const held = new Map<string, number>();
+    const idleFrom = new Map<string, number>();
+    type Pending = { target: string; property: SpecClip["property"]; from: number; to: number; cutFrame: number; origin?: SpecClip["origin"]; clips: Array<{ clip: SpecClip; shotId: string; frame: number; start: number; end: number }> };
+    const pending = new Map<string, Pending>();
+    // Adds one clip as authored, tracking the value each of its slots now holds.
+    const addClip = (clip: SpecClip, extra: { targets?: string[]; id?: string; from?: number; start: number; end: number; dropped?: boolean }) => {
+      timeline.add({
+        id: extra.id ?? clip.id,
+        targets: extra.targets ?? clip.targets,
+        property: clip.property,
+        from: extra.from ?? clip.from,
+        to: clip.to,
+        start: extra.start,
+        end: extra.end,
+        ...(clip.easing ? { easing: clip.easing } : {}),
+        ...(clip.stagger && !extra.dropped ? { stagger: clip.stagger } : {}),
+        ...(clip.origin ? { origin: { x: clip.origin[0], y: clip.origin[1] } } : {}),
+        ...(clip.allowJump ? { allowJump: true } : {}),
+      });
+      for (const target of extra.targets ?? clip.targets) {
+        held.set(slotKey(target, clip.property), clip.to);
+        idleFrom.set(slotKey(target, clip.property), Math.max(idleFrom.get(slotKey(target, clip.property)) ?? 0, extra.end + (clip.stagger && !extra.dropped ? clip.stagger * (clip.targets.length - 1) : 0)));
+      }
+    };
+    // Settles a slot's dropped clips before the next kept clip: one eased carry in the idle gap, or the collapsed clips when no gap fits.
+    // When no gap fits and the next kept clip leaves from the carried value, that clip absorbs the carry and starts from the pre-cut value (returned).
+    const settle = (key: string, gapEnd: number, next?: SpecClip): number | undefined => {
+      const carry = pending.get(key);
+      if (!carry) return undefined;
+      pending.delete(key);
+      if (Math.abs(carry.to - carry.from) <= 1e-6) {
+        held.set(key, carry.to);
+        return undefined;
+      }
+      const window = options.splice ? planSpliceWindow({ gapStart: idleFrom.get(key) ?? 0, gapEnd, cutFrame: carry.cutFrame, frames: options.splice.frames }) : undefined;
+      if (window) {
+        const first = carry.clips[0].clip;
+        timeline.add({ id: `splice-${first.id}-${carry.target}`, targets: [carry.target], property: carry.property, from: carry.from, to: carry.to,
+          start: window.start, end: window.end, easing: SPLICE_EASING, ...(carry.origin ? { origin: { x: carry.origin[0], y: carry.origin[1] } } : {}) });
+        held.set(key, carry.to);
+        idleFrom.set(key, window.end);
+        return undefined;
+      }
+      if (options.splice && next && !next.allowJump && slotKey(carry.target, next.property) === key && Math.abs(next.from - carry.to) <= 1e-6) return carry.from;
+      for (const entry of carry.clips) {
+        const clipId = entry.clip.targets.length === 1 ? entry.clip.id : `${entry.clip.id}-${carry.target}`;
+        collapsedClips.push({ asset: a.id, clipId, shotId: entry.shotId, frame: entry.frame });
+        addClip(entry.clip, { targets: [carry.target], id: clipId, start: Math.max(0, entry.start - 1), end: Math.max(1, entry.end), dropped: true });
+      }
+    };
     for (const clip of spec.clips.filter((c) => c.asset === a.id)) {
       try {
         const start = resolveCue(clip.start, cues);
         const end = resolveCue(clip.end, cues);
         const dropped = start === end ? collapsedCueShot(clip.start, cues) ?? collapsedCueShot(clip.end, cues) : undefined;
+        let absorbed: number | undefined;
+        if (options.splice) {
+          if (dropped && !clip.allowJump) {
+            for (const target of clip.targets) {
+              const key = slotKey(target, clip.property);
+              const carry = pending.get(key) ?? { target, property: clip.property, from: held.get(key) ?? clip.from, to: clip.to, cutFrame: start, clips: [] };
+              carry.to = clip.to;
+              carry.cutFrame = start;
+              if (clip.origin) carry.origin = clip.origin;
+              carry.clips.push({ clip, shotId: dropped, frame: start, start, end });
+              pending.set(key, carry);
+            }
+            continue;
+          }
+          for (const target of clip.targets) absorbed = settle(slotKey(target, clip.property), start, clip.targets.length === 1 ? clip : undefined) ?? absorbed;
+        }
         // A hidden collapsed change still leaves its final value for the next shot. The design
         // checker rejects this one-frame representation whenever the change would be visible.
         if (dropped) collapsedClips.push({ asset: a.id, clipId: clip.id, shotId: dropped, frame: start });
-        timeline.add({
-          id: clip.id,
-          targets: clip.targets,
-          property: clip.property,
-          from: clip.from,
-          to: clip.to,
-          start: dropped ? Math.max(0, start - 1) : start,
-          end: dropped ? Math.max(1, end) : end,
-          ...(clip.easing ? { easing: clip.easing } : {}),
-          ...(clip.stagger && !dropped ? { stagger: clip.stagger } : {}),
-          ...(clip.origin ? { origin: { x: clip.origin[0], y: clip.origin[1] } } : {}),
-          ...(clip.allowJump ? { allowJump: true } : {}),
-        });
+        addClip(clip, { ...(absorbed !== undefined ? { from: absorbed } : {}), start: dropped ? Math.max(0, start - 1) : start, end: dropped ? Math.max(1, end) : end, dropped: !!dropped });
       } catch (err) {
         errors.push(`clip "${clip.id}": ${err instanceof Error ? err.message : String(err)}`);
       }
+    }
+    try {
+      for (const key of [...pending.keys()]) settle(key, cues.durationFrames);
+    } catch (err) {
+      errors.push(`asset "${a.id}" splice: ${err instanceof Error ? err.message : String(err)}`);
     }
     const built = timeline.build();
     return {
@@ -177,7 +245,7 @@ export function compileDesign(
     };
   });
 
-  const keyframes = spec.camera ? compileCamera(spec.camera, cues, errors) : undefined;
+  const keyframes = spec.camera ? compileCamera(spec.camera, cues, errors, options.splice) : undefined;
   if (spec.holdPush !== undefined && !keyframes) errors.push("holdPush needs `camera` poses: a film with a fixed camera has no hold to push in on");
   const camera = keyframes && spec.holdPush !== undefined ? { ...keyframes, holdPush: spec.holdPush } : keyframes;
 
