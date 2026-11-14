@@ -6,7 +6,7 @@
 import { captionCardRect, resolveCaptionCardWidth, resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import type { Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
-import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
+import { prepareStageFacts, type SharedDepthEvidence } from "../../src/dl/scene/stageFacts";
 import { rectInside, projectStagePoint, SAFE_SQUARE, type SceneRect } from "../../src/dl/scene/projection";
 import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 import { boundTheme } from "../../src/projectTheme";
@@ -52,12 +52,14 @@ export function checkThreeStage(
       owners.add(id);
     }
   }
+  // Mesh depth does not depend on the crop, so the wide and reel passes sample each frame once between them.
+  const sharedDepth: SharedDepthEvidence = new Map();
   for (const [format, width, height] of [["long", 1920, 1080], ["reel", 1080, 1920]] as const) {
     if (context.formats && !context.formats.includes(format)) continue;
     if (target && target.format !== format) continue;
     let dispose: (() => void) | undefined, checkedFrame = 0;
     try {
-      const facts = prepareStageFacts(scene, width, height);
+      const facts = prepareStageFacts(scene, width, height, sharedDepth);
       dispose = facts.dispose;
       const svgAt = scene.props.some((p) => p.plane === "foreground") ? prepareSvgProjection(scene, width, height, film.id) : undefined;
       const foregroundIds = new Set(scene.props.filter((p) => p.plane === "foreground").map((p) => p.assetId));

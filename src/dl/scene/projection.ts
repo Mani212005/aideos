@@ -57,11 +57,22 @@ export function stageViewport(width: number, height: number, size = SCENE_SIZE) 
   return { fit, halfWidth: width / fit / 2, halfHeight: height / fit / 2 };
 }
 
+// Binds one camera pose and viewport once and returns the canonical projector, so a loop over many points pays for the cover fit and rotation trigonometry once and reuses one output object.
+export function stagePointProjector(camera: StageCameraPose, width: number, height: number, size = SCENE_SIZE) {
+  const { fit } = stageViewport(width, height, size);
+  const r = camera.rotation * Math.PI / 180, cos = Math.cos(r), sin = Math.sin(r);
+  const cx = camera.center.x, cy = camera.center.y, zoom = camera.zoom, halfWidth = width / 2, halfHeight = height / 2;
+  return (x: number, y: number, out: { x: number; y: number }) => {
+    const dx = x - cx, dy = y - cy;
+    out.x = halfWidth + (dx * cos - dy * sin) * zoom * fit;
+    out.y = halfHeight + (dx * sin + dy * cos) * zoom * fit;
+    return out;
+  };
+}
+
 // Projects stage coordinates through the same center/zoom/rotation and cover crop as SVG and Three.
 export function projectStagePoint(p: { x: number; y: number }, camera: StageCameraPose, width: number, height: number, size = SCENE_SIZE) {
-  const { fit } = stageViewport(width, height, size);
-  const r = camera.rotation * Math.PI / 180, dx = p.x - camera.center.x, dy = p.y - camera.center.y;
-  return { x: width / 2 + (dx * Math.cos(r) - dy * Math.sin(r)) * camera.zoom * fit, y: height / 2 + (dx * Math.sin(r) + dy * Math.cos(r)) * camera.zoom * fit };
+  return stagePointProjector(camera, width, height, size)(p.x, p.y, { x: 0, y: 0 });
 }
 
 // Supplies the affine form of the canonical projector for SVG element geometry.

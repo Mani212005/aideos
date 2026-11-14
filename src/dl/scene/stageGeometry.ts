@@ -3,8 +3,8 @@
  * Inputs and outputs: evaluated Three meshes and canonical camera pose -> projected silhouettes and explicit visibility provenance.
  * Used by: stageFacts and stage-aware design checks; never asserts final raster visibility.
  */
-import { Color, Matrix4, Raycaster, Vector3, type Mesh, type Material } from "three";
-import { projectStagePoint, stageViewport, STAGE_CAMERA_DEPTH, STAGE_CAMERA_FAR, STAGE_CAMERA_NEAR, type SceneRect, type StageCameraPose } from "./projection";
+import { BufferAttribute, Color, Matrix4, Mesh as ThreeMesh, Raycaster, Vector3, type Mesh, type Material } from "three";
+import { stagePointProjector, stageViewport, STAGE_CAMERA_DEPTH, STAGE_CAMERA_FAR, STAGE_CAMERA_NEAR, type SceneRect, type StageCameraPose } from "./projection";
 import { elementVisible } from "./visibility";
 
 export interface ProjectedPart { name: string; bounds: SceneRect; signature?: string }
@@ -25,21 +25,44 @@ export function meshIsDrawn(mesh: Mesh): boolean {
 const scratch = new Float64Array(2);
 const scratchBits = new Uint32Array(scratch.buffer);
 
+// Reports whether a mesh's local positions are plain, unmorphed, unskinned float data, so they can be read straight from the buffer exactly as Mesh.getVertexPosition would return them.
+function hasDirectPositions(mesh: Mesh, positions: BufferAttribute): boolean {
+  return mesh.getVertexPosition === ThreeMesh.prototype.getVertexPosition && !mesh.geometry.morphAttributes.position &&
+    positions.getX === BufferAttribute.prototype.getX && positions.getY === BufferAttribute.prototype.getY && positions.getZ === BufferAttribute.prototype.getZ && !positions.normalized;
+}
+
 // Measures every posed vertex plus conservative normal-extrusion allowance through the shared projector.
 export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: number, height: number, size: { w: number; h: number }, outline: number, includeSignature = false): ProjectedPart[] {
   const point = new Vector3();
   const scale = new Vector3();
+  // The pose, cover fit, stage half-extents and depth limits are the same for every vertex of every mesh, so they are bound once.
+  const project = stagePointProjector(pose, width, height, size), projected = { x: 0, y: 0 };
+  const halfWidth = size.w / 2, halfHeight = size.h / 2, { fit } = stageViewport(width, height, size);
+  const cameraDepth = STAGE_CAMERA_DEPTH, near = STAGE_CAMERA_NEAR, far = STAGE_CAMERA_FAR;
   return meshes.filter(meshIsDrawn).map((mesh) => {
     const vertices = mesh.geometry.getAttribute("position");
     if (!vertices?.count) throw new Error(`mesh ${mesh.name || mesh.uuid}: missing position geometry`);
+    // Plain meshes are read straight from the buffer with the same matrix arithmetic Vector3.applyMatrix4 uses, which skips three method calls per vertex.
+    const direct = hasDirectPositions(mesh, vertices as BufferAttribute);
+    const array = vertices.array, itemSize = vertices.itemSize, e = mesh.matrixWorld.elements;
     // Folds each projected coordinate's exact bits into two 32-bit hashes, so a change is detected without building a string per vertex.
     let h1 = 0x811c9dc5, h2 = 0x9747b28c;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < vertices.count; i++) {
-      mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld);
-      const depth = STAGE_CAMERA_DEPTH - point.z;
-      if (!Number.isFinite(depth) || depth < STAGE_CAMERA_NEAR || depth > STAGE_CAMERA_FAR) throw new Error(`mesh ${mesh.name || mesh.uuid}: geometry crosses the orthographic depth clip`);
-      const p = projectStagePoint({ x: point.x + size.w / 2, y: size.h / 2 - point.y }, pose, width, height, size);
+      let wx: number, wy: number, wz: number;
+      if (direct) {
+        const o = i * itemSize, x = array[o], y = array[o + 1], z = array[o + 2];
+        const w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+        wx = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w;
+        wy = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w;
+        wz = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w;
+      } else {
+        mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld);
+        wx = point.x; wy = point.y; wz = point.z;
+      }
+      const depth = cameraDepth - wz;
+      if (!Number.isFinite(depth) || depth < near || depth > far) throw new Error(`mesh ${mesh.name || mesh.uuid}: geometry crosses the orthographic depth clip`);
+      const p = project(wx + halfWidth, halfHeight - wy, projected);
       if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) throw new Error(`mesh ${mesh.name || mesh.uuid}: non-finite evaluated geometry`);
       x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
       if (includeSignature) {
@@ -48,7 +71,7 @@ export function projectMeshParts(meshes: Mesh[], pose: StageCameraPose, width: n
       }
     }
     mesh.getWorldScale(scale);
-    const allowance = outline * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z)) * pose.zoom * stageViewport(width, height, size).fit;
+    const allowance = outline * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z)) * pose.zoom * fit;
     return { name: mesh.name, bounds: { x0: x0 - allowance, y0: y0 - allowance, x1: x1 + allowance, y1: y1 + allowance }, ...(includeSignature ? { signature: `${(h1 >>> 0).toString(36)}.${(h2 >>> 0).toString(36)}` } : {}) };
   });
 }
