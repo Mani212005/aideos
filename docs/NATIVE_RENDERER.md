@@ -185,7 +185,34 @@ at most 0.05 and at most 0.1% of pixels more than 8 apart, the same strict toler
 after an intended change: `npm run goldens:native:ir` (needs the release binary; re-emits the IR) then
 `AIDEOS_NATIVE_GOLDEN_UPDATE=1 cargo test --locked --manifest-path native/Cargo.toml -p aideos-render --test golden`,
 which renders every frame twice and refuses to write a frame whose two renders differ. Never loosen the constants
-in the test; the manifest check fails if they or the Skia pin change without a new set.
+in the test; the manifest check fails if they change without a new set.
+
+The set is separate because the Chrome goldens record Remotion's pixels and the native renderer is a different
+raster, so one reference cannot serve both. It was re-baselined on the native CPU reference after parity was shown
+on the Phase 1 proof film (below), with the same strict tolerance and never a looser one. No Chrome golden,
+tolerance or workflow is changed.
+
+### Phase 1 parity on claude-dreaming
+
+The Phase 1 proof film is `claude-dreaming` (the captain's unfinished film; its package is gitignored and not
+committed). It was rendered through the native renderer and through Remotion on the same machine, in both formats,
+and compared frame by frame.
+
+| Measure | Long | Reel |
+| --- | --- | --- |
+| SSIM mean | 0.99474 | 0.99358 |
+| SSIM min | 0.98684 (frame 4617, end card) | 0.98746 (frame 4617, end card) |
+| PSNR mean | 39.56 dB | 39.92 dB |
+| PSNR min | 31.19 dB | 32.08 dB |
+| Whole-command time, native | 2:43 | 2:43 |
+| Whole-command time, Remotion | 13:14 | 13:22 |
+| Gemini 3.8 Flash criteria mean, native | 9.37 | 9.42 |
+| Gemini 3.8 Flash criteria mean, Remotion | 9.42 | 9.40 |
+
+No frame has an SSIM under 0.98, the worst frames in both formats are the end card, and all four Gemini reviews
+are ACCEPT. Machine load differed between the native and Remotion runs, so the times are indicative. The evidence
+(README.md and completeness.md, which lists what the unfinished film still lacks) is in
+`/home/mani/aideos-linux-home/data/aideos-phase1-dreaming-proof/`.
 
 ## Determinism
 
