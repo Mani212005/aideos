@@ -271,7 +271,7 @@ test("burned-in captions are emitted as the film's words with its per-shot place
     assert.ok(spoken.length > 0);
     const total = deliveryTimeline(base, format).totalFrames;
     assert.deepEqual(node.words, spoken.filter((w) => w.startFrame < total).map((w) => ({ text: w.text, startFrame: w.startFrame, endFrame: Math.min(total, w.endFrame) })));
-    assert.equal(node.font, "geist-700");
+    assert.equal(node.font, "geist-600");
     assert.equal(node.color, "#FFFFFF");
     assert.equal(node.highlightColor, "#635BFF");
     const size = Math.round(1080 * 0.042);

@@ -725,6 +725,14 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
 }
 
 /**
+ * The Geist weight the Remotion render actually draws the captions in: KineticSubtitles asks for 700, but
+ * `tokens.ts` loads Geist at 300 to 600 only, so the browser falls back to the heaviest loaded face (600).
+ * The native renderer matches what the Remotion render shows, so parity holds; loading 700 in `tokens.ts`
+ * would change that render and is a separate decision.
+ */
+const CAPTION_FONT_WEIGHT = 600;
+
+/**
  * The kinetic captions node (Film.tsx's `KineticSubtitles`): the spoken words plus the end card's line, the white,
  * accent and card colours the component defaults to, and the owner-resolved placement as one span per shot where
  * the resolved placement changes (it is read at a phrase's first word, as `captionPlacementAt` does). Null when
@@ -746,7 +754,7 @@ function captionsNode(film: Film, format: NativeFormat, timeline: TimedShot[], c
   return {
     kind: "captions",
     id: "captions",
-    font: sansId(700),
+    font: sansId(CAPTION_FONT_WEIGHT),
     color: "#FFFFFF",
     highlightColor: accent,
     backgroundColor: cssColor("rgba(10, 15, 29, 0.88)"),
