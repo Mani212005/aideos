@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the Three stage in the Render IR (`aideos.render/2`, P4.1) on the real iona-receive fixture film: the emitted document validates and survives a JSON round trip; for every frame of the film, the world vertices posed from the IR (mesh file plus graph and channels, through the reference pose in stage3d.ts) equal the posed vertices prepareStageFacts measures, bit for bit in f32; the stage sits between the ground and foreground planes; two emits are byte-identical; and nativeSupport keeps the film on Remotion with one reason per missing native step.
+ * File Description: Behavioural tests of the Three stage in the Render IR (`aideos.render/2`, P4.1) on the real iona-receive fixture film: the emitted document validates and survives a JSON round trip; for every frame of the film, the world vertices posed from the IR (mesh file plus graph and channels, through the reference pose in stage3d.ts) equal the posed vertices prepareStageFacts measures, bit for bit in f32; the stage sits between the ground and foreground planes; two emits are byte-identical; and nativeSupport accepts the one-performer cel film while refusing several performers and dots-v1.
  * Inputs and outputs: the iona-receive fixture package built through buildDesign in the test videos directory, a fake measurer -> asserted IR values and vertex bits.
  * Used by: npm test (Node test runner).
  */
@@ -129,16 +129,20 @@ test("the stage sits between the ground plane and the foreground, holds its last
   assert.deepEqual(stageOf(emit(film, "long")), stage);
 });
 
-test("nativeSupport keeps a Three film on Remotion with one reason per missing native step", () => {
+test("nativeSupport accepts the one-performer cel Three film (P4.2) and still refuses several performers (P4.3) and dots-v1 (P4.4)", () => {
   const film = ionaFilm();
-  const reasons = nativeSupport(film, "long");
-  assert.deepEqual(reasons.filter((r) => r.includes("Three-stage")), ["Three-stage character films: the native renderer does not draw the stage3d node yet (P4.2 of the native renderer)"]);
-  assert.throws(() => emit(film, "long", false), (e: unknown) => e instanceof NativeUnsupportedError && e.reasons.join() === reasons.join());
+  for (const format of ["long", "reel"] as const) {
+    assert.deepEqual(nativeSupport(film, format), []);
+    // The render path emits it with no development allowance.
+    assert.equal(stageOf(emit(film, format, false)).kind, "stage3d");
+  }
 
   const several = structuredClone(film);
   const scene = several.scene as unknown as Scene;
   scene.performances = [...scene.performances!, { ...scene.performances![0], id: "second" }];
-  assert.ok(nativeSupport(several, "long").some((r) => r.includes("several performers (2)") && r.includes("P4.3")));
+  const severalReasons = nativeSupport(several, "long");
+  assert.ok(severalReasons.some((r) => r.includes("several performers (2)") && r.includes("P4.3")));
+  assert.throws(() => emit(several, "long", false), (e: unknown) => e instanceof NativeUnsupportedError && e.reasons.join() === severalReasons.join());
 
   const dots = structuredClone(film);
   (dots.scene as unknown as Scene).treatment = "dots-v1";

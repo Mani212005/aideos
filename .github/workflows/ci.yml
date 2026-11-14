@@ -199,6 +199,18 @@ jobs:
       - name: Download the Remotion browser
         if: steps.remotion-browser.outputs.cache-hit != 'true'
         run: npx remotion browser ensure
+      # The render jobs of the journeys draw every film the native renderer supports (the one-performer Three-stage
+      # films since P4.2) with the release binary; without it they would fall back to Remotion.
+      - name: Restore the Rust build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/target
+          key: cargo-native-release-${{ runner.os }}-${{ hashFiles('native/Cargo.lock') }}
+      - name: Build the native renderer
+        run: cargo build --locked --release --manifest-path native/Cargo.toml -p aideos-render
       # Includes the character and Three-stage suites selected by backend/journeys/**/*.journey.ts.
       - name: Journeys
         run: npm run ci -- journeys --shard ${{ matrix.shard }}/${{ strategy.job-total }}

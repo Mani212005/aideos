@@ -3,17 +3,25 @@
 //! Used by: crate::renderer (CPU raster and the optional GPU surface).
 
 pub mod chrome;
+pub mod stage3d;
 pub mod svg;
 pub mod text;
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use aideos_render_ir::types::{Align, GroupNode, Node, RectNode, RenderIr, SvgNode, TextNode};
+use aideos_render_ir::types::{
+    Align, GroupNode, Node, RectNode, RenderIr, Stage3dNode, SvgNode, TextNode,
+};
 use skia_safe::textlayout::TextAlign;
 use skia_safe::gradient::{shaders, Colors, Gradient, Interpolation};
-use skia_safe::{paint, Canvas, Color4f, Matrix, Paint, RRect, Rect, TileMode};
+use skia_safe::{
+    images, paint, AlphaType, Canvas, Color4f, ColorType, Data, ImageInfo, Matrix, Paint, RRect,
+    Rect, TileMode,
+};
 
-use crate::eval::{self, captions::Phrase, Format, NodeTransform};
+use crate::eval::{self, captions::Phrase, CameraPose, Format, NodeTransform};
+use crate::renderer::RenderError;
 use crate::svg::color::{parse_color, Rgba};
 use crate::svg::SvgDocument;
 
@@ -27,6 +35,15 @@ pub struct Loaded {
     pub fonts: Fonts,
     /// Caption phrases by (captions node id, format), computed once at load.
     pub phrases: BTreeMap<(String, Format), Vec<Phrase>>,
+    /// The Three stage (`aideos.render/2`), shared between renderers of one film so its painted faces are painted once.
+    pub stage3d: Option<Arc<stage3d::Stage3dScene>>,
+}
+
+/// What drawing a stage node needs besides the node: the frame's size and the camera pose of the frame.
+struct StageView {
+    width: u32,
+    height: u32,
+    pose: CameraPose,
 }
 
 /// Reads an IR colour (`#RRGGBB` or `#RRGGBBAA`, already checked by the loader).
@@ -47,9 +64,10 @@ pub fn draw_frame(
     frame: u32,
     width: u32,
     height: u32,
-) {
+) -> Result<(), RenderError> {
     canvas.clear(to_color(ir_color(&l.ir.background)));
     let pose = eval::camera(&l.ir, frame);
+    let view = StageView { width, height, pose };
     let fit = eval::cover_fit(&l.ir, width, height) as f32;
     canvas.save();
     // Frame centre, cover fit, then the camera: rotate, zoom and bring its centre to the origin.
@@ -59,7 +77,7 @@ pub fn draw_frame(
     canvas.scale((pose.zoom as f32, pose.zoom as f32));
     canvas.translate((-pose.center_x as f32, -pose.center_y as f32));
     for node in stage_order(&l.ir.stage) {
-        draw_stage_node(canvas, l, node, frame);
+        draw_stage_node(canvas, l, node, frame, &view)?;
     }
     canvas.restore();
     let ctx = OverlayCtx {
@@ -72,6 +90,7 @@ pub fn draw_frame(
     for node in &l.ir.overlay {
         draw_overlay_node(canvas, &ctx, node);
     }
+    Ok(())
 }
 
 /// Stage siblings in drawing order: by svg `layer` (groups count as layer 0), document order breaking ties.
@@ -106,27 +125,85 @@ fn with_opacity(canvas: &Canvas, opacity: f64, body: impl FnOnce()) {
 }
 
 /// Draws one stage node in scene space.
-fn draw_stage_node(canvas: &Canvas, l: &Loaded, node: &Node, frame: u32) {
+fn draw_stage_node(
+    canvas: &Canvas,
+    l: &Loaded,
+    node: &Node,
+    frame: u32,
+    view: &StageView,
+) -> Result<(), RenderError> {
     let dur = l.ir.film.duration_frames.0;
     match node {
         Node::Svg(n) => draw_svg_node(canvas, l, n, frame),
+        Node::Stage3d(n) => return draw_stage3d_node(canvas, l, n, frame, view),
         Node::Group(g) => {
             if !eval::is_visible(g.visible.as_ref(), frame) {
-                return;
+                return Ok(());
             }
             let t = group_transform(g, frame, dur);
             canvas.save();
             apply_placement(canvas, &t);
+            let mut result = Ok(());
             with_opacity(canvas, t.opacity, || {
                 for child in stage_order(&g.children) {
-                    draw_stage_node(canvas, l, child, frame);
+                    if let Err(e) = draw_stage_node(canvas, l, child, frame, view) {
+                        result = Err(e);
+                        break;
+                    }
                 }
             });
             canvas.restore();
+            return result;
         }
         // The loader refuses overlay kinds on the stage.
         _ => {}
     }
+    Ok(())
+}
+
+/// Draws the Three stage: the rasterizer renders its own layer under the document camera, composited over what the canvas holds in frame pixels (the camera transform the SVG planes use is set aside), at the node's opacity.
+fn draw_stage3d_node(
+    canvas: &Canvas,
+    l: &Loaded,
+    n: &Stage3dNode,
+    frame: u32,
+    view: &StageView,
+) -> Result<(), RenderError> {
+    if !eval::is_visible(n.visible.as_ref(), frame) {
+        return Ok(());
+    }
+    let opacity = n.opacity.unwrap_or(1.0);
+    if opacity <= 0.0 {
+        return Ok(());
+    }
+    let Some(scene) = &l.stage3d else {
+        return Err(RenderError::Unsupported(format!(
+            "stage3d node {:?} was not prepared at load",
+            n.id
+        )));
+    };
+    let size = (f64::from(l.ir.scene.width.0), f64::from(l.ir.scene.height.0));
+    let layer = scene
+        .render_layer(frame, &view.pose, size, view.width, view.height)
+        .map_err(|e| RenderError::Stage3d(format!("{}: {e}", n.id)))?;
+    let Some(layer) = layer else {
+        return Ok(());
+    };
+    let info = ImageInfo::new(
+        (layer.width as i32, layer.height as i32),
+        ColorType::RGBA8888,
+        AlphaType::Premul,
+        None,
+    );
+    let image = images::raster_from_data(&info, Data::new_copy(&layer.rgba), layer.width as usize * 4)
+        .ok_or_else(|| RenderError::Skia("cannot wrap the Three stage layer".into()))?;
+    canvas.save();
+    canvas.reset_matrix();
+    let mut paint = Paint::default();
+    paint.set_alpha_f(opacity as f32);
+    canvas.draw_image(&image, (layer.x as f32, layer.y as f32), Some(&paint));
+    canvas.restore();
+    Ok(())
 }
 
 /// A group's resolved transform at a frame.

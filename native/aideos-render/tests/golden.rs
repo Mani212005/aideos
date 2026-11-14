@@ -97,6 +97,11 @@ fn renderer_for(case: &Case) -> Renderer {
         &golden_dir().join(&case.film).join("visuals"),
         &package.join("visuals"),
     );
+    // A Three-stage film also ships its mesh file.
+    let meshes = golden_dir().join(&case.film).join("meshes");
+    if meshes.is_dir() {
+        copy_files(&meshes, &package.join("meshes"));
+    }
     let ir =
         aideos_render_ir::load_from_path(golden_dir().join(&case.ir)).expect("the golden IR loads");
     for asset in &ir.assets {

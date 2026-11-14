@@ -135,8 +135,9 @@ and the mixer reads them on the film clock. The gain is held before the first an
 
 **Not in `/1`.** Transitions and effect stacks (paper curl, blur, masks, blend modes), springs and
 particles, footage clips, Lottie, 3D and the Three-stage character films. They arrive with the phases
-that need them, as a new version. `/2` carries the Three stage; character films keep rendering through
-Remotion until the native renderer draws it (P4.2 onward).
+that need them, as a new version. `/2` carries the Three stage; the native renderer draws it for one performer in
+the cel treatment (P4.2), and the other character films keep rendering through Remotion until their step (P4.3
+several performers, P4.4 dots-v1).
 
 ## The Three stage (`aideos.render/2`)
 
