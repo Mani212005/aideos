@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -100 600 200" preserveAspectRatio="xMidYMid meet">
+<g id="nodes">
+<line id="edge-a" x1="-180" y1="0" x2="0" y2="0" stroke="rgba(245,245,245,0.1)" stroke-width="2"/>
+<line id="edge-b" x1="0" y1="0" x2="180" y2="0" stroke="rgba(245,245,245,0.1)" stroke-width="2"/>
+<circle id="node-a" cx="-180" cy="0" r="26" fill="#101013" stroke="#F5F5F5" stroke-width="2"/>
+<circle id="node-b" cx="0" cy="0" r="26" fill="#101013" stroke="#F5F5F5" stroke-width="2"/>
+<circle id="node-c" cx="180" cy="0" r="26" fill="#101013" stroke="#F5F5F5" stroke-width="2"/>
+<text id="nodes-label" x="0" y="80" font-family="JetBrains Mono" font-size="14" font-weight="500" fill="#8A8A8E" text-anchor="middle">THREE NODES</text>
+</g>
+</svg>

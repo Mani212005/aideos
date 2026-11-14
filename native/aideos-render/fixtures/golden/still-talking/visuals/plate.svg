@@ -1,0 +1,54 @@
+<!--
+  File Description: The plate: the frame that caught the Earth by accident, inside a stray beam of sunlight.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="beam-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F5F5F5" stop-opacity="0" />
+      <stop offset="42%" stop-color="#F5F5F5" stop-opacity="0.2" />
+      <stop offset="72%" stop-color="#F5F5F5" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#F5F5F5" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <g id="plate-body">
+    <rect id="plate-ground" x="-348" y="-216" width="696" height="432" fill="#0A0A0B" stroke="rgba(245, 245, 245, 0.260)" stroke-width="1.4" />
+    <g id="plate-scanlines">
+      <line x1="-346" y1="-206" x2="346" y2="-206" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-187" x2="346" y2="-187" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-168" x2="346" y2="-168" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-149" x2="346" y2="-149" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-130" x2="346" y2="-130" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-111" x2="346" y2="-111" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-92" x2="346" y2="-92" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-73" x2="346" y2="-73" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-54" x2="346" y2="-54" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-35" x2="346" y2="-35" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="-16" x2="346" y2="-16" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="3" x2="346" y2="3" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="22" x2="346" y2="22" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="41" x2="346" y2="41" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="60" x2="346" y2="60" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="79" x2="346" y2="79" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="98" x2="346" y2="98" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="117" x2="346" y2="117" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="136" x2="346" y2="136" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="155" x2="346" y2="155" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="174" x2="346" y2="174" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+      <line x1="-346" y1="193" x2="346" y2="193" stroke="rgba(245, 245, 245, 0.050)" stroke-width="1" />
+    </g>
+    <path id="beam-wide" d="M -348 -206 L 348 -84 L 348 26 L -348 -96 Z" fill="url(#beam-grad)" />
+    <path id="beam-narrow" d="M -348 -160 L 348 -48 L 348 -14 L -348 -126 Z" fill="url(#beam-grad)" opacity="0.8" />
+    <g id="speck-group">
+      <circle id="speck-halo" cx="96" cy="-46" r="17" fill="none" stroke="rgba(99, 91, 255, 0.400)" stroke-width="1.2" />
+      <circle id="speck" cx="96" cy="-46" r="4.4" fill="#635BFF" />
+    </g>
+    <g id="reticle">
+      <path id="reticle-tl" d="M 30 -112 L 30 -134 M 30 -134 L 52 -134" fill="none" stroke="rgba(245, 245, 245, 0.600)" stroke-width="1.6" />
+      <path id="reticle-tr" d="M 162 -134 L 162 -112 M 140 -134 L 162 -134" fill="none" stroke="rgba(245, 245, 245, 0.600)" stroke-width="1.6" />
+      <path id="reticle-bl" d="M 30 20 L 30 42 M 30 42 L 52 42" fill="none" stroke="rgba(245, 245, 245, 0.600)" stroke-width="1.6" />
+      <path id="reticle-br" d="M 162 42 L 162 20 M 140 42 L 162 42" fill="none" stroke="rgba(245, 245, 245, 0.600)" stroke-width="1.6" />
+    </g>
+  </g>
+</svg>

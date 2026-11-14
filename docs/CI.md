@@ -250,6 +250,9 @@ skipped (with a message saying so, never a pass) on any other platform. The lega
 ensuring Linux hosts lacking an explicit Fontconfig `rgba` setting reproduce the RGB subpixel text
 antialiasing used in the committed baselines.
 
+The native renderer has its own, separate golden set that `cargo test` checks (`native/aideos-render/tests/golden.rs`,
+described in [NATIVE_RENDERER.md](NATIVE_RENDERER.md#native-golden-frames)); it does not use the **Update goldens** workflow.
+
 What the legacy job reports:
 
 | Situation | Status in the `npm run ci` output and job summary | Exit code |

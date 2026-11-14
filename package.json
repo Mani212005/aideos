@@ -69,6 +69,7 @@
     "test:journeys": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 --test-reporter=tap \"backend/journeys/**/*.journey.ts\"",
     "test:live": "RUN_TTS_TESTS=1 RUN_VISUAL_TESTS=1 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/live/**/*.live.ts\"",
     "test:legacy": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/journeys/**/*.golden.ts\"",
+    "goldens:native:ir": "node --import tsx scripts/native_golden_ir.ts",
     "goldens:update": "AIDEOS_GOLDEN_UPDATE=1 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/journeys/**/*.golden.ts\"",
     "ci": "tsx scripts/ci.ts",
     "performance:filmstrip": "tsx scripts/performance_filmstrip.ts",

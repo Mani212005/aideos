@@ -168,6 +168,25 @@ asset would render a wrong frame with no sign of it. The loader also refuses an 
 `elementIds` name an element the artwork does not contain, a missing file, and a path that resolves outside
 the package directory (including through a symlink).
 
+## Native golden frames
+
+`native/aideos-render/tests/golden.rs` holds the CPU raster's own reference frames, separate from the Chrome
+goldens in `backend/journeys/goldens/` (those still guard the default Remotion render and are untouched). The set
+covers the native-supported fixture films, `hello-scene` and `still-talking`, in long and reel, at the same frames
+and the same quarter scale as the Chrome goldens (`fixtures/golden/frames/<film>/<format>-<frame>.png`, 480 x 270
+or 270 x 480, a 4 x 4 box average of the 1920 x 1080 CPU frame). `fixtures/golden/<film>/render.<format>.json` are
+the emitter's IR for those films with the audio clips dropped (the frame raster never opens audio), with the
+artwork in `<film>/visuals/`; fonts come from `native/fonts/`. `MANIFEST.json` records the platform, the renderer
+version, the Skia pin and the tolerance.
+
+The test (run by `cargo test`, so by the CI unit job) renders each frame and requires a mean channel difference of
+at most 0.05 and at most 0.1% of pixels more than 8 apart, the same strict tolerance as
+`backend/journeys/goldenCompare.ts`. It is verified on Linux only (macOS glyphs are CoreText's). To remake the set
+after an intended change: `npm run goldens:native:ir` (needs the release binary; re-emits the IR) then
+`AIDEOS_NATIVE_GOLDEN_UPDATE=1 cargo test --locked --manifest-path native/Cargo.toml -p aideos-render --test golden`,
+which renders every frame twice and refuses to write a frame whose two renders differ. Never loosen the constants
+in the test; the manifest check fails if they or the Skia pin change without a new set.
+
 ## Determinism
 
 - The CPU raster is the reference. `tests/render.rs` renders the same frame in two separate processes and

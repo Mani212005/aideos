@@ -1,0 +1,63 @@
+<!--
+  File Description: The heliopause: where the sun's breath stops and something colder begins.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <g id="boundary-body">
+    <g id="wind-field">
+      <line id="wind-1" x1="-127.2" y1="-135.33" x2="-101.36" y2="-135.33" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-2" x1="-95.81" y1="-39.03" x2="-53.97" y2="-39.03" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-3" x1="-38.94" y1="149.22" x2="-8.6" y2="149.22" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-4" x1="-207.41" y1="-161.65" x2="-177.97" y2="-161.65" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-5" x1="-283.66" y1="33.6" x2="-253.94" y2="33.6" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-6" x1="-209.75" y1="-43.45" x2="-182.82" y2="-43.45" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-7" x1="-66.12" y1="-153.41" x2="-32.27" y2="-153.41" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-8" x1="-220.15" y1="63.86" x2="-200.58" y2="63.86" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-9" x1="-257.8" y1="26.09" x2="-221.52" y2="26.09" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-10" x1="-33.71" y1="-105.23" x2="3.98" y2="-105.23" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-11" x1="-191.28" y1="66.53" x2="-149.3" y2="66.53" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-12" x1="-38.42" y1="170.83" x2="-0.67" y2="170.83" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-13" x1="-154.12" y1="-83.41" x2="-124.96" y2="-83.41" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+      <line id="wind-14" x1="-276.47" y1="32.93" x2="-240.62" y2="32.93" stroke="rgba(245, 245, 245, 0.340)" stroke-width="1.4" />
+    </g>
+    <g id="ism-field">
+      <circle id="ism-1" cx="192" cy="62.92" r="1.79" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-2" cx="196.24" cy="95.31" r="1.6" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-3" cx="317.39" cy="-92.18" r="1.42" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-4" cx="285.25" cy="-111.8" r="1.97" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-5" cx="168.12" cy="-184.08" r="2.36" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-6" cx="212.13" cy="64.43" r="2.47" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-7" cx="99.84" cy="-188.54" r="1.71" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-8" cx="316.93" cy="-163.77" r="1.51" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-9" cx="78.63" cy="-141.67" r="2.84" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-10" cx="46.37" cy="-141.89" r="2.82" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-11" cx="174.83" cy="-17.04" r="2.18" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-12" cx="265.35" cy="18.58" r="1.62" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-13" cx="224.7" cy="163.86" r="2.41" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-14" cx="61.86" cy="194.17" r="2.79" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-15" cx="123.8" cy="-87.77" r="2.63" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-16" cx="306.05" cy="-97.42" r="1.43" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-17" cx="158.02" cy="182.86" r="2.86" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-18" cx="198.42" cy="130.14" r="1.83" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-19" cx="199.49" cy="-115.96" r="2.5" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-20" cx="215.53" cy="32.63" r="1.75" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-21" cx="159.86" cy="59.91" r="2.7" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-22" cx="66.51" cy="49.06" r="2.91" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-23" cx="315.88" cy="20.28" r="2.53" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-24" cx="112.91" cy="74.42" r="1.77" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-25" cx="310.86" cy="-147.31" r="1.87" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-26" cx="74.4" cy="-69.46" r="1.49" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-27" cx="262.26" cy="-163.93" r="2.32" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-28" cx="110.92" cy="16.28" r="2.17" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-29" cx="156.83" cy="158.02" r="2.92" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-30" cx="260.2" cy="0.31" r="2.64" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-31" cx="243.87" cy="60.84" r="1.99" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-32" cx="204.26" cy="-99.81" r="2.75" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-33" cx="230.74" cy="-98.94" r="2.42" fill="#F5F5F5" opacity="0" />
+      <circle id="ism-34" cx="130.03" cy="-82.72" r="2.23" fill="#F5F5F5" opacity="0" />
+    </g>
+    <path id="bubble-arc" d="M 30 -420 C 170 -240, 170 240, 30 420" fill="none" stroke="rgba(245, 245, 245, 0.420)" stroke-width="2.4" />
+    <path id="bubble-arc-inner" d="M -6 -404 C 130 -230, 130 230, -6 404" fill="none" stroke="rgba(99, 91, 255, 0.300)" stroke-width="1.4" />
+  </g>
+</svg>

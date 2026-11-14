@@ -1,0 +1,75 @@
+{
+  "platform": "linux-x86_64",
+  "renderer": "aideos-render 0.1.0",
+  "skia": "skia-safe =0.157.0 (features gl, textlayout, embed-freetype)",
+  "scale": 0.25,
+  "tolerance": {
+    "meanAbs": 0.05,
+    "changedShare": 0.001
+  },
+  "frames": [
+    {
+      "name": "frames/hello-scene/long-30.png",
+      "film": "hello-scene",
+      "format": "long",
+      "frame": 30,
+      "width": 480,
+      "height": 270,
+      "bytes": 10680
+    },
+    {
+      "name": "frames/hello-scene/long-150.png",
+      "film": "hello-scene",
+      "format": "long",
+      "frame": 150,
+      "width": 480,
+      "height": 270,
+      "bytes": 16750
+    },
+    {
+      "name": "frames/hello-scene/long-270.png",
+      "film": "hello-scene",
+      "format": "long",
+      "frame": 270,
+      "width": 480,
+      "height": 270,
+      "bytes": 13857
+    },
+    {
+      "name": "frames/hello-scene/reel-150.png",
+      "film": "hello-scene",
+      "format": "reel",
+      "frame": 150,
+      "width": 270,
+      "height": 480,
+      "bytes": 15052
+    },
+    {
+      "name": "frames/still-talking/long-924.png",
+      "film": "still-talking",
+      "format": "long",
+      "frame": 924,
+      "width": 480,
+      "height": 270,
+      "bytes": 45823
+    },
+    {
+      "name": "frames/still-talking/long-2773.png",
+      "film": "still-talking",
+      "format": "long",
+      "frame": 2773,
+      "width": 480,
+      "height": 270,
+      "bytes": 16351
+    },
+    {
+      "name": "frames/still-talking/reel-1848.png",
+      "film": "still-talking",
+      "format": "reel",
+      "frame": 1848,
+      "width": 270,
+      "height": 480,
+      "bytes": 23666
+    }
+  ]
+}

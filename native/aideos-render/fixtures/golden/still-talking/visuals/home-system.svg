@@ -1,0 +1,19 @@
+<!--
+  File Description: The system the craft is leaving: six orbit rings and the one dot that is home.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <g id="home-rings">
+    <circle id="orbit-earth" cx="0" cy="0" r="152" fill="none" stroke="rgba(245, 245, 245, 0.280)" stroke-width="1.3" />
+    <circle id="orbit-mars" cx="0" cy="0" r="208" fill="none" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1.3" />
+    <circle id="orbit-jupiter" cx="0" cy="0" r="316" fill="none" stroke="rgba(245, 245, 245, 0.190)" stroke-width="1.3" />
+    <circle id="orbit-saturn" cx="0" cy="0" r="406" fill="none" stroke="rgba(245, 245, 245, 0.160)" stroke-width="1.3" />
+    <circle id="orbit-uranus" cx="0" cy="0" r="506" fill="none" stroke="rgba(245, 245, 245, 0.130)" stroke-width="1.3" />
+    <circle id="orbit-neptune" cx="0" cy="0" r="592" fill="none" stroke="rgba(245, 245, 245, 0.110)" stroke-width="1.3" />
+  </g>
+  <g id="earth-marker" transform="translate(119.78, -93.58)">
+    <circle id="earth-halo" cx="0" cy="0" r="15" fill="none" stroke="rgba(99, 91, 255, 0.450)" stroke-width="1.2" />
+    <circle id="earth-dot" cx="0" cy="0" r="6.5" fill="#635BFF" />
+  </g>
+</svg>
