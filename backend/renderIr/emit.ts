@@ -1,5 +1,5 @@
 /**
- * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, or an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts). Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
+ * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 and P4.2 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, or an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts). Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
  * Inputs and outputs: a Film, a format, the scene's SVG sources and a text measurer -> a validated RenderIr plus the package files it references (fonts, artwork, audio) and the reasons a film is not supported.
  * Used by: backend/nativeRenderer.ts (prepare), backend/rendererSelection.ts (nativeSupport), backend/renderIr/emit.test.ts, backend/renderIr/stage3d.test.ts.
  */
@@ -117,9 +117,9 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
 
 /**
  * The two halves of `nativeSupport`: `uncarried` is what the Render IR cannot describe (the emitter refuses it),
- * `undrawn` is what the IR describes but the native renderer does not draw yet. Phase 4 adds the Three stage to the
- * IR in P4.1, so a Three-stage film's stage3d node is carried while its drawing waits for P4.2 (one performer, cel),
- * P4.3 (several performers) and P4.4 (dots-v1, which the IR cannot carry yet either).
+ * `undrawn` is what the IR describes but the native renderer does not draw yet. Phase 4 adds the Three stage: P4.1
+ * carries the stage3d node in the IR, P4.2 draws it for one performer in the cel treatment, and what is still refused
+ * is P4.3 (several performers, which the IR carries) and P4.4 (dots-v1, which the IR cannot carry yet).
  */
 export function supportGaps(film: Film, format: NativeFormat): { uncarried: string[]; undrawn: string[] } {
   const reasons: string[] = [];
@@ -129,7 +129,6 @@ export function supportGaps(film: Film, format: NativeFormat): { uncarried: stri
   else {
     if (scene.renderer === "three") {
       reasons.push(...stage3dCarryReasons(scene as unknown as Scene));
-      undrawn.push("Three-stage character films: the native renderer does not draw the stage3d node yet (P4.2 of the native renderer)");
       const performers = scene.performances?.length ?? 0;
       if (performers > 1) undrawn.push(`Three-stage films with several performers (${performers}) are P4.3 of the native renderer`);
     }
@@ -900,8 +899,8 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>)
 export interface EmitOptions {
   /**
    * Emit a film the IR can describe even though the native renderer cannot draw all of it yet (today: a Three
-   * stage before P4.2). For tests and native renderer development; the render path never sets it, so it keeps
-   * falling back to Remotion for every reason `nativeSupport` lists.
+   * stage with several performers, P4.3). For tests and native renderer development; the render path never sets it,
+   * so it keeps falling back to Remotion for every reason `nativeSupport` lists.
    */
   allowUndrawn?: boolean;
 }

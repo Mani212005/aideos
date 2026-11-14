@@ -254,7 +254,7 @@ test("a film the native renderer cannot draw is refused with every reason", () =
   assert.ok(nativeSupport(nodeGraph, "reel").some((r) => r.includes("node-graph")));
   const three = nativeSceneFilm();
   (three.scene as { renderer?: string }).renderer = "three";
-  assert.ok(nativeSupport(three, "long").some((r) => r.includes("Three-stage")));
+  assert.ok(nativeSupport(three, "long").some((r) => r.includes("Three stage with no performances")));
   assert.equal(PROBE_SVG_SOURCE.startsWith("videos/"), true);
 });
 
