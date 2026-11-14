@@ -168,6 +168,52 @@ asset would render a wrong frame with no sign of it. The loader also refuses an 
 `elementIds` name an element the artwork does not contain, a missing file, and a path that resolves outside
 the package directory (including through a symlink).
 
+## Native golden frames
+
+`native/aideos-render/tests/golden.rs` holds the CPU raster's own reference frames, separate from the Chrome
+goldens in `backend/journeys/goldens/` (those still guard the default Remotion render and are untouched). The set
+covers the native-supported fixture films, `hello-scene` and `still-talking`, in long and reel, at the same frames
+and the same quarter scale as the Chrome goldens (`fixtures/golden/frames/<film>/<format>-<frame>.png`, 480 x 270
+or 270 x 480, a 4 x 4 box average of the 1920 x 1080 CPU frame). `fixtures/golden/<film>/render.<format>.json` are
+the emitter's IR for those films with the audio clips dropped (the frame raster never opens audio), with the
+artwork in `<film>/visuals/`; fonts come from `native/fonts/`. `MANIFEST.json` records the platform, the renderer
+version, the Skia pin and the tolerance.
+
+The test (run by `cargo test`, so by the CI unit job) renders each frame and requires a mean channel difference of
+at most 0.05 and at most 0.1% of pixels more than 8 apart, the same strict tolerance as
+`backend/journeys/goldenCompare.ts`. It is verified on Linux only (macOS glyphs are CoreText's). To remake the set
+after an intended change: `npm run goldens:native:ir` (needs the release binary; re-emits the IR) then
+`AIDEOS_NATIVE_GOLDEN_UPDATE=1 cargo test --locked --manifest-path native/Cargo.toml -p aideos-render --test golden`,
+which renders every frame twice and refuses to write a frame whose two renders differ. Never loosen the constants
+in the test; the manifest check fails if they change without a new set.
+
+The set is separate because the Chrome goldens record Remotion's pixels and the native renderer is a different
+raster, so one reference cannot serve both. It was re-baselined on the native CPU reference after parity was shown
+on the Phase 1 proof film (below), with the same strict tolerance and never a looser one. No Chrome golden,
+tolerance or workflow is changed.
+
+### Phase 1 parity on claude-dreaming
+
+The Phase 1 proof film is `claude-dreaming` (the captain's unfinished film; its package is gitignored and not
+committed). It was rendered through the native renderer and through Remotion on the same machine, in both formats,
+and compared frame by frame.
+
+| Measure | Long | Reel |
+| --- | --- | --- |
+| SSIM mean | 0.99474 | 0.99358 |
+| SSIM min | 0.98684 (frame 4617, end card) | 0.98746 (frame 4617, end card) |
+| PSNR mean | 39.56 dB | 39.92 dB |
+| PSNR min | 31.19 dB | 32.08 dB |
+| Whole-command time, native | 2:43 | 2:43 |
+| Whole-command time, Remotion | 13:14 | 13:22 |
+| Gemini 3.8 Flash criteria mean, native | 9.37 | 9.42 |
+| Gemini 3.8 Flash criteria mean, Remotion | 9.42 | 9.40 |
+
+No frame has an SSIM under 0.98, the worst frames in both formats are the end card, and all four Gemini reviews
+are ACCEPT. Machine load differed between the native and Remotion runs, so the times are indicative. The evidence
+(README.md and completeness.md, which lists what the unfinished film still lacks) is in
+`/home/mani/aideos-linux-home/data/aideos-phase1-dreaming-proof/`.
+
 ## Determinism
 
 - The CPU raster is the reference. `tests/render.rs` renders the same frame in two separate processes and
@@ -239,12 +285,13 @@ differ per format.
 | `StatCounter` | one group per value on screen (number, muted suffix baseline-aligned in the number's letter spacing, uppercase label), visible while that value shows, inside the block's entrance |
 | The rail | `rail` with the label in the muted colour, the bar in ink, chapters spanning their shots, `progressFrames` set to the story |
 | The end card | `endCard` with the `getEndCardLayout` geometry, the configured copy, `subscribePressFrame`, and the theme's surface, hairline, muted colour and faces |
+| Burned-in kinetic captions (`KineticSubtitles`) | a `captions` node: the film's caption words plus the end card's spoken line, white text, the accent as the highlight, the component's `rgba(10, 15, 29, 0.88)` card (quantized to 8-bit alpha), Geist 600 (the component asks for 700, but `tokens.ts` loads Geist at 300 to 600 only, so Chrome draws the 600 face and the emitter matches the render), `round(min(width, height) * 0.042)` px, and one placement span per shot where the resolved `captionPlacement` changes (read at a phrase's first word, as `captionPlacementAt` does). Words starting after the delivered length are dropped and a word's end is capped at it |
 | The frame's 1 px hairline | a stroked `rect` |
 | Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` |
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film, a Three-stage or actor scene, sub-group
-rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, burned-in captions, legacy (non-library)
+rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
@@ -262,7 +309,6 @@ mastering, probe and sidecar are unchanged; the sidecar records the CRF as appli
 
 ## Not yet native
 
-Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), burned-in
-kinetic captions in the emitter (the raster draws them; the emitter does not emit them yet), GPU encoding of
+Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and the Three stage. `image` and `audio` assets are not opened by the frame raster.

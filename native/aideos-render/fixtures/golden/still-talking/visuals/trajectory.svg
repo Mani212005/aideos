@@ -1,0 +1,14 @@
+<!--
+  File Description: The flight path: where the craft has already been, and the three places it passed.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <g id="trajectory-body">
+    <path id="traj-path" d="M -330 -115 C -180 190, 120 230, 330 -190" fill="none" stroke="rgba(245, 245, 245, 0.460)" stroke-width="2.8" stroke-linecap="round" />
+    <path id="traj-path-glow" d="M -330 -115 C -180 190, 120 230, 330 -190" fill="none" stroke="rgba(99, 91, 255, 0.200)" stroke-width="8" stroke-linecap="round" />
+    <g id="waypoint-jupiter" opacity="0"><circle cx="-134.41" cy="96.53" r="5.5" fill="none" stroke="rgba(99, 91, 255, 0.700)" stroke-width="1.6" /><circle cx="-134.41" cy="96.53" r="2" fill="#635BFF" /></g>
+    <g id="waypoint-saturn" opacity="0"><circle cx="20.97" cy="113.84" r="5.5" fill="none" stroke="rgba(99, 91, 255, 0.700)" stroke-width="1.6" /><circle cx="20.97" cy="113.84" r="2" fill="#635BFF" /></g>
+    <g id="waypoint-edge" opacity="0"><circle cx="209.25" cy="-6.77" r="5.5" fill="none" stroke="rgba(99, 91, 255, 0.700)" stroke-width="1.6" /><circle cx="209.25" cy="-6.77" r="2" fill="#635BFF" /></g>
+  </g>
+</svg>

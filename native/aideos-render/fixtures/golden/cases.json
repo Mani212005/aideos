@@ -1,0 +1,37 @@
+[
+  {
+    "film": "hello-scene",
+    "format": "long",
+    "ir": "hello-scene/render.long.json",
+    "frames": [
+      30,
+      150,
+      270
+    ]
+  },
+  {
+    "film": "hello-scene",
+    "format": "reel",
+    "ir": "hello-scene/render.reel.json",
+    "frames": [
+      150
+    ]
+  },
+  {
+    "film": "still-talking",
+    "format": "long",
+    "ir": "still-talking/render.long.json",
+    "frames": [
+      924,
+      2773
+    ]
+  },
+  {
+    "film": "still-talking",
+    "format": "reel",
+    "ir": "still-talking/render.reel.json",
+    "frames": [
+      1848
+    ]
+  }
+]

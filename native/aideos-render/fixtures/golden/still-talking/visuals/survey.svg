@@ -1,0 +1,73 @@
+<!--
+  File Description: The survey: sixty frames taken looking back, and the one that caught a sunbeam.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <g id="survey-body">
+    <g id="survey-cells">
+      <rect id="survey-cell-0" x="-330.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-1" x="-263.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-2" x="-196.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-3" x="-129.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-4" x="-62.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-5" x="4.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-6" x="71.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-7" x="138.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-8" x="205.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-9" x="272.5" y="-148.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-10" x="-330.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-11" x="-263.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-12" x="-196.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-13" x="-129.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-14" x="-62.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-15" x="4.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-16" x="71.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-17" x="138.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-18" x="205.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-19" x="272.5" y="-97.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-20" x="-330.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-21" x="-263.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-22" x="-196.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-23" x="-129.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-24" x="-62.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-25" x="4.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-26" x="71.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-27" x="138.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-28" x="205.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-29" x="272.5" y="-46.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-30" x="-330.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-31" x="-263.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-32" x="-196.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-33" x="-129.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-34" x="-62.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-35" x="4.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-36" x="71.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-37" x="138.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-38" x="205.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-39" x="272.5" y="4.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-40" x="-330.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-41" x="-263.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-42" x="-196.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-43" x="-129.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-44" x="-62.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-45" x="4.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-46" x="71.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-47" x="138.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-48" x="205.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-49" x="272.5" y="55.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-50" x="-330.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-51" x="-263.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-52" x="-196.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-53" x="-129.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-54" x="-62.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-55" x="4.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-56" x="71.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-57" x="138.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-58" x="205.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+      <rect id="survey-cell-59" x="272.5" y="106.5" width="58" height="42" fill="rgba(245, 245, 245, 0.070)" stroke="rgba(245, 245, 245, 0.220)" stroke-width="1" opacity="0" />
+    </g>
+    <rect id="survey-mark" x="71.5" y="4.5" width="58" height="42" fill="none" stroke="#635BFF" stroke-width="2" opacity="0" />
+    <line id="survey-sweep" x1="-344.5" y1="-170.5" x2="-344.5" y2="170.5" stroke="rgba(99, 91, 255, 0.550)" stroke-width="1.6" opacity="0" />
+  </g>
+</svg>

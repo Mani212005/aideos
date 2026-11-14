@@ -1,0 +1,36 @@
+<!--
+  File Description: Saturn and Titan: the encounter that ended the tour and turned the craft outward.
+  Static artwork for the film Still Talking. Nothing here animates itself: element ids are the
+  handles that videos/still-talking/film.json drives through the declarative SVG timeline.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-300 -200 600 400" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <clipPath id="sat-clip">
+      <circle cx="0" cy="0" r="172" />
+    </clipPath>
+  </defs>
+  <g id="saturn-body">
+    <g id="sat-rings-back" transform="rotate(-13)">
+      <path id="sat-ring-back-outer" d="M -336 0 A 336 78 0 0 1 336 0" fill="none" stroke="rgba(245, 245, 245, 0.300)" stroke-width="2" />
+      <path id="sat-ring-back-mid" d="M -296 0 A 296 68 0 0 1 296 0" fill="none" stroke="rgba(245, 245, 245, 0.200)" stroke-width="2" />
+      <path id="sat-ring-back-inner" d="M -252 0 A 252 58 0 0 1 252 0" fill="none" stroke="rgba(245, 245, 245, 0.260)" stroke-width="2" />
+    </g>
+    <circle id="sat-disc" cx="0" cy="0" r="172" fill="#141416" />
+    <g clip-path="url(#sat-clip)">
+      <rect id="sat-band-1" x="-200" y="-96" width="400" height="34" fill="rgba(245, 245, 245, 0.120)" />
+      <rect id="sat-band-2" x="-200" y="-24" width="400" height="26" fill="rgba(245, 245, 245, 0.160)" />
+      <rect id="sat-band-3" x="-200" y="46" width="400" height="40" fill="rgba(245, 245, 245, 0.100)" />
+    </g>
+    <circle id="sat-limb" cx="0" cy="0" r="172" fill="none" stroke="rgba(245, 245, 245, 0.320)" stroke-width="1.8" />
+    <g id="sat-rings-front" transform="rotate(-13)">
+      <path id="sat-ring-front-outer" d="M 336 0 A 336 78 0 0 1 -336 0" fill="none" stroke="rgba(245, 245, 245, 0.300)" stroke-width="2" />
+      <path id="sat-ring-front-mid" d="M 296 0 A 296 68 0 0 1 -296 0" fill="none" stroke="rgba(245, 245, 245, 0.200)" stroke-width="2" />
+      <path id="sat-ring-front-inner" d="M 252 0 A 252 58 0 0 1 -252 0" fill="none" stroke="rgba(245, 245, 245, 0.260)" stroke-width="2" />
+    </g>
+  </g>
+  <g id="titan-body" transform="translate(246, 162)">
+    <circle id="titan-haze" cx="0" cy="0" r="42" fill="rgba(99, 91, 255, 0.160)" />
+    <circle id="titan-haze-ring" cx="0" cy="0" r="42" fill="none" stroke="rgba(99, 91, 255, 0.500)" stroke-width="1.4" />
+    <circle id="titan-disc" cx="0" cy="0" r="27" fill="#141416" stroke="#F5F5F5" stroke-width="1.5" />
+  </g>
+</svg>
