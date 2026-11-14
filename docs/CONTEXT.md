@@ -661,4 +661,4 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ## 8. Render IR and native renderer (`backend/renderIr/`, `native/`)
 
-* **`aideos.render/1`**: the versioned, data-only boundary for the native renderer. R1 provides its schema and validators; R2 provides the evaluator and raster. The pipeline emitter and renderer integration remain later Phase 1 work. See [RENDER_IR.md](RENDER_IR.md) for the contract and [NATIVE_RENDERER.md](NATIVE_RENDERER.md) for renderer behavior and commands.
+* **`aideos.render/1` and `/2`**: the versioned, data-only boundary for the native renderer (`/2` is a strict superset of `/1` that carries the Three stage). See [RENDER_IR.md](RENDER_IR.md) (the contract) and [NATIVE_RENDERER.md](NATIVE_RENDERER.md) (renderer behavior and commands).
