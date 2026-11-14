@@ -6,7 +6,7 @@
  * Used by: backend/pipeline/run.ts, backend/designSpec/motionRequests.ts.
  */
 
-import { generationCaller, NoGenerationModelError } from "../aideosConfig";
+import { generationCallerOrNull } from "../aideosConfig";
 import fs from "node:fs";
 import path from "node:path";
 import { parseFilm } from "../../src/dl/schema";
@@ -258,12 +258,7 @@ export async function designWithServerModel(
 
 /** The server text caller for a film: its own agent session, else the explicit generation override. */
 export async function serverDesignCaller(filmId?: string): Promise<DesignLlmCaller | null> {
-  try {
-    return generationCaller(undefined, undefined, filmId);
-  } catch (err) {
-    if (err instanceof NoGenerationModelError) return null;
-    throw err;
-  }
+  return generationCallerOrNull(filmId);
 }
 
 // Marks a film as keeping its template design so the studio can flag it.
@@ -360,6 +355,6 @@ export async function designFilm(filmId: string, opts: DesignFilmOptions = {}): 
 }
 
 // Uses the film's own agent session for server mode (else the explicit generation override), with no implicit reviewer fallback.
-async function defaultCaller(filmId: string): Promise<DesignLlmCaller> {
-  return generationCaller(undefined, undefined, filmId);
+async function defaultCaller(filmId: string): Promise<DesignLlmCaller | null> {
+  return serverDesignCaller(filmId);
 }

@@ -79,6 +79,43 @@ export function describeResult(result: AllCheckResult): string {
   return lines.join("\n");
 }
 
+/** The flags of one round command. */
+interface RoundFlags {
+  format: string;
+  round?: string;
+  stillEvery: string;
+  skipRender?: boolean;
+  json?: boolean;
+  /** Print how the review feedback was (or was not) delivered even when it was not sent. */
+  reportDelivery?: boolean;
+}
+
+// Runs one round, delivers its review to the originating session, settles it and prints the summary; throws on bad input or a failed tool.
+async function runRoundAndReport(slug: string, o: RoundFlags): Promise<void> {
+  if (!["long", "reel", "both"].includes(o.format)) throw new AllCheckError(`--format must be long, reel or both (got "${o.format}")`);
+  const deps = realRoundDeps((m) => console.error(m));
+  const records = await runRound(
+    { slug, format: o.format as CheckFormat | "both", round: o.round ? Number(o.round) : undefined, stillEverySec: Number(o.stillEvery), skipRender: o.skipRender },
+    deps,
+  );
+  const round = records[0].round;
+  const delivery = deliverFeedbackToOrigin(slug, records);
+  if (delivery.delivered || o.reportDelivery) console.error(`review feedback: ${delivery.reason}`);
+  const note = settleRound(slug, round, readRecords(slug));
+  const config = readConfig(slug);
+  const strays = strayFiles(slug, REPO_ROOT);
+  if (o.json) {
+    console.log(JSON.stringify({ records, rollback: note, strayFiles: strays }, null, 2));
+  } else {
+    console.log(records.map(describeRecord).join("\n"));
+    if (note) console.log(`\n${note.message}`);
+    if (strays.length) console.log(`\nRULE VIOLATION: these files were created outside videos/${slug}/ (delete them, and put scratch files in videos/${slug}/all-check/scratch/): ${strays.join(", ")}`);
+    console.log(`\nNext: open the stills, record the frame check (aideos all-check frames ${slug} --round ${round} --format <format> --clean | --issue "..."), then read the failures above.`);
+    if (round >= config.rounds) console.log(`THIS WAS THE LAST ROUND OF THE BUDGET (${config.rounds}). Record the frame check, then run: aideos all-check finish ${slug}. The run is only over when finish has written result.json: do not stop at a summary.`);
+  }
+  if (records.some((r) => r.review.error || r.measured.error || r.pairwise?.error)) process.exitCode = 2;
+}
+
 // Registers every all-check command.
 export function registerAllCheckCommands(program: Command): void {
   program
@@ -100,6 +137,9 @@ export function registerAllCheckCommands(program: Command): void {
         if (started.mode === "in-session") {
           console.log(`all-check set up for "${slug}". No new agent was started: THIS ${started.agent.agent} session (${model}) runs the rounds and makes the fixes.`);
           console.log(`  next:    read the brief below, then run: aideos all-check round ${slug} --format long`);
+        } else if (started.mode === "origin-session") {
+          const why = started.originState === "unknown" ? "could not be confirmed gone (treated as still running)" : "is still running";
+          console.log(`all-check set up for "${slug}". No new agent was started: the ${started.agent.agent} session (${model}) that started the film ${why}, so it does the fixing.`);
         } else {
           console.log(`all-check started for "${slug}" with a replacement ${started.agent.agent} agent on ${model}${started.agent.note ? ` (${started.agent.note})` : ""}: ${started.agent.source === "session" ? "the session that started the film is gone, so it inherits that session's agent and model" : "as requested"}.`);
           console.log(`  workspace: all-check: ${slug}, pane ${started.workspace?.paneId} (watch or step in: ${started.workspace?.attachCommand})`);
@@ -109,8 +149,12 @@ export function registerAllCheckCommands(program: Command): void {
         console.log(`  result:  ${started.resultPath}`);
         if (started.mode === "launched") console.log(`  wait:    aideos all-check wait ${slug}`);
         if (started.tookOverStaleLock) console.log("  (the earlier pane is no longer running its agent, so its lock was replaced)");
+        if (started.mode === "origin-session") {
+          console.log("  running the first round here and sending its review to that session:");
+          await runRoundAndReport(slug, { format: "both", stillEvery: "4", reportDelivery: true });
+        }
         if (flags.wait && started.mode === "launched") await runWait(slug, 240, 20);
-        else if (flags.wait) console.log("  (--wait has no effect here: this session is the one doing the work, so there is nothing to wait for)");
+        else if (flags.wait) console.log("  (--wait has no effect here: no replacement agent was started, so there is nothing to wait for)");
       } catch (err) {
         fail(err);
       }
@@ -125,30 +169,9 @@ export function registerAllCheckCommands(program: Command): void {
     .option("--still-every <sec>", "seconds between frame-check stills", "4")
     .option("--skip-render", "measure the video already rendered instead of rendering again")
     .option("--json", "print the records as JSON")
-    .action(async (slug: string, o: { format: string; round?: string; stillEvery: string; skipRender?: boolean; json?: boolean }) => {
+    .action(async (slug: string, o: RoundFlags) => {
       try {
-        if (!["long", "reel", "both"].includes(o.format)) throw new AllCheckError(`--format must be long, reel or both (got "${o.format}")`);
-        const deps = realRoundDeps((m) => console.error(m));
-        const records = await runRound(
-          { slug, format: o.format as CheckFormat | "both", round: o.round ? Number(o.round) : undefined, stillEverySec: Number(o.stillEvery), skipRender: o.skipRender },
-          deps,
-        );
-        const round = records[0].round;
-        const delivery = deliverFeedbackToOrigin(slug, records);
-        if (delivery.delivered) console.error(`review feedback: ${delivery.reason}`);
-        const note = settleRound(slug, round, readRecords(slug));
-        const config = readConfig(slug);
-        const strays = strayFiles(slug, REPO_ROOT);
-        if (o.json) {
-          console.log(JSON.stringify({ records, rollback: note, strayFiles: strays }, null, 2));
-        } else {
-          console.log(records.map(describeRecord).join("\n"));
-          if (note) console.log(`\n${note.message}`);
-          if (strays.length) console.log(`\nRULE VIOLATION: these files were created outside videos/${slug}/ (delete them, and put scratch files in videos/${slug}/all-check/scratch/): ${strays.join(", ")}`);
-          console.log(`\nNext: open the stills, record the frame check (aideos all-check frames ${slug} --round ${round} --format <format> --clean | --issue "..."), then read the failures above.`);
-          if (round >= config.rounds) console.log(`THIS WAS THE LAST ROUND OF THE BUDGET (${config.rounds}). Record the frame check, then run: aideos all-check finish ${slug}. The run is only over when finish has written result.json: do not stop at a summary.`);
-        }
-        if (records.some((r) => r.review.error || r.measured.error || r.pairwise?.error)) process.exitCode = 2;
+        await runRoundAndReport(slug, o);
       } catch (err) {
         fail(err);
       }

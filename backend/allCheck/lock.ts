@@ -135,12 +135,6 @@ export function readOwnedWorkspace(slug: string): HerdrLocation | null {
   }
 }
 
-// Records where the session that owns an in-session run lives, without claiming a workspace as ours to close.
-export function attachSessionToLock(slug: string, herdr: HerdrLocation | undefined): void {
-  const lock = readLock(slug);
-  if (lock && herdr) fs.writeFileSync(lockPath(slug), JSON.stringify({ ...lock, herdr }, null, 2) + "\n");
-}
-
 // Releases a video's lock.
 export function releaseLock(slug: string): void {
   fs.rmSync(lockPath(slug), { force: true });

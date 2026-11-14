@@ -265,7 +265,8 @@ aideos all-check status hnsw                              # rounds so far
      feedback in the output, and fixes the film with its own harness and model. A round run from another terminal
      types the review result into the originating session's Herdr pane (`herdr agent prompt`, `backend/allCheck/feedback.ts`)
      instead of starting anything.
-   - **Replacement (only when no agent session is running, or `--agent`/`--model` is passed).** `brief.md` and
+   - **Origin session still running (plain terminal).** When the film's recorded originating session is alive, or its liveness cannot be determined (treated as alive), no second agent starts: the lock follows that session's pane or process, the first round runs in the terminal, and its review is typed into that session's pane. A recorded session with neither a pane nor a process is never replaced implicitly; pass `--agent`/`--model` to do that on purpose.
+   - **Replacement (only when the recorded session is verified gone, or `--agent`/`--model` is passed).** `brief.md` and
      `launch.sh` are written and a new unfocused Herdr workspace named `all-check: <slug>` starts the agent with all
      permissions pre-approved, for example `claude [--model <model>] --dangerously-skip-permissions "<prompt>"`,
      `codex [--model <model>] --dangerously-bypass-approvals-and-sandbox "<prompt>"`, `opencode [--model <model>] --prompt "<prompt>"`
@@ -450,7 +451,7 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 ### Video model policy (`aideos.config.json`)
 
 - Generation and fixing follow the user's own agent session (its harness and model, recorded in `videos/<slug>/origin-session.json`); review is Gemini 3.8 Flash (`agy`). Gemini 3.1 Pro is out for generation unless the captain explicitly asks. The reviewer lives in the committed `aideos.config.json`, loaded by `backend/aideosConfig.ts`; never hard-code a fix or generation model.
-- `aideos all-check` starts no agent when run from an agent session: that session does the fixing. A replacement agent starts only when no session is running, inherits the recorded harness and model, and fails loudly when none is recorded; `backend/geminiReview` takes the reviewer model from the config. Per-run `--agent`/`--model` override; a forbidden generation model needs `--allow-forbidden-model`. See [docs/REVIEW.md](REVIEW.md) section 5.
+- `aideos all-check` starts no agent when run from an agent session: that session does the fixing. A replacement agent starts only when the recorded session is verified gone, inherits the recorded harness and model, and fails loudly when none is recorded; `backend/geminiReview` takes the reviewer model from the config. Per-run `--agent`/`--model` override; a forbidden generation model needs `--allow-forbidden-model`. See [docs/REVIEW.md](REVIEW.md) section 5.
 
 ### Gemini 3.8 Flash video quality review loop (9.0+ bar)
 

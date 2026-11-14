@@ -46,7 +46,7 @@ export interface AideosConfig {
 /** An unusable config or a refused model, as one clear message. */
 export class AideosConfigError extends Error {}
 
-/** No agent session is recorded for the film and no generation override is configured: there is no model to run. */
+/** Server-side generation is unavailable for this film: no session or override is known, the recorded harness cannot run headless, or its model is unusable. Callers fall back to the session instead of failing. */
 export class NoGenerationModelError extends AideosConfigError {}
 
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -142,11 +142,30 @@ export function generationCaller(file?: string, runner: GenerationRunner = runGe
   }
   const { agent, model } = chosen;
   if (agent !== "claude" || (model !== null && (/gemini/i.test(model) || forbiddenGenerationMatch(model, policy)))) {
-    throw new AideosConfigError(`server design requires an allowed Claude generation model; ${origin ? "the session recorded for this film" : "configured"} is ${agent} ${model ?? "(its own default model)"}`);
+    throw new NoGenerationModelError(
+      `server design requires an allowed Claude generation model; ${origin ? "the session recorded for this film" : "configured"} is ${agent} ${model ?? "(its own default model)"}, ` +
+        `so server-side generation is not available for it and the work goes to the session instead`,
+    );
   }
   return (prompt, system) => runner("claude", [
     "--print", ...(model ? ["--model", model] : []), "--output-format", "text", "--tools", "",
     "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence",
     "--system-prompt", system, prompt,
   ]);
+}
+
+// Like generationCaller, but a film with no usable server-side generation yields null (after one notice line) so the caller falls back to agent or inline delivery instead of failing.
+export function generationCallerOrNull(
+  filmId?: string,
+  runner: GenerationRunner = runGeneration,
+  notify: (line: string) => void = (line) => process.stderr.write(`${line}\n`),
+  file?: string,
+): ((prompt: string, system: string) => Promise<string>) | null {
+  try {
+    return generationCaller(file, runner, filmId);
+  } catch (err) {
+    if (!(err instanceof NoGenerationModelError)) throw err;
+    notify(err.message);
+    return null;
+  }
 }

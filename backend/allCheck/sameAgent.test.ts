@@ -15,7 +15,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
-import { generationCaller, loadAideosConfig, NoGenerationModelError, reviewerModel } from "../aideosConfig";
+import { generationCaller, generationCallerOrNull, loadAideosConfig, NoGenerationModelError, reviewerModel } from "../aideosConfig";
+import { designFilm, planFilmLook, serverDesignCaller } from "../designSpec/designer";
 import {
   detectOriginSession,
   modelFromArgs,
@@ -76,13 +77,13 @@ function fakeHerdr(over: { paneAgent?: string | null; promptFails?: boolean } = 
 }
 
 // Start dependencies with the given caller session and a launch that records what it was asked to start.
-function startDeps(live: OriginSession | null, env: NodeJS.ProcessEnv = {}): StartDeps & { launched: Array<{ script: string; agent: string }> } {
+function startDeps(live: OriginSession | null, env: NodeJS.ProcessEnv = {}, lock: Partial<StartDeps["lock"]> = {}): StartDeps & { launched: Array<{ script: string; agent: string }> } {
   const launched: Array<{ script: string; agent: string }> = [];
   const herdr = fakeHerdr();
   return {
     env,
     preflight: { herdr, which: (c: string) => `/usr/bin/${c}`, run: () => ({ status: 0, stdout: "gemini-3.8-flash-high\n", stderr: "" }) },
-    lock: { paneLive: () => true, pidAlive: () => true, now: () => Date.now() },
+    lock: { paneLive: () => true, pidAlive: () => true, now: () => Date.now(), ...lock },
     herdr,
     studioRunning: () => false,
     now: () => new Date("2026-11-14T10:00:00.000Z"),
@@ -238,7 +239,7 @@ for (const { agent, model, expectArgs } of REPLACEMENTS) {
       const bin = fs.mkdtempSync(path.join(os.tmpdir(), "fake-harness-"));
       cleanup.push(bin);
       fakeHarness(bin, agent, path.join(bin, "argv.txt"));
-      const deps = startDeps(null, { PATH: `${bin}:${process.env.PATH}`, HOME: bin });
+      const deps = startDeps(null, { PATH: `${bin}:${process.env.PATH}`, HOME: bin }, { paneLive: () => false });
       const started = startAllCheck(parseAllCheckOptions(slug), deps);
       assert.equal(started.mode, "launched");
       assert.deepEqual({ agent: started.agent.agent, model: started.agent.model, source: started.agent.source }, { agent, model, source: "session" });
@@ -256,6 +257,70 @@ for (const { agent, model, expectArgs } of REPLACEMENTS) {
     }
   });
 }
+
+test("plain terminal: a recorded origin session that is still running keeps the work and no second agent starts", () => {
+  const slug = "same-agent-origin-alive";
+  makePackage(slug);
+  try {
+    recordOriginSession(slug, session("codex", "gpt-5.5-codex"));
+    const deps = startDeps(null, {}, { paneLive: () => true });
+    const started = startAllCheck(parseAllCheckOptions(slug), deps);
+    assert.equal(started.mode, "origin-session");
+    assert.equal(started.originState, "alive");
+    assert.equal(started.workspace, null);
+    assert.equal(deps.launched.length, 0, "no replacement agent is launched");
+    assert.deepEqual({ agent: started.agent.agent, model: started.agent.model }, { agent: "codex", model: "gpt-5.5-codex" });
+    const lock = readLock(slug);
+    assert.equal(lock?.inSession, true);
+    assert.equal(lock?.herdr?.paneId, PANE.paneId, "the lock follows the origin pane, not this short-lived process");
+    assert.equal(JSON.parse(fs.readFileSync(path.join(allCheckDir(slug), "config.json"), "utf8")).inSession, true);
+    // The round's feedback then reaches that live session through the existing delivery path.
+    const herdr = fakeHerdr({ paneAgent: "codex" });
+    assert.equal(deliverFeedbackToOrigin(slug, [reviseRecord(slug)], { herdr, env: {} }).delivered, true);
+  } finally {
+    dropPackage(slug);
+  }
+});
+
+test("plain terminal: a recorded origin session whose liveness cannot be determined is treated as running", () => {
+  const slug = "same-agent-origin-unknown";
+  makePackage(slug);
+  try {
+    recordOriginSession(slug, session("claude", "claude-opus-5-5"));
+    const deps = startDeps(null, {}, { paneLive: () => { throw new Error("herdr unreachable"); } });
+    const started = startAllCheck(parseAllCheckOptions(slug), deps);
+    assert.equal(started.mode, "origin-session");
+    assert.equal(started.originState, "unknown");
+    assert.equal(deps.launched.length, 0, "never two agents on one film");
+    fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
+    // Recorded with neither a pane nor a process: nothing to check, so nothing is started either.
+    recordOriginSession(slug, session("claude", "claude-opus-5-5", { herdr: undefined, pid: undefined }));
+    assert.throws(() => startAllCheck(parseAllCheckOptions(slug), deps), /cannot tell whether it is still running/);
+    assert.equal(deps.launched.length, 0);
+    assert.equal(readLock(slug), null);
+    // An explicit --agent is a deliberate request for a replacement.
+    assert.equal(startAllCheck(parseAllCheckOptions(slug, { agent: "claude", model: "claude-opus-5-5" }), deps).mode, "launched");
+  } finally {
+    dropPackage(slug);
+  }
+});
+
+test("in-session: a session with no pane and no process to watch is refused instead of locked to a short-lived parent", () => {
+  const slug = "same-agent-nowatch";
+  makePackage(slug);
+  try {
+    const deps = startDeps(session("codex", "m", { herdr: undefined, pid: undefined }));
+    assert.throws(() => startAllCheck(parseAllCheckOptions(slug), deps), /cannot tell when this codex session ends/);
+    assert.equal(readLock(slug), null);
+    assert.equal(deps.launched.length, 0);
+    // With a pane (no process found) the lock follows the pane from the start.
+    const inPane = startDeps(session("codex", "m", { pid: undefined }), {}, { pidAlive: () => false });
+    assert.equal(startAllCheck(parseAllCheckOptions(slug), inPane).mode, "in-session");
+    assert.equal(readLock(slug)?.herdr?.paneId, PANE.paneId);
+  } finally {
+    dropPackage(slug);
+  }
+});
 
 test("replacement: no recorded session and no explicit override fails loudly instead of picking a model", () => {
   const slug = "same-agent-norecord";
@@ -310,7 +375,41 @@ test("server text: follows the film's recorded session, refuses a harness it can
     assert.ok(!calls[1].args.includes("--model"), "an unknown session model is left to claude, not guessed");
     recordOriginSession(slug, session("codex", "gpt-5.5-codex"));
     assert.throws(() => generationCaller(undefined, runner, slug), /requires an allowed Claude/);
+    assert.throws(() => generationCaller(undefined, runner, slug), NoGenerationModelError);
     assert.throws(() => generationCaller(undefined, runner, "same-agent-none"), NoGenerationModelError);
+  } finally {
+    dropPackage(slug);
+  }
+});
+
+test("server generation never hard-fails: a Codex-like origin falls back to the session, an Opus-like origin still runs", async () => {
+  const slug = "same-agent-fallback";
+  makePackage(slug);
+  try {
+    const calls: string[][] = [];
+    const runner = async (_command: string, args: string[]) => { calls.push(args); return "reply"; };
+    const notices: string[] = [];
+    recordOriginSession(slug, session("codex", "gpt-5.5-codex"));
+    assert.equal(generationCallerOrNull(slug, runner, (line) => notices.push(line)), null);
+    assert.equal(notices.length, 1);
+    assert.match(notices[0], /not available for it and the work goes to the session instead/);
+    assert.equal(await serverDesignCaller(slug), null, "the studio route and design stage get a null caller, not an error");
+    recordOriginSession(slug, session("claude", "gemini-3.1-pro"));
+    assert.equal(generationCallerOrNull(slug, runner, (line) => notices.push(line)), null, "a forbidden model is unusable too");
+    recordOriginSession(slug, session("claude", "claude-opus-5-5"));
+    const opus = generationCallerOrNull(slug, runner, (line) => notices.push(line));
+    assert.ok(opus);
+    assert.equal(await opus("p", "s"), "reply");
+    assert.equal(calls[0][calls[0].indexOf("--model") + 1], "claude-opus-5-5");
+    assert.equal(notices.length, 2, "an usable origin prints no notice");
+
+    // The design stage in server mode stops for the session (needs_design) instead of reporting a failure.
+    recordOriginSession(slug, session("codex", "gpt-5.5-codex"));
+    const outcome = await designFilm(slug, { mode: "server", skipAgent: true });
+    assert.equal(outcome.source, "needs_design");
+    assert.doesNotMatch(outcome.note, /server design failed/);
+    const look = await planFilmLook(slug, { mode: "server", skipAgent: true });
+    assert.doesNotMatch(JSON.stringify(look), /requires an allowed Claude/);
   } finally {
     dropPackage(slug);
   }
