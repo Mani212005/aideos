@@ -14,10 +14,14 @@ import type { LookPerformance } from "../lookPlan/schema";
 const CUE = /^(?<shot>[a-z0-9-]+)(?::"(?<phrase>[^"]+)")?(?:@(?<at>end|start|\d*\.?\d+))?(?<offset>[+-]\d+)?$/;
 const END = /^end(?<offset>[+-]\d+)?$/;
 
+// Names the shot a cue points at through the same grammar resolution uses; undefined for a frame number or a malformed cue.
+export function cueShot(cue: string | number): string | undefined {
+  return typeof cue === "string" ? CUE.exec(cue.trim())?.groups?.shot : undefined;
+}
+
 // Names a dropped shot through the same validated cue grammar used by resolution.
 export function collapsedCueShot(cue: string | number, cues: Cues): string | undefined {
-  if (typeof cue !== "string") return undefined;
-  const shot = CUE.exec(cue.trim())?.groups?.shot;
+  const shot = cueShot(cue);
   return shot && cues.collapsed?.has(shot) ? shot : undefined;
 }
 
