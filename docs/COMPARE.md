@@ -30,6 +30,16 @@ Duration and aspect (the aspect is text: same or different), cut count, cuts per
 mean luma, contrast, black point and saturation, caption presence share, the pause map (first sound, speech share, pause count, total and longest pause) and words per minute when both videos have a word list
 (`--ours-words`, `--ref-words`, or a `<name>.words.json` next to the video). The method names and tolerances of each metric are in `diff.md`.
 
+## Not measured
+
+The original idea for this command also named ink/edge coverage and depth of field (DOF). The diff has no row for either:
+
+- `aideos study` measures neither, so there is no study metric for the diff to read.
+- 3D ink is out of scope for compare (it is for colour, motion and density).
+- Each would need a new measurement with a second, independent method that agrees within a stated tolerance, under the two-method agreement rule above. Until then no delta may be stated.
+
+They are possible follow-up items for the captain to ask for.
+
 ## Outputs
 
 ```
