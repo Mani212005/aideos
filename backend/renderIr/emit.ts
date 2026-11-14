@@ -1,7 +1,7 @@
 /**
- * File Description: The Render IR emitter (R4 of the native renderer plan): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws. Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
+ * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, or an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts). Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
  * Inputs and outputs: a Film, a format, the scene's SVG sources and a text measurer -> a validated RenderIr plus the package files it references (fonts, artwork, audio) and the reasons a film is not supported.
- * Used by: backend/nativeRenderer.ts (prepare), backend/renderIr/emit.test.ts.
+ * Used by: backend/nativeRenderer.ts (prepare), backend/rendererSelection.ts (nativeSupport), backend/renderIr/emit.test.ts, backend/renderIr/stage3d.test.ts.
  */
 
 import { normalizeFilmSoundtrack, type Film, type Shot } from "../../src/dl/schema";
@@ -22,8 +22,9 @@ import { SUBTITLE_FONT_RATIO } from "../../src/dl/fullScreenHeroLayout";
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
-import { RENDER_IR_VERSION, ELEMENT_PROPERTIES, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
+import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, ELEMENT_PROPERTIES, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
 import { validateRenderIr } from "./validate";
+import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
 
 export type NativeFormat = "long" | "reel";
 
@@ -72,8 +73,8 @@ export interface MeasureReport {
 }
 export type Measurer = (request: MeasureRequest) => MeasureReport;
 
-/** A file the IR references, at its package-relative path: copied from a file, or written from text. */
-export type PackageFile = { path: string; from: string } | { path: string; text: string };
+/** A file the IR references, at its package-relative path: copied from a file, or written from text or bytes. */
+export type PackageFile = { path: string; from: string } | { path: string; text: string } | { path: string; bytes: Uint8Array };
 
 export interface EmitInput {
   film: Film;
@@ -110,11 +111,28 @@ const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter"]);
  * the chapter rail, the burned-in kinetic captions, the end card and the narration. Everything else stays with Remotion for now.
  */
 export function nativeSupport(film: Film, format: NativeFormat): string[] {
+  const { uncarried, undrawn } = supportGaps(film, format);
+  return [...uncarried, ...undrawn];
+}
+
+/**
+ * The two halves of `nativeSupport`: `uncarried` is what the Render IR cannot describe (the emitter refuses it),
+ * `undrawn` is what the IR describes but the native renderer does not draw yet. Phase 4 adds the Three stage to the
+ * IR in P4.1, so a Three-stage film's stage3d node is carried while its drawing waits for P4.2 (one performer, cel),
+ * P4.3 (several performers) and P4.4 (dots-v1, which the IR cannot carry yet either).
+ */
+export function supportGaps(film: Film, format: NativeFormat): { uncarried: string[]; undrawn: string[] } {
   const reasons: string[] = [];
+  const undrawn: string[] = [];
   const scene = film.scene;
   if (!scene) reasons.push("node-graph films (no film.scene) are Phase 2 of the native renderer");
   else {
-    if (scene.renderer === "three") reasons.push("Three-stage character films stay on Remotion until Phase 4");
+    if (scene.renderer === "three") {
+      reasons.push(...stage3dCarryReasons(scene as unknown as Scene));
+      undrawn.push("Three-stage character films: the native renderer does not draw the stage3d node yet (P4.2 of the native renderer)");
+      const performers = scene.performances?.length ?? 0;
+      if (performers > 1) undrawn.push(`Three-stage films with several performers (${performers}) are P4.3 of the native renderer`);
+    }
     if (scene.actors && scene.actors.length > 0) reasons.push("scene actors (character rigs) are not drawn natively");
     for (const asset of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
       if (asset.subGroups && asset.subGroups.length > 0) reasons.push(`asset ${asset.assetId}: sub-group rotation is not drawn natively`);
@@ -139,7 +157,7 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
     if (shot.needsFootage) reasons.push(`shot ${shot.id}: footage is Phase 2`);
   }
   if (format !== "long" && format !== "reel") reasons.push(`unknown format ${String(format)}`);
-  return reasons;
+  return { uncarried: reasons, undrawn };
 }
 
 /** `#RRGGBB` plus an alpha in [0, 1] as `#RRGGBBAA`. */
@@ -547,9 +565,8 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
   return cards;
 }
 
-/** The scene's stage nodes: background then props, each with its element tracks frozen after `lastFrame`. */
-function stageNodes(scene: Scene, svgIds: Record<string, string[]>, lastFrame: number): Node[] {
-  const assets = [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[];
+/** The scene's stage nodes: background then props (or the `assets` given, for one plane of a Three film), each with its element tracks frozen after `lastFrame`. */
+function stageNodes(scene: Scene, svgIds: Record<string, string[]>, lastFrame: number, assets = [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]): Node[] {
   const needsDense = assets.some((a) => (a.tracks ?? []).some((t) => t.keyframes.length > 0));
   // Asset-level tracks are Catmull-Rom curves the IR has no ease for: take them from the compiler, per frame.
   const compiled = needsDense ? compileScene(scene, { clockMs: 0, assetElementIds: svgIds }) : null;
@@ -579,8 +596,25 @@ function stageNodes(scene: Scene, svgIds: Record<string, string[]>, lastFrame: n
   });
 }
 
-/** Emits the overlay and stage for one format, given a text measurer callback pair. */
-function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx["metrics"]): RenderIr {
+/**
+ * The stage of a Three film, as SceneStage draws it: the ground plane (the background and `plane: "background"`
+ * props), the Three stage, then the foreground plane (`plane: "foreground"` props over a transparent background).
+ * Props with no plane are not drawn on a Three film. The renderer draws stage siblings of equal layer in document
+ * order, and groups and the stage3d node count as layer 0, so the planes keep this order.
+ */
+function threeStageNodes(scene: Scene, svgIds: Record<string, string[]>, lastFrame: number, stage3d: EmittedStage3d): Node[] {
+  const group = (id: string, children: Node[]): Node => ({ kind: "group", id, x: 0, y: 0, scale: 1, rotation: 0, tracks: [], children });
+  const ground = [scene.background, ...scene.props.filter((p) => p.plane === "background")].filter(Boolean) as EnvironmentAsset[];
+  const foreground = scene.props.filter((p) => p.plane === "foreground");
+  return [
+    group("ground-plane", stageNodes(scene, svgIds, lastFrame, ground)),
+    stage3d.node,
+    ...(foreground.length ? [group("foreground-plane", stageNodes(scene, svgIds, lastFrame, foreground))] : []),
+  ];
+}
+
+/** Emits the overlay and stage for one format, given a text measurer callback pair and, for a Three film, its emitted stage. */
+function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx["metrics"], stage3d?: EmittedStage3d): RenderIr {
   const { film, format } = input;
   const scene = film.scene as unknown as Scene;
   const { width, height } = FORMAT_SIZE[format];
@@ -607,7 +641,8 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
     const ff = frozen(f);
     const current = shotAt(timeline, ff);
     const progress = Math.max(0, Math.min(1, (ff - current.from) / Math.max(1, current.durationInFrames)));
-    const drift = current.shot.drift && !cameraPush ? 1 + (DRIFT - 1) * progress : 1;
+    // Film.tsx never drifts a Three film: the stage camera owns all of its framing.
+    const drift = current.shot.drift && !cameraPush && !stage3d ? 1 + (DRIFT - 1) * progress : 1;
     return holdScale * drift;
   };
 
@@ -711,14 +746,15 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
 
   const audio = resolveAudio(film, delivery);
   return {
-    schema: RENDER_IR_VERSION,
+    // A film without a Three stage stays `/1`, byte for byte what it was before `/2` existed.
+    schema: stage3d ? RENDER_IR_VERSION_2 : RENDER_IR_VERSION,
     film: { id: film.id, fps, durationFrames: total },
     scene: { width: scene.sceneSize.w, height: scene.sceneSize.h },
     formats: { [format]: { width, height } },
     background: ctx.tokens.canvas,
-    assets: [...assets, ...audio.assets],
+    assets: [...assets, ...(stage3d ? [stage3d.mesh] : []), ...audio.assets],
     camera,
-    stage: stageNodes(scene, svgIds, sceneLast),
+    stage: stage3d ? threeStageNodes(scene, svgIds, sceneLast, stage3d) : stageNodes(scene, svgIds, sceneLast),
     overlay,
     audio: audio.clips,
   };
@@ -860,10 +896,31 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>)
   return out;
 }
 
+/** Options of `emitRenderIr`. */
+export interface EmitOptions {
+  /**
+   * Emit a film the IR can describe even though the native renderer cannot draw all of it yet (today: a Three
+   * stage before P4.2). For tests and native renderer development; the render path never sets it, so it keeps
+   * falling back to Remotion for every reason `nativeSupport` lists.
+   */
+  allowUndrawn?: boolean;
+}
+
+/** The last frame the scene shows in a format: the story holds its last frame through the end card, and the scene its own. */
+function sceneLastFrame(film: Film, format: NativeFormat): number {
+  const scene = film.scene as unknown as Scene;
+  const storyLast = Math.max(0, deliveryTimeline(film, format).storyFrames - 1);
+  return Math.min(storyLast, scene.durationFrames - 1);
+}
+
 /** Emits a validated Render IR for one format of a film and lists the package files it references. */
-export function emitRenderIr(input: EmitInput): EmitResult {
-  const reasons = nativeSupport(input.film, input.format);
+export function emitRenderIr(input: EmitInput, options: EmitOptions = {}): EmitResult {
+  const gaps = supportGaps(input.film, input.format);
+  const reasons = options.allowUndrawn ? gaps.uncarried : [...gaps.uncarried, ...gaps.undrawn];
   if (reasons.length) throw new NativeUnsupportedError(reasons);
+  const threeScene = input.film.scene?.renderer === "three" ? (input.film.scene as unknown as Scene) : undefined;
+  // The stage is evaluated once: both layout passes below share it.
+  const stage3d = threeScene ? emitStage3d(threeScene, sceneLastFrame(input.film, input.format) + 1) : undefined;
   const fonts: MeasureFont[] = [
     ...SANS_WEIGHTS.map((w) => ({ id: sansId(w), path: input.resolvePath(NATIVE_FONT_FILES.sans), family: "Geist", weight: w })),
     ...MONO_WEIGHTS.map((w) => ({ id: monoId(w), path: input.resolvePath(NATIVE_FONT_FILES.mono), family: "JetBrains Mono", weight: w })),
@@ -877,6 +934,7 @@ export function emitRenderIr(input: EmitInput): EmitResult {
     input,
     (r) => (runs.set(runKey(r), r), 1),
     (font, size) => (queries.set(queryKey(font, size), { font, size }), { baseline: 1, height: 1, ascent: 1, descent: 0 }),
+    stage3d,
   );
   const runList = [...runs.values()];
   const queryList = [...queries.values()];
@@ -888,6 +946,7 @@ export function emitRenderIr(input: EmitInput): EmitResult {
     input,
     (r) => widths.get(runKey(r)) ?? (() => { throw new Error(`unmeasured run ${r.text}`); })(),
     (font, size) => lines.get(queryKey(font, size)) ?? (() => { throw new Error(`unmeasured face ${font}`); })(),
+    stage3d,
   );
   const checked = validateRenderIr(ir);
   if (!checked.ok) throw new Error(`the emitted Render IR is invalid: ${JSON.stringify(checked.error)}`);
@@ -900,6 +959,7 @@ export function emitRenderIr(input: EmitInput): EmitResult {
   for (const a of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
     files.push({ path: `visuals/${a.assetId}.svg`, text: input.svgSources[a.svgSource!] });
   }
+  if (stage3d) files.push({ path: STAGE_MESH_PATH, bytes: stage3d.meshBytes });
   const delivery = deliveryTimeline(input.film, input.format);
   for (const a of resolveAudio(input.film, delivery).sources) files.push({ path: a.path, from: input.resolvePath(a.source) });
   return { ir: checked.ir, files };

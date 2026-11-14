@@ -1,4 +1,4 @@
-//! File Description: The load path of the Render IR: JSON parse, version gate, JSON Schema check, typed deserialization and the cross-reference rules, with one error type that names exactly why a document was refused.
+//! File Description: The load path of the Render IR: JSON parse, version gate, the JSON Schema check of that version, typed deserialization and the cross-reference rules, with one error type that names exactly why a document was refused.
 //! Inputs and outputs: a path or JSON text -> `RenderIr` or `LoadError`.
 //! Used by: crate::load_from_path and crate::load_from_str, the native renderer crates.
 
@@ -9,10 +9,12 @@ use std::sync::OnceLock;
 use serde_json::Value;
 
 use crate::types::RenderIr;
-use crate::{semantic, VERSION};
+use crate::{semantic, SUPPORTED, VERSION, VERSION_2};
 
-/// The committed JSON Schema, embedded so a built binary needs no file next to it.
+/// The committed `/1` JSON Schema, embedded so a built binary needs no file next to it.
 pub const SCHEMA_JSON: &str = include_str!("../schema/aideos.render.1.schema.json");
+/// The committed `/2` JSON Schema.
+pub const SCHEMA_V2_JSON: &str = include_str!("../schema/aideos.render.2.schema.json");
 
 /// One problem in a document: a stable machine code, a JSON Pointer to the offending value and a sentence.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,13 +70,21 @@ fn schema_issue(path: String, message: String) -> LoadError {
     LoadError::Invalid(vec![Issue { code: "schema".into(), path, message }])
 }
 
-/// The compiled JSON Schema validator, built once.
-fn validator() -> &'static jsonschema::Validator {
-    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
-    VALIDATOR.get_or_init(|| {
-        let schema: Value = serde_json::from_str(SCHEMA_JSON).expect("the embedded Render IR schema is JSON");
-        jsonschema::validator_for(&schema).expect("the embedded Render IR schema is a valid JSON Schema")
-    })
+/// Compiles one embedded JSON Schema.
+fn compile(text: &str) -> jsonschema::Validator {
+    let schema: Value = serde_json::from_str(text).expect("the embedded Render IR schema is JSON");
+    jsonschema::validator_for(&schema).expect("the embedded Render IR schema is a valid JSON Schema")
+}
+
+/// The compiled JSON Schema validator of one version, built once.
+fn validator(version: &str) -> &'static jsonschema::Validator {
+    static V1: OnceLock<jsonschema::Validator> = OnceLock::new();
+    static V2: OnceLock<jsonschema::Validator> = OnceLock::new();
+    if version == VERSION {
+        V1.get_or_init(|| compile(SCHEMA_JSON))
+    } else {
+        V2.get_or_init(|| compile(SCHEMA_V2_JSON))
+    }
 }
 
 /// Reads and loads a Render IR file.
@@ -91,10 +101,11 @@ pub fn load_from_str(text: &str) -> Result<RenderIr, LoadError> {
         Some(found) if value.is_object() => found,
         _ => return Err(schema_issue(String::new(), "a Render IR is an object with a string `schema` field".into())),
     };
-    if found != VERSION {
-        return Err(LoadError::UnsupportedVersion { found: found.to_string(), supported: VERSION });
+    if found != VERSION && found != VERSION_2 {
+        return Err(LoadError::UnsupportedVersion { found: found.to_string(), supported: SUPPORTED });
     }
-    let structural: Vec<Issue> = validator()
+    // Each version is checked against its own shape, so a `/1` document cannot carry a `/2` addition.
+    let structural: Vec<Issue> = validator(found)
         .iter_errors(&value)
         .map(|e| Issue { code: "schema".into(), path: e.instance_path().to_string(), message: e.to_string() })
         .collect();

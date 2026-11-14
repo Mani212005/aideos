@@ -1,10 +1,13 @@
 /**
- * File Description: Loads and checks a Render IR document (`aideos.render/1`): rejects bad JSON, an unknown version or a structurally invalid document, then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files. The pipeline emitter is planned for R4.
+ * File Description: Loads and checks a Render IR document (`aideos.render/1` or its superset `aideos.render/2`): rejects bad JSON, an unknown version or a structurally invalid document (each version against its own schema), then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, and for the Three stage its graph, tracks, parts, textures and face programs). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files.
  * Inputs and outputs: JSON text or an already parsed value -> a typed RenderIr, or a failure of kind not_json, unsupported_version or invalid_document with every issue found.
- * Used by: the TypeScript Render IR emitter (R4), backend/renderIr/renderIr.test.ts.
+ * Used by: backend/renderIr/emit.ts (checks every emitted document), backend/renderIr/renderIr.test.ts, backend/renderIr/stage3d.test.ts.
  */
 
-import { RENDER_IR_VERSION, renderIrSchema, type Asset, type FormatName, type Keyframe, type Node, type RenderIr } from "./schema";
+import { RENDER_IR_VERSION, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, type Asset, type FormatName, type Keyframe, type Node, type RenderIr, type Stage3dNode } from "./schema";
+
+/** The versions this build reads, as the `supported` text of an unsupported_version failure. */
+export const SUPPORTED_VERSIONS_TEXT = RENDER_IR_VERSIONS.join(", ");
 
 /** One problem in a document: a stable machine code, a JSON Pointer to the offending value and a sentence. */
 export interface Issue {
@@ -52,10 +55,11 @@ export function validateRenderIr(value: unknown): LoadResult {
     return invalid([{ code: "schema", path: "", message: "a Render IR is an object with a string `schema` field" }]);
   }
   const found = (value as Record<string, unknown>).schema as string;
-  if (found !== RENDER_IR_VERSION) {
-    return { ok: false, error: { kind: "unsupported_version", found, supported: RENDER_IR_VERSION } };
+  if (!(RENDER_IR_VERSIONS as readonly string[]).includes(found)) {
+    return { ok: false, error: { kind: "unsupported_version", found, supported: SUPPORTED_VERSIONS_TEXT } };
   }
-  const parsed = renderIrSchema.safeParse(value);
+  // Each version is checked against its own shape, so a `/1` document cannot carry a `/2` addition.
+  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : renderIrSchemaV2).safeParse(value);
   if (!parsed.success) {
     return invalid(parsed.error.issues.map((i) => ({
       code: "schema",
@@ -63,8 +67,9 @@ export function validateRenderIr(value: unknown): LoadResult {
       message: i.message,
     })));
   }
-  const issues = checkSemantics(parsed.data);
-  return issues.length ? invalid(issues) : { ok: true, ir: parsed.data };
+  const ir = parsed.data as RenderIr;
+  const issues = checkSemantics(ir);
+  return issues.length ? invalid(issues) : { ok: true, ir };
 }
 
 // Wraps issues as an invalid_document failure.
@@ -94,6 +99,14 @@ export function checkSemantics(ir: RenderIr): Issue[] {
         seen.add(e);
       });
     }
+    if (asset.kind === "mesh") {
+      const seen = new Set<string>();
+      asset.parts.forEach((part, j) => {
+        if (seen.has(part.id)) add("duplicate_part_id", at(p, "parts", j, "id"), `mesh part id ${part.id} is listed twice`);
+        seen.add(part.id);
+        if (part.indices % 3 !== 0) add("indices_not_triangles", at(p, "parts", j, "indices"), `${part.indices} indices are not a whole number of triangles`);
+      });
+    }
   });
 
   // Looks an asset up by id and kind, reporting a missing or wrongly typed reference.
@@ -120,7 +133,7 @@ export function checkSemantics(ir: RenderIr): Issue[] {
   };
 
   // Checks a node-level track list.
-  const checkNodeTracks = (path: string, tracks: Extract<Node, { tracks: unknown[] }>["tracks"]) => {
+  const checkNodeTracks = (path: string, tracks: Extract<Node, { kind: "group" }>["tracks"]) => {
     const seen = new Set<string>();
     tracks.forEach((t, i) => {
       const tp = at(path, "tracks", i);
@@ -148,19 +161,27 @@ export function checkSemantics(ir: RenderIr): Issue[] {
   };
 
   const ids = new Set<string>();
-  // Walks a node tree in one space, checking each node.
-  const walk = (nodes: Node[], path: string, space: "stage" | "overlay") => {
+  let stage3dCount = 0;
+  // Walks a node tree in one space, checking each node; `top` is true for the space's own list.
+  const walk = (nodes: Node[], path: string, space: "stage" | "overlay", top: boolean) => {
     nodes.forEach((node, i) => {
       const p = at(path, i);
       if (ids.has(node.id)) add("duplicate_node_id", at(p, "id"), `node id ${node.id} is already used`);
       ids.add(node.id);
-      const allowed = space === "stage" ? node.kind === "svg" || node.kind === "group" : node.kind !== "svg";
-      if (!allowed) add("node_not_allowed", at(p, "kind"), `a ${node.kind} node cannot be drawn in the ${space}`);
+      const allowed = node.kind === "stage3d" ? space === "stage" && top : space === "stage" ? node.kind === "svg" || node.kind === "group" : node.kind !== "svg";
+      if (!allowed) add("node_not_allowed", at(p, "kind"), node.kind === "stage3d" ? "a stage3d node is drawn only at the top of the stage" : `a ${node.kind} node cannot be drawn in the ${space}`);
       if (node.visible) checkSpan(at(p, "visible"), node.visible.fromFrame, node.visible.toFrame);
       switch (node.kind) {
+        case "stage3d": {
+          // Only a stage3d node in its place counts toward the one a document may draw.
+          if (allowed && ++stage3dCount > 1) add("node_not_allowed", at(p, "kind"), "a document draws at most one stage3d node");
+          const mesh = needAsset(at(p, "mesh"), node.mesh, "mesh");
+          checkStage3d(node, p, mesh?.kind === "mesh" ? mesh : undefined, duration, add);
+          break;
+        }
         case "group":
           checkNodeTracks(p, node.tracks);
-          walk(node.children, at(p, "children"), space);
+          walk(node.children, at(p, "children"), space, false);
           break;
         case "svg": {
           checkNodeTracks(p, node.tracks);
@@ -239,8 +260,8 @@ export function checkSemantics(ir: RenderIr): Issue[] {
       }
     });
   };
-  walk(ir.stage, "/stage", "stage");
-  walk(ir.overlay, "/overlay", "overlay");
+  walk(ir.stage, "/stage", "stage", true);
+  walk(ir.overlay, "/overlay", "overlay", true);
 
   if (ir.camera) {
     checkKeyframes("/camera/centerX", ir.camera.centerX);
@@ -259,6 +280,62 @@ export function checkSemantics(ir: RenderIr): Issue[] {
     checkKeyframes(at(p, "gainEnvelope"), clip.gainEnvelope, { min: 0, max: 4 });
   });
   return issues;
+}
+
+/** Channel widths of a stage track: numbers per sample. */
+const TRACK_WIDTH = { position: 3, quaternion: 4, scale: 1 } as const;
+
+// Checks one stage3d node: its graph (unique ids, parents listed first), tracks (one per node, every channel `sampleFrames` samples long, scale above zero), drawables (known node, part and texture) and face textures (programs that exist, one per sample frame).
+function checkStage3d(node: Stage3dNode, p: string, mesh: Extract<Asset, { kind: "mesh" }> | undefined, duration: number, add: (code: string, path: string, message: string) => void): void {
+  const n = node.sampleFrames;
+  if (n > duration) add("frame_out_of_range", at(p, "sampleFrames"), `sampleFrames ${n} is past the film's ${duration} frames`);
+  // Graph nodes, drawables and face textures each have their own id space inside the stage (a drawable usually shares its node's id).
+  const spaces = { nodes: new Set<string>(), drawables: new Set<string>(), faceTextures: new Set<string>() };
+  const claim = (space: keyof typeof spaces, path: string, id: string) => {
+    if (spaces[space].has(id)) add("duplicate_stage3d_id", path, `stage3d ${space} id ${id} is already used`);
+    spaces[space].add(id);
+  };
+  const graph = new Set<string>();
+  node.nodes.forEach((g, i) => {
+    const gp = at(p, "nodes", i);
+    claim("nodes", at(gp, "id"), g.id);
+    if (g.parent !== undefined && !graph.has(g.parent)) add("unknown_node", at(gp, "parent"), `parent ${g.parent} is not a node listed before ${g.id}`);
+    graph.add(g.id);
+  });
+  const tracked = new Set<string>();
+  node.channels.forEach((t, i) => {
+    const tp = at(p, "channels", i);
+    if (!graph.has(t.node)) add("unknown_node", at(tp, "node"), `no stage3d node ${t.node}`);
+    if (tracked.has(t.node)) add("duplicate_track", tp, `node ${t.node} is driven by two tracks`);
+    tracked.add(t.node);
+    for (const channel of ["position", "quaternion", "scale"] as const) {
+      const values = t[channel];
+      if (values === undefined) continue;
+      const want = n * TRACK_WIDTH[channel];
+      if (values.length !== want) add("sample_count_mismatch", at(tp, channel), `${channel} has ${values.length} numbers, ${n} samples need ${want}`);
+      if (channel === "scale") {
+        const bad = values.findIndex((v) => !(v > 0));
+        if (bad >= 0) add("value_out_of_range", at(tp, channel, bad), `scale ${values[bad]} is not above 0`);
+      }
+    }
+  });
+  const textures = new Map(node.faceTextures.map((t) => [t.id, t]));
+  const parts = new Set(mesh?.parts.map((part) => part.id) ?? []);
+  node.drawables.forEach((d, i) => {
+    const dp = at(p, "drawables", i);
+    claim("drawables", at(dp, "id"), d.id);
+    if (!graph.has(d.node)) add("unknown_node", at(dp, "node"), `no stage3d node ${d.node}`);
+    if (mesh && !parts.has(d.part)) add("unknown_part", at(dp, "part"), `mesh ${mesh.id} has no part ${d.part}`);
+    if (d.material.kind === "face" && !textures.has(d.material.texture)) add("unknown_texture", at(dp, "material", "texture"), `no face texture ${d.material.texture}`);
+  });
+  node.faceTextures.forEach((t, i) => {
+    const fp = at(p, "faceTextures", i);
+    claim("faceTextures", at(fp, "id"), t.id);
+    if (t.programs.length !== n) add("sample_count_mismatch", at(fp, "programs"), `${t.programs.length} program indices, ${n} samples need ${n}`);
+    const bad = t.programs.findIndex((index) => index >= node.facePrograms.length);
+    if (bad >= 0) add("unknown_program", at(fp, "programs", bad), `program ${t.programs[bad]} is not one of the ${node.facePrograms.length} face programs`);
+  });
+  if (node.projection.far <= node.projection.near) add("value_out_of_range", at(p, "projection", "far"), "the far plane must be beyond the near plane");
 }
 
 // Reports whether an asset path stays inside the package: relative, no backslash, no drive letter, no `..`.
