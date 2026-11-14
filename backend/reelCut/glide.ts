@@ -141,7 +141,9 @@ function movingFramesIn(input: GlideInput, frames: ReadonlyArray<number | undefi
 function laterPoseConflict(input: GlideInput, before: ReadonlyArray<number | undefined>, after: ReadonlyArray<number | undefined>, index: number): string | undefined {
   for (let j = index + 1; j < input.poses.length && after[j - 1] !== before[j - 1]; j++) {
     if (samePose(input.poses[j], input.poses[j - 1])) continue;
-    const own = framesNeeded(input, after, j, after[j - 1]!);
+    const found = framesNeeded(input, after, j, after[j - 1]!);
+    const straddles = input.cuts.some((c) => c >= after[j - 1]! && c <= after[j]!);
+    const own = found !== undefined && straddles ? Math.max(found, input.gap) : found;
     const have = after[j]! - after[j - 1]!;
     if (own !== undefined && own <= have) continue;
     const shot = shotAt(input.keptShots, after[j]!);
