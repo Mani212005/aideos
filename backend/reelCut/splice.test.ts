@@ -1,6 +1,6 @@
 /**
- * File Description: Behavioural coverage of the smooth splice at dropped reel shots, on a short synthetic scene film.
- * Inputs and outputs: a generated twelve-shot package, cuts and measured narration stubs -> compiled reels checked for continuity, length and identity.
+ * File Description: Behavioural coverage of the smooth splice and the kept-shot look contract at dropped reel shots, on a short synthetic scene film.
+ * Inputs and outputs: a generated twelve-shot package, cuts, a look plan and measured narration stubs -> compiled reels checked for continuity, length, look contract and identity.
  * Used by: npm test.
  */
 import assert from "node:assert/strict";
@@ -16,6 +16,8 @@ import { buildCaptionsVtt, type ProduceAudioResult } from "../audio";
 import { compileDesign } from "../designSpec/compile";
 import { designSpecSchema, type DesignSpec } from "../designSpec/spec";
 import { MAX_CAMERA_PAN_WIDTHS, MAX_CAMERA_ZOOM_STEP } from "../designCheck/designCheck";
+import { checkDesignAgainstLook } from "../designSpec/build";
+import { parseLookPlan, type LookPlan } from "../lookPlan/schema";
 import { createReelContext } from "./constraints";
 import { compileReel } from "./build";
 import { SPLICE_DEFAULT_FRAMES, SPLICE_EASING, SPLICE_MIN_FRAMES } from "./splice";
@@ -152,4 +154,55 @@ test("reel splice: a cut that drops nothing compiles byte-identically with or wi
   const spliced = compile(f, cutDropping(f.long, [], {}), 6.5);
   assert.ok(plain.film, JSON.stringify(plain));
   assert.equal(JSON.stringify(spliced.film), JSON.stringify(plain.film));
+});
+
+// Builds a look plan whose states and poses sit on both kept and dropped shots of the DROPS cut, with a spec whose camera poses name their focus.
+function lookFixture(f: ReturnType<typeof fixture>): { spec: DesignSpec; look: LookPlan } {
+  const focusOf: Record<string, string> = { "view-3": "road", "view-4": "memory" };
+  const spec = designSpecSchema.parse({ ...f.spec, camera: (f.spec.camera ?? []).map((pose) => focusOf[pose.id ?? ""] ? { ...pose, focus: focusOf[pose.id ?? ""] } : pose) });
+  const look = parseLookPlan({
+    schema: "aideos.look/1",
+    decidedBy: { agent: "claude", model: "claude-sonnet-5-5", at: "2026-11-15T00:00:00Z" },
+    film: {
+      mode: "scene", stage: "A cargo crosses a road between two views.",
+      cast: [
+        { id: "cargo", what: "the cargo", enters: id(1), changes: [
+          { at: id(3), how: "reaches the gate", state: "cargo at the gate" }, { at: id(5), how: "climbs the hill", state: "cargo on the hill" }, { at: id(8), how: "crosses the bridge", state: "cargo on the bridge" }] },
+        { id: "road-glow", what: "the road glow", enters: id(1), changes: [{ at: id(5), how: "brightens", state: "road half lit" }, { at: id(7), how: "brightens", state: "road mostly lit" }] },
+      ],
+      camera: [{ at: id(3), pose: "wide on the road", why: "show the road", focus: "road" }, { at: id(4), pose: "close on the memory", why: "show the memory", focus: "memory" }, { at: id(1), pose: "open", why: "start" }],
+      palette: { bg: "#101010", accent: "#ffcc00" }, captions: { position: "bottom", kineticColumn: false }, headlines: "none",
+    },
+    shots: [{ id: id(1), treatment: "scene+card", carries: ["cargo"], cue: "cargo", criterion: "c", why: "w" }, { id: id(3), treatment: "scene+card", carries: ["cargo"], cue: "cargo", criterion: "c", why: "w" }, { id: id(5), treatment: "scene+card", carries: ["cargo"], cue: "cargo", criterion: "c", why: "w" }],
+  });
+  return { spec, look };
+}
+
+// Returns every error and error finding of a compiled reel as one comparable text.
+const failures = (r: ReturnType<typeof compileReel>) => [...r.errors, ...r.findings.filter((x) => x.severity === "error").map((x) => `${x.rule}: ${x.where}: ${x.message}`)].join("\n");
+
+test("captain decision 2026-11-15 (true 50 s reel cut): a cut reel's look contract judges only the planned states and poses of its kept shots", () => {
+  const f = fixture();
+  const { spec, look } = lookFixture(f);
+  // The plan itself is honoured by the full long film, so any reel failure comes from the dropped shots alone.
+  assert.deepEqual(checkDesignAgainstLook(f.long, spec, f.words, f.pkg, look), []);
+  for (const splice of [undefined, {}] as const) {
+    const cut = cutDropping(f.long, DROPS, splice);
+    const kept = cut.shots.filter((s) => !("drop" in s));
+    const result = compileReel({ long: f.long, base: f.base, cut, spec, look, pkg: f.pkg, narration: narration(kept.map((s) => ("narration" in s ? s.narration : "")), kept.map(() => 6.5)) });
+    assert.doesNotMatch(failures(result), /planned state .* has no changing clip|does not focus/, failures(result));
+    if (splice) assert.ok(result.film, JSON.stringify(result));
+  }
+});
+
+test("reel look contract: a cut that drops nothing leaves the look plan untouched", () => {
+  const f = fixture();
+  const { spec, look } = lookFixture(f);
+  const cut = cutDropping(f.long, []);
+  const reel = { long: f.long, base: f.base, cut, spec, pkg: f.pkg, narration: narration(cut.shots.map((s) => ("narration" in s ? s.narration : "")), cut.shots.map(() => 6.5)) };
+  const withLook = compileReel({ ...reel, look });
+  const without = compileReel(reel);
+  assert.ok(withLook.film, JSON.stringify(withLook));
+  assert.equal(JSON.stringify(withLook.film), JSON.stringify(without.film));
+  assert.equal(failures(withLook), failures(without));
 });

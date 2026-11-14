@@ -22,6 +22,7 @@ import { lookPlanSchema, type LookPlan } from "../lookPlan/schema";
 import { createCues } from "../sceneKit/timing";
 import { ProductionError } from "../pipeline/types";
 import { writeJsonAtomic } from "../designSpec/buildRecord";
+import { lookPlanForKeptShots } from "./keptLook";
 import { loadReelContext, readReelCut, reelPackageDir } from "./brief";
 import { checkReelCut, formatReelReport } from "./check";
 import { reelCutSchema, type ReelCut } from "./schema";
@@ -135,6 +136,8 @@ export function compileReel(input: {
   const { long, base, cut, narration, spec, look, pkg } = input;
   const kept = cut.shots.flatMap((entry) => "drop" in entry ? [] : [entry]);
   const keptIds = new Set(kept.map((s) => s.id));
+  // A cut reel answers only for the planned states and poses its kept shots carry.
+  const keptLook = look && lookPlanForKeptShots(look, new Set(cut.shots.flatMap((entry) => "drop" in entry ? [entry.id] : [])));
   if (kept.length !== narration.shotDurations.length) throw new Error("reel narration does not cover every kept shot");
   const shots = kept.map((entry, index) => {
     const source = base.shots.find((s) => s.id === entry.id);
@@ -191,8 +194,8 @@ export function compileReel(input: {
       const footage = long.shots.find((s) => s.id === shot.id)?.blocks.filter((b) => b.c === "AnalogyInset" && b.src) ?? [];
       return footage.length ? { ...shot, blocks: [...shot.blocks.filter((b) => b.c !== "AnalogyInset"), ...footage] } : shot;
     }) };
-    if (look) {
-      const errors = checkDesignAgainstLook(reel, spec, words, pkg, look, { collapsed });
+    if (keptLook) {
+      const errors = checkDesignAgainstLook(reel, spec, words, pkg, keptLook, { collapsed });
       if (errors.length) return { errors, findings: [] };
     }
   } else if (spec?.soundtrack) {
@@ -201,7 +204,7 @@ export function compileReel(input: {
   }
   const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
   const authored = spec?.camera?.map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus })) ?? [];
-  const cameraTargets = (look?.film.camera ?? []).map((pose) => {
+  const cameraTargets = (keptLook?.film.camera ?? []).map((pose) => {
     const frame = resolveCue(pose.at, cues);
     const closest = authored.reduce<typeof authored[number] | undefined>((best, candidate) =>
       !best || Math.abs(candidate.frame - frame) < Math.abs(best.frame - frame) ? candidate : best, undefined);
