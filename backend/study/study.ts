@@ -11,7 +11,7 @@ import path from "node:path";
 import { probeVideo } from "../review/media";
 import { resolveMetric } from "./agreement";
 import { analyzeAudio } from "./audio";
-import { analyzeCamera, buildPyramid, cornerSpeed, estimateBlocks, estimateTiles, type FramePyramid, type MotionModel, type SpeedSeries } from "./camera";
+import { analyzeCamera, buildPyramid, cornerSpeed, estimateBlocks, estimateTiles, staticOverlayMask, type FramePyramid, type MotionModel, type OverlayMask, type SpeedSeries } from "./camera";
 import { measureCaptions, type CaptionDeps } from "./captions";
 import { analyzeCuts, changedBlockShare, sceneCutsFfmpeg, type SceneCut } from "./cuts";
 import { analysisSize, streamRawFrames } from "./decode";
@@ -21,7 +21,7 @@ import { IP_BOUNDARY, round, STUDY, STUDY_SCHEMA, type Metric, type NotMeasured,
 /** What a test or caller may replace: every outside effect and the second camera method. */
 export interface StudyDeps extends CaptionDeps {
   /** Replaces camera method B (used to prove that a disagreement is excluded). */
-  estimateBlocks?: (prev: FramePyramid, cur: FramePyramid) => MotionModel | null;
+  estimateBlocks?: (prev: FramePyramid, cur: FramePyramid, mask?: OverlayMask) => MotionModel | null;
   /** Replaces the ffmpeg scene detection of cut method A. */
   sceneCuts?: (file: string) => SceneCut[];
   onProgress?: (message: string) => void;
@@ -75,8 +75,10 @@ async function framePass(file: string, width: number, height: number, sourceFps:
         speedA.push(null);
         speedB.push(null);
       } else {
-        const a = estimateTiles(prevPyr, pyr);
-        const b = blocksEstimator(prevPyr, pyr);
+        // Both methods skip the static overlay (a grid, a HUD); a pair they then cannot read is unmeasured, never read from the biased whole frame.
+        const mask = staticOverlayMask(prevPyr, pyr) ?? undefined;
+        const a = estimateTiles(prevPyr, pyr, mask);
+        const b = blocksEstimator(prevPyr, pyr, mask);
         speedA.push(a ? cornerSpeed(a, size.width, size.height, fps) : null);
         speedB.push(b ? cornerSpeed(b, size.width, size.height, fps) : null);
       }

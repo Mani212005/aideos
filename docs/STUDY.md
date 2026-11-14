@@ -42,10 +42,13 @@ Notes on the camera metric:
 - The camera speed is the speed of the **fastest frame corner** under the fitted translation plus zoom, in **frame widths per second**,
   so a push-in and a pan are both a speed. A pair of frames is moving at 0.01 frame widths per second or more; a run of fewer than 3
   moving pairs is noise and gaps of up to 2 pairs inside a move are bridged. Frames around every cut are blanked, so a cut is never read as motion.
-- Method A masks the caption band and weights tiles by a robust fit; method B uses the whole frame. They fail differently (a static
-  overlay, a textureless region, large motion), which is the point. A static dot grid or HUD that dominates one method shows up as a
-  disagreement and the metric is excluded, instead of encoding a wrong rule (the original study's first camera tool called a video 80% still;
-  a second method found 65% moving).
+- Method A masks the caption band and weights tiles by a robust fit; method B uses the whole frame. They fail differently (a textureless
+  region, large motion), which is the point; instead of encoding a wrong rule they are compared and a disagreement excludes the metric (the
+  original study's first camera tool called a video 80% still; a second method found 65% moving).
+- A **static overlay** (a dot grid, a HUD, a logo) biases both methods the same way, toward zero, so agreement alone cannot catch it. For every frame
+  pair the study finds edge pixels that moved far less than the content around them along the motion direction (the direction is read from the pixels,
+  which an overlay does not affect), masks them and a margin around them in both methods, and skips pairs where that leaves too little to read. A dense
+  grid therefore makes the camera speed unresolved rather than a slow number that both methods agree on. A sparse overlay is masked and the speed stays measured.
 - Pixel analysis runs at 320 px on the long side and at most 30 frames per second, in one pass over the file: about 15 to 35 ms per frame
   pair on a busy machine (a 60 s reel takes about a minute, an 11 minute video several minutes).
 

@@ -43,6 +43,12 @@ export const STUDY = {
     tiles: { cols: 4, rows: 4, maskBottomShare: 0.3, minTextureEnergy: 4 },
     /** Method B: block size, and the coarse search radius (px at half size; the fine step adds 1 px at full size) of the block matcher. */
     blocks: { size: 16, coarseRadius: 2, minVariance: 20 },
+    /**
+     * Static overlay guard, per frame pair: an edge pixel (gradient along the motion direction of at least `minEdge` gray levels per pixel) whose apparent shift is under
+     * `staticRatio` of the typical shift is overlay, grown by `dilate` px. Needs a typical shift of `minShift` px, and is not applied when the overlay covers under `minShare`
+     * of the frame. A block with under `minOpenBlockShare` of its pixels left is skipped.
+     */
+    overlay: { minEdge: 10, staticRatio: 0.5, minShift: 0.1, dilate: 3, minShare: 0.01, minOpenBlockShare: 0.4 },
     /** Agreement tolerances between the two camera methods. */
     tolerance: { movingShareAbs: 0.1, speedRel: 0.3, speedAbsWidthsPerSec: 0.01, moveFramesRel: 0.35, moveFramesAbs: 3, moveCountAbs: 1 },
   },

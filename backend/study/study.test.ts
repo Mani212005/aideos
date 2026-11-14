@@ -50,6 +50,7 @@ function near(actual: number | null, expected: number, tolerance: number, what: 
 
 const TEXTURE = path.join(TMP, "texture.png");
 const PAN = path.join(TMP, "pan.mp4");
+const GRID = path.join(TMP, "grid.mp4");
 const CUTS = path.join(TMP, "cuts.mp4");
 const TINY = path.join(TMP, "tiny.mp4");
 
@@ -64,6 +65,12 @@ before(() => {
     "-f", "lavfi", "-i", "aevalsrc='0.5*sin(2*PI*220*t)*(between(t,0.5,1.5)+between(t,2,3.5)+between(t,4.5,6.5))':s=16000:d=7",
     "-t", "7", "-vf", "crop=480:270:'200+30*clip(t-2,0,3)':200,eq=contrast=2.2",
     "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", PAN,
+  ]);
+  // The same pan under a static 16 px grid of 1 px lines (a HUD-like overlay that does not move with the content).
+  ffmpeg([
+    "-loop", "1", "-framerate", "30", "-i", TEXTURE,
+    "-t", "7", "-vf", "crop=480:270:'200+30*clip(t-2,0,3)':200,eq=contrast=2.2,drawgrid=width=16:height=16:thickness=1:color=white",
+    "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", "-an", GRID,
   ]);
   // 3 s with a pan from 1 s on: the smallest reference, for the tests of the run and the files it writes.
   ffmpeg(["-loop", "1", "-framerate", "30", "-i", TEXTURE, "-f", "lavfi", "-i", "sine=frequency=220:duration=3", "-t", "3", "-vf", "crop=480:270:'200+30*clip(t-1,0,2)':200,eq=contrast=2.2", "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", TINY]);
@@ -117,6 +124,17 @@ test("study refuses a URL, a missing file and never touches the network", { skip
   const cli = spawnSync("npx", ["tsx", "backend/cli.ts", "study", "https://example.com/video.mp4"], { cwd: path.resolve(__dirname, "../.."), encoding: "utf8" });
   assert.equal(cli.status, 2, "the CLI exits 2 when a study cannot run");
   assert.match(cli.stderr, /URL/);
+});
+
+test("camera: a static overlay grid over the pan must not turn a fast pan into an agreed slow one", { skip: !HAVE_FFMPEG }, async () => {
+  const bible = await studyReference(GRID, { deps: NO_OCR });
+  // Known truth as in the pan test: 0.0625 frame widths per second. A static grid biases a plain estimate to about 0.012 (both methods alike).
+  // The overlay may make a metric unresolved (a dense grid leaves one method too little to read), but an agreed number must be the true one.
+  const truth: Array<[string, number, number]> = [["camera.medianSpeedWidthsPerSec", 0.0625, 0.02], ["camera.p90SpeedWidthsPerSec", 0.0625, 0.02], ["camera.movingShare", 90 / 209, 0.03]];
+  for (const [id, expected, tolerance] of truth) {
+    const m = metric(bible, id);
+    if (m.status === "agreed") near(m.value, expected, tolerance, `${id} under an overlay: agreed, so it must be near the truth`);
+  }
 });
 
 test("camera: a 1 px per frame pan for 3 of 7 seconds is measured by both methods within tolerance of the known truth", { skip: !HAVE_FFMPEG }, async () => {
