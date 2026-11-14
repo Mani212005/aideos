@@ -16,8 +16,8 @@ requested profile policy, the renderer that drew the file (`renderer`: `native` 
 of external footage, fonts or audio assets.
 
 `RENDER_PROFILES` is the shared policy table for `draft`, `review` and `final`. All currently request
-lossless intermediates, H.264 CRF 16, limited-range yuv420p and AAC at 320 kbps. A future native
-encoder can consume this data directly. The Remotion adapter expresses that policy for every caller
+lossless intermediates, H.264 CRF 16, limited-range yuv420p and AAC at 320 kbps. The native
+renderer consumes this data directly ([NATIVE_ENCODE.md](NATIVE_ENCODE.md)). The Remotion adapter expresses that policy for every caller
 through `FINAL_ENCODE_FLAGS` in `backend/pipeline/render.ts` (PNG frames, h264, CRF 16, yuv420p,
 AAC 320k), so its sidecar reports `profileSettingsApplied` true for each setting, alongside the
 actual probed stream facts. Extra arguments passed to `npm run render` follow those flags and can
