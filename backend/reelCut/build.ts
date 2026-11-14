@@ -11,7 +11,7 @@ import { carryCaptionPlacement } from "../../src/dl/captionPlacement";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { readNarrationVoice, type LineSynthesizer } from "../endCard/voice";
-import { checkFilmDesign, type DesignFinding } from "../designCheck/designCheck";
+import { checkFilmDesign, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_PAN_WIDTHS, MAX_CAMERA_ZOOM_STEP, type DesignFinding } from "../designCheck/designCheck";
 import { checkDesignAgainstLook, resolveDesignCharacters } from "../designSpec/build";
 import { compileDesign, narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
@@ -26,8 +26,11 @@ import { lookPlanForKeptShots } from "./keptLook";
 import { loadReelContext, readReelCut, reelPackageDir } from "./brief";
 import { checkReelCut, formatReelReport } from "./check";
 import { reelCutSchema, type ReelCut } from "./schema";
-import { spliceOptionsFor } from "./splice";
+import { spliceOptionsFor, type CameraGlideLimits } from "./splice";
 import { assertReelCap, reelBudgetFor, reelSourceFingerprint, writeReelFilm } from "./store";
+
+/** The design check's own camera limits, handed to the splice so a stretched glide is planned against the rule that will judge it. */
+const GLIDE_LIMITS: CameraGlideLimits = { panWidthsPerSec: MAX_CAMERA_PAN_WIDTHS, panAccelWidthsPerSec2: MAX_CAMERA_PAN_ACCEL_WIDTHS, zoomStepPerFrame: MAX_CAMERA_ZOOM_STEP };
 
 export interface ReelBuildStatus {
   state: "passed" | "failed";
@@ -185,7 +188,7 @@ export function compileReel(input: {
     if (!spec) return { errors: ["scene reel needs the shared design/design.json to re-resolve its narration cues"], findings: [] };
     const resolved = resolveDesignCharacters(spec, pkg);
     if (resolved.errors.length) return { errors: resolved.errors, findings: [] };
-    const compiled = compileDesign(reel, spec, words, long.design?.source === "server-model" ? "server-model" : "agent", { characters: resolved.characters, collapsed, format: "reel", splice: spliceOptionsFor(cut.splice) });
+    const compiled = compileDesign(reel, spec, words, long.design?.source === "server-model" ? "server-model" : "agent", { characters: resolved.characters, collapsed, format: "reel", splice: spliceOptionsFor(cut.splice, GLIDE_LIMITS) });
     if (!compiled.film) return { errors: compiled.errors, findings: [] };
     reel = compiled.film;
     collapsedClips = compiled.collapsedClips ?? [];
