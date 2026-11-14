@@ -1,6 +1,6 @@
 /**
- * File Description: Studio export registry mapping the shared RenderJob lifecycle to the existing UI snapshots.
- * Inputs and outputs: film snapshots and cancel calls -> export progress, notices and download locations.
+ * File Description: Studio export registry mapping the shared RenderJob lifecycle to the existing UI snapshots. The native renderer draws every film it supports; Remotion renders the rest (AIDEOS_RENDERER=remotion keeps every export on Remotion), and the server log names the choice.
+ * Inputs and outputs: film snapshots and cancel calls -> export progress (from Remotion's or the native renderer's frame counts), notices and download locations.
  * Used by: editor/vite.config.ts export routes and backend/exportJobs.test.ts.
  */
 
@@ -12,6 +12,8 @@ import {
   type RenderServices,
 } from "./renderJob";
 import { createRemotionRenderer } from "./remotionRenderer";
+import { createNativeRenderer } from "./nativeRenderer";
+import { createSelectedRenderer, rendererModeFromEnv } from "./rendererSelection";
 import type { RenderProcessDeps } from "./renderProcess";
 import type { MasterResult } from "./masterAudio";
 export type { ExportStatus, ExportJobSnapshot } from "./exportJobTypes";
@@ -43,7 +45,7 @@ interface Job {
   settled: Promise<void>;
 }
 
-/** Pulls the latest "Rendered a/b" and "Encoded a/b" counts out of renderer output. */
+/** Pulls the latest "Rendered a/b" and "Encoded a/b" counts out of Remotion output, or "frames a/b" (rendered and encoded) out of the native renderer's. */
 export function parseRenderProgress(text: string): {
   rendered?: number;
   encoded?: number;
@@ -55,6 +57,12 @@ export function parseRenderProgress(text: string): {
     out.total = Number(m[2]);
   }
   for (const m of text.matchAll(/Encoded\s+(\d+)\s*\/\s*(\d+)/g)) {
+    out.encoded = Number(m[1]);
+    out.total = Number(m[2]);
+  }
+  // The native renderer reports a frame once it is encoded, so it counts as rendered and encoded.
+  for (const m of text.matchAll(/^frames\s+(\d+)\/(\d+)$/gm)) {
+    out.rendered = Number(m[1]);
     out.encoded = Number(m[1]);
     out.total = Number(m[2]);
   }
@@ -137,7 +145,13 @@ export function createExportJobs(deps: ExportJobDeps = {}) {
           outPath: input.outPath,
           profile: "final",
         },
-        deps.renderer?.() ?? createRemotionRenderer({ caller: "studio" }, deps),
+        deps.renderer?.() ??
+          createSelectedRenderer({
+            mode: rendererModeFromEnv(),
+            remotion: () => createRemotionRenderer({ caller: "studio" }, deps),
+            native: () => createNativeRenderer({}, deps),
+            onChoice: (_choice, message) => console.log(`[export] ${message}`),
+          }),
         {
           prepareFilm: input.prepare,
           services: deps.services,

@@ -44,6 +44,7 @@ export function createRemotionRenderer(
   let previous: string | undefined;
   let publicDir: ReturnType<typeof stagePublicDir>;
   return {
+    name: "remotion",
     profileSettingsApplied: {
       intermediate: true,
       codec: true,
