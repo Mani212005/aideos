@@ -66,11 +66,11 @@ fi
 # Reject unknown commands before resolving a checkout or touching Studio state.
 if [ "$#" -gt 0 ]; then
   case "$1" in
-    version|--version|which|exit|stop|down|kill|validate|review|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|end-card|help|--help|-h)
+    version|--version|which|exit|stop|down|kill|validate|review|study|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|end-card|help|--help|-h)
       ;;
     *)
       echo "Error: unknown aideos command '$1'." >&2
-      echo "Commands: exit (stop/down/kill), validate, review, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
+      echo "Commands: exit (stop/down/kill), validate, review, study, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
       echo "Run 'aideos help' for usage." >&2
       exit 2
       ;;
@@ -133,6 +133,12 @@ if [ "$#" -gt 0 ]; then
       # aideos review <slug|mp4> [--film film.json] [--words words.json|narration.txt] [--out dir] [--no-ocr] [--json]
       # Exits 1 when a gate of the good-video rubric fails, 2 when the review could not run.
       cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts review "$@"
+      ;;
+    study)
+      # aideos study <reference.mp4 ...> [--name n] [--out dir] [--words file] [--into film] [--json]
+      # Measures local reference videos as numbers only (two methods per pixel metric) and writes a style bible and a look seed proposal. Local files only; never downloads.
+      # The caller's directory is kept so relative reference paths mean what the user typed.
+      cd "$AIDEOS_DIR" && AIDEOS_CALLER_CWD="${AIDEOS_CALLER_CWD:-$OLDPWD}" exec npx tsx backend/cli.ts study "$@"
       ;;
     gemini-review)
       # gemini-review --json must keep npm lifecycle banners off stdout.
@@ -280,6 +286,7 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos gemini-review <mp4>  Gemini 3.8 Flash native video quality review"
       echo "  aideos all-check <slug>     Full check of long cut and reel in a background agent (see docs/REVIEW.md)"
       echo "  aideos review <slug|mp4>    Measured (deterministic) review of a rendered video"
+      echo "  aideos study <mp4...>       Measure local reference videos as numbers only (craft, never identity); writes a style bible and a look seed (docs/STUDY.md)"
       echo "  aideos character check <spec>  Validate a character spec, naming bad fields (--stamp writes its hash)"
       echo "  aideos character sheet <spec>  Render its model sheet, expression sheet and receive stills"
       echo "  aideos audio fetch [--item <id>]    Fetch background music and sound effects into shared cache"
