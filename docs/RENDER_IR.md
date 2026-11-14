@@ -165,6 +165,10 @@ stage3d                       a stage node, only at the top of the stage, at mos
 mesh asset                    { kind: "mesh", id, path, sha256?, parts: [{ id, vertices, indices, uv }] }
 ```
 
+**Treatment spans.** P4.1 carries `cel-v1` only: the emitter refuses a film whose scene, spans or cast use
+`dots-v1`, so a carried film has nothing else to describe. The `/2` schema is additive, and per-span treatment
+data arrives with P4.4 (dots-v1).
+
 **Stage order.** The emitter writes a Three film's stage as `SceneStage` draws it: a `ground-plane` group, the
 `stage3d` node, then a `foreground-plane` group when the scene has foreground props. Groups and the stage3d node
 count as layer 0, so the renderer keeps that document order.
