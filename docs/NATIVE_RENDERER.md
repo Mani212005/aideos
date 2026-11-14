@@ -239,12 +239,13 @@ differ per format.
 | `StatCounter` | one group per value on screen (number, muted suffix baseline-aligned in the number's letter spacing, uppercase label), visible while that value shows, inside the block's entrance |
 | The rail | `rail` with the label in the muted colour, the bar in ink, chapters spanning their shots, `progressFrames` set to the story |
 | The end card | `endCard` with the `getEndCardLayout` geometry, the configured copy, `subscribePressFrame`, and the theme's surface, hairline, muted colour and faces |
+| Burned-in kinetic captions (`KineticSubtitles`) | a `captions` node: the film's caption words plus the end card's spoken line, white text, the accent as the highlight, the component's `rgba(10, 15, 29, 0.88)` card (quantized to 8-bit alpha), Geist 700, `round(min(width, height) * 0.042)` px, and one placement span per shot where the resolved `captionPlacement` changes (read at a phrase's first word, as `captionPlacementAt` does). Words starting after the delivered length are dropped and a word's end is capped at it |
 | The frame's 1 px hairline | a stroked `rect` |
 | Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` |
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film, a Three-stage or actor scene, sub-group
-rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, burned-in captions, legacy (non-library)
+rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
@@ -262,7 +263,6 @@ mastering, probe and sidecar are unchanged; the sidecar records the CRF as appli
 
 ## Not yet native
 
-Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), burned-in
-kinetic captions in the emitter (the raster draws them; the emitter does not emit them yet), GPU encoding of
+Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and the Three stage. `image` and `audio` assets are not opened by the frame raster.

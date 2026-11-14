@@ -11,12 +11,14 @@ import { compileCameraTrack } from "../../src/dl/scene/cameraTrack";
 import { compileScene } from "../../src/dl/scene/compile";
 import { parseSvgDocument, collectSvgElementIds } from "../../src/dl/scene/svgDocument";
 import { buildTimeline, shotAt, type TimedShot } from "../../src/dl/camera";
-import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
+import { deliveryTimeline, DELIVERY_CONFIG, type CardWord } from "../../src/dl/delivery";
 import { getEndCardLayout, subscribePressFrame } from "../../src/dl/endCardLayout";
 import { BACKGROUND_THEMES, PALETTE, layoutFor, tokensFor, type DLLayout } from "../../src/dl/tokens";
 import { DRIFT, EXPO, MS, frames } from "../../src/dl/motion";
 import { compactNumber } from "../../src/dl/numberFormat";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
+import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
+import { SUBTITLE_FONT_RATIO } from "../../src/dl/fullScreenHeroLayout";
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
@@ -105,7 +107,7 @@ const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter"]);
 /**
  * Lists every reason this film cannot be drawn natively in this format; empty means supported.
  * Phase 1 covers SVG scene films: the stage, the camera, `frame` text cards (TextReveal, StatCounter),
- * the chapter rail, the end card and the narration. Everything else stays with Remotion for now.
+ * the chapter rail, the burned-in kinetic captions, the end card and the narration. Everything else stays with Remotion for now.
  */
 export function nativeSupport(film: Film, format: NativeFormat): string[] {
   const reasons: string[] = [];
@@ -125,8 +127,6 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   if (film.overlayClips?.length) reasons.push("standalone overlay clips are Phase 2");
   const theme = BACKGROUND_THEMES[film.theme?.background ?? "paper-white"] ?? BACKGROUND_THEMES["paper-white"];
   if (theme.gridType !== "none") reasons.push(`the ${theme.id} theme's ${theme.gridType} texture is not drawn natively`);
-  const captionsOn = film.subtitles !== false && film.captions !== "off";
-  if (captionsOn && (captionWordsForFilm(film).length > 0 || film.endCardVoice)) reasons.push("burned-in kinetic captions are not emitted yet (the film has captions on)");
   if (film.music || film.audio || film.sfx?.length || film.audioClips?.length) reasons.push("legacy music, effects and timeline audio clips are not mixed natively (library soundtracks are)");
   const soundtrack = normalizeFilmSoundtrack(film);
   if ((soundtrack.sections.length || soundtrack.sfx.length) && !usesSectionMixer(soundtrack)) reasons.push("path-only legacy soundtrack sections are not mixed natively (library soundtracks are)");
@@ -698,6 +698,10 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
     });
   }
 
+  // Burned-in kinetic captions (Film.tsx draws KineticSubtitles after the rail and the end card).
+  const captions = captionsNode(film, format, timeline, delivery.cardWords, accent, total);
+  if (captions) overlay.push(captions);
+
   // The hairline at the very edge of the frame (Film.tsx's inset 1px box shadow).
   overlay.push({
     kind: "rect", id: "edge-hairline", radius: 0, tracks: [],
@@ -717,6 +721,37 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
     stage: stageNodes(scene, svgIds, sceneLast),
     overlay,
     audio: audio.clips,
+  };
+}
+
+/**
+ * The kinetic captions node (Film.tsx's `KineticSubtitles`): the spoken words plus the end card's line, the white,
+ * accent and card colours the component defaults to, and the owner-resolved placement as one span per shot where
+ * the resolved placement changes (it is read at a phrase's first word, as `captionPlacementAt` does). Null when
+ * the film has captions off or no words. Line breaking and the card are the native evaluator's job.
+ */
+function captionsNode(film: Film, format: NativeFormat, timeline: TimedShot[], cardWords: CardWord[], accent: string, total: number): Node | null {
+  if (film.subtitles === false || film.captions === "off") return null;
+  const words = [...captionWordsForFilm(film), ...cardWords].filter((w) => w.startFrame < total).map((w) => ({ text: w.text, startFrame: w.startFrame, endFrame: Math.min(total, w.endFrame) }));
+  if (words.length === 0) return null;
+  const { width, height } = FORMAT_SIZE[format];
+  const spans: Array<{ fromFrame: number; x: number; y: number; w?: number }> = [];
+  for (const t of timeline) {
+    const p = resolveCaptionPlacement(film, format, t.shot.id);
+    const prev = spans[spans.length - 1];
+    if (prev && prev.x === p.x && prev.y === p.y && prev.w === p.w) continue;
+    if (t.from >= total) break;
+    spans.push({ fromFrame: t.from, x: p.x, y: p.y, ...(p.w === undefined ? {} : { w: p.w }) });
+  }
+  return {
+    kind: "captions",
+    id: "captions",
+    font: sansId(700),
+    color: "#FFFFFF",
+    highlightColor: accent,
+    backgroundColor: cssColor("rgba(10, 15, 29, 0.88)"),
+    words,
+    placement: { [format]: { fontSize: Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO), spans } },
   };
 }
 

@@ -20,6 +20,8 @@ import { emitRenderIr, nativeSupport, sampleTrack, NativeUnsupportedError, type 
 import type { Keyframe, Node, RenderIr } from "./schema";
 import { fakeMeasurer, nativeSceneFilm, NATIVE_SVG_SOURCES, PROBE_SVG_SOURCE } from "../testSupport/nativeSceneFilm";
 import type { Film } from "../../src/dl/schema";
+import { captionWordsForFilm } from "../../src/dl/captionsParser";
+import { deliveryTimeline } from "../../src/dl/delivery";
 
 /** Emits one format of a film with the fake measurer and identity path resolution. */
 function emit(film: Film, format: NativeFormat = "long"): RenderIr {
@@ -255,4 +257,58 @@ test("a film the native renderer cannot draw is refused with every reason", () =
   (three.scene as { renderer?: string }).renderer = "three";
   assert.ok(nativeSupport(three, "long").some((r) => r.includes("Three-stage")));
   assert.equal(PROBE_SVG_SOURCE.startsWith("videos/"), true);
+});
+
+test("burned-in captions are emitted as the film's words with its per-shot placement, so a captioned film is no longer refused", () => {
+  const base = nativeSceneFilm({ captions: "auto", subtitles: true });
+  for (const format of ["long", "reel"] as const) {
+    assert.deepEqual(nativeSupport(base, format), []);
+    const ir = emit(base, format);
+    const node = byId(ir, "captions");
+    assert.equal(node.kind, "captions");
+    if (node.kind !== "captions") return;
+    const spoken = captionWordsForFilm(base);
+    assert.ok(spoken.length > 0);
+    const total = deliveryTimeline(base, format).totalFrames;
+    assert.deepEqual(node.words, spoken.filter((w) => w.startFrame < total).map((w) => ({ text: w.text, startFrame: w.startFrame, endFrame: Math.min(total, w.endFrame) })));
+    assert.equal(node.font, "geist-700");
+    assert.equal(node.color, "#FFFFFF");
+    assert.equal(node.highlightColor, "#635BFF");
+    const size = Math.round(1080 * 0.042);
+    assert.equal(node.placement[format]?.fontSize, size);
+    assert.deepEqual(node.placement[format]?.spans, [{ fromFrame: 0, x: 0.5, y: 0.78 }]);
+    // Captions draw above the rail and the end card and under the edge hairline, as Film.tsx orders them.
+    const order = ir.overlay.map((n) => n.id);
+    assert.ok(order.indexOf("captions") > order.indexOf("rail"));
+    assert.equal(order[order.length - 1], "edge-hairline");
+  }
+});
+
+test("a shot's own caption placement becomes a span from that shot's first frame, and only changes make spans", () => {
+  const base = nativeSceneFilm({ captions: "auto", subtitles: true });
+  const film = nativeSceneFilm({
+    captions: "auto",
+    subtitles: true,
+    captionPlacement: { long: { x: 0.5, y: 0.7, locked: false } },
+    shots: base.shots.map((s, i) => (i === 2 ? { ...s, captionPlacement: { long: { x: 0.3, y: 0.2, w: 0.5, locked: true } } } : s)),
+  });
+  const timeline = buildTimeline(film);
+  const node = byId(emit(film, "long"), "captions");
+  assert.equal(node.kind, "captions");
+  if (node.kind !== "captions") return;
+  const spans = node.placement.long?.spans ?? [];
+  assert.equal(spans.length, 3);
+  assert.deepEqual(spans[0], { fromFrame: 0, x: 0.5, y: 0.7 });
+  assert.equal(spans[1].fromFrame, timeline[2].from);
+  assert.equal(spans[1].x, 0.3);
+  assert.equal(spans[1].y, 0.2);
+  assert.ok(typeof spans[1].w === "number");
+  assert.equal(spans[2].fromFrame, timeline[3].from);
+  assert.deepEqual({ x: spans[2].x, y: spans[2].y }, { x: 0.5, y: 0.7 });
+});
+
+test("captions off or subtitles false emit no captions node", () => {
+  assert.equal(nodes(emit(nativeSceneFilm()).overlay).some((n) => n.kind === "captions"), false);
+  assert.equal(nodes(emit(nativeSceneFilm({ captions: "off", subtitles: true })).overlay).some((n) => n.kind === "captions"), false);
+  assert.equal(nodes(emit(nativeSceneFilm({ captions: "auto", subtitles: false })).overlay).some((n) => n.kind === "captions"), false);
 });
