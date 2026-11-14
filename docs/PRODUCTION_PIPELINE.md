@@ -96,7 +96,7 @@ the check command, and the instruction to rerun. Both `film` and `direct` exit w
 | --- | --- |
 | `inline` (default) | Deliver through agent link, a recorded tmux pane, or steering inbox and wait for validated output. With no listener or a timeout, return the authoring stop to the invoking agent. |
 | `agent` | Require a delivered coding agent; missing delivery or a timeout fails the stage. |
-| `server` | Ask the configured Claude generation model (`aideos.config.json`'s `videoModels.generation`) for JSON, validate, and feed errors back for bounded retries. An exhausted retry returns an authoring stop. |
+| `server` | Ask the film's recorded originating Claude session model (else the optional `videoModels.generation` override) for JSON, validate, and feed errors back for bounded retries. An exhausted retry returns an authoring stop. When the recorded harness is not Claude, its model is unusable, or no model is known, server-side generation is unavailable: one notice line is printed and delivery falls back to the session (agent or inline stop) instead of failing. See [REVIEW.md](REVIEW.md#5-video-model-policy). |
 | `templates` | Explicitly compile a node-graph template film, stamped `design.source = "templates"`. |
 
 `--no-bespoke` and `bespoke: false` select templates. Other modes never fall through to templates.
@@ -172,7 +172,7 @@ Management Commands](AUDIO_LIBRARY.md#2-soundtrack-mixing).
 | --- | --- |
 | `inline` (CLI default) | Return `status: "needs_reel_cut"` with actionable next steps. This mode does not dispatch to an agent or wait for output. |
 | `agent` | Dispatch the reel-cut task to a connected coding agent and wait for validated output. Feed check and cap failures back for up to three attempts; missing delivery or a timeout fails the stage. |
-| `server` | Ask the configured generation model to write or repair `cut.json`, feeding check and cap failures back for up to three attempts. |
+| `server` | Ask the film's recorded originating session model (else the optional generation override) to write or repair `cut.json`, feeding check and cap failures back for up to three attempts. With no usable server-side model it falls back to the `needs_reel_cut` stop instead of failing. |
 
 The Reel is a separate 9:16 delivery made from the Long film's picture and design. If the Long delivery, including its Reel end card, is at most 179 seconds, it is an identity reel and reuses the Long narration. Otherwise, the cut has condensed narration for the kept shots and uses the Long narration backend, voice, and speed. The hard cap is 179 seconds for the full delivery; the end card counts toward it. The default writing target is 170 seconds, also counting the card. The defaults and end-card span come from `src/dl/delivery.ts` and `backend/reelCut/schema.ts`.
 

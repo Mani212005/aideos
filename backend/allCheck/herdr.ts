@@ -35,8 +35,11 @@ const processSchema = z.object({
 });
 
 class HerdrCommandError extends AllCheckError {
-  constructor(message: string, readonly code?: string) {
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
     super(message);
+    this.code = code;
   }
 }
 

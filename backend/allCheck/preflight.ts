@@ -144,7 +144,7 @@ export function packageProblems(slug: string): PreflightProblem[] {
 
 // Runs every check and returns the problems found (empty means ready to start).
 export function runPreflight(
-  input: { slug: string; agent: AgentName; socketPath?: string },
+  input: { slug: string; agent: AgentName | null; socketPath?: string },
   deps: PreflightDeps = REAL_PREFLIGHT_DEPS,
   herdr: HerdrRun = deps.herdr,
 ): PreflightProblem[] {
@@ -158,7 +158,10 @@ export function runPreflight(
   if (!deps.which("tesseract")) {
     problems.push({ check: "tesseract", message: "tesseract is not on PATH, and the measured review reads on-screen text with it", fix: "brew install tesseract" });
   }
-  if (!deps.which("herdr")) {
+  // Herdr and the agent CLI are needed only to start a replacement agent: an in-session run (agent null) uses the running one.
+  if (input.agent === null) {
+    // Nothing to start.
+  } else if (!deps.which("herdr")) {
     problems.push({ check: "herdr", message: "herdr is not on PATH, and the background agent runs in its own Herdr workspace", fix: "brew install herdr" });
   } else {
     const version = herdr(["--version"], { HERDR_SOCKET_PATH: input.socketPath ?? herdrSocket() });
@@ -175,11 +178,11 @@ export function runPreflight(
       });
     }
   }
-  if (!deps.which(input.agent)) {
+  if (input.agent !== null && !deps.which(input.agent)) {
     problems.push({
       check: "agent",
-      message: `the background agent "${input.agent}" is not on PATH`,
-      fix: input.agent === "claude" ? "install Claude Code, or pass --agent agy" : "install the Antigravity CLI, or pass --agent claude",
+      message: `the replacement agent "${input.agent}" is not on PATH`,
+      fix: `install the ${input.agent} CLI, or pass a different --agent`,
     });
   }
   checkAgyLogin(deps, problems);

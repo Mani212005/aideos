@@ -98,7 +98,7 @@ export interface ProductionRequest {
   skipAgent?: boolean;
   /** How long the design stage waits for the connected agent (default 20 minutes). */
   designAgentTimeoutMs?: number;
-  /** Caller for server-mode look and design; null disables it. Defaults to videoModels.generation. */
+  /** Caller for server-mode look and design; null disables it. Defaults to the film's own agent session (else the videoModels.generation override). */
   designLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
   /** Renderer-independent visual judgment injection. */
   designJudgeRunner?: import("../designSpec/designer").DesignFilmOptions["judgeRunner"];

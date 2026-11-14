@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { generationCaller } from "../aideosConfig";
+import { generationCallerOrNull } from "../aideosConfig";
 import { dispatchTask } from "../agentBridge/dispatcher";
 import type { DesignLlmCaller } from "../designSpec/designer";
 import type { LineSynthesizer } from "../endCard/voice";
@@ -52,9 +52,9 @@ export async function deliverReel(slug: string, opts: ReelWriterOptions = {}): P
     catch (error) { failure = error instanceof Error ? error.message : String(error); }
   }
   const mode = opts.mode ?? "inline";
-  if (mode === "server") {
-    const caller = opts.llmCaller === undefined ? await generationCaller() : opts.llmCaller;
-    if (!caller) throw new ProductionError("reel", "server reel writer is disabled");
+  const caller = mode === "server" ? (opts.llmCaller === undefined ? generationCallerOrNull(slug) : opts.llmCaller) : null;
+  if (mode === "server" && opts.llmCaller === null) throw new ProductionError("reel", "server reel writer is disabled");
+  if (caller) {
     const system = fs.readFileSync(briefFile, "utf8") + "\nReturn only the complete reel/cut.json object. Never record captain approval.";
     let previous = fs.existsSync(cutFile) ? fs.readFileSync(cutFile, "utf8") : "No cut yet.";
     for (let attempt = 1; attempt <= 3; attempt++) {
