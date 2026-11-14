@@ -10,7 +10,6 @@ import assert from "node:assert/strict";
 import { compileScene } from "../../src/dl/scene/compile";
 import type { Scene } from "../../src/dl/scene/types";
 import { buildTimeline } from "../../src/dl/camera";
-import { deliveryTimeline } from "../../src/dl/delivery";
 import { voiceLevel } from "../../src/dl/Soundtrack";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, mixSections, sectionEnvelope, speechGain } from "../../src/dl/audio/sectionMixer";
