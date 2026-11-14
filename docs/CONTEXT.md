@@ -495,10 +495,10 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`, with the opt-in `holdPush` push-in over camera holds) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, pan acceleration, hold share, and continuous move duration, exporting pacing constants (`MIN_CAMERA_HOLD_SHARE`, `MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`, `CAMERA_CUE_LANDING_TOLERANCE_SECONDS`).
 * `validateScene.ts`: Semantic and physical integrity validator (`validateScene`) rejecting unsupported actor rigs (Rule 21) before enforcing scene integrity rules and Rule 20 timeline consistency.
 * `validateSceneNode.ts`: Node-side filesystem validator (`validateSceneWithNodeAssets`).
-* `projection.ts`: Canonical orthographic projection, cover-fit viewport calculation (`stageViewport`, `stageProjection`), Three.js camera pose assignment (`applyStageCamera`), and stage rect geometry helpers (`projectStagePoint`, `rectInside`, `overlaps`, `SAFE_SQUARE`).
+* `projection.ts`: Canonical orthographic projection, cover-fit viewport calculation (`stageViewport`, `stageProjection`), Three.js camera pose assignment (`applyStageCamera`), and stage rect geometry helpers (`projectStagePoint`, and `stagePointProjector` which binds one pose and viewport for a loop over many points; `rectInside`, `overlaps`, `SAFE_SQUARE`).
 * `stageGeometry.ts`: Character-independent posed mesh bounds with outline allowance (`projectMeshParts`, `unionPartBounds`), material declarations (`undeclaredMaterialColours`), and sampled depth evidence (`sampleMeshDepth`).
 * `stageMaterials.ts`: Character-owned material declarations (`declaredMaterialPalette`: the spec palette, the face texture base and the prop's `PROP_MATERIAL_PALETTES`).
-* `stageFacts.ts`: Shared CPU geometry projection and numerical evidence for the opt-in Three stage, reporting visibility provenance.
+* `stageFacts.ts`: Shared CPU geometry projection and numerical evidence for the opt-in Three stage, reporting visibility provenance (`prepareStageFacts`; pass one `SharedDepthEvidence` map across the crops of one scene so each frame's mesh depth is sampled once).
 * `ThreeStage.tsx`: Persistent opt-in Three.js stage canvas with orthographic camera, delayRender readiness barriers, and transparent foreground/background SVG compositing.
 
 ### `backend/sceneKit/` (Scene-Film Authoring & Stage Kit)
