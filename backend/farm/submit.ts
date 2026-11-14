@@ -29,7 +29,7 @@ export async function stageFilmTask(store: ContentStore, request: FilmTaskReques
   const ir = await store.putBytes(canonicalJson(request.emitted.ir));
   const assetDigests: Record<string, Digest> = {};
   for (const file of request.emitted.files) {
-    const stored = "text" in file ? await store.putBytes(file.text) : await store.putFile(file.from);
+    const stored = "from" in file ? await store.putFile(file.from) : await store.putBytes("text" in file ? file.text : file.bytes);
     assetDigests[file.path] = stored.digest;
   }
   const filmSnapshot = await store.putBytes(canonicalJson(request.film));
