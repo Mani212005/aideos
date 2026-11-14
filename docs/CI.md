@@ -14,6 +14,7 @@ npm run ci                      # what a pull request runs: static, unit, journe
 npm run ci -- static unit       # named jobs only
 npm run ci -- --list            # every job and the exact command of every step
 npm run ci -- journeys --bail   # stop at the first failing step instead of running them all
+npm run ci -- journeys --shard 2/3   # one third of the journeys, exactly what CI shard 2 runs
 ```
 
 A job runs all of its steps even after one fails, then prints a timing table (and writes it to the
@@ -26,10 +27,10 @@ GitHub job summary), so one run reports every problem.
 | `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy, and reports shadow PR risk rating | every PR and push to main |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | warm the system Chrome (`scripts/warmChrome.ts`), `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), native Render IR and renderer tests (`cargo test --locked --manifest-path native/Cargo.toml`), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
-| `journeys` | warm the system Chrome (`scripts/warmChrome.ts`), `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload) | every PR and push to main |
+| `journeys` (3 shards) | each shard: warm the system Chrome (`scripts/warmChrome.ts`), `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, autosave, reload); the three shards split these between them (see [Journeys shards](#journeys-shards)) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
-| `all-green` | fails unless all five jobs above succeeded | the one check to require |
+| `all-green` | fails unless all five jobs above succeeded (for `journeys`, every shard: the job result is the aggregate of its legs) | the one check to require |
 
 Reviewers that need a login (agy, Gemini, the all-check loop) are not part of CI. Their gate is
 the measured `aideos review` and the Gemini round described in [REVIEW.md](REVIEW.md), run by the
@@ -53,7 +54,39 @@ The seven character and Three-stage suites run unchanged under `backend/journeys
 | `backend/review/stageTruth.test.ts` | `backend/journeys/stage_review_truth.journey.ts` |
 | `backend/pipeline/characterResume.test.ts` | `backend/journeys/character_resume.journey.ts` |
 
-Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.journey.ts` serially, and the workflow journeys job invokes that same CI job on every PR and main push. Their assertions, thresholds and timeouts are preserved.
+Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.journey.ts` serially, and the workflow journeys job invokes that same CI job on every PR and main push, now as three parallel shards that together select the same files. Their assertions, thresholds and timeouts are preserved.
+
+### Journeys shards
+
+The journeys job is a matrix of three legs, `journeys (shard 1/3)` to `journeys (shard 3/3)`. Each leg runs
+`npm run ci -- journeys --shard <i>/<n>`; `<n>` is `strategy.job-total`, so the shard count is the matrix
+and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single place to read it:
+
+* **What is split**: every `backend/journeys/**/*.journey.ts` file found on disk, plus the studio smoke step
+  (`npm run smoke:studio`) as one more item. Each item runs in exactly one shard. A file is never split.
+* **How**: longest first, greedy. Items are sorted by weight (then name), and each goes to the shard with
+  the least planned time so far (ties to the lowest shard). There is no clock, random or network input, so
+  every leg computes the same plan.
+* **Weights**: `JOURNEY_WEIGHTS_SECONDS` is the median seconds of each file over 8 CI journeys jobs. A
+  journey that has no entry still runs (it is costed at `DEFAULT_WEIGHT_SECONDS`), so a new journey is never
+  skipped; the table only improves balance. When a journey's cost changes a lot, update its entry from a CI log.
+  The planned split is 515, 510 and 511 s (spread under 1%).
+* **Guarantees** (`scripts/ciJourneyShards.test.ts`): over the real journey list every file runs in one
+  shard and no other, for 1 to 6 shards; the smoke step runs once; the shards plan within 10% of each other;
+  a bad `--shard` value fails loudly; an empty shard is skipped and never falls back to a bare `node --test`
+  that would run everything; the matrix is exactly `1..N`.
+* **Failures**: `fail-fast` is off, so a failing shard does not cancel the others and every shard keeps its
+  evidence. A failed or cancelled leg makes `needs.journeys.result` non-success and so fails `all-green`.
+  Evidence uploads on failure as `journeys-evidence-<shard>` (one artifact per shard). The per-job
+  `timeout-minutes` stays 30 and nothing is retried.
+* **Branch protection** requires only `all-green`, so the leg names (`journeys (shard 1/3)`) are not
+  required checks and can change without touching protection.
+* **Why three**: each shard pays a fixed setup of about 76 s (median of 8 runs: 63 s checkout, apt, `npm ci`
+  and caches, plus 13 s Chrome warm-up) on top of its share of about 26 minutes of serial work. Predicted
+  wall time: 1 shard about 28 min, 2 shards about 15 min, 3 shards about 10 min, 4 shards about 8 min. Going
+  from 2 to 3 shards saves about 4.5 min of wall time for about 1.3 extra runner minutes; a fourth would save
+  about 2 min more, but the unit job (5 to 9 min) then sets the wall time. Runner minutes per run rise from
+  about 28 to about 31. Measured values for the real run are in the pull request that added the shards.
 
 ## Setup that every job shares
 
@@ -64,7 +97,7 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
 * The `unit` job restores the Remotion browser cache, runs `remotion browser ensure` before tests,
   restores the Cargo registry and `native/target` cache keyed by `native/Cargo.lock`, runs the Rust
   Render IR and renderer tests, and installs `tesseract-ocr` so OCR features run without skipping.
-* The `unit` and `journeys` jobs start by warming the system Chrome (`scripts/warmChrome.ts`): it reads
+* The `unit` job and every `journeys` shard start by warming the system Chrome (`scripts/warmChrome.ts`): it reads
   Chrome's install folder once and makes one headless launch, and prints both timings. On a fresh
   GitHub runner the first launch of `/usr/bin/google-chrome` took a median 8 s and up to 34 s, while
   every later launch took under a second (85 unit jobs, November 2026), so the test that happened to
@@ -98,7 +131,7 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
   silently passed) when none exists. CI always runs it.
 * Failing frames, reports and studio screenshots land under `.ci-artifacts/`. Artifact uploads use
   `include-hidden-files: true` so `.ci-artifacts` directories are uploaded reliably. The journeys artifact
-  uploads on failure; legacy evidence and the nightly budget report upload on every run.
+  uploads on failure, one artifact per shard (`journeys-evidence-1` to `journeys-evidence-3`); legacy evidence and the nightly budget report upload on every run.
 
 ## Changed files (shadow mode)
 
@@ -280,7 +313,7 @@ default branch again. Review and merge its pull request like any other change.
 
 ## Branch protection (proposal, not applied)
 
-Require the single check **`all-green`** (it fails unless all five jobs above succeeded).
+Require the single check **`all-green`** (it fails unless all five jobs above succeeded, every journeys shard included).
 The nightly and update-goldens workflows are not checks. Branch protection is a
 repository setting and is left to the captain.
 
