@@ -1,5 +1,5 @@
 /**
- * File Description: Thin compatibility adapter retaining each existing Remotion entry point's command and active-film behavior.
+ * File Description: Thin Remotion adapter: every entry point encodes with the shared final flags and keeps its own active-film, GL and entry-point behavior.
  * Inputs and outputs: renderer-neutral requests and legacy caller options -> existing Remotion capture subprocesses.
  * Used by: pipeline, studio export registry, Gemini review and manual render CLI.
  */
@@ -30,7 +30,7 @@ export interface RemotionRendererDeps extends RenderProcessDeps {
   run?: typeof runRenderCommand;
 }
 
-/** Preserves current flags and pointer plumbing; the future native adapter will consume profile policy directly. */
+/** Builds the Remotion renderer for one caller; the shared final encode flags express the whole render profile. */
 export function createRemotionRenderer(
   options: {
     caller: "pipeline" | "studio" | "review" | "manual";
@@ -45,13 +45,13 @@ export function createRemotionRenderer(
   let publicDir: ReturnType<typeof stagePublicDir>;
   return {
     profileSettingsApplied: {
-      intermediate: false,
-      codec: false,
-      crf: false,
-      pixelFormat: false,
-      range: false,
-      audioCodec: false,
-      audioBitrate: false,
+      intermediate: true,
+      codec: true,
+      crf: true,
+      pixelFormat: true,
+      range: true,
+      audioCodec: true,
+      audioBitrate: true,
     },
     /** Performs only the active-film setup the existing caller performed. */
     prepare(request) {
@@ -82,7 +82,7 @@ export function createRemotionRenderer(
         forceSignal: context.forceSignal,
       });
     },
-    /** Passes through each old command's encode, GL and entry-point choices without tuning capture. */
+    /** Runs the Remotion CLI with the final encode flags plus this caller's GL and entry-point choices. */
     async render(request, context) {
       const pipeline = options.caller === "pipeline";
       const args = [

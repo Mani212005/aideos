@@ -1,6 +1,6 @@
 /**
- * File Description: Renders a three-frame synthetic reel through the studio Export adapter and probes the real mp4.
- * Inputs and outputs: hello-scene fixture film, real Remotion capture -> asserted pixel format and colour range of the file.
+ * File Description: Renders the same three-frame synthetic reel through the studio Export adapter and the pipeline adapter and probes both real mp4s.
+ * Inputs and outputs: hello-scene fixture film, real Remotion capture per caller -> asserted pixel format and colour range tag of each file, studio equal to pipeline.
  * Used by: npm test (renders run sequentially; they rewrite the generated active-film module).
  */
 
@@ -15,16 +15,13 @@ import { createRenderJob } from "./renderJob";
 import { createRemotionRenderer } from "./remotionRenderer";
 import { readActiveFilmSource, readFilm, restoreActiveFilmSource } from "./pipeline/filmStore";
 
-test("studio Export produces yuv420p limited range, not yuvj420p full range", async (t) => {
-  const previous = readActiveFilmSource();
-  t.after(() => restoreActiveFilmSource(previous));
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-export-encode-"));
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const outPath = path.join(dir, "reel.mp4");
+/** Renders frames 0-2 of the hello-scene reel through one caller's adapter and returns the mp4's video pix_fmt and color_range. */
+async function renderAndProbe(caller: "studio" | "pipeline", dir: string): Promise<{ pixFmt: string; range: string }> {
+  const outPath = path.join(dir, `${caller}.mp4`);
   const job = createRenderJob(
     { film: readFilm("hello-scene")!, format: "reel", outPath, frames: [0, 2], profile: "final" },
     createRemotionRenderer(
-      { caller: "studio" },
+      { caller },
       { checkDiskBudget: async () => ({ frameBytes: 1, outputBytes: 1, overheadBytes: 1, totalBytes: 3 }) },
     ),
     {
@@ -46,6 +43,16 @@ test("studio Export produces yuv420p limited range, not yuvj420p full range", as
   )
     .trim()
     .split(",");
-  assert.equal(pixFmt, "yuv420p");
-  assert.notEqual(range, "pc", "full range tagging is the defect");
+  return { pixFmt, range };
+}
+
+test("studio Export encodes yuv420p with the pipeline's exact colour range tag", async (t) => {
+  const previous = readActiveFilmSource();
+  t.after(() => restoreActiveFilmSource(previous));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-export-encode-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const pipeline = await renderAndProbe("pipeline", dir);
+  const studio = await renderAndProbe("studio", dir);
+  assert.deepEqual(pipeline, { pixFmt: "yuv420p", range: "unknown" }, "the pipeline's final settings: yuv420p, no full range tag");
+  assert.deepEqual(studio, pipeline, "studio Export tags the same pixel format and colour range as the pipeline");
 });
