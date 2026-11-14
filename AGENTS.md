@@ -4,372 +4,365 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 # Agent Guidelines & Coding Standards
 
-Before you make or change any video: read `docs/GOOD_VIDEO.md`, then run `aideos review <slug>` and attach the generated per-format review reports to your handoff.
+## Before you make a video
 
-Agents default to drafts and stills. Run the final export (`aideos render`, `aideos reel`, `aideos film` or `aideos direct` with `--final-export`, `aideos_produce_film` with `finalExport`, or the studio export API) or fetch/download a rendered video only when the user explicitly says so in the terminal. The user decides in the studio: Export, then Start, with Cancel at any time and an explicit Download button when it finishes (`backend/exportJobs.ts`).
+- Read `docs/GOOD_VIDEO.md` before you make or change any video.
+- Run `aideos review <slug>` after that.
+- Attach the generated per-format review reports to your handoff.
+- Run `aideos review <slug|mp4>` on any video you make. Attach the report.
+- `aideos review` exits 1 on a failed gate. It exits 2 when it cannot run.
 
-## Making a video: look first
+## Drafts and final export
 
-Decide the look before making any picture. Read `docs/GOOD_VIDEO.md`. The per-package brief is
-written at `design/LOOK_BRIEF.md` by `aideos look brief`, arriving with the look-plan checker
-phase; until then follow the six questions and criteria in the plan docs. Write or inspect
-`videos/<slug>/design/look.json` before authoring `design.json` or SVGs. New explainers are
-scene films: keep one visible stage, name the objects that carry between shots, and choose each
-shot's treatment from the plan. Prefer scene motion. A precise device belongs in an inset that
-leaves the stage visible, or is redrawn as SVG parts on that stage; never paint a full panel or
-card over the stage. When a run reports `needs_look`, `needs_design` or `needs_reel_cut`, complete the named plan,
-design or cut and rerun the same command. Do not use `--design templates` unless a template film
-was explicitly requested. The look plan owns treatment and cast; `docs/DIRECTOR_GUIDE.md` owns
-screenplay direction; the look checker owns plan validity. Proof taste notes to preserve: make
-camera motion smoother and move captions slightly upward.
+- Default to drafts and stills.
+- Run a final export only when the user says so in the terminal.
+- These commands make a final export: `aideos render`, `aideos reel`, `aideos film` or `aideos direct` with `--final-export`, `aideos_produce_film` with `finalExport`, and the studio export API.
+- Fetch or download a rendered video only when the user says so in the terminal.
+- The user decides in the studio. The order is Export, then Start.
+- The user can Cancel at any time. A Download button shows when the export ends.
+- See `backend/exportJobs.ts`.
+- `aideos direct` and `aideos film` stop at a draft after `assemble` unless you pass `--final-export`.
 
-## Core Rules
+## Look first
 
-1. **File Header Description**: Every code file created or updated must have a header comment at the very top containing three fields: "File Description: <description>", "Inputs and outputs: <inputs> -> <outputs>", and "Used by: <callers or entry point>".
-2. **Function Documentation**: Every function written must have a clear, one-line comment preceding it that explains what the function is for.
-3. **No Long Dashes**: Never use long dashes (such as em dashes or en dashes) anywhere: in code, UI text, video text, comments, documentation, or agent messages. Always use standard hyphens (-), colons (:), or parentheses ().
-4. **Video Design System Standard**: All videos created must strictly follow the specification defined in [src/dl/README.md](src/dl/README.md). This includes:
-   - **Color Palette**: Per-film declared palette with a measured contrast floor.
-   - **Typography**: Geist for voice/narrative, JetBrains Mono for all system/code/numbers.
-   - **Motion Easing**: Ease-out-expo cubic-bezier(0.16, 1, 0.3, 1) for all transitions.
-   - **7 Animated Primitives**: TextReveal, StatCounter, CodeBlock, Card, Divider, IconLabel, ProgressBar.
-   - **Single Canvas Model**: 2D infinite spatial canvas with continuous camera motion and wide payoff zooms.
-5. **Great Coding Principles & Refinement**:
-   - Perform quality and refinement checks to verify code logic and appearance.
-   - Maintain clean, modular, well-structured, and readable code.
-   - Implement robust error handling, defensive checks, and input validation.
+- Decide the look before you make any picture.
+- Read `docs/GOOD_VIDEO.md`.
+- `aideos look brief` writes `design/LOOK_BRIEF.md` for each package.
+- Until that brief exists, follow the six questions and criteria in the plan docs.
+- Write or inspect `videos/<slug>/design/look.json` before you author `design.json` or SVGs.
+- Make each new explainer a scene film.
+- Keep one visible stage.
+- Name the objects that carry between shots.
+- Choose each shot's treatment from the plan.
+- Prefer scene motion.
+- Put a precise device in an inset that leaves the stage visible. Or redraw it as SVG parts on the stage.
+- Never paint a full panel or card over the stage.
+- When a run reports `needs_look`, `needs_design` or `needs_reel_cut`, complete the named plan, design or cut. Then rerun the same command.
+- Do not use `--design templates` unless someone explicitly requests a template film.
+- The look plan owns treatment and cast.
+- `docs/DIRECTOR_GUIDE.md` owns screenplay direction.
+- The look checker owns plan validity.
+- Keep the proof taste notes: make camera motion smoother. Move captions slightly upward.
 
-## Video Production & Animation Workflow
+## Code rules
 
-1. **Audio-First Pipeline**:
-   - **Script Generation**: First, draft or refine the script detailing exactly what will be spoken in the video to communicate the core concept clearly.
-   - **Voice Recording Phase**: Present the script to the user and prompt/guide them to record the audio narration.
-   - **Audio Analysis & Timing**: Receive the recorded audio track, determine its exact duration and timestamp cues, and lock the video timeline to the audio length.
+- Put a header comment at the very top of every code file you create or update.
+- The header has three fields: "File Description: <description>", "Inputs and outputs: <inputs> -> <outputs>", "Used by: <callers or entry point>".
+- Put a clear one-line comment before every function. The comment says what the function is for.
+- Never use long dashes (em dash or en dash) anywhere. This covers code, UI text, video text, comments, documentation and agent messages.
+- Use hyphens (-), colons (:) or parentheses () instead.
+- When dash-handling code or its test fixtures must show a dash, write the `\u2014` or `\u2013` escape. Never write the raw character.
+- Run quality and refinement checks on code logic and appearance.
+- Keep code clean, modular, well structured and readable.
+- Add robust error handling, defensive checks and input validation.
 
-2. **Continuous Flow & Chained Component Addition**:
-   - **No Dissected Frames**: Videos must remain continuous and fluid. Never jump between disconnected static frames or isolated cuts.
-   - **Incremental Component Chaining**: Base components must stay on screen and evolve. Add new elements, inputs, layers, or cards onto existing components progressively as the explanation advances (e.g. empty UI state -> typed input -> loading state -> resultant data card).
-   - **Seamless Visual Progression**: Maintain persistent UI contexts so viewers experience a unified visual story that builds naturally.
+## Video design standard
 
-3. **Strict Audio-Visual Synchronization**:
-   - **Depict Spoken Words**: Every visual cue, animation, and graphic element must directly depict and reflect what is being spoken in the narration at that precise second.
-   - **Precise Cue Syncing**: Align visual triggers, highlight effects, and component additions directly with the voiceover audio timestamps.
+- Follow `src/dl/README.md` strictly for all videos.
+- Palette: each film declares its palette with a measured contrast floor.
+- Type: use Geist for voice and narrative. Use JetBrains Mono for all system text, code and numbers.
+- Motion: use ease-out-expo `cubic-bezier(0.16, 1, 0.3, 1)` for all transitions.
+- The 7 animated primitives are TextReveal, StatCounter, CodeBlock, Card, Divider, IconLabel and ProgressBar.
+- Canvas: one 2D infinite spatial canvas with continuous camera motion and wide payoff zooms.
+- Read colour through `useTokens()` from `src/dl/tokens.ts`.
+- Do not use the module-level `PALETTE`, `rule()`, `FAINT` or `SUNKEN` constants.
+- Keep `src/dl/camera.ts` rounding the cumulative timeline position, not single shot durations.
+- Keep `transform-origin: 0 0` on the `CanvasGraph` camera transform.
+- Both camera items are load-bearing. Read the comments at each site before you change them.
 
-## Claude Screenplay Intake
-- `backend/scriptIntake.ts` is the single source of truth for parsing/serializing Claude-style screenplays (`## timestamp - Title` headers, `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` tag blocks, plus legacy `VO:`/`Voiceover:`/`Narrator:` conventions), extracting zero-leakage spoken narration, deterministically converting a user's plain-text story (paragraphs plus `#Start`/`#Conclusion` style markers) into the internal tagged form via `plainTextToTaggedScript` (tagged scripts pass through unchanged, `[VISUAL]`/`[ON SCREEN]` slots start empty, and agents fill only those), and compiling sub-shots and animated primitive blocks (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) for Remotion using TypeSafe Jev (`backend/jev.ts`) for semantic primitive selection with confidence gating and deterministic fallback.
-- Jev is asked once per film, not once per beat: `backend/jev.ts`'s `prefetchShotVisualAnswers`/`prefetchPrimitiveAnswers` send every beat in one batched request and `resolveShotVisual`/`resolvePrimitive` gate each answer against the beat's live state. Never call `selectShotVisual`/`selectPrimitive` in a per-beat loop; they remain the path for a single decision and for test mocks.
-- `npm run eval:visuals [-- --jev]` scores shot-visual choice on the labelled beats in `backend/eval/shot_visual_cases.json` (heuristic, raw Jev, and what ships after gating and grounding). Re-run it before changing a threshold, the criteria wording or the model, and add a labelled case only for a bad pick the captain identified, with his label.
-- It has no Node-only imports, so `editor/src/components/ScriptEditor.tsx` (browser bundle), `editor/vite.config.ts` (dev server), and `backend/audio.ts` all import it directly instead of re-implementing screenplay parsing. Extend this module rather than adding another parser copy.
+## Video workflow
 
-## Transcription and edit context (Phase 1)
+### Audio first
 
-- `backend/transcribe.ts`'s `transcribe(src, opts, deps)` transcribes a video/audio source into
-  word-level timings: Deepgram's prerecorded `listen` API (`smart_format`, `punctuate`,
-  `filler_words`, `utterances` all on) when a key is configured, else a local Whisper CLI
-  fallback. Both paths return the same `TranscribedWord[]` shape (the existing `WordInfo` plus a
-  per-word `confidence`), so downstream code never needs to know which backend ran. The network
-  fetch, the API key resolution, the ffmpeg extraction and the Whisper subprocess are all
-  injectable via `deps`, mirroring the `llmCaller` injection convention elsewhere, so tests
-  exercise real routing/parsing logic without ever touching the network, .env files or a real
-  ASR process. `writeImportWords` persists the result
-  to `videos/<slug>/import_words.json` (`{words: TranscribedWord[]}`, each carrying a `filler`
-  flag once a detection pass has run) plus `import_captions.vtt` via `audio.ts`'s `buildCaptionsVtt`.
-- `backend/editContext/` holds the pure signal-detection and context-assembly modules
-  `detectFillers`, `detectSilences` and `buildEditContext`, each taking plain data and a
-  `TranscribedWord[]`/`LayeredFilm` and returning a typed result with no I/O. `detectFillers`
-  always flags a fixed strong-filler lexicon ("um", "uh", ...) and only flags a context-dependent
-  word or phrase ("like", "you know") when the ASR backend's own confidence for every word in the
-  span falls below a threshold, so a clearly-spoken "I like this" is never touched.
-- `backend/audio.ts`'s `resolveAudioSourcePath` resolves candidates against both `process.cwd()`
-  and a `REPO_ROOT` computed from `__dirname`. The editor dev server is launched with
-  `cd editor && npm run dev`, so its `process.cwd()` is `editor/`, not the repo root every other
-  caller (the pipeline CLI, `npm test`) runs from; a cwd-only lookup silently failed to find any
-  asset resolved from inside the editor (media upload playback, footage audio peaks, and now
-  transcription) whenever the source was a relative path like `media/<file>`. Any new code that
-  resolves a repo-relative asset path from within `editor/vite.config.ts` should reuse this helper
-  rather than building its own `process.cwd()`-relative lookup.
+- Draft or refine the script first. It states exactly what the video says.
+- Show the script to the user. Guide them to record the narration.
+- Take the recorded audio. Find its exact duration and timestamp cues.
+- Lock the timeline to the audio length.
 
-## Per-Video Package Layout
-- Personal videos are never committed. Every video is a self-contained package under `videos/<slug>/` (the whole tree is gitignored, `AIDEOS_VIDEOS_DIR` moves it anywhere, a relative value resolves against the repo root): `film.json` (authoritative manifest; see `src/dl/videoPackageLoader.ts`), `script.md`, `voiceover.wav` + `voiceover_words.json`, `footage/<shotId>.mp4` (GPU B-roll), `visuals/`, `design/`, and `renders/`. Whoever forks the repo makes their own. Only `examples/hello-scene/` (a tiny scene film, the read-only fallback when `videos/` has no packages) ships; see [videos/README.md](videos/README.md). Never read or write a path under `videos/` directly: use `getVideosDir()`/`resolvePackageDir()`/`resolveRepoAssetPath()` from `src/dl/videoPackageLoader.ts` (or `filmStore.ts`'s `readFilm`/`writeFilm`).
-- Tests never touch personal videos. `npm test` preloads `backend/testSupport/fixtureVideosDir.ts`, which points `AIDEOS_VIDEOS_DIR` at a throwaway copy of `test_fixtures/packages/` per test process (a test run on its own imports the same module first). Small canvas films for model tests are `test_fixtures/films/*.json` via `backend/testSupport/fixtureFilms.ts`. Add fixtures there, never copy a real video in.
-- Generated and gitignored: `src/dl/films/<slug>.ts` (a shadow of each package's `film.json`, kept only because Remotion's CLI bundles code, not a JSON path), `src/dl/activeFilm.ts` (which shadow Remotion renders) and `src/dl/scene/assets/svgSources.generated.ts` (every package's SVGs inlined). `backend/pipeline/generatedFiles.ts`'s `ensureGenerated` rebuilds all three from the packages on disk, rewriting only what changed; `npm install` (postinstall) and the pre-hooks of `test`, `lint`, `studio`, `editor`, `render`, `smoke:studio` run it (`npm run ensure:generated`), so a fresh clone works from the example alone and a drifted shadow heals itself. Never hand-edit the shadows; write films with `backend/pipeline/filmStore.ts`'s `readFilm`/`writeFilm`/`wireFootageIntoFilm` or `editor/vite.config.ts`'s same-named helpers, which emit the identical module format. `tsconfig.json` excludes `src/dl/films` so one owner's invalid film cannot fail lint for everyone.
-- `public/videos` is a tracked symlink to `../videos` (point it at `AIDEOS_VIDEOS_DIR` if you set one). Vite's own `publicDir` static serving won't follow it (its `sirv`-based middleware does a realpath containment check), so `editor/vite.config.ts` serves `/videos/*` with an explicit range-aware middleware (personal dir first, then `examples/`). `staticFile('videos/<slug>/...')` resolves through that same URL path for both the editor's Remotion `<Player>` preview and any consumer that fetches it directly.
-- Also gitignored: `public/film.json`, `public/captions*.vtt`, `public/media/`, `public/*.png` (except the favicon), `src/voiceover.wav`, `.lavish/` and all `*.mp3 *.wav *.mp4 *.mov *.m4a`. Git history from before this change still holds old videos; it was deliberately not rewritten.
+### Continuous flow
 
-## Production Pipeline
-- `backend/pipeline/run.ts`'s `runProduction` is the one programmatic entry point from a script to finished mp4s (intake, narrate, look, design, reel, b-roll, assemble, render, verify), with typed progress, per-stage resume via `videos/<slug>/run-state.json`, and stage-tagged errors. `backend/mcp/server.ts` exposes the same thing as MCP tools over stdio. Both are documented in [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md); drive a film through `runProduction`.
-- `backend/pipeline/director.ts`'s `runDirector` is the auto-prompt entry point above `runProduction`: it drafts a screenplay from a raw prompt with an LLM briefed on [docs/DIRECTOR_GUIDE.md](docs/DIRECTOR_GUIDE.md), validates the draft with `backend/scriptIntake.ts`'s own parser (retrying a rejected draft with the specific reason fed back), then hands a passing draft to `runProduction` unchanged. `transformProseToScreenplay` is deprecated and unused: a user's plain-text story is converted deterministically by `plainTextToTaggedScript`, never reformatted by a model. `generateScreenplay` is the injection point tests use instead of a real model call; the real path always calls the model, so the plan is never a canned or templated screenplay. Reachable via `npm run backend -- direct "<prompt>"` or `aideos direct "<prompt>"`; like `aideos film` it stops at a draft after `assemble` unless `--final-export` is passed.
-- The render stage's disk guard and its fixed PNG settings are documented in [docs/CI.md](docs/CI.md).
-- Narration is assembled in the sample domain (`backend/pcm.ts`), never by concatenating encoded files: trim, boundary fade, exact gap insertion and peak normalization on Float32 samples. That is what keeps segment offsets exact and boundaries click-free, and `backend/voiceover_stutter.test.ts` holds each defect class closed. Speech synthesis backends live in `backend/tts.ts`; Kokoro is the offline default and runs in a separate process (`backend/kokoroWorker.mjs`) because its voice-file resolution and ONNX thread pool both break under the TypeScript loader.
-- Components must read colour through `useTokens()` from `src/dl/tokens.ts`, not the module-level `PALETTE`/`rule()`/`FAINT`/`SUNKEN` constants: those are derived from the paper-white theme and paint near-black text on the dark canvases every film actually uses. `useLayout().label()` now resolves its muted colour from the rendering theme too, so mono labels are correct without each call site overriding `color`.
-- `src/dl/camera.ts` rounds cumulative timeline position, not individual shot durations, and `CanvasGraph`'s camera transform needs `transform-origin: 0 0` to agree with `solveCam`/`projectBox`. Both are load-bearing for audio-visual sync and framing; see the comments at each site before changing them.
-- Voiceover audio and captions are resolved directly within each video package under `videos/<slug>/` (accessible via the tracked `public/videos` symlink). `produceAudioPipeline` (`backend/audio.ts`) writes `voiceover.wav`, `captions.vtt`, and `voiceover_words.json` directly into the package directory without copying into `public/`, keeping `public/` limited to tracked files.
-- Library-backed soundtrack behavior and audio commands are documented in [Audio Library and Management Commands](docs/AUDIO_LIBRARY.md#2-soundtrack-mixing).
+- Keep videos continuous and fluid.
+- Never jump between disconnected static frames or isolated cuts.
+- Keep base components on screen and let them evolve.
+- Add new elements, inputs, layers or cards onto existing components as the explanation advances.
+- Keep persistent UI context. The viewer sees one unified visual story.
 
-- `/api/generate-voiceover` synthesizes through `backend/voiceSynthesis.ts` (Kokoro, Deepgram, Google, `say`). Kokoro holds ~400 MB, so it is skipped on hosts under 1.5 GB (`AIDEOS_KOKORO=1/0` overrides): loading it in the studio server OOM-killed the 512 MB Render free container and every request 502'd. A total failure returns 503 with per-provider reasons.
+### Audio and visual sync
 
-## Jev shot-visual choice
-- `backend/jev.ts` is the single shared decision client (CHOICE plus confidence gating plus heuristic fallback): primitive choice plus `selectShotVisual` (Text/StatCounter/TokenStrip/Plot/MatrixGrid/Distribution/LayerStack/ScaleBar). Do not fork a second client; reuse its endpoint/timeout/mock shape.
-- `backend/pipeline/design.ts`'s `compileFilmFromScreenplayAsync` is the compile path: model-authored visuals validated against `blockSchema`, footage precedence preserved. `backend/pipeline/run.ts` design stage uses it.
-- The Jev endpoint is text-only (no image input), so it cannot judge rendered stills. SVG asset routing is deliberately not part of this compile path yet. Rendered frames are judged after the design by the vision judge (see below), which gives Jev text only.
+- Make every visual cue, animation and graphic show what the narration says at that second.
+- Align visual triggers, highlights and component additions with the voiceover timestamps.
 
-## Rule 3 (No Long Dashes) and screenplay parsing
-- `backend/scriptIntake.ts` legitimately matches literal em/en dash characters as part of normalizing user-authored screenplay input (e.g. bare timestamp headers like "0:00" through "0:20" followed by a dash-separated title). To keep the module free of literal dash bytes while preserving that behavior, it and its test (`backend/claude_script_intake.test.ts`) use `\u2014`/`\u2013` escapes inside regex and template-literal fixtures instead of the raw characters. Follow the same pattern (escape sequence, not raw character) whenever dash-handling code or its test fixtures genuinely need to represent an em/en dash.
+## Screenplay intake and Jev
 
-## Scene graph and custom SVG animation
-- The scene engine renders a static `.svg` asset plus a separate declarative animation timeline. The clip format, its rules and the determinism contract are documented in [src/dl/scene/README.md](src/dl/scene/README.md); read that before touching `src/dl/scene/**`.
-- `src/dl/scene/**` is browser bundle code and must stay free of Node imports, because Remotion bundles it. The filesystem half lives in `src/dl/scene/validateSceneNode.ts` and `backend/scene/loadSceneAssets.ts`, which are the Node-only modules by design. `SceneView` therefore takes asset source text as a prop rather than reading it.
-- Rasterize review stills with headless Chrome via `backend/scene/renderStill.ts`, never `qlmanage`: qlmanage ignores the document aspect ratio and emits a square thumbnail, so stills made with it are a misleading record of the frame. `renderFrameStill` verifies the PNG dimensions and throws if they are wrong.
+- Use `backend/scriptIntake.ts` as the single source of truth to parse and serialize screenplays.
+- Extend it. Never add another parser copy.
+- Keep it free of Node-only imports. The browser bundle, the dev server and `backend/audio.ts` import it.
+- Pass tagged scripts through unchanged.
+- Convert plain text with `plainTextToTaggedScript` (deterministic).
+- Leave `[VISUAL]` and `[ON SCREEN]` slots empty. Agents fill only those.
+- Use `backend/jev.ts` as the one shared decision client. Never fork a second client.
+- Reuse the endpoint, timeout and mock shape of `backend/jev.ts`.
+- Ask Jev once per film, not once per beat. Use `prefetchShotVisualAnswers` and `prefetchPrimitiveAnswers`.
+- Gate each answer with `resolveShotVisual` or `resolvePrimitive` against the live state of the beat.
+- Never call `selectShotVisual` or `selectPrimitive` in a per-beat loop.
+- Run `npm run eval:visuals [-- --jev]` before you change a threshold, the criteria wording or the model.
+- Add a labelled eval case only for a bad pick the captain identified. Use the captain's label.
+- `compileFilmFromScreenplayAsync` is the compile path. The design stage of `run.ts` uses it.
+- The Jev endpoint is text-only. It cannot judge rendered stills.
+- SVG asset routing is not part of the compile path.
+- Detail: `docs/PRODUCTION_PIPELINE.md`, section "Agent rules detail (moved from AGENTS.md)".
 
-## Scene films (a film whose canvas is a scene)
+## Transcription and edit context
 
-- Characters are data (`aideos.character/1`): author, check and draw them with `characters/README.md` and
-  `aideos character check|sheet`; architecture and the retargeted receive are in `docs/CHARACTER_ENGINE.md`.
-  After any spec edit re-stamp its hash (`--stamp`); after editing an engine file listed in
-  `src/dl/scene/rigs/registry.ts` run `npx tsx scripts/freeze_stage_resources.ts`.
-- For Three stage contracts, resource freezes, cue binding or stage review evidence, read
-  `docs/THREE_STAGE_P0.md`. Rendering and fixture tests must run sequentially because both rewrite
-  the generated active-film module.
+- `transcribe()` returns the same `TranscribedWord[]` shape for Deepgram and for Whisper.
+- Keep the network fetch, the API key, ffmpeg and the Whisper subprocess injectable through `deps`.
+- Never let a test touch the network, .env files or a real ASR process.
+- Keep the `backend/editContext/` modules pure: plain data in, typed result out, no I/O.
+- `detectFillers` always flags the fixed strong-filler words.
+- `detectFillers` flags context words ("like", "you know") only when the ASR confidence is below the threshold.
+- In `editor/vite.config.ts`, resolve a repo-relative asset path with `resolveAudioSourcePath` from `backend/audio.ts`.
+- Never build your own `process.cwd()` lookup for that.
+- Detail: `docs/PRODUCTION_PIPELINE.md`, section "Agent rules detail (moved from AGENTS.md)".
 
-- A film's canvas is either the node graph (`film.canvas`) or a vector scene (`film.scene`), never
-  both: `src/dl/Film.tsx` renders `SceneStage` in place of `CanvasGraph` when `scene` is present.
-  `examples/hello-scene/` is the tiny worked example (see its [README](examples/hello-scene/README.md))
-  and `test_fixtures/packages/still-talking/` the full-length one; `backend/stillTalking/` rebuilds it
-  into `videos/still-talking/` on the shared kit.
-- One `Scene` spans the whole film, not one per shot. That is what makes continuity real, because
-  the engine holds each element's last value until another clip takes over. Shots then carry only
-  the text cards that overlay it.
-- `SceneView` is pure and cannot read disk, so committed assets reach the Remotion bundle through
-  the generated, gitignored `src/dl/scene/assets/svgSources.generated.ts`. Regenerate it with
-  `npm run ensure:generated` whenever a `visuals/*.svg` changes.
-- Compose a scene film on a **square** scene space (1920 x 1920). Each format takes a 1080-wide
-  strip through the centre, so the shared safe area is the centre 1080 square; the wide cut also
-  sees the left and right wings, and the reel also sees the top and bottom bands. `SceneStage`
-  covers rather than contains, so a scene of any other aspect would be cropped, not letterboxed.
-- Two rules the engine cannot check, both enforced by the `Timeline` builder in the scene-film kit
-  (`backend/sceneKit/`, which every scene film builds on): a clip must start from the value the previous clip on that
-  property left behind (otherwise the value snaps on screen), and one element may only ever be
-  given one transform `origin` (the compiler applies the last origin it sees to every frame).
-  `Timeline.camera()` likewise enforces camera track continuity from the previous camera clip,
-  preventing visual snaps on camera movement.
-- `backend/sceneKit/` is also the authoring layer, so a new scene film writes no kit code of its own:
-  `Canvas` (`canvas.ts`: markup plus continuity-checked motion, and `lyric()` kinetic type that
-  throws when a row no longer matches the narration or overflows its bounds; a token like `HNSW{4}`
-  covers four spoken words), `svg.ts` (palette, `el`/`g`/`text`, seeded `rng`), `typeMetrics.ts` plus
-  `wordWidths.json` (kerned Geist word widths measured in Chrome; add a film's new words with
-  `measureWords.ts`, which merges rather than replaces), `wrap.ts` (`wrapBalanced`), `chrome.ts`
-  (corners, backdrop, readouts), and the Node-only tools `voiceover.ts` (`produceVoiceover({slug,
-  beats, alignment})`: synthesize, master, optional Whisper word alignment, write the spine),
-  `preview.ts` (fast Chrome frames) and `reviewFrames.ts` (`npx tsx backend/sceneKit/reviewFrames.ts
-  <slug>`). A film supplies its beats, artwork and accent; topic scenes stay in the film's own folder.
-- Aim a cue at a spoken word, not at a fraction of its shot: the payoff word of a sentence is
-  usually near its end. The kit's `createCues(timing).word()` reads the narration's own offsets and throws
-  when the phrase is no longer in that shot, so rewriting a line cannot silently mis-time the film.
-- Chrome drawn over a scene needs its own ground. A node graph leaves the bottom of the frame
-  empty, but a star field will put a dot straight through a glyph of the chapter rail, so `Rail`
-  carries its own scrim rather than trusting what is behind it.
-- Opacity has one trap worth knowing: an authored `opacity` attribute and a clip that drives
-  opacity both want the same attribute. The compiled state wins only when a clip actually drives
-  it (`SvgElementState.opacityDriven`), so an element authored `opacity="0"` can be faded fully in,
-  and an element authored faint can be translated without being forced opaque.
-- An asset meant to live in one format's exclusive band (the reel's top/bottom, or the wide cut's
-  left/right wings) has to fit its whole bounding box, not just its placement anchor, inside that
-  band. `SceneStage` covers with a single fixed window per format, so anchoring an element at the
-  band's edge is not enough if the artwork's own extent (control points, stroke half-width) reaches
-  back across the 1500-world-unit line into the shared safe square: it leaks a truncated fragment
-  into the other format. Compute the local bounding box (not just the authored viewBox, which can
-  be smaller than what a curve's control points actually draw) and choose `position`/`scale` so
-  the whole thing clears the line with margin, the way `backend/stillTalking/scene.ts`'s
-  `trajectory` asset does.
+## Video packages and generated files
 
-## Editor design system (editor/**)
+- Never commit personal videos.
+- Each video is a package under `videos/<slug>/`. The whole `videos/` tree is gitignored. `AIDEOS_VIDEOS_DIR` moves it.
+- Only `examples/hello-scene/` ships.
+- Never read or write a path under `videos/` directly.
+- Use `getVideosDir()`, `resolvePackageDir()` or `resolveRepoAssetPath()` from `src/dl/videoPackageLoader.ts`.
+- Or use `readFilm` and `writeFilm` from `backend/pipeline/filmStore.ts`.
+- Never let tests touch personal videos. `npm test` preloads `backend/testSupport/fixtureVideosDir.ts`.
+- Add fixtures to `test_fixtures/`. Never copy a real video in.
+- Never hand-edit the generated shadows: `src/dl/films/<slug>.ts`, `src/dl/activeFilm.ts` and `src/dl/scene/assets/svgSources.generated.ts`.
+- `ensureGenerated` (`npm run ensure:generated`) rebuilds them.
+- Write films with `readFilm`, `writeFilm` and `wireFootageIntoFilm` from `backend/pipeline/filmStore.ts`. The same-named helpers in `editor/vite.config.ts` also work.
+- `public/videos` is a tracked symlink to `../videos`.
+- Vite serves `/videos/*` through its own range-aware middleware. Use `staticFile('videos/<slug>/...')`.
+- Write voiceover audio and captions into the video package. `produceAudioPipeline` does this. Never copy them into `public/`.
+- Detail, and the list of gitignored files: `videos/README.md`.
 
-- The editor chrome has its own design system, entirely separate from the rendered-video design
-  language in `src/dl/README.md`. Tokens live in `editor/src/styles/tokens.css`, are exposed to
-  Tailwind through `editor/tailwind.config.js`, and are consumed through the primitives in
-  `editor/src/components/ui/`. Never hard-code a hex value in an editor component: add or use a token.
-- The editor is a light application end to end. The one dark token is `--nb-matte`, reserved for the
-  matte directly behind the video frame and for previews *of* rendered video (for example the kinetic
-  caption preview). Everything else is paper, sunken paper or ink.
-- Tailwind's JIT caches generated classes: after editing `tailwind.config.js` or adding a token,
-  restart the Vite dev server or new utility classes silently resolve to their defaults.
-- Screens live in `editor/src/screens/` (one per stage in the left rail) and compose the components
-  in `editor/src/components/`. `editor/src/App.tsx` owns navigation, playback and selection only.
+## Production pipeline
 
-## Imported video and standalone overlay clips
+- Drive a film through `runProduction` in `backend/pipeline/run.ts`. It is the one programmatic entry point from a script to finished mp4s.
+- `runDirector` in `backend/pipeline/director.ts` drafts a screenplay from a raw prompt.
+- `runDirector` checks the draft with the `scriptIntake.ts` parser. It passes a good draft to `runProduction` unchanged.
+- Never use `transformProseToScreenplay`. It is deprecated and unused.
+- Convert a user's plain-text story with `plainTextToTaggedScript`. Never let a model reformat it.
+- Use `generateScreenplay` only as the test injection point.
+- The real path always calls the model. Never use a canned or templated plan.
+- Assemble narration in the sample domain (`backend/pcm.ts`). Never concatenate encoded files.
+- Run Kokoro in its own process (`backend/kokoroWorker.mjs`).
+- `/api/generate-voiceover` synthesizes through `backend/voiceSynthesis.ts`.
+- Skip Kokoro on hosts under 1.5 GB. `AIDEOS_KOKORO=1` or `AIDEOS_KOKORO=0` overrides the skip.
+- Return 503 with per-provider reasons when all synthesis fails.
+- Read `docs/CI.md` for the render stage disk guard and its fixed PNG settings.
+- Read `docs/AUDIO_LIBRARY.md#2-soundtrack-mixing` for soundtrack mixing and audio commands.
+- Read `docs/PRODUCTION_PIPELINE.md` for the full pipeline.
 
-- `Film` carries `videoClips`/`overlayClips` arrays (`src/dl/schema.ts`), mirroring the `audioClips`
-  pattern: they are the authority for `video`/`image`/`text`/non-derived-`subtitle` layer clips once
-  any exist, written out by `convertLayeredFilmToFilm` and read back by `convertFilmToLayeredFilm`
-  (`src/dl/convertFilm.ts`) with `linkedClipId` kept symmetric between a video clip and its footage
-  audio counterpart in `audioClips`. A derived subtitle clip (from the voiceover words) is recognized
-  by its synthesized id (`clip-sub-<n>-...`) and never written out; only a standalone caption cue is.
-- `src/dl/Film.tsx`'s `FilmView` renders `film.videoClips` as full-bleed `<Sequence>`/`<OffthreadVideo>`
-  layers *behind* everything else, making the enclosing canvas background transparent (and skipping
-  the paper-grain/blueprint-grid/dot textures) whenever any exist, so the existing canvas/shot content
-  composites on top of the user's own footage instead of hiding it. `film.overlayClips` render above
-  that as simple text/image cards. Both are no-ops on a film with neither array, so every pre-existing
-  film renders unchanged. This is the one render tree both the editor's `<Player>` preview and the
-  Remotion CLI export (`Video.tsx` wraps `FilmView`) share, so a compositor change here reaches both.
-- `backend/timeline/layer_engine.ts`'s `importMediaAssetToLayeredFilm` always creates/uses a dedicated
-  `layer-audio-footage` lane for imported footage audio; it must never fall back to matching
-  `layer-audio-spine`, or the collision resolver ripples the import behind an existing voiceover clip.
-- `/api/media/upload` (`editor/vite.config.ts`) probes width/height/fps for a video via a second
-  `ffprobe` call and returns them alongside `duration`; `AssetBin`'s `MediaAsset` and `EditStage`'s
-  `insertAsset` thread `width`/`height` through to `importMediaAssetToLayeredFilm` so an imported
-  video's dimensions are known without re-probing.
+## Scene engine and scene films
 
-## Studio browser smoke check
+- Read `src/dl/scene/README.md` before you touch `src/dl/scene/**`.
+- Keep `src/dl/scene/**` free of Node imports. Remotion bundles it.
+- `SceneView` takes asset source text as a prop. It never reads disk.
+- The Node-only modules are `src/dl/scene/validateSceneNode.ts` and `backend/scene/loadSceneAssets.ts`.
+- Rasterize review stills with `backend/scene/renderStill.ts` (headless Chrome). Never use `qlmanage`.
+- A film canvas is the node graph (`film.canvas`) or a vector scene (`film.scene`). Never use both.
+- Use one `Scene` for the whole film. Do not use one per shot.
+- Shots carry only the text cards that overlay the scene.
+- Run `npm run ensure:generated` when a `visuals/*.svg` changes.
+- Compose a scene film on a square 1920 x 1920 scene space.
+- The centre 1080 square is the shared safe area.
+- Start each clip from the value that the previous clip left on that property. If not, the value snaps.
+- Give one element only one transform `origin`.
+- `Timeline.camera()` enforces camera track continuity.
+- Build new scene films on `backend/sceneKit/`. Write no kit code of your own.
+- Keep topic scenes in the folder of the film.
+- `lyric()` throws when a row no longer matches the narration or overflows.
+- Add the new words of a film with `measureWords.ts`. It merges.
+- Aim a cue at a spoken word, not at a fraction of its shot.
+- `createCues(timing).word()` throws when the phrase is no longer in that shot.
+- Give chrome that you draw over a scene its own ground. Example: the `Rail` scrim.
+- The compiled opacity wins only when a clip drives opacity (`SvgElementState.opacityDriven`).
+- Fit the whole bounding box of an asset in the exclusive band of its format, with margin.
+- Compute the local bounding box. Do not use only the anchor point.
+- Characters are data (`aideos.character/1`).
+- Author, check and draw characters with `characters/README.md` and `aideos character check|sheet`.
+- Read `docs/CHARACTER_ENGINE.md` for the architecture.
+- After a spec edit, re-stamp its hash with `--stamp`.
+- After you edit an engine file listed in `src/dl/scene/rigs/registry.ts`, run `npx tsx scripts/freeze_stage_resources.ts`.
+- Read `docs/THREE_STAGE_P0.md` for Three stage contracts, resource freezes, cue binding and stage review evidence.
+- Run rendering tests and fixture tests one after another. Both rewrite the generated active-film module.
+- Detail: `src/dl/scene/README.md`, section "Scene engine and scene film rules (moved from AGENTS.md)".
 
-- `npm run smoke:studio` (`scripts/smoke_studio.ts`) starts the editor dev server, loads the studio in headless Chrome over the DevTools protocol and fails on a blank page, an uncaught exception, a `console.error`, or a Vite client error. It is part of CI's journeys job. Unit tests run in Node and cannot see browser-only crashes such as a Node built-in leaking into the client bundle (the blank studio after #43). It skips with a warning when no Chrome is installed; set `AIDEOS_SMOKE_REQUIRED=1` to make that a failure.
+## Design check and design build
 
-## Design check (the standard layer)
-
-- `aideos design check <film...>` (`npm run design:check -- <film> [--all] [--stills] [--json]`, `backend/designCheck/`) is the single gate every film's design passes, however it was made: film schema, scene engine validity, static self-contained artwork, locked palette plus the film's own accent (for a project whose theme the user chose, `theme.accentChosen`, that chosen accent is the only accent and the check fails any other one), Geist/JetBrains Mono only, no motion snaps while an element is visible, story holds over three seconds in compiled scene/camera data, one transform origin per element, picture locked to the narration, safe-area clearance from the caption band, on-screen counters showing a number that is actually spoken, and smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration). Leave `easing` off camera keyframes: `src/dl/scene/cameraTrack.ts` then flows a monotone spline through them, while easing every keyframe stops and bursts at each one and reads as jitter. Findings name the rule, the place and the fix, so an agent can be handed the report and repair its own design. `--stills` renders review stills into `.frames/<id>/` and restores the active film.
-- Bespoke designs are data: `videos/<id>/design/design.json` (schema `backend/designSpec/spec.ts`: brief, accent, assets, cue-timed clips, camera poses, per-shot block overrides) plus SVGs in `visuals/`. `aideos design brief <id>` writes the designer's brief (`design/BRIEF.md`, the whole contract); `aideos design build <id>` resolves cues against the narration, compiles the scene through the kit, runs the design check and writes the film only on PASS, recording the outcome in `design/status.json`. Builds always start from `design/base-film.json` (the undesigned film, saved on the first build). `test_fixtures/packages/speculative-decoding-designed/` is the worked example.
-- Look planning and design delivery live in `backend/designSpec/designer.ts`; `ProductionRequest.design`
-  (`backend/pipeline/types.ts`) selects inline, agent, server or explicit templates. Inline is the
-  default: follow the `needs_look` / `needs_design` result's next steps and rerun the same command.
-  Server mode uses `videoModels.generation` through `backend/aideosConfig.ts`. Node tests skip live
-  agent delivery while retaining the inline stop behavior; choose templates explicitly for legacy
-  compiler tests. See [docs/PRODUCTION_PIPELINE.md](docs/PRODUCTION_PIPELINE.md) for resume semantics.
-- Any module the editor dev server can reach (vite.config imports the pipeline) must be safe to bundle as ESM: no bare `require.main === module` guards (use the `typeof require` form in `backend/scene/buildSvgSources.ts`) and no Remotion bundler or renderer imports (which is why `backend/sceneKit/reviewStills.ts` is not re-exported from the kit index).
-- Build new scene films on `backend/sceneKit/` and add any new standard rule the captain approved to the check (with a failing case in `designCheck.test.ts`), not only to a prompt.
-- Template charts and visual blocks carry no canned data. `backend/pipeline/deviceData.ts` has a text model (Gemini, `AIDEOS_GEMINI_MODEL`) write each chart's contents from its beat in one batched request, and refuses any block that fails the schema or shows a word or number the beat never says; a refused chart leaves the beat on its text card. `buildBlocksForPrimitive` in `backend/scriptIntake.ts` never invents stand-ins (`StatCounter` requires narrated numbers, `CodeBlock` requires inline code, and `ProgressBar` requires explicit percentages, falling back to `TextReveal` otherwise). StatCounter is still read straight from the narration. Why each shot got its visual lands in `videos/<id>/design/visual-choices.json`.
-- The studio shows a film's design in Look > Design (`editor/src/components/DesignView.tsx`, from `/api/design/:id` in `backend/designSpec/shotTools.ts`). The shot inspector's "Why this visual" panel swaps a shot to one of Jev's runner-ups through the same authoring and honesty check (`POST /api/design/:id/shots/:shot/visual`) and sends a shot-focused `design_film` task to the connected agent (`.../redesign`). Tests may call `requestShotRedesign`/`dispatchTask`: the default tmux effect is disabled under tests. Inject a fake tmux runner to test pane delivery.
-
-## Owner caption placement
-
-Before changing captions, film writers, timeline conversion, or review bands, read the owner caption
-sections in `src/dl/README.md`, `docs/PRODUCTION_PIPELINE.md`, and `docs/REVIEW.md`.
-`src/dl/captionPlacement.ts` owns resolution, gesture bounds and carry-forward; use the checked
-`set_caption_placement` edit operation for agents. The J13 journey exercises both formats.
-
-## Editor state and the timeline layer model
-
-- `editor/src/state/useFilmProject.ts` owns the open film, the single labelled undo history and
-  autosave. Screens never mutate the film directly: they call `commit(nextFilm, label)` so one user
-  gesture is always one undo step.
-- `editor/src/state/useLayeredTimeline.ts` is the only path from editor UI into
-  `backend/timeline/layer_engine.ts` and `layer_manager.ts`. It derives a `LayeredFilm`, applies one
-  engine operation, folds the result back with `convertLayeredFilmToFilm(next, film)` and commits it.
-  It also exposes `renderFilm`, the film with hidden lanes removed and muted lanes silenced, which is
-  what both the preview player and export use so the two always agree.
-- `convertLayeredFilmToFilm` takes the originating Film as a `base` argument. Passing it is required
-  for a lossless round trip: captions, voiceover metadata and per-shot fields the layer model does not
-  model are carried through from that base.
-- The pointer-drag state machine is pure and lives in `backend/timeline/drag_machine.ts` (not in the
-  editor) so its transitions can be regression tested in `drag_machine.test.ts`. The timeline attaches
-  its window pointer listeners unconditionally; attaching them only while a drag is open leaves a race
-  in which a fast release is missed and the gesture sticks.
-- The editor must not import `src/dl/films/*`. Those modules are rewritten on every autosave, so
-  importing them makes Vite hot-reload the whole page mid-edit. `editor/vite.config.ts` also lists
-  them (and `videos/**`) under `server.watch.ignored` for the same reason.
-- `src/dl/validateLayeredFilm.ts` and `backend/editPlanner/interpreter.ts` run in the page (the AI edit Apply gesture), so they
-  must stay free of Node built-ins and `process`: the on-disk source check lives in `backend/timeline/layerAssetCheck.ts`.
-  A Node import on a browser path passes every Node test and only fails in Chrome, so `backend/editPlanner/browserSafety.test.ts`
-  bundles the apply path and the whole studio and fails on an externalized module, and `backend/journeys/j3_studio_edit.journey.ts`
-  clicks Apply Edits in a real browser.
-- `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
-  built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
-  fetches peaks via `/api/audio/peaks` and falls back to in-browser decoding (`editor/src/components/timeline/useAudioPeaks.ts`).
-- `npm test` discovers every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob, so a new suite is run
-  without wiring; `scripts/check_tests_wired.ts` (CI static job) fails for a test file no script would run.
+- Run `aideos design check <film...>` on every film design. It is the single gate.
+- Use `npm run design:check -- <film> [--all] [--stills] [--json]` for the npm form.
+- When the user chose the project theme (`theme.accentChosen`), keep that accent as the only accent.
+- Leave `easing` off camera keyframes.
+- Bespoke designs are data: `videos/<id>/design/design.json` plus SVGs in `visuals/`.
+- Run `aideos design brief <id>`, then `aideos design build <id>`.
+- The build writes the film only on PASS. Every build starts from `design/base-film.json`.
+- `ProductionRequest.design` selects inline, agent, server or explicit templates delivery. Inline is the default.
+- Follow the `needs_look` or `needs_design` result. Rerun the same command.
+- Choose templates only when someone explicitly requests them. The exception is a legacy compiler test.
+- Node tests skip live agent delivery. They keep the inline stop.
+- Keep each module that the editor dev server reaches safe to bundle as ESM.
+- Do not use a bare `require.main === module` guard. Use the `typeof require` form.
+- Do not import the Remotion bundler or renderer there. Do not re-export `backend/sceneKit/reviewStills.ts` from the kit index.
+- Add each standard rule that the captain approves to the design check. Add a failing case in `designCheck.test.ts`. Do not add it only to a prompt.
+- Never give template charts or visual blocks canned data.
+- `deviceData.ts` refuses a block that shows a word or number the beat never says.
+- `buildBlocksForPrimitive` never invents stand-ins.
+- StatCounter needs narrated numbers. CodeBlock needs inline code. ProgressBar needs explicit percentages. If not, fall back to TextReveal.
+- The studio Look > Design swap and redesign use the same honesty check.
+- Detail: `docs/REVIEW.md`, section "Agent rules detail (moved from AGENTS.md)".
 
 ## Frame safe areas and the palette guard
 
-- `src/dl/fullScreenHeroLayout.ts` owns all `fullScreenHero` geometry and is the single
-  definition of `SUBTITLE_BAND_TOP_RATIO`, the top of the burned-in caption card. Both
-  hero paths use it (`AnalogyInset` in `src/dl/devices.tsx` and `Dynamic3DHeroOverlay` in
-  `src/dl/Film.tsx`) and `KineticSubtitles` derives its "bottom" position from it, so caption
-  placement and the thing it must avoid come from one number (0.78, which is also where `CAPTION_SAFE_SQUARE` ends in the scene engine). Put new frame-safe-area geometry
-  there rather than re-deriving it in a component: it is a plain module with no Remotion
-  imports, which is what makes it unit testable in `backend/fullScreenHeroLayout.test.ts`.
-- A device beat shares a scene film's stage instead of covering it: `stage: "inset"` (scene films only, exactly one device or counter) draws the device in `getInsetRegion(format, w, h)` (right third in the long cut, lower-middle band in the reel, floor derived from `SUBTITLE_BAND_TOP_RATIO`) and never dims the scene. The design check's `inset` rule (`backend/designCheck/insetRegion.ts`) fails any visible scene art in that region while the shot plays, measured per drawn element through the compiled scene and camera in both formats. An anchor panel in a scene film grows from its own centre, not from the hidden node graph. `test_fixtures/packages/inset-stage/` is the worked example.
-- `backend/design_language_palette.test.ts` walks `src/dl/**` and fails on colour literals
-  outside the locked palette (6-digit hex, 3-digit hex and `rgb()`/`rgba()` alike) or on
-  typefaces other than Geist and JetBrains Mono. Files that predate the guard are listed in its
-  `KNOWN_DRIFT` ledger, which is shrink-only: a listed file that becomes clean fails the test
-  until it is removed from the list. Subtrees with their own enforcement (`films/`, `scene/`,
-  `tokens.ts`) are excluded and say why in the file.
+- Put all `fullScreenHero` geometry in `src/dl/fullScreenHeroLayout.ts`.
+- That file owns `SUBTITLE_BAND_TOP_RATIO` (0.78). Put new frame-safe-area geometry there.
+- Keep that file free of Remotion imports.
+- Use `stage: "inset"` for a device in a scene film. Use exactly one device or counter.
+- The inset device draws in `getInsetRegion` and never dims the scene.
+- The `inset` design check rule fails visible scene art in that region.
+- Never add a colour literal outside the locked palette in `src/dl/**`.
+- Never add a typeface other than Geist and JetBrains Mono in `src/dl/**`.
+- `backend/design_language_palette.test.ts` checks both. The `KNOWN_DRIFT` list only shrinks.
+- Detail: `src/dl/README.md`, section "Frame safe areas and the palette guard (moved from AGENTS.md)".
 
-## AI Video Editing Core (Phases 2-4)
+## Owner caption placement
 
-- `backend/editPlanner/schema.ts` defines the closed Zod discriminated union `EditOp` representing the entire editing vocabulary (text overlays, lower-thirds, slides, caption track, filler word removal, dead air removal, range trim, splitting, moving clips, clip speed, volume, mute/hide lanes, accent, theme, reordering). Unknown op kinds are rejected.
-- `backend/editPlanner/validator.ts`'s `validateEditProgram(ops, context)` enforces semantic timeline bounds, entity references, and runs a dry-run simulation against `validateLayeredFilm`.
-- `backend/editPlanner/interpreter.ts`'s `applyEditProgram(film, ops, context)` is a pure transactional interpreter mapping `EditOp[]` to timeline and voiceover engine operations with atomic rollback on failure. Supports `add_lower_third` for broadcast-style name/role callout cards, and synchronous video/audio clip speed adjustments.
-- `backend/editPlanner/planner.ts`'s `planEdits(request, context, llmCaller)` uses a 3-attempt validate-then-repair loop feeding validation errors back to the model, returning `{ plan, ops }`.
-- `backend/editPlanner/provenanceLog.ts`'s `appendEditProvenanceRecord` / `readEditProvenanceLog` records an append-only JSON Lines audit trail to `videos/<slug>/edit_log.jsonl` capturing natural-language requests, generated plans, resolved ops, repair attempts, dry-run status, and source tags, queryable via `GET /api/edit-log` and MCP tool `aideos_list_edit_log`.
-- `editor/src/components/OnCanvasAiEditor.tsx` renders the model-driven AI edit panel with dry-run-then-apply UX, folding committed edits through `convertLayeredFilmToFilm` for a single undo step.
-## Connected Agent Bridge Hub (Phase 2)
-- `backend/agentBridge/` is the single authoritative hub for multi-channel outbound dispatch to connected AI coding agents.
-- `backend/agentBridge/dispatcher.ts`'s `dispatchTask` sends rich context payloads (script, audio timings, film manifest, director invariants) across Channel A (Firstmate steering inbox `FIRSTMATE_STEERING_INBOX` / `AIDEOS_AGENT_INBOX`), Channel B (MCP pull queue `aideos_get_pending_tasks`), and Channel C (tmux / local task file `.aideos_task.md`).
-- Hybrid Fallback (Decision 1): Unclaimed pending tasks trigger in-process fallback execution after `DEFAULT_AGENT_TIMEOUT_MS` (15s) timeout, defused when an agent claims the task via `aideos_claim_task` or `taskQueue.claimTask`.
-## Agent link (`aideos connect`)
-- The studio reaches the owner's own coding agent through `backend/agentLink/store.ts`: the header's Connect agent dialog (`editor/src/components/AgentConnect.tsx`) gets a one-time pairing code and gives the browser an owner key (sent as `X-Aideos-Owner` on every studio API call by `editor/src/state/agentLink.ts`); `scripts/aideos-connect.mjs` (dependency-free, also served at `/api/agent-link/connect.mjs`, `aideos connect`, `npm run connect`) claims the code and long-polls `/api/agent-link/next`. This is the only way the hosted studio has an agent: Render has no terminal.
-- `dispatchTask` sends a task to the connected agent only when the request carried the owner key it was paired with, and then skips tmux and the inbox so nothing runs twice. Pass `ownerKey: ownerOf(req)` from every new dispatching route in `editor/vite.config.ts`.
-- Two ways to link: the user's own running agent (primary: the studio shows one MCP add command plus a paste-in line, and the agent loops on the remote-only `aideos_wait_for_task` tool in its own visible session) or the downloadable connector, which runs each task headless in an empty scratch folder and prints a plain activity view (task, tool calls from `/api/agent-link/activity`, result) with retries collapsed to one calm line. Either way the agent is confined to the aideos MCP tools served statelessly at `POST /api/mcp` (`createMcpServer({ remote: true, link })`, which drops the production-run tools; design file access is limited by `backend/mcp/designTools.ts`). Connector confinement: Claude runs with `--tools ""`; Antigravity with `--sandbox` (its MCP server is registered globally with `agy mcp add`); Codex with `--sandbox read-only`; OpenCode with edit/bash/webfetch denied. `--model provider/model` overrides the run model for opencode (`run --model`) and agy (`--model`); without it the agent's default applies, and a free-tier refusal is reported with a re-pair hint instead of a bare exit code.
-- The link must survive restarts: the hosted backend runs on a free-plan container whose filesystem is wiped on every restart, redeploy and spin-down (a Kokoro synthesis OOM-restarts it too). So `backend/agentLink/store.ts` never depends on stored state: tokens are HMAC-signed and self-describing (key: `AIDEOS_LINK_SECRET`, else derived from a provider key, else a local file), the connection table is rebuilt from the next authenticated call, and the connector treats any 5xx, timeout or 404 as transient and never exits on it. A link ends only on Disconnect (the browser also rotates its owner key, which keeps old tokens dead across a restart), a replacing pairing, or the owner's browser not polling `/api/agent-link/status` for the 5 minute grace (`LINK_PRESENCE_GRACE_MS`): that status poll is the tab's heartbeat. Keep new link state derivable from a token or the owner key, not memory or disk.
-- One agent per owner: pairing again replaces the previous connection, and the takeover is explicit on both ends (`claim` returns what was replaced, the old connector's next poll 401s with `replacedBy`, the pairing dialog warns while a code is pending). Never add a second concurrent agent per owner without a routing design: tasks must not run twice.
-- The Motion stage defaults to Motion you describe (`editor/src/components/DescribeMotion.tsx`, `backend/designSpec/motionRequests.ts`): a described motion for one shot is a shot-focused `design_film` task to the connected agent (server model fallback via `designWithServerModel`), logged with a snapshot of the design it replaced (`design/motion-requests.json`, `design/history/`) for Revert. A failing build only settles a request once the agent's task has ended, because agents iterate. Tests inject `dispatch`.
-- The studio keeps its stage in the URL hash, and `buildSvgSources` only rewrites the generated index when artwork changed: a design build otherwise made Vite reload the page and threw the user back to the first stage.
-- Vercel runs `npm --prefix editor run build` (`tsc -b` over `editor/tsconfig.node.json` too), which checks every backend module the dev server reaches with `erasableSyntaxOnly` and ESM module rules: no constructor parameter properties, enums or namespaces, and no extensionless dynamic `import()` in backend code. It is in the lint gate; `tsc --noEmit -p editor` alone does not catch these.
-- Asset `svgSource` paths are repo-relative; the Node resolvers fall back to the repo root because the editor server's cwd is `editor/`.
+- Before you change captions, film writers, timeline conversion or review bands, read the owner caption sections.
+- They are in `src/dl/README.md`, `docs/PRODUCTION_PIPELINE.md` and `docs/REVIEW.md`.
+- `src/dl/captionPlacement.ts` owns resolution, gesture bounds and carry-forward.
+- Use the checked `set_caption_placement` edit operation.
+- Journey J13 exercises both formats.
 
-## Live Real-Time Agent Trace Telemetry (Phase 3)
-- `backend/agentBridge/traceBus.ts` is the in-process event bus collecting trace steps from external coding agents, the bridge dispatcher, and in-process pipeline stages (AI-edit planner, neural TTS, GPU B-roll, invariant validation).
-- Server endpoints in `editor/vite.config.ts`: `GET /api/agent/trace` streams live trace steps to the studio via Server-Sent Events (SSE), and `POST /api/agent/trace/step` records server-side pipeline steps.
-- MCP tool `aideos_report_step` in `backend/mcp/server.ts` enables connected coding agents to report reasoning, tool calls, and invariant checks into the unified trace timeline.
-- `editor/src/components/AgentActivityInspector.tsx` renders live SSE telemetry with real-time status indicators (LIVE/CONNECTING/OFFLINE), phase filtering, and an honest empty state when idle.
+## Imported video and overlay clips
 
-## Bi-Directional Canvas & Edit Loop (Phase 4)
-- User actions across the three canvas surfaces (Canvas node additions in `editor/src/screens/StoryStage.tsx`, On-Canvas AI-edit requests in `editor/src/components/OnCanvasAiEditor.tsx`, and Review Critique Studio in `editor/src/components/CritiqueStudio.tsx`) dispatch tasks with rich video context to the connected coding agent via `backend/agentBridge/dispatcher.ts` and emit live telemetry steps to `traceBus`.
-- Instant studio hot-reload: When `videos/<slug>/film.json` is modified on disk by an agent or written via `backend/pipeline/filmStore.ts` / `writeFilm`, `traceBus.notifyFilmUpdated` broadcasts `event: film_updated` over the SSE `/api/agent/trace` stream. `editor/src/state/useFilmProject.ts` receives the event and updates the open film live without a manual refresh.
-- `backend/agentBridge/canvasLoop.test.ts` covers the complete bi-directional loop, fallback handling, and instant studio update path.
+- `film.videoClips` and `film.overlayClips` are the authority for those clips when any exist.
+- Keep `linkedClipId` symmetric between a video clip and its footage audio clip.
+- Never write a derived subtitle clip (id `clip-sub-<n>-...`) out.
+- `FilmView` renders `videoClips` behind everything and `overlayClips` above.
+- One render tree serves the editor preview and the Remotion CLI export.
+- In `importMediaAssetToLayeredFilm`, always use the `layer-audio-footage` lane for footage audio.
+- Never fall back to `layer-audio-spine`.
+- `/api/media/upload` probes width, height and fps with a second `ffprobe` call.
+- Pass those values through `AssetBin` and `EditStage`.
+- Detail: `docs/DESIGN.md`, section "Editor rules detail (moved from AGENTS.md)".
 
-## Review (deterministic checks on the rendered video)
+## Editor
 
-- `aideos review <slug|mp4>` (`backend/review/`, [docs/REVIEW.md](docs/REVIEW.md)) measures a rendered mp4 against the measurable rubric criteria (persistent stage, captions, readability, overlap, audio sync, pacing, number grounding, loudness, plus camera and carry-over from film data) and writes `review.json` (or `review.reel.json` for a reel) with evidence frames. Exit 1 on a failed gate, 2 when it cannot run. Run it on any video you make and attach the report.
-- A character film (Three stage) is reviewed in each output's own crop: presence, camera and each performance's evaluated contact against its decisive word come from `backend/review/source.ts`, and `backend/review/stageTruth.ts` is the one per-output summary both `review.json` and the Gemini facts read. A look performance pins `character: {id, version, hash}` (see `docs/THREE_STAGE_P3.md`).
-- Camera comes from film data and carry-over from element identity, never from pixels (global phase correlation and overlap in place both mislead, see the audit lessons in docs/REVIEW.md). A criterion with missing inputs is `skipped`, never a pass. Every threshold is in `backend/review/thresholds.ts` and was set from the three reference videos: re-run `npm run calibrate:review` (paths in env vars, the mp4s are never committed) after changing one.
+- The editor design system is separate from `src/dl/README.md`.
+- Tokens are in `editor/src/styles/tokens.css`. Primitives are in `editor/src/components/ui/`.
+- Never hard-code a hex value in an editor component. Add or use a token.
+- The editor is a light application end to end.
+- Use the one dark token `--nb-matte` only behind the video frame and for previews of rendered video.
+- Restart the Vite dev server after you edit `tailwind.config.js` or add a token.
+- Put screens in `editor/src/screens/`. `editor/src/App.tsx` owns navigation, playback and selection only.
+- `useFilmProject.ts` owns the open film, the undo history and autosave.
+- Never mutate the film in a screen. Call `commit(nextFilm, label)`. One user gesture is one undo step.
+- Use `useLayeredTimeline.ts` as the only path from editor UI into `layer_engine.ts` and `layer_manager.ts`.
+- Pass `renderFilm` to both the preview and the export.
+- Pass the originating Film as `base` to `convertLayeredFilmToFilm`.
+- Keep the pointer-drag state machine pure in `backend/timeline/drag_machine.ts`.
+- Attach the window pointer listeners of the timeline unconditionally.
+- Never import `src/dl/films/*` in the editor.
+- Keep `src/dl/validateLayeredFilm.ts` and `backend/editPlanner/interpreter.ts` free of Node built-ins and `process`.
+- Put on-disk source checks in `backend/timeline/layerAssetCheck.ts`.
+- Keep `backend/timeline/voiceover_engine.ts` free of Node built-ins.
+- Put ffmpeg waveform code in `backend/timeline/waveform.ts`.
+- `npm test` finds every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob.
+- `scripts/check_tests_wired.ts` fails for a test file that no script runs.
+- CI runs `npm run smoke:studio`. It fails on a blank page, an uncaught exception, a `console.error` or a Vite client error.
+- `AIDEOS_SMOKE_REQUIRED=1` makes a missing Chrome a failure.
+- Detail: `docs/DESIGN.md`, section "Editor rules detail (moved from AGENTS.md)", and `docs/CI.md`.
 
-## All-check (the whole review in one background agent)
+## Edit planner, agent bridge and agent link
 
-- `aideos all-check <slug>` (`backend/allCheck/`, [docs/REVIEW.md](docs/REVIEW.md) section 3, skill `.agents/skills/all-check/SKILL.md`, linked from `.claude/skills`) preflights, takes a per-video lock, writes a brief and opens an unfocused Herdr workspace with a pre-approved `claude` or `agy` that loops render, measured review, Gemini review, frame check, fix on `videos/<slug>/` until long and reel both pass. Pass/fail comes only from the tool-written records in `videos/<slug>/all-check/`; the agent never scores or writes them. A code fix goes through a treehouse worktree and a PR, never main.
-- The tool, not the prompt, keeps a run honest: a worse round is rolled back to the best film automatically, a new round needs the previous frame check recorded, `finish` restores the best round's film when nothing passed, `wait` closes a run whose agent went quiet, and files the agent creates outside `videos/<slug>/` are reported (`backend/allCheck/best.ts`).
-- Every outside effect (Herdr, agy, render, notifications, studio) is injected, so `backend/allCheck/allCheck.test.ts` covers parsing, preflight, lock, rounds and verdict with no model or window. Keep it that way for new steps.
-- `cleanModelJsonResponse` strips a code fence with any language tag (a `python` fence crashed a pairwise run); extend it rather than parsing reviewer JSON anywhere else.
+- `EditOp` in `backend/editPlanner/schema.ts` is a closed union. Reject unknown op kinds.
+- `backend/agentBridge/` is the single hub for outbound dispatch to connected agents.
+- The studio reaches the coding agent of the user through `backend/agentLink/store.ts`.
+- This is the only way that the hosted studio has an agent.
+- Send a task to the connected agent only when the request carried the owner key.
+- Pass `ownerKey: ownerOf(req)` from every new dispatching route in `editor/vite.config.ts`.
+- Confine the linked agent to the aideos MCP tools at `POST /api/mcp`.
+- Keep new link state derivable from a token or the owner key. Never keep it in memory or on disk.
+- The connector treats any 5xx, timeout or 404 as transient. It never exits on those.
+- Never add a second concurrent agent per owner without a routing design. Tasks must not run twice.
+- Keep the studio stage in the URL hash.
+- `buildSvgSources` rewrites the generated index only when artwork changed.
+- Keep backend code valid for `npm --prefix editor run build` (`tsc -b` over `editor/tsconfig.node.json`).
+- That build forbids constructor parameter properties, enums, namespaces and extensionless dynamic `import()` in backend code.
+- `tsc --noEmit -p editor` alone does not catch these. The lint gate includes the build.
+- Write asset `svgSource` paths repo-relative. The Node resolvers fall back to the repo root.
+- Detail: `docs/WORKFLOW.md`, section "Agent integration detail (moved from AGENTS.md)".
 
-## Vision judge (frame review loop)
+## Review
 
-- `backend/visionJudge/` judges a designed scene film's rendered frames: `sampler.ts` renders every 5-7th frame once through `backend/scene/renderStill.ts` into `.frames/<id>/judge/` (never qlmanage, never a browser on localhost); `judge.ts` sends those stills to the connected agent as a `frame_review` task in one round (critique with opinions and concrete suggestions, repair through `aideos design build`, and one image-text score per sample), logs each score with its threshold to `design/judge/embedding-log.jsonl`, then asks Jev for the verdicts.
-- Jev only ever sees text. `backend/jev.ts` holds the `frameVerdict` CHOICE (Match, WrongData, LayoutDefect, Unreadable) and the per-suggestion accept, accept-with-change, reject rating on the same shared client, confidence gating and heuristic fallback as the primitive and shot-visual picks. Do not fork a second client and do not add a Gemini step to this loop.
-- The judge never writes a film: only a passing `buildDesign` does (design check plus honesty check). A failed sample comes back with its exact error text (`JudgeFailure.error`) for synthesis; `designer.ts` repairs through the agent, or through a server model only when a caller was passed in. When image reviews and embeddings are absent (no agent connected, timed out, or skipped without an embedder), the vision judge skips cleanly without evaluating text alone.
-- The primitive pick is asked by communicative job (`PRIMITIVE_CRITERIA`: JOB, WHEN, WHEN NOT), carries camera, what is already on screen and the previous pick, and must name the spoken phrase it serves (`servesPhrase`; a complex pick that names none degrades to TextReveal or Card).
+- Take camera and carry-over from film data and element identity. Never take them from pixels.
+- Mark a criterion with missing inputs `skipped`. Never mark it a pass.
+- Keep every threshold in `backend/review/thresholds.ts`.
+- Re-run `npm run calibrate:review` after you change a threshold.
+- Review a character film in the own crop of each output. `backend/review/stageTruth.ts` is the one per-output summary.
+- Run `aideos all-check <slug>` for the whole review in one background agent.
+- Take pass or fail only from the tool-written records in `videos/<slug>/all-check/`. Never score or write them yourself.
+- Fix code through a treehouse worktree and a PR. Never fix it on main.
+- Inject every outside effect of all-check (Herdr, agy, render, notifications, studio). Keep it that way for new steps.
+- Extend `cleanModelJsonResponse`. Never parse reviewer JSON anywhere else.
+- Detail: `docs/REVIEW.md`, section "Agent rules detail (moved from AGENTS.md)".
 
-## Video model policy (`aideos.config.json`)
+## Vision judge
 
-- Generation and fixing is Claude Sonnet 5.5 (`claude`, `claude-sonnet-5-5`); review is Gemini 3.8 Flash (`agy`). Gemini 3.1 Pro is out for generation unless the captain explicitly asks. Both live in the committed `aideos.config.json`, loaded by `backend/aideosConfig.ts`; never hard-code a video model elsewhere, read the config.
-- `aideos all-check` launches its background agent from that config with an explicit `--model` regardless of which agent invoked it (the old "invoking agent / saved default" choice is gone); `backend/geminiReview` takes the reviewer model from it. Per-run `--agent`/`--model` override; a forbidden generation model needs `--allow-forbidden-model`. See [docs/REVIEW.md](docs/REVIEW.md) section 5.
+- Render the stills once through `backend/scene/renderStill.ts` into `.frames/<id>/judge/`.
+- Never use `qlmanage`. Never use a browser on localhost.
+- Give Jev text only.
+- Do not fork a second client. Do not add a Gemini step to this loop.
+- The judge never writes a film. Only a passing `buildDesign` writes a film.
+- When image reviews and embeddings are absent, skip the vision judge cleanly. Do not evaluate text alone.
+- Ask the primitive pick by communicative job. The pick must name the spoken phrase it serves (`servesPhrase`).
+- Detail: `docs/REVIEW.md`, section "Agent rules detail (moved from AGENTS.md)".
 
-## Gemini 3.8 Flash Video Quality Review Loop (9.0+ Bar)
+## Video model policy
 
-- Every rendered video must be validated through the Gemini 3.8 Flash quality review (`aideos all-check <slug>` or `aideos gemini-review <mp4>`).
-- The review runs via the configured agy model non-interactively with native video and audio input watching the local mp4. `backend/geminiReview/agyProcess.ts` owns its bounded lifetime; the rubric and facts reach it through an isolated workspace brief rather than a long CLI prompt.
-- The model evaluates the video against the 12-criterion rubric with 6 hard gates (persistent stage, camera purpose, bottom captions, readability, no overlap/clipping, audio sync) and must supply timestamp evidence for every criterion.
-- An agent may only claim done once Gemini rates the video 9.0 or higher with all 6 hard gates passing (verdict: ACCEPT).
-- If the verdict is REVISE, the agent must inspect the constructive feedback and timestamp citations, iterate on the film or design, and re-render.
-- Review rounds and reports are persisted under `videos/<slug>/gemini-review/` (`round-N.json`, `latest.json`), which is gitignored.
+- Generate and fix with Claude Sonnet 5.5 (`claude`, `claude-sonnet-5-5`).
+- Review with Gemini 3.8 Flash (`agy`).
+- Do not use Gemini 3.1 Pro for generation unless the captain explicitly asks.
+- Never hard-code a video model. Read `aideos.config.json` through `backend/aideosConfig.ts`.
+- `aideos all-check` launches its agent from that config with an explicit `--model`.
+- Per-run `--agent` and `--model` override the config.
+- A forbidden generation model needs `--allow-forbidden-model`.
+- See `docs/REVIEW.md`, section 5.
+
+## Gemini review loop (9.0+ bar)
+
+- Validate every rendered video through the Gemini 3.8 Flash review.
+- Use `aideos all-check <slug>` or `aideos gemini-review <mp4>`.
+- The 12-criterion rubric has 6 hard gates: persistent stage, camera purpose, bottom captions, readability, no overlap or clipping, audio sync.
+- The model must give timestamp evidence for every criterion.
+- Claim done only when Gemini rates the video 9.0 or higher and all 6 hard gates pass (verdict ACCEPT).
+- On REVISE, read the feedback and the timestamp citations. Iterate on the film or design. Re-render.
+- Review rounds persist under `videos/<slug>/gemini-review/` (`round-N.json`, `latest.json`). Git ignores them.
+- Detail: `docs/REVIEW.md`, section "Agent rules detail (moved from AGENTS.md)".
 
 ## Tests
-- Do not add tests on your own. A test you write only restates your own reading of the task. The source of truth is the captain's decisions, the committed golden frames, the design check rules and the journeys.
-- Add or change a test only when (1) the captain asks for it; (2) the captain states a new rule or standard, and the test encodes exactly that rule and names the decision; or (3) you fix a bug the captain or a user hit, and its end-to-end reproduction becomes a journey case.
-- Never loosen, re-point or delete an existing assertion, timeout, tolerance or golden-frame selection to make a run green. If you believe a test is wrong, leave it failing and say so in the PR description under "Test changes", with the reason, for the captain to decide.
-- A flaky test is a bug in readiness, warm-up, a network download or shared state. Fix the cause; a retry or a longer wait is not a fix unless you name the measured cause.
+
+- Do not add tests on your own. A test you write only restates your own reading of the task.
+- The source of truth is the captain's decisions, the committed golden frames, the design check rules and the journeys.
+- Add or change a test only in these three cases:
+  - The captain asks for it.
+  - The captain states a new rule. The test encodes exactly that rule and names the decision.
+  - You fix a bug that the captain or a user hit. Its end-to-end reproduction becomes a journey case.
+- Never loosen, re-point or delete an existing assertion, timeout, tolerance or golden-frame selection to make a run green.
+- If you think a test is wrong, leave it failing. Say so in the PR description under "Test changes". Give the reason for the captain to decide.
+- A flaky test is a bug in readiness, warm-up, a network download or shared state. Fix the cause.
+- A retry or a longer wait is not a fix. Name the measured cause first.
 
 ## Maintaining this file
-- This file is managed by agents. Add rules only when a task produces durable, project-intrinsic knowledge useful to almost every future session.
-- Keep it concise. Prefer pointers to authoritative files over copying details.
-- When updating, check if this section exists and add it if missing.
 
-
+- Agents manage this file.
+- Add a rule only when a task produces durable, project-intrinsic knowledge. It must help almost every future session.
+- Keep this file concise. Prefer pointers to authoritative files over copied detail.
+- When you update this file, check that this section exists. Add it if missing.
