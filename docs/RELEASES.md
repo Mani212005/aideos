@@ -113,6 +113,45 @@ generated render modules, CI artifacts and retained temporary acceptance outputs
 Acceptance can take many minutes. Never run another renderer or fixture suite concurrently in the
 same checkout because they share the generated active-film module.
 
+### Resume a failed release from the failed gate
+
+Every release attempt writes `release-gates.json` into its retained evidence directory (never into a film
+package): per gate (`ci`, `production`, `review`, `gemini-long`, `gemini-reel`) the result, a key, the time and
+the evidence files with their sha256. Writing it changes nothing about the release; it is only ever read when
+you ask:
+
+```sh
+npm run release -- 0.5.1 --acceptance /absolute/path/to/prepared-film --resume-gates /tmp/aideos-release-0.5.1-AbC123
+```
+
+`--resume-gates` takes the evidence directory an earlier attempt of the **same version** printed
+(`Acceptance evidence (retained): ...`). The attempt gets its own new evidence directory and record. Without the
+flag nothing is read or reused and the output is exactly as before. With it, each gate prints either
+`Resume: REUSE <gate>: passed earlier (...); key <12 hex>; evidence <file>` or `Resume: RUN <gate>: <why>`.
+
+A gate is reused only when **all** of these hold, each checked now rather than trusted from the file:
+
+- It PASSED in the earlier attempt (a failed gate, or a gate with no key, always runs again).
+- Its key matches exactly. The key is the sha256 of: the candidate commit, the release version, a content hash
+  of every film input the gate reads (the file contents of the acceptance package in a stable order, minus the
+  renders and review output that the acceptance copy already skips; for the later gates the produced package
+  and the rendered mp4), the gate's own configuration (platform and Node version for CI; the production
+  settings and the committed `aideos.config.json`; the measured-review thresholds; the Gemini reviewer agent and model and the
+  verdict policy numbers: the 9.0 bar, the 0.5 second-draw band, the two-draw cap and the failed-gate cap), and the key of the gate before
+  it. Any change to the commit, one byte of film, or a threshold or policy value re-runs that gate.
+- Every gate before it was also reused. Once one gate runs, every later gate runs (CI, then full renders, then
+  measured review, then Gemini of the long film, then Gemini of the reel), so a reused result can never outlive a
+  changed earlier input.
+- The record verifies: schema, release version, and a digest chain over the entries (a hand-edited, dropped or
+  reordered entry, and every entry after it, is ignored), and every recorded evidence file still has its recorded
+  hash. A corrupted record reuses nothing and says why.
+
+The captain steps are never reused: the typed `WATCHED AND APPROVE vX.Y.Z` is asked on every attempt, and the
+record has no approval entry. A reused production pass hands the earlier attempt's package and renders to the
+review gates (they run inside that earlier package) and prints the `WATCH` paths again, so both complete outputs
+can still be watched. Reuse has no time limit; delete the evidence directory (or do not pass the flag) to force
+a full run.
+
 On the first release there is no stable clone to update. The command publishes the accepted tag
 and stable branch, then prints the setup instruction below. If a configured stable clone is missing,
 dirty, on another branch, linked to a shared Git directory, or ahead of the candidate, promotion

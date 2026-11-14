@@ -13,6 +13,8 @@ import { Command } from "commander";
 import { git, optionalGit, releaseChannel, releaseVersionProblem } from "../backend/releaseChannel";
 import type { AudioItem } from "../backend/audioLibrary/schema";
 import { reviewOutputsWithGemini } from "./releaseReview";
+import { dirEvidence, fileEvidence, GateLedger, loadGateRecord, RECORD_FILE, runReleaseGates } from "./releaseGates";
+import { adoptProduction, ciInputs, geminiInputs, loadGateEnvironment, productionInputs, reviewInputs, SOURCE_EXCLUDED, type GateEnvironment, type ProducedOutput } from "./releaseGateInputs";
 
 const ROOT = path.resolve(__dirname, "..");
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -126,49 +128,92 @@ async function fetchAudioForPackage(
   }
 }
 
-/** Runs full CI and a complete, music-backed production on a private copy of the chosen film. */
-async function acceptance(source: string, evidence: string): Promise<void> {
+/** What the acceptance gates share with the release: the gate ledger, how to hash gate inputs, and the captain's approval step. */
+interface AcceptanceContext {
+  ledger: GateLedger;
+  /** Thresholds, reviewer and policy the gates run against; an Error makes every gate run unkeyed, as before. */
+  environment: GateEnvironment | Error;
+  approve: () => Promise<void>;
+}
+
+/** Prints the complete MP4 paths the captain must watch. */
+function printWatchLines(outputs: ProducedOutput[]): void {
+  for (const output of outputs) console.log(`WATCH ${output.format}: ${output.path} (${output.durationSec.toFixed(2)} seconds)`);
+}
+
+/** Runs full CI and a complete, music-backed production on a private copy of the chosen film, then the reviews and the captain's approval, each gate through the ledger. */
+async function acceptance(source: string, evidence: string, context: AcceptanceContext): Promise<void> {
   const videos = path.join(evidence, "videos");
   fs.mkdirSync(videos);
   process.env.AIDEOS_PROJECT_ROOT = ROOT;
   process.env.AIDEOS_VIDEOS_DIR = videos;
   process.env.AIDEOS_CI_ARTIFACTS = path.join(evidence, "ci");
-  run("npm", ["run", "ci"]);
-  const { getVideosDir } = await import("../src/dl/videoPackageLoader");
-  const { parseFilm } = await import("../src/dl/schema");
-  const { runProduction } = await import("../backend/pipeline/run");
-  const { readFilm } = await import("../backend/pipeline/filmStore");
-  const { fetchAudioItem, loadAudioLibrary } = await import("../backend/audioLibrary/library");
-  checkCopyTree(source);
-  const film = parseFilm(JSON.parse(fs.readFileSync(path.join(source, "film.json"), "utf8")));
-  const pkg = path.join(getVideosDir(), film.id);
-  fs.cpSync(source, pkg, { recursive: true, errorOnExist: true, force: false,
-    filter: (file) => !["renders", "review", "gemini-review"].includes(path.basename(file)) });
-  await fetchAudioForPackage(pkg, loadAudioLibrary().items, fetchAudioItem);
-  const script = fs.readFileSync(path.join(pkg, "script.md"), "utf8");
-  requireThat(fs.existsSync(path.join(pkg, "voiceover.wav")), "Acceptance needs a real narrated package, including voiceover.wav.");
-  const result = await runProduction({
-    slug: film.id, title: film.title, script, formats: ["long", "reel"],
-    resume: true, force: ["render", "verify"], broll: false, skipAgent: true,
-    design: "inline", deviceCaller: null, renderConcurrency: 2,
-    ttsBackend: process.platform === "darwin" ? "say" : "kokoro",
-    ...(process.env.AIDEOS_BROWSER_EXECUTABLE ? { browserExecutable: process.env.AIDEOS_BROWSER_EXECUTABLE } : {}),
-  }, (event) => console.log(`[acceptance] ${event.stage}: ${event.message}`));
-  fs.writeFileSync(path.join(evidence, "production.json"), JSON.stringify(result, null, 2));
-  requireThat(result.status === "completed", `Acceptance stopped at ${result.status}: ${result.nextSteps?.join("\n") || "see production.json"}. Prepare the film before retrying.`);
-  requireThat(result.outputs.length === 2 && result.outputs.some((output) => output.format === "long") && result.outputs.some((output) => output.format === "reel"), "Both full formats are required.");
-  const produced = readFilm(film.id);
-  const reelPath = path.join(pkg, "reel/film.json");
-  const reel = fs.existsSync(reelPath) ? parseFilm(JSON.parse(fs.readFileSync(reelPath, "utf8"))) : produced;
-  for (const delivered of [produced, reel]) requireThat(delivered?.soundtrack?.sections.length || delivered?.music, "Both acceptance formats must have music. Prepare a scored package before release.");
-  requireThat(result.warnings.length === 0, `Acceptance warnings block release:\n${result.warnings.join("\n")}`);
-  for (const output of result.outputs) console.log(`WATCH ${output.format}: ${output.path} (${output.durationSec.toFixed(2)} seconds)`);
-  run(path.join(ROOT, "node_modules/.bin/tsx"), ["backend/cli.ts", "review", film.id]);
-  reviewOutputsWithGemini(result.outputs, (output) => run(path.join(ROOT, "node_modules/.bin/tsx"), ["backend/cli.ts", "gemini-review", output]));
+  const environment = (): GateEnvironment => { if (context.environment instanceof Error) throw context.environment; return context.environment; };
+  const tsx = path.join(ROOT, "node_modules/.bin/tsx");
+  let pkg = "";
+  let outputs: ProducedOutput[] = [];
+  await runReleaseGates(context.ledger, {
+    ci: {
+      inputs: () => ciInputs(environment()),
+      run: () => run("npm", ["run", "ci"]),
+      evidence: () => (fs.existsSync(process.env.AIDEOS_CI_ARTIFACTS as string) ? [dirEvidence(process.env.AIDEOS_CI_ARTIFACTS as string)] : []),
+    },
+    production: {
+      inputs: () => productionInputs(source, environment()),
+      run: async () => {
+        const { getVideosDir } = await import("../src/dl/videoPackageLoader");
+        const { parseFilm } = await import("../src/dl/schema");
+        const { runProduction } = await import("../backend/pipeline/run");
+        const { readFilm } = await import("../backend/pipeline/filmStore");
+        const { fetchAudioItem, loadAudioLibrary } = await import("../backend/audioLibrary/library");
+        checkCopyTree(source);
+        const film = parseFilm(JSON.parse(fs.readFileSync(path.join(source, "film.json"), "utf8")));
+        pkg = path.join(getVideosDir(), film.id);
+        fs.cpSync(source, pkg, { recursive: true, errorOnExist: true, force: false,
+          filter: (file) => !SOURCE_EXCLUDED.includes(path.basename(file)) });
+        await fetchAudioForPackage(pkg, loadAudioLibrary().items, fetchAudioItem);
+        const script = fs.readFileSync(path.join(pkg, "script.md"), "utf8");
+        requireThat(fs.existsSync(path.join(pkg, "voiceover.wav")), "Acceptance needs a real narrated package, including voiceover.wav.");
+        const result = await runProduction({
+          slug: film.id, title: film.title, script, formats: ["long", "reel"],
+          resume: true, force: ["render", "verify"], broll: false, skipAgent: true,
+          design: "inline", deviceCaller: null, renderConcurrency: 2,
+          ttsBackend: process.platform === "darwin" ? "say" : "kokoro",
+          ...(process.env.AIDEOS_BROWSER_EXECUTABLE ? { browserExecutable: process.env.AIDEOS_BROWSER_EXECUTABLE } : {}),
+        }, (event) => console.log(`[acceptance] ${event.stage}: ${event.message}`));
+        fs.writeFileSync(path.join(evidence, "production.json"), JSON.stringify(result, null, 2));
+        requireThat(result.status === "completed", `Acceptance stopped at ${result.status}: ${result.nextSteps?.join("\n") || "see production.json"}. Prepare the film before retrying.`);
+        requireThat(result.outputs.length === 2 && result.outputs.some((output) => output.format === "long") && result.outputs.some((output) => output.format === "reel"), "Both full formats are required.");
+        const produced = readFilm(film.id);
+        const reelPath = path.join(pkg, "reel/film.json");
+        const reel = fs.existsSync(reelPath) ? parseFilm(JSON.parse(fs.readFileSync(reelPath, "utf8"))) : produced;
+        for (const delivered of [produced, reel]) requireThat(delivered?.soundtrack?.sections.length || delivered?.music, "Both acceptance formats must have music. Prepare a scored package before release.");
+        requireThat(result.warnings.length === 0, `Acceptance warnings block release:\n${result.warnings.join("\n")}`);
+        outputs = result.outputs as ProducedOutput[];
+        printWatchLines(outputs);
+      },
+      evidence: () => [dirEvidence(pkg), fileEvidence(path.join(evidence, "production.json")), ...outputs.map((output) => fileEvidence(output.path))],
+      adopt: (entry) => { ({ pkg, outputs } = adoptProduction(entry)); process.env.AIDEOS_VIDEOS_DIR = path.dirname(pkg); printWatchLines(outputs); },
+    },
+    review: {
+      inputs: () => reviewInputs(pkg, environment()),
+      run: () => run(tsx, ["backend/cli.ts", "review", path.basename(pkg)]),
+      evidence: () => ["review.json", "review.reel.json"].map((name) => fileEvidence(path.join(pkg, name))),
+    },
+    outputs: () => outputs,
+    gemini: (output) => ({
+      inputs: () => geminiInputs(pkg, output, environment()),
+      run: () => reviewOutputsWithGemini([output], (video) => run(tsx, ["backend/cli.ts", "gemini-review", video])),
+      evidence: () => [fileEvidence(output.path)],
+    }),
+    approve: context.approve,
+  });
 }
 
 /** Gates promotion on current main, full checks, complete renders and explicit captain watch approval. */
-async function release(version: string, options: { acceptance: string; dryRun?: boolean; stablePath?: string }): Promise<void> {
+async function release(version: string, options: { acceptance: string; dryRun?: boolean; stablePath?: string; resumeGates?: string }): Promise<void> {
+  const resumeDir = options.resumeGates ? path.resolve(options.resumeGates) : "";
+  requireThat(!resumeDir || (fs.existsSync(resumeDir) && fs.statSync(resumeDir).isDirectory()), `--resume-gates needs an earlier release evidence directory: ${resumeDir}`);
   const head = preflightMain();
   const tag = validateVersion(version);
   const stableDir = path.resolve(options.stablePath || setting(ROOT, "stablePath") || path.join(os.homedir(), "aideos-stable"));
@@ -177,8 +222,13 @@ async function release(version: string, options: { acceptance: string; dryRun?: 
   else requireThat(!options.stablePath && !setting(ROOT, "stablePath"), "Configured stable clone is missing; restore it before promotion.");
   const evidence = fs.mkdtempSync(path.join(os.tmpdir(), `aideos-release-${version}-`));
   console.log(`Acceptance evidence (retained): ${evidence}`);
-  await acceptance(path.resolve(options.acceptance), evidence);
-  await confirm(`WATCHED AND APPROVE ${tag}`);
+  const ledger = new GateLedger({
+    version, commit: head, recordFile: path.join(evidence, RECORD_FILE), resume: Boolean(resumeDir),
+    previous: resumeDir ? loadGateRecord(path.join(resumeDir, RECORD_FILE), version) : null,
+    log: console.log, warn: (line) => console.error(`[release] ${line}`),
+  });
+  const environment = await loadGateEnvironment().catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
+  await acceptance(path.resolve(options.acceptance), evidence, { ledger, environment, approve: () => confirm(`WATCHED AND APPROVE ${tag}`) });
   requireThat(preflightMain() === head, "main changed during acceptance; rerun the release.");
   validateVersion(version);
   if (hasStable) checkStableClone(stableDir, head);
@@ -253,6 +303,7 @@ async function copyFilm(slug: string, options: { overwrite?: boolean; dryRun?: b
 const program = new Command().description("Local stable release tools; see docs/RELEASES.md");
 program.command("release <version>").requiredOption("--acceptance <package-dir>", "prepared full narrated and scored film package")
   .option("--stable-path <path>", "existing stable clone override").option("--dry-run", "run all acceptance gates without promotion")
+  .option("--resume-gates <evidence-dir>", "reuse gates that PASSED in an earlier attempt of this version (same commit, film bytes and gate configuration); later gates and the approval always run")
   .action(release);
 program.command("setup").option("--path <path>", "new stable clone", path.join(os.homedir(), "aideos-stable"))
   .option("--bin-dir <path>", "launcher directory", path.join(os.homedir(), ".local/bin"))
