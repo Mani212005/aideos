@@ -17,9 +17,11 @@ of external footage, fonts or audio assets.
 
 `RENDER_PROFILES` is the shared policy table for `draft`, `review` and `final`. All currently request
 lossless intermediates, H.264 CRF 16, limited-range yuv420p and AAC at 320 kbps. A future native
-encoder can consume this data directly. The Remotion adapter retains its existing encode settings,
-so its sidecar records these as requested policy with `profileSettingsApplied` false for each setting,
-alongside the actual probed stream facts. A native adapter reports true for settings it applies.
+encoder can consume this data directly. The Remotion adapter expresses that policy for every caller
+through `FINAL_ENCODE_FLAGS` in `backend/pipeline/render.ts` (PNG frames, h264, CRF 16, yuv420p,
+AAC 320k), so its sidecar reports `profileSettingsApplied` true for each setting, alongside the
+actual probed stream facts. Extra arguments passed to `npm run render` follow those flags and can
+override them without the sidecar noticing.
 
 The `Renderer` interface accepts film data, a format, output path, profile and optional frame range.
 Its context contains an `AbortSignal` and an output callback. It prepares backend resources, checks
@@ -29,9 +31,9 @@ The existing audio and probe functions are default services; tests use short syn
 encoders through the same public interface.
 
 `backend/remotionRenderer.ts` is the thin Remotion compatibility adapter. It keeps the old pipeline,
-studio, review and manual commands, including their existing encode flags, GL selections and
-active-film pointer behavior. `backend/pipeline/render.ts` retains its low-level render compatibility
-entry point for existing frame journeys. Remotion command assembly, public-directory staging,
+studio, review and manual commands, with the shared final encode flags and each caller's existing
+GL selection and active-film pointer behavior (the pipeline alone adds `--log=error`).
+`backend/pipeline/render.ts` retains its low-level render compatibility entry point for existing frame journeys. Remotion command assembly, public-directory staging,
 frame sampling and generated active-film setup can be discarded when that backend is replaced.
 The lifecycle, profile policy, provenance, delivery checks and process cancellation survive.
 
@@ -44,6 +46,8 @@ Behavior changes:
   asynchronous subprocess through the same cancellation boundary as studio exports.
 - The studio keeps its existing preparing/rendering/finishing/done/failed/cancelled API and real
   frame-count progress. Its registry maps these from the shared machine.
+- Studio export, review and manual renders now encode with the pipeline's final flags, so they
+  produce limited-range yuv420p rather than the full-range yuvj420p the old studio command made.
 
-This change does not tune Remotion capture, change GL selection or encode flags, or add an
-active-film pointer lock. The known cross-process pointer race remains part of the legacy backend.
+This change does not tune Remotion capture, change GL selection, or add an active-film pointer
+lock. The known cross-process pointer race remains part of the legacy backend.
