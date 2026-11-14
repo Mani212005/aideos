@@ -1,10 +1,10 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, the renderer still refuses it), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
 
-`aideos-render` evaluates a Render IR [`aideos.render/1`](RENDER_IR.md) as a pure function of the frame
+`aideos-render` evaluates a Render IR [`aideos.render/1` or `/2`](RENDER_IR.md) as a pure function of the frame
 number and draws the frame with Skia. Skia's **CPU rasterizer is the deterministic reference**; an
 optional GPU path draws the same frame through OpenGL. There is no browser, no DOM and no HTML.
 
@@ -293,10 +293,45 @@ differ per format.
 | Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` |
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
-refuses (with every reason, `nativeSupport`) a node-graph film, a Three-stage or actor scene, sub-group
+refuses (with every reason, `nativeSupport`) a node-graph film, a Three-stage film (until P4.2, below), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
+
+## The Three stage (Phase 4)
+
+The captain approved native rendering of the Three-stage character films ("Start B now"). This reverses his
+earlier decision that those films stay on Remotion until their phase. The design and measurements are in the
+Phase 4 report (a native prototype drew the real iona-receive film at 3.5x to 6.7x Remotion's speed, whole-frame
+SSIM 0.998). The captain's answers to its decisions: the parity gate is the strict golden tolerance against
+**native** goldens, plus a per-frame SSIM report against Remotion as evidence (bar 0.995); a Remotion export stays
+the oracle of the J3 Player-versus-export journeys until a WASM preview exists; no look change and no draft tier.
+Remotion stays the default and the kill switch for everything not yet native. The work lands in steps:
+
+| Step | What | State |
+| --- | --- | --- |
+| P4.1 | `aideos.render/2` (the `stage3d` node and the `mesh` asset), its loaders and validators in TypeScript and Rust, the emitter (`backend/renderIr/emitStage3d.ts`), the mesh file codec and the reference pose (`backend/renderIr/stage3d.ts`) | done: nothing changes for users |
+| P4.2 | the CPU rasterizer of the stage3d node and the first film (iona-receive, cel, one performer), native goldens and the parity report | next |
+| P4.3 | several performers (J5), Pip and Marlo | |
+| P4.4 | the `dots-v1` treatment (the IR cannot carry it yet) | |
+| P4.5 | journeys and goldens per the captain's decision | |
+
+Until P4.2, `nativeSupport` keeps every Three-stage film on Remotion with one reason per missing step: the
+stage3d raster (P4.2), several performers (P4.3) and dots-v1 (P4.4). `supportGaps` splits those into what the
+IR cannot carry (`uncarried`, refused even by a development emit) and what it carries but the renderer does not
+draw (`undrawn`); `emitRenderIr(input, { allowUndrawn: true })` writes the `/2` document of such a film for tests
+and renderer development, and the render path never sets that option. The renderer loads a `/2` document but
+refuses one with a `stage3d` node at open (`RenderError::Unsupported`, naming P4.2). A film without a Three stage
+is still emitted as `/1`, byte for byte as before.
+
+For a Three film the emitter writes the stage as `SceneStage` draws it: a `ground-plane` group (the background
+and `plane: "background"` props; props with no plane are not drawn on a Three film), the `stage3d` node, then a
+`foreground-plane` group when there are `plane: "foreground"` props. The frame-scale drift is off for a Three film
+(as `Film.tsx`), and the end card's slow push stays in the document camera's zoom (Remotion scales the whole
+canvas about the frame centre; for the orthographic stage that is the same projection). The stage is sampled at
+frames 0 to `min(storyFrames, scene.durationFrames) - 1` and holds after, which is what `ThreeStage` sees
+through `Freeze` and its own clamp. `stage3d.test.ts` checks, for every frame of the iona-receive fixture, that
+the world vertices posed from the IR equal the posed vertices `prepareStageFacts` measures, bit for bit in f32.
 
 ## The renderer flag
 
@@ -337,4 +372,5 @@ or node-graph film, so the journeys still render on Remotion and the CI journeys
 
 Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
-and the Three stage. `image` and `audio` assets are not opened by the frame raster.
+and the Three stage (carried by `aideos.render/2` since P4.1, drawn from P4.2). `image`, `audio` and `mesh`
+assets are not opened by the frame raster.

@@ -37,6 +37,8 @@ pub enum RenderError {
     FrameOutOfRange { frame: u32, duration_frames: u32 },
     /// Skia could not create a surface or encode the image.
     Skia(String),
+    /// The IR is valid but uses something this renderer does not draw yet (the Three stage until P4.2).
+    Unsupported(String),
 }
 
 impl fmt::Display for RenderError {
@@ -47,6 +49,7 @@ impl fmt::Display for RenderError {
             RenderError::Asset { id, path, reason } => write!(f, "asset {id:?} ({path}): {reason}"),
             RenderError::Svg { id, message } => write!(f, "svg asset {id:?}: {message}"),
             RenderError::Font(m) => write!(f, "font: {m}"),
+            RenderError::Unsupported(m) => write!(f, "not drawn natively yet: {m}"),
             RenderError::FormatNotDeclared(format) => {
                 write!(f, "the Render IR declares no {} format", format.name())
             }
@@ -168,6 +171,13 @@ impl Renderer {
 
     /// Loads a validated IR's assets from the package directory and prepares every frame-independent input.
     pub fn new(ir: RenderIr, package_dir: &Path) -> Result<Renderer, RenderError> {
+        // `aideos.render/2` carries the Three stage; drawing it is P4.2, so a document with one is refused whole.
+        if let Some(stage) = ir.stage.iter().find(|n| matches!(n, Node::Stage3d(_))) {
+            return Err(RenderError::Unsupported(format!(
+                "stage3d node {:?}: the Three stage is drawn by Remotion until P4.2 of the native renderer",
+                stage.id()
+            )));
+        }
         let mut svgs: BTreeMap<String, SvgDocument> = BTreeMap::new();
         let mut font_files = Vec::new();
         for asset in &ir.assets {
@@ -200,8 +210,8 @@ impl Renderer {
                         read_asset(package_dir, asset)?,
                     ));
                 }
-                // Images and audio are not drawn by the frame raster.
-                Asset::Image(_) | Asset::Audio(_) => {}
+                // Images and audio are not drawn by the frame raster; a mesh only serves a stage3d node, refused above.
+                Asset::Image(_) | Asset::Audio(_) | Asset::Mesh(_) => {}
             }
         }
         let fonts = Fonts::load(font_files).map_err(|e| RenderError::Font(e.0))?;

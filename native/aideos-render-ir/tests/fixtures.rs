@@ -1,4 +1,4 @@
-//! File Description: Runs the Rust loader over the same fixture files and expectations as backend/renderIr/renderIr.test.ts, so the two implementations are held to one set of verdicts, plus the round trip of the golden example and the file-level error path.
+//! File Description: Runs the Rust loader over the same fixture files and expectations as backend/renderIr/renderIr.test.ts, so the two implementations are held to one set of verdicts, plus the round trips of the `/1` golden example and the `/2` stage3d example, and the file-level error path.
 //! Inputs and outputs: native/aideos-render-ir/fixtures/** -> pass or fail.
 //! Used by: cargo test in native/ (the native CI job and docs/RENDER_IR.md).
 
@@ -69,7 +69,7 @@ fn invalid_fixtures_are_refused_with_the_expected_verdict() {
             ("not_json", LoadError::NotJson(_)) => {}
             ("unsupported_version", LoadError::UnsupportedVersion { found, supported }) => {
                 assert_eq!(found, want["found"].as_str().unwrap(), "{rel}");
-                assert_eq!(*supported, "aideos.render/1");
+                assert_eq!(*supported, "aideos.render/1, aideos.render/2");
             }
             ("invalid_document", LoadError::Invalid(issues)) => {
                 let want_issues = want["issues"].as_array().unwrap();
@@ -97,6 +97,29 @@ fn the_golden_example_survives_a_round_trip_through_the_typed_model() {
     let again = serde_json::to_value(&ir).unwrap();
     let original: Value = serde_json::from_str(&text).unwrap();
     assert_eq!(normalize(again), normalize(original), "a field was dropped or renamed by the typed model");
+}
+
+#[test]
+fn the_stage3d_example_survives_a_round_trip_and_keeps_its_version() {
+    let text = read("valid/stage3d-minimal.json");
+    let ir: RenderIr = load_from_str(&text).expect("stage3d-minimal loads");
+    assert_eq!(ir.schema, aideos_render_ir::VERSION_2);
+    let again = serde_json::to_value(&ir).unwrap();
+    let original: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(normalize(again), normalize(original), "a field was dropped or renamed by the typed model");
+    let kinds: Vec<&str> = ir.stage.iter().map(|n| n.kind_name()).collect();
+    assert_eq!(kinds, ["group", "stage3d"]);
+}
+
+#[test]
+fn every_version_1_example_keeps_its_version_through_the_typed_model() {
+    for rel in expectations()["valid"].as_array().unwrap() {
+        let rel = rel.as_str().unwrap();
+        let original: Value = serde_json::from_str(&read(rel)).unwrap();
+        let ir = load_from_str(&read(rel)).unwrap();
+        assert_eq!(ir.schema, original["schema"].as_str().unwrap(), "{rel}");
+        assert_eq!(normalize(serde_json::to_value(&ir).unwrap()), normalize(original), "{rel}");
+    }
 }
 
 #[test]

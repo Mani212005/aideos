@@ -1,0 +1,27 @@
+{
+  "//": "Shared by backend/renderIr/mesh.test.ts and native/aideos-render-ir/tests/mesh.rs: two-parts.mesh is exactly what encodeMesh writes for these parts, and decoding it against `asset` gives them back. The floats are exact in f32.",
+  "asset": {
+    "kind": "mesh",
+    "id": "stage-mesh",
+    "path": "meshes/stage.mesh",
+    "parts": [
+      { "id": "head", "vertices": 3, "indices": 3, "uv": true },
+      { "id": "tip", "vertices": 4, "indices": 6, "uv": false }
+    ]
+  },
+  "parts": [
+    {
+      "id": "head",
+      "positions": [0, 0, 0, 1, 0, -0.5, 0, 1.25, 0.5],
+      "normals": [0, 0, 1, 0, 0, 1, 0, 0, 1],
+      "uvs": [0.5, 0.5, 1, 0.5, 0.5, 1],
+      "indices": [0, 1, 2]
+    },
+    {
+      "id": "tip",
+      "positions": [-0.625, 0.0625, -0.375, 0.625, 0.0625, -0.375, 0, -0.25, 0.75, 0, 0.125, -0.125],
+      "normals": [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+      "indices": [0, 1, 2, 2, 1, 3]
+    }
+  ]
+}

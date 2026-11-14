@@ -1,13 +1,18 @@
 /**
- * File Description: The structural contract of the Render IR `aideos.render/1`, the versioned, data-only document planned between the TypeScript pipeline and native renderer. This zod schema is the single source: `npm run render-ir:schema` turns it into the committed JSON Schema the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
+ * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films) and its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
  * Inputs and outputs: nothing at import time -> zod schemas and the TypeScript types inferred from them.
  * Used by: backend/renderIr/validate.ts, backend/renderIr/jsonSchema.ts, backend/renderIr/renderIr.test.ts.
  */
 
 import { z } from "zod";
 
-/** The one version string this schema describes; any other value is rejected before the rest is read. */
+/** The first version: SVG scene films (Phase 1). Every film without a Three stage is still written as `/1`. */
 export const RENDER_IR_VERSION = "aideos.render/1";
+/** The second version, a strict superset of `/1`: adds the `stage3d` stage node and the `mesh` asset (Phase 4). */
+export const RENDER_IR_VERSION_2 = "aideos.render/2";
+/** Every version the loaders read; any other value is rejected before the rest of the document is read. */
+export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2] as const;
+export type RenderIrVersion = (typeof RENDER_IR_VERSIONS)[number];
 
 /** Largest frame index or count a document may carry (about 10 days at 30 fps), so integers stay exact. */
 export const MAX_FRAME = 26_000_000;
@@ -194,6 +199,7 @@ export interface GroupNode {
 }
 
 export type Node =
+  | Stage3dNode
   | z.infer<typeof svgNodeSchema>
   | z.infer<typeof rectNodeSchema>
   | z.infer<typeof textNodeSchema>
@@ -272,7 +278,210 @@ export const renderIrSchema = z.strictObject({
   audio: z.array(audioClipSchema),
 });
 
-export type RenderIr = z.infer<typeof renderIrSchema>;
-export type Asset = z.infer<typeof assetSchema>;
+/** A loaded document of either version, typed as the `/2` superset (a `/1` document never holds the `/2` additions). */
+export type RenderIr = Omit<z.infer<typeof renderIrSchemaV2>, "schema"> & { schema: RenderIrVersion };
+export type Asset = z.infer<typeof assetSchemaV2>;
 export type Keyframe = z.infer<typeof keyframeSchema>;
 export type FormatName = "long" | "reel";
+
+// ---------------------------------------------------------------------------------------------
+// aideos.render/2: the Three stage. Everything above is unchanged `/1`; `/2` adds what follows.
+// ---------------------------------------------------------------------------------------------
+
+const finite = z.number();
+const vec3 = z.tuple([finite, finite, finite]);
+const quaternion = z.tuple([finite, finite, finite, finite]);
+/** A colour as three.js holds it on a material or light: linear-light red, green and blue in [0, 1]. */
+const linearRgb = z.tuple([unit, unit, unit]);
+/** Which faces a material draws: three's FrontSide, BackSide or DoubleSide. */
+export const STAGE_SIDES = ["front", "back", "double"] as const;
+const side = z.enum(STAGE_SIDES);
+
+/** One part of a mesh asset: its vertex and index counts and whether it carries texture coordinates. */
+export const meshPartSchema = z.strictObject({
+  id,
+  vertices: count,
+  /** A whole number of triangles: a multiple of 3. */
+  indices: count,
+  uv: z.boolean(),
+});
+
+/** A binary mesh file (see docs/RENDER_IR.md "The mesh file"): every part's positions, normals, uvs and indices. */
+export const meshAssetSchema = z.strictObject({
+  kind: z.literal("mesh"),
+  ...assetBase,
+  parts: z.array(meshPartSchema).min(1),
+});
+
+/** Polygon offset as three's material fields: depth pushed by `factor` times the slope plus `units` steps. */
+const polygonOffsetSchema = z.strictObject({ factor: finite, units: finite });
+
+/** How one drawable is shaded; every kind but `face` has a flat linear colour, `ink` is the inverted-hull outline. */
+export const stageMaterialSchema = z.discriminatedUnion("kind", [
+  /** MeshToonMaterial: the stage's lights banded through the `ramp` gradient. */
+  z.strictObject({ kind: z.literal("toon"), color: linearRgb, side, polygonOffset: polygonOffsetSchema.optional() }),
+  /** MeshBasicMaterial without a map: an unlit flat colour. */
+  z.strictObject({ kind: z.literal("basic"), color: linearRgb, side, polygonOffset: polygonOffsetSchema.optional() }),
+  /** MeshBasicMaterial with a face texture: the texture times `color`, unlit. */
+  z.strictObject({ kind: z.literal("face"), texture: id, color: linearRgb, side, polygonOffset: polygonOffsetSchema.optional() }),
+  /** The ink ShaderMaterial: the part's mesh pushed out along its normals by `width` (object units), one colour. */
+  z.strictObject({ kind: z.literal("ink"), color: linearRgb, width: z.number().min(0), side, polygonOffset: polygonOffsetSchema.optional() }),
+]);
+
+/** A transform node of the stage graph: a static local transform (position, quaternion x y z w, uniform scale) under an optional parent listed before it. */
+export const stageGraphNodeSchema = z.strictObject({
+  id,
+  parent: id.optional(),
+  position: vec3,
+  quaternion,
+  scale: z.number().gt(0),
+});
+
+/** Dense per-frame local channels of one node: `sampleFrames` samples each, 3, 4 and 1 numbers per sample; an absent channel keeps the node's static value. */
+export const stageTrackSchema = z.strictObject({
+  node: id,
+  position: z.array(finite).optional(),
+  quaternion: z.array(finite).optional(),
+  scale: z.array(finite).optional(),
+});
+
+/** One mesh part drawn with one material at one node, in draw order. */
+export const stageDrawableSchema = z.strictObject({
+  id,
+  node: id,
+  /** A part id of the stage's mesh asset. */
+  part: id,
+  material: stageMaterialSchema,
+});
+
+/** A paint as the face painter sets it: a colour with its exact alpha, or a linear gradient in canvas units. */
+const facePaintSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("color"), color, alpha: unit }),
+  z.strictObject({
+    kind: z.literal("linearGradient"),
+    x0: finite, y0: finite, x1: finite, y1: finite,
+    stops: z.array(z.strictObject({ offset: unit, color, alpha: unit })).min(1),
+  }),
+]);
+
+const xy = z.tuple([finite, finite]);
+/** One recorded Canvas 2D call of the face painter, in the order it was made. */
+export const faceOpSchema = z.discriminatedUnion("op", [
+  z.strictObject({ op: z.literal("setTransform"), args: z.tuple([finite, finite, finite, finite, finite, finite]) }),
+  z.strictObject({ op: z.literal("save") }),
+  z.strictObject({ op: z.literal("restore") }),
+  z.strictObject({ op: z.literal("scale"), args: xy }),
+  z.strictObject({ op: z.literal("translate"), args: xy }),
+  z.strictObject({ op: z.literal("fillStyle"), paint: facePaintSchema }),
+  z.strictObject({ op: z.literal("strokeStyle"), paint: facePaintSchema }),
+  z.strictObject({ op: z.literal("lineWidth"), value: z.number().gt(0) }),
+  z.strictObject({ op: z.literal("lineCap"), value: z.enum(["butt", "round", "square"]) }),
+  z.strictObject({ op: z.literal("lineJoin"), value: z.enum(["miter", "round", "bevel"]) }),
+  z.strictObject({ op: z.literal("globalAlpha"), value: unit }),
+  z.strictObject({ op: z.literal("fillRect"), args: z.tuple([finite, finite, finite, finite]) }),
+  z.strictObject({ op: z.literal("beginPath") }),
+  z.strictObject({ op: z.literal("moveTo"), args: xy }),
+  z.strictObject({ op: z.literal("lineTo"), args: xy }),
+  z.strictObject({ op: z.literal("quadraticCurveTo"), args: z.tuple([finite, finite, finite, finite]) }),
+  z.strictObject({ op: z.literal("bezierCurveTo"), args: z.tuple([finite, finite, finite, finite, finite, finite]) }),
+  /** x, y, radiusX, radiusY, rotation, startAngle, endAngle (clockwise). */
+  z.strictObject({ op: z.literal("ellipse"), args: z.tuple([finite, finite, finite, finite, finite, finite, finite]) }),
+  /** x, y, radius, startAngle, endAngle (clockwise). */
+  z.strictObject({ op: z.literal("arc"), args: z.tuple([finite, finite, finite, finite, finite]) }),
+  z.strictObject({ op: z.literal("fill") }),
+  z.strictObject({ op: z.literal("stroke") }),
+  z.strictObject({ op: z.literal("clip") }),
+]);
+
+/** A painted face texture: its canvas size, sampling, and which program paints it at each sample frame. */
+export const faceTextureSchema = z.strictObject({
+  id,
+  size: dimension,
+  flipY: z.boolean(),
+  filter: z.literal("linear"),
+  mipmaps: z.boolean(),
+  colorSpace: z.literal("srgb"),
+  /** One program index per sample frame. */
+  programs: z.array(z.number().int().min(0)).min(1),
+});
+
+/** The Three stage: an orthographic, lit cel scene drawn in the stage between the ground and foreground SVG planes. */
+export const stage3dNodeSchema = z.strictObject({
+  kind: z.literal("stage3d"),
+  ...nodeBase,
+  /** The mesh asset holding every drawable's part. */
+  mesh: id,
+  treatment: z.literal("cel-v1"),
+  /** The orthographic camera: at z = cameraZ looking down -z; its frustum comes from the document camera and the format. */
+  projection: z.strictObject({ cameraZ: finite, near: z.number().gt(0), far: z.number().gt(0) }),
+  lighting: z.strictObject({
+    directional: z.strictObject({ position: vec3, target: vec3, color: linearRgb, intensity: z.number().min(0) }),
+    ambient: z.strictObject({ color: linearRgb, intensity: z.number().min(0) }),
+  }),
+  /** The toon gradient's texels (0 to 255), sampled nearest. */
+  ramp: z.array(z.number().int().min(0).max(255)).min(1),
+  output: z.strictObject({
+    dpr: z.number().gt(0),
+    antialias: z.boolean(),
+    colorSpace: z.literal("srgb"),
+    toneMapping: z.literal("none"),
+    exposure: z.number().gt(0),
+  }),
+  /** Samples every track and face texture holds; frame f reads sample min(f, sampleFrames - 1). */
+  sampleFrames: count,
+  nodes: z.array(stageGraphNodeSchema).min(1),
+  channels: z.array(stageTrackSchema),
+  drawables: z.array(stageDrawableSchema).min(1),
+  faceTextures: z.array(faceTextureSchema),
+  facePrograms: z.array(z.strictObject({ ops: z.array(faceOpSchema).min(1) })),
+});
+
+export type Stage3dNode = z.infer<typeof stage3dNodeSchema>;
+export type StageMaterial = z.infer<typeof stageMaterialSchema>;
+export type FaceOp = z.infer<typeof faceOpSchema>;
+export type MeshAsset = z.infer<typeof meshAssetSchema>;
+
+const groupNodeSchemaV2 = z.strictObject({
+  kind: z.literal("group"),
+  ...nodeBase,
+  x: z.number(),
+  y: z.number(),
+  scale: z.number().gt(0),
+  rotation: z.number(),
+  tracks: z.array(nodeTrackSchema),
+  get children(): z.ZodArray<z.ZodType<Node>> { return z.array(nodeSchemaV2); },
+});
+
+/** Any `/2` node; the stage3d node is allowed only at the top of the stage (a cross-reference rule). */
+export const nodeSchemaV2: z.ZodType<Node> = z.discriminatedUnion("kind", [
+  svgNodeSchema,
+  rectNodeSchema,
+  textNodeSchema,
+  railNodeSchema,
+  captionsNodeSchema,
+  endCardNodeSchema,
+  stage3dNodeSchema,
+  groupNodeSchemaV2,
+]);
+
+export const assetSchemaV2 = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("svg"), ...assetBase, elementIds: z.array(text) }),
+  z.strictObject({ kind: z.literal("font"), ...assetBase, family: text, weight: z.number().int().min(100).max(900) }),
+  z.strictObject({ kind: z.literal("image"), ...assetBase, width: dimension, height: dimension }),
+  z.strictObject({ kind: z.literal("audio"), ...assetBase }),
+  meshAssetSchema,
+]);
+
+/** The whole `/2` document: `/1` plus the stage3d node and the mesh asset. */
+export const renderIrSchemaV2 = z.strictObject({
+  schema: z.literal(RENDER_IR_VERSION_2),
+  film: z.strictObject({ id, fps: z.number().int().min(1).max(240), durationFrames: count }),
+  scene: size,
+  formats: perFormat(size),
+  background: color,
+  assets: z.array(assetSchemaV2),
+  camera: cameraSchema.optional(),
+  stage: z.array(nodeSchemaV2),
+  overlay: z.array(nodeSchemaV2),
+  audio: z.array(audioClipSchema),
+});

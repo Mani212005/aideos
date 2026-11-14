@@ -1,8 +1,8 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1`: the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
+File Description: Reference for the Render IR `aideos.render/1` and its superset `aideos.render/2` (the Three stage): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
-# Render IR (`aideos.render/1`)
+# Render IR (`aideos.render/1`, `aideos.render/2`)
 
 The Render IR is the document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
@@ -20,33 +20,43 @@ optional `chipFont`, `surface`, `hairline` and `muted`.
 **Status: unfrozen.** `/1` may still change shape until R4 passes on Still Talking. After that, any
 change to the document shape is a new version number (see below), never a quiet edit.
 
+P4.1 of Phase 4 added `aideos.render/2`: a strict superset of `/1` that adds the `stage3d` stage node and the
+`mesh` asset, so a Three-stage character film can be described (see [The Three stage](#the-three-stage-aideosrender2)).
+The captain approved native rendering of those films, reversing his earlier decision that they stay on
+Remotion until their phase; the steps are in [NATIVE_RENDERER.md](NATIVE_RENDERER.md#the-three-stage-phase-4).
+
 ## Where things live
 
 | Piece | Path |
 | --- | --- |
-| Structural contract (zod, the single source) | `backend/renderIr/schema.ts` |
+| Structural contract (zod, the single source, both versions) | `backend/renderIr/schema.ts` |
 | TypeScript load, version gate and cross-reference rules | `backend/renderIr/validate.ts` |
 | JSON Schema generator | `backend/renderIr/jsonSchema.ts`, `scripts/render_ir_schema.ts` |
-| Committed JSON Schema (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json` |
+| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json` |
 | Rust workspace and loader crate | `native/Cargo.toml`, `native/aideos-render-ir/` |
-| Shared fixtures and their expected verdicts | `native/aideos-render-ir/fixtures/` (`valid/`, `invalid/`, `expectations.json`) |
-| TypeScript tests | `backend/renderIr/renderIr.test.ts` |
-| Rust tests | `native/aideos-render-ir/tests/fixtures.rs` |
+| Mesh file codec | `backend/renderIr/mesh.ts` (write and read), `native/aideos-render-ir/src/mesh.rs` (read) |
+| Stage3d emitter and reference pose | `backend/renderIr/emitStage3d.ts`, `backend/renderIr/stage3d.ts` |
+| Shared fixtures and their expected verdicts | `native/aideos-render-ir/fixtures/` (`valid/`, `invalid/`, `expectations.json`, `mesh/`) |
+| TypeScript tests | `backend/renderIr/renderIr.test.ts`, `mesh.test.ts`, `stage3d.test.ts` |
+| Rust tests | `native/aideos-render-ir/tests/fixtures.rs`, `tests/mesh.rs` |
 
 `native/` is the home of every native renderer crate. R2 added the renderer crate to
 `native/Cargo.toml`; the workspace also includes the encoder and audio mux; see [NATIVE_ENCODE.md](NATIVE_ENCODE.md).
 
 ## Versioning and rejection
 
-A document starts with `"schema": "aideos.render/1"`. The loader reads that field first:
+A document starts with `"schema": "aideos.render/1"` or `"schema": "aideos.render/2"`. The loader reads
+that field first:
 
 1. Not JSON: refused as `not_json`.
 2. Not an object, or no string `schema` field: refused as `invalid_document` with a `schema` issue.
-3. A string other than exactly `aideos.render/1` (including `aideos.render/2`, `aideos.render/1.1` or a
-   different case): refused as `unsupported_version` carrying the string found, **before** the rest of
-   the document is read, because a later version may have a different shape.
+3. A string other than exactly `aideos.render/1` or `aideos.render/2` (including `aideos.render/3`,
+   `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the string found and
+   the versions this build reads (`supported`: `aideos.render/1, aideos.render/2`), **before** the rest of the
+   document is read, because a later version may have a different shape.
 4. Right version, wrong shape (a missing or unknown field, a wrong type, a bad colour, a frame that is
-   not a whole number): refused as `invalid_document`, every issue listed.
+   not a whole number): refused as `invalid_document`, every issue listed. Each version is checked against
+   its own schema, so a `/1` document that uses a `stage3d` node or a `mesh` asset is refused here.
 5. Right shape, broken references or ranges: refused as `invalid_document`, every issue listed.
 
 The shape is closed: an unknown field is an error, never ignored. There are no defaults in the wire
@@ -125,7 +135,77 @@ and the mixer reads them on the film clock. The gain is held before the first an
 
 **Not in `/1`.** Transitions and effect stacks (paper curl, blur, masks, blend modes), springs and
 particles, footage clips, Lottie, 3D and the Three-stage character films. They arrive with the phases
-that need them, as a new version. Character films keep rendering through Remotion until Phase 4.
+that need them, as a new version. `/2` carries the Three stage; character films keep rendering through
+Remotion until the native renderer draws it (P4.2 onward).
+
+## The Three stage (`aideos.render/2`)
+
+`/2` is `/1` plus two additions, nothing else; every valid `/1` document is a valid `/2` document once its
+version string changes. The emitter writes `/2` only for a film with a Three stage, so every other film stays
+`/1`, byte for byte. The IR carries data, never behaviour: geometry is baked by the frozen TypeScript builders,
+poses by the frozen performance evaluator and faces by the frozen face painter, so Rust never ports tube
+generation, retargeting, limits, contact solving, Euler conversion or the painter.
+
+```
+stage3d                       a stage node, only at the top of the stage, at most one per document
+  id, visible?, opacity?      as every node
+  mesh                        id of the mesh asset holding every drawable's part
+  treatment                   "cel-v1" (dots-v1 is P4.4; the IR cannot carry its dot fields yet)
+  projection                  { cameraZ, near, far }: orthographic camera at z = cameraZ looking down -z;
+                              its frustum comes from the document camera and the format
+  lighting                    { directional: { position, target, color, intensity }, ambient: { color, intensity } }
+  ramp                        the toon gradient's texels (0 to 255), sampled nearest
+  output                      { dpr, antialias, colorSpace: "srgb", toneMapping: "none", exposure }
+  sampleFrames                n: every channel and face texture holds n samples
+  nodes[]                     { id, parent?, position[3], quaternion[4] (x y z w), scale }, parents listed first
+  channels[]                  { node, position?[3n], quaternion?[4n], scale?[n] }: dense per-frame local values
+  drawables[]                 { id, node, part, material }, in draw order
+  faceTextures[]              { id, size, flipY, filter: "linear", mipmaps, colorSpace: "srgb", programs[n] }
+  facePrograms[]              { ops[] }: distinct recorded Canvas 2D programs, shared by textures and frames
+mesh asset                    { kind: "mesh", id, path, sha256?, parts: [{ id, vertices, indices, uv }] }
+```
+
+**Stage order.** The emitter writes a Three film's stage as `SceneStage` draws it: a `ground-plane` group, the
+`stage3d` node, then a `foreground-plane` group when the scene has foreground props. Groups and the stage3d node
+count as layer 0, so the renderer keeps that document order.
+
+**Graph and frames.** Frame `f` reads sample `min(f, sampleFrames - 1)`: the stage holds its last sample through
+the end card. A node's local transform at a sample is its static fields with each channel present replaced by
+that sample (an absent channel never moves). Scale is uniform. A root node's world matrix is its local matrix; a
+child's is its parent's world matrix times its local one.
+
+**Reference pose.** `backend/renderIr/stage3d.ts` writes out three.js r180's exact f64 arithmetic:
+`Matrix4.compose(position, quaternion, scale)`, `Matrix4.multiplyMatrices(parentWorld, local)` and
+`Vector3.applyMatrix4` (including its w divide), rounded to f32 at the end. The emitter reads every static value
+and sample straight off three's Object3Ds after `applyCharacter` and `applyProp`, so these are the numbers three
+composes. JSON text carries f64 exactly (JavaScript writes the shortest round-trip text; the Rust crate turns on
+serde_json's `float_roundtrip` so it parses correctly rounded). `stage3d.test.ts` checks every frame of the
+iona-receive fixture: the IR-posed world vertices equal `prepareStageFacts`' posed vertices bit for bit.
+
+**Materials** (inline in each drawable, discriminated on `kind`): `toon { color, side }` (lit through `ramp`),
+`basic { color, side }` (unlit), `face { texture, color, side }` (the face texture times `color`, unlit) and
+`ink { color, width, side }` (the part's mesh pushed out along its normals by `width` object units, drawn with
+back faces). Any may carry `polygonOffset { factor, units }`. Colours are linear-light floats exactly as three
+holds them on the material, so no sRGB decode is repeated in another language. Every mesh owns its material,
+so three's opaque sort (material creation order first) is the list order.
+
+**Face programs.** Each op is one recorded Canvas 2D call: `setTransform`, `save`, `restore`, `scale`,
+`translate`, `fillStyle`, `strokeStyle`, `lineWidth`, `lineCap`, `lineJoin`, `globalAlpha`, `fillRect`,
+`beginPath`, `moveTo`, `lineTo`, `quadraticCurveTo`, `bezierCurveTo`, `ellipse` and `arc` (both clockwise),
+`fill`, `stroke` and `clip`. A paint is `{ kind: "color", color: "#RRGGBB", alpha }` or `{ kind:
+"linearGradient", x0, y0, x1, y1, stops: [{ offset, color, alpha }] }`; the painter's `rgba()` alpha is carried
+exactly, not quantized. A program starts from the canvas default state on a transparent `size x size` canvas.
+
+### The mesh file
+
+Little-endian. The signature `AIDMESH` and the format byte `0x01`; a `u32` part count; per part a header of
+`u32 vertices`, `u32 indices`, `u32 flags` (bit 0: the part has uvs; other bits must be 0); then, per part in
+order, `f32 positions[3 x vertices]`, `f32 normals[3 x vertices]`, `f32 uvs[2 x vertices]` when flagged and
+`u32 indices[indices]`. Unindexed three geometry is written with sequential indices (the same triangles). The
+readers check the signature, that the counts and flags match the asset's `parts`, the exact length, that every
+float is finite and that every index is inside its part. The IR loaders never open the file (as for every
+asset); the renderer does. The shared fixture `fixtures/mesh/two-parts.{json,mesh}` holds both languages to
+one byte layout.
 
 ## Issue codes
 
@@ -147,7 +227,14 @@ cross-reference rules, identical in both languages:
 | `invalid_span` | a span that ends before it starts or runs past the film |
 | `chapters_unordered`, `words_unordered`, `spans_unordered`, `stops_unordered` | rail chapters, caption words, placement spans or gradient stop offsets out of order |
 | `missing_format_entry`, `undeclared_format` | a per-format object that does not match the declared formats |
-| `node_not_allowed` | an `svg` node in the overlay, or an overlay node in the stage |
+| `node_not_allowed` | an `svg` node in the overlay, an overlay node in the stage, a `stage3d` node anywhere but the top of the stage, or a second one |
+| `duplicate_part_id`, `indices_not_triangles` | a mesh part id used twice, or an index count that is not a multiple of 3 |
+| `duplicate_stage3d_id` | a stage3d node, drawable or face texture id used twice in its own list |
+| `unknown_node`, `unknown_part`, `unknown_texture`, `unknown_program` | a parent not listed before its child, or a channel or drawable naming a missing node; a drawable naming a part its mesh lacks; a face material naming a missing texture; a texture naming a missing program |
+| `sample_count_mismatch` | a channel or a texture's `programs` that is not `sampleFrames` samples long |
+
+`duplicate_track` also covers two channels for one stage3d node; `value_out_of_range` a channel scale not above
+0 and a far plane not beyond the near one; `frame_out_of_range` a `sampleFrames` past the film.
 
 ## Use
 
@@ -177,8 +264,8 @@ Schema (embedded in the binary with `include_str!`), typed deserialization, then
 ## Commands
 
 ```bash
-npm run render-ir:schema                    # regenerate the JSON Schema after editing schema.ts
-npm run render-ir:schema -- --check         # fail when the committed schema is out of date
+npm run render-ir:schema                    # regenerate both JSON Schemas after editing schema.ts
+npm run render-ir:schema -- --check         # fail when a committed schema is out of date
 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test backend/renderIr/renderIr.test.ts
 cargo test --locked --manifest-path native/Cargo.toml      # loader fixtures and renderer tests
 ```
@@ -192,8 +279,12 @@ cargo test --locked --manifest-path native/Cargo.toml      # loader fixtures and
 (node and element tracks, an origin), a camera on a spline, a text card in a group, the rail, kinetic
 captions with two placement spans, the end card and an audio clip, in both 16:9 and 9:16.
 `valid/minimal-reel.json` and `valid/integral-floats.json` are the smallest documents;
-`valid/gradient-and-axis-scale.json` covers the gradient band and an underline drawn by `scaleX`. `invalid/*.json`
-are short documents with one named defect each.
+`valid/gradient-and-axis-scale.json` covers the gradient band and an underline drawn by `scaleX`.
+`valid/stage3d-minimal.json` is the `/2` example: a ground plane and a stage3d node with a graph, a quaternion
+channel, face, ink and toon drawables (one with polygon offset), a face texture and two face programs that use
+every kind of paint. `invalid/*.json` are short documents with one named defect each; the `stage3d-*` ones cover
+a `/1` document carrying `/2` additions, broken references, sample counts and ranges, placement, and shapes only
+`/2` knows.
 
 `fixtures/expectations.json` states the verdict for every file. Both test suites assert the same
 thing: a structural failure has the code `schema` (a JSON Schema validator and zod word and locate those
@@ -203,7 +294,7 @@ JSON file and its entry, then run both suites.
 
 ## Dependencies this adds
 
-The loader uses `serde`, `serde_json` and `jsonschema` (built without HTTP or file resolution). Skia
+The loader uses `serde`, `serde_json` (with `float_roundtrip`) and `jsonschema` (built without HTTP or file resolution). Skia
 (`skia-safe`) is a dependency of the renderer crate only, not of this loader; see
 [NATIVE_RENDERER.md](NATIVE_RENDERER.md). CI runs the workspace tests in the existing `unit` job and
 caches the Cargo registry and `native/target`.

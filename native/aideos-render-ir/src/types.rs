@@ -1,4 +1,4 @@
-//! File Description: The serde types of the Render IR `aideos.render/1`, mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
+//! File Description: The serde types of the Render IR (`aideos.render/1` and its superset `aideos.render/2`, which adds the stage3d node and the mesh asset), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
 //! Inputs and outputs: a JSON document that already passed the JSON Schema check -> a typed `RenderIr`; a `RenderIr` -> the same JSON again.
 //! Used by: crate::load, crate::semantic, and the native renderer crates that evaluate the IR.
 
@@ -298,6 +298,7 @@ pub enum Node {
     Rail(RailNode),
     Captions(CaptionsNode),
     EndCard(EndCardNode),
+    Stage3d(Stage3dNode),
     Group(GroupNode),
 }
 
@@ -311,6 +312,7 @@ impl Node {
             Node::Rail(n) => &n.id,
             Node::Captions(n) => &n.id,
             Node::EndCard(n) => &n.id,
+            Node::Stage3d(n) => &n.id,
             Node::Group(n) => &n.id,
         }
     }
@@ -324,6 +326,7 @@ impl Node {
             Node::Rail(n) => n.visible.as_ref(),
             Node::Captions(n) => n.visible.as_ref(),
             Node::EndCard(n) => n.visible.as_ref(),
+            Node::Stage3d(n) => n.visible.as_ref(),
             Node::Group(n) => n.visible.as_ref(),
         }
     }
@@ -337,6 +340,7 @@ impl Node {
             Node::Rail(_) => "rail",
             Node::Captions(_) => "captions",
             Node::EndCard(_) => "endCard",
+            Node::Stage3d(_) => "stage3d",
             Node::Group(_) => "group",
         }
     }
@@ -522,6 +526,7 @@ pub enum Asset {
     Font(FontAsset),
     Image(ImageAsset),
     Audio(AudioAsset),
+    Mesh(MeshAsset),
 }
 
 impl Asset {
@@ -532,6 +537,7 @@ impl Asset {
             Asset::Font(a) => &a.id,
             Asset::Image(a) => &a.id,
             Asset::Audio(a) => &a.id,
+            Asset::Mesh(a) => &a.id,
         }
     }
 
@@ -542,6 +548,7 @@ impl Asset {
             Asset::Font(a) => &a.path,
             Asset::Image(a) => &a.path,
             Asset::Audio(a) => &a.path,
+            Asset::Mesh(a) => &a.path,
         }
     }
 
@@ -552,6 +559,7 @@ impl Asset {
             Asset::Font(_) => "font",
             Asset::Image(_) => "image",
             Asset::Audio(_) => "audio",
+            Asset::Mesh(_) => "mesh",
         }
     }
 }
@@ -622,4 +630,307 @@ pub struct Camera {
     pub center_y: Vec<Keyframe>,
     pub zoom: Vec<Keyframe>,
     pub rotation: Vec<Keyframe>,
+}
+
+// ---------------------------------------------------------------------------------------------
+// aideos.render/2: the Three stage. Everything above is `/1`; `/2` adds the stage3d node and the mesh asset.
+// ---------------------------------------------------------------------------------------------
+
+/// One part of a mesh asset: its vertex and index counts and whether it carries texture coordinates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MeshPart {
+    pub id: String,
+    pub vertices: Whole,
+    pub indices: Whole,
+    pub uv: bool,
+}
+
+/// A binary mesh file holding every part's positions, normals, uvs and indices (see crate::mesh).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MeshAsset {
+    pub id: String,
+    pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sha256: Option<String>,
+    pub parts: Vec<MeshPart>,
+}
+
+/// Which faces a material draws (three's FrontSide, BackSide or DoubleSide).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Side {
+    Front,
+    Back,
+    Double,
+}
+
+/// Polygon offset: depth pushed by `factor` times the slope plus `units` steps.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PolygonOffset {
+    pub factor: f64,
+    pub units: f64,
+}
+
+/// A flat-coloured material (toon or basic): linear colour and sidedness.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ColorMaterial {
+    pub color: [f64; 3],
+    pub side: Side,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub polygon_offset: Option<PolygonOffset>,
+}
+
+/// The face material: a face texture times a linear colour, unlit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct FaceMaterial {
+    pub texture: String,
+    pub color: [f64; 3],
+    pub side: Side,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub polygon_offset: Option<PolygonOffset>,
+}
+
+/// The ink outline: the part pushed out along its normals by `width` object units, one colour.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct InkMaterial {
+    pub color: [f64; 3],
+    pub width: f64,
+    pub side: Side,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub polygon_offset: Option<PolygonOffset>,
+}
+
+/// How one drawable is shaded.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum StageMaterial {
+    Toon(ColorMaterial),
+    Basic(ColorMaterial),
+    Face(FaceMaterial),
+    Ink(InkMaterial),
+}
+
+/// A transform node of the stage graph: a static local transform under an optional parent listed before it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageGraphNode {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+    pub position: [f64; 3],
+    /// x, y, z, w.
+    pub quaternion: [f64; 4],
+    pub scale: f64,
+}
+
+/// Dense per-frame local channels of one node (3, 4 and 1 numbers per sample).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageChannel {
+    pub node: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<Vec<f64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quaternion: Option<Vec<f64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scale: Option<Vec<f64>>,
+}
+
+/// One mesh part drawn with one material at one node, in draw order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageDrawable {
+    pub id: String,
+    pub node: String,
+    pub part: String,
+    pub material: StageMaterial,
+}
+
+/// One stop of a face gradient.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FaceStop {
+    pub offset: f64,
+    pub color: String,
+    pub alpha: f64,
+}
+
+/// A paint as the face painter sets it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum FacePaint {
+    Color { color: String, alpha: f64 },
+    LinearGradient { x0: f64, y0: f64, x1: f64, y1: f64, stops: Vec<FaceStop> },
+}
+
+/// A canvas line cap.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LineCap {
+    Butt,
+    Round,
+    Square,
+}
+
+/// A canvas line join.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LineJoin {
+    Miter,
+    Round,
+    Bevel,
+}
+
+/// One recorded Canvas 2D call of the face painter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "op", rename_all = "camelCase", deny_unknown_fields)]
+pub enum FaceOp {
+    SetTransform { args: [f64; 6] },
+    Save,
+    Restore,
+    Scale { args: [f64; 2] },
+    Translate { args: [f64; 2] },
+    FillStyle { paint: FacePaint },
+    StrokeStyle { paint: FacePaint },
+    LineWidth { value: f64 },
+    LineCap { value: LineCap },
+    LineJoin { value: LineJoin },
+    GlobalAlpha { value: f64 },
+    FillRect { args: [f64; 4] },
+    BeginPath,
+    MoveTo { args: [f64; 2] },
+    LineTo { args: [f64; 2] },
+    QuadraticCurveTo { args: [f64; 4] },
+    BezierCurveTo { args: [f64; 6] },
+    /// x, y, radiusX, radiusY, rotation, startAngle, endAngle (clockwise).
+    Ellipse { args: [f64; 7] },
+    /// x, y, radius, startAngle, endAngle (clockwise).
+    Arc { args: [f64; 5] },
+    Fill,
+    Stroke,
+    Clip,
+}
+
+/// A recorded face program.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FaceProgram {
+    pub ops: Vec<FaceOp>,
+}
+
+/// The only texture filter a face uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TextureFilter {
+    Linear,
+}
+
+/// The only colour space the stage uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ColorSpace {
+    Srgb,
+}
+
+/// The only tone mapping the stage uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ToneMapping {
+    None,
+}
+
+/// The stage treatments the IR carries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Treatment {
+    #[serde(rename = "cel-v1")]
+    CelV1,
+}
+
+/// A painted face texture: canvas size, sampling and the program index at each sample frame.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct FaceTexture {
+    pub id: String,
+    pub size: Whole,
+    pub flip_y: bool,
+    pub filter: TextureFilter,
+    pub mipmaps: bool,
+    pub color_space: ColorSpace,
+    pub programs: Vec<Whole>,
+}
+
+/// The orthographic stage camera's depth constants.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct Projection {
+    pub camera_z: f64,
+    pub near: f64,
+    pub far: f64,
+}
+
+/// The directional light, as three positions it (direction = position - target).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DirectionalLight {
+    pub position: [f64; 3],
+    pub target: [f64; 3],
+    pub color: [f64; 3],
+    pub intensity: f64,
+}
+
+/// The ambient light.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AmbientLight {
+    pub color: [f64; 3],
+    pub intensity: f64,
+}
+
+/// The stage's two lights.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Lighting {
+    pub directional: DirectionalLight,
+    pub ambient: AmbientLight,
+}
+
+/// The stage's output settings.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct StageOutput {
+    pub dpr: f64,
+    pub antialias: bool,
+    pub color_space: ColorSpace,
+    pub tone_mapping: ToneMapping,
+    pub exposure: f64,
+}
+
+/// The Three stage: an orthographic, lit cel scene drawn between the ground and foreground SVG planes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct Stage3dNode {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible: Option<Visible>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opacity: Option<f64>,
+    pub mesh: String,
+    pub treatment: Treatment,
+    pub projection: Projection,
+    pub lighting: Lighting,
+    pub ramp: Vec<Whole>,
+    pub output: StageOutput,
+    /// Samples every channel and face texture holds; frame f reads sample min(f, sample_frames - 1).
+    pub sample_frames: Whole,
+    pub nodes: Vec<StageGraphNode>,
+    pub channels: Vec<StageChannel>,
+    pub drawables: Vec<StageDrawable>,
+    pub face_textures: Vec<FaceTexture>,
+    pub face_programs: Vec<FaceProgram>,
 }

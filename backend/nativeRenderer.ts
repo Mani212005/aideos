@@ -69,6 +69,7 @@ export function stageRenderPackage(emitted: EmitResult, dir: string): string {
     const target = path.join(dir, file.path);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     if ("text" in file) fs.writeFileSync(target, file.text);
+    else if ("bytes" in file) fs.writeFileSync(target, file.bytes);
     else {
       try {
         fs.linkSync(file.from, target);

@@ -231,8 +231,8 @@ fn draw_overlay_node(canvas: &Canvas, ctx: &OverlayCtx, node: &Node) {
         Node::Rail(r) => chrome::draw_rail(canvas, ctx, r),
         Node::Captions(c) => chrome::draw_captions(canvas, ctx, c),
         Node::EndCard(e) => chrome::draw_end_card(canvas, ctx, e),
-        // The loader refuses svg nodes in the overlay.
-        Node::Svg(_) => {}
+        // The loader refuses svg and stage3d nodes in the overlay.
+        Node::Svg(_) | Node::Stage3d(_) => {}
     }
 }
 
