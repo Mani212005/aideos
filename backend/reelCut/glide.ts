@@ -172,12 +172,13 @@ export function planStretchedGlides(input: GlideInput): GlidePlan {
   for (let i = 1; i < input.poses.length; i++) {
     const cutsBetween = input.cuts.filter((c) => c >= raw[i - 1]! && c <= raw[i]!);
     if (!cutsBetween.length || samePose(input.poses[i], input.poses[i - 1])) continue;
+    const compiled = spacedAtCuts(input, out);
+    const compiledNeeded = framesNeeded(input, compiled, i, compiled[i - 1]!);
+    if (compiledNeeded !== undefined && compiledNeeded <= Math.max(compiled[i]! - compiled[i - 1]!, input.gap)) continue;
     const start = out[i - 1]!;
-    const available = Math.max(out[i]! - start, input.gap);
     const needed = framesNeeded(input, out, i, start);
     const from = input.poses[i - 1].id, to = input.poses[i].id;
     if (needed === undefined) return { frames: [...raw], errors: [`camera "${to}": the glide from "${from}" cannot keep the camera speed, acceleration and zoom step limits at any length that fits the film`] };
-    if (needed <= available) continue;
     const next = input.keptShots.find((s) => s.from >= Math.min(...cutsBetween));
     if (!next) return { frames: [...raw], errors: [`camera "${to}": the glide from "${from}" needs ${needed} frames across the dropped shots but no kept shot follows them to finish in; keep a shot after the dropped span`] };
     // The move keeps the duration its own limits need; the poses after it must still fit and the real curve, with its neighbours, must hold the limits.
