@@ -1,6 +1,6 @@
 /**
  * File Description: One measured round of an all-check run, for one format or both. It backs up
- * film.json, renders the film through Remotion, runs the deterministic `aideos review`, the Gemini
+ * film.json, renders the film (natively when it can, else through Remotion), runs the deterministic `aideos review`, the Gemini
  * 3.8 Flash review (and, for the long cut, the cross-review against the reference video when one was
  * given), extracts stills every few seconds for the agent's own frame check, and writes a record the
  * agent reads. The agent never scores its own work: `passed` needs the reviewer's score, the measured
@@ -49,7 +49,7 @@ export function realRoundDeps(onProgress: (message: string) => void): RoundDeps 
     render: (slug, format) => {
       // The final videos come from this render, so refuse before it starts when music, sound effects or the end card is missing.
       assertSlugDeliverable(slug, format);
-      return renderVideoForSlug(slug, format);
+      return renderVideoForSlug(slug, format, {}, onProgress);
     },
     measure: (req) => measuredReview({ target: req.target, film: req.film, words: req.words, outDir: req.outDir, onProgress }),
     gemini: (video, opts) => geminiReview(video, { filmPath: opts.filmPath, reviewContextPath: opts.reviewContextPath, onProgress }),

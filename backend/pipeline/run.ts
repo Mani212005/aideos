@@ -1,7 +1,7 @@
 /**
  * File Description: The single programmatic entry point for producing an Aideos film. runProduction
  * takes a script and returns authoring next steps or verified mp4s, moving through intake, narration, look, design,
- * B-roll, assembly, render and verification. Each stage records a fingerprint of its inputs in the
+ * B-roll, assembly, render (native renderer for the films it supports, Remotion otherwise) and verification. Each stage records a fingerprint of its inputs in the
  * package's run state, so a failure partway through resumes from the last good stage instead of
  * restarting from zero, and every failure is reported with the stage that produced it.
  * Inputs and outputs: ProductionRequest -> executed pipeline stages and ProductionResult.
@@ -55,6 +55,8 @@ import { filmEditState } from "../filmAcceptance/store";
 import { boundTheme } from "../../src/projectTheme";
 import { createRenderJob } from "../renderJob";
 import { createRemotionRenderer } from "../remotionRenderer";
+import { createNativeRenderer } from "../nativeRenderer";
+import { createSelectedRenderer, rendererModeFromEnv } from "../rendererSelection";
 import { createRunMachine, inputNeeded, isInputNeeded, type InputNeeded } from "./runMachine";
 import { loadRunState, saveRunState } from "./runState";
 import {
@@ -745,10 +747,17 @@ export async function runProduction(
         for (const format of formats) {
           const outputFilm = format === "reel" ? reelForRender(slug) : assembled;
           const outPath = request.outDir ? path.join(outDir, `${slug}-${format}.mp4`) : path.join(outDir, `${format}.mp4`);
-          const job = createRenderJob({ film: outputFilm, format, outPath, profile: "final", frames: request.renderFrames }, createRemotionRenderer({
-            caller: "pipeline", concurrency: request.renderConcurrency, browserExecutable: request.browserExecutable,
-            onLog: (message, progress) => emit("render", "running", message, progress),
-          }), { onLog: (message) => emit("render", "running", message) });
+          // The native renderer draws the film when it can; Remotion renders it otherwise (AIDEOS_RENDERER=remotion keeps every film there).
+          const renderer = createSelectedRenderer({
+            mode: rendererModeFromEnv(),
+            remotion: () => createRemotionRenderer({
+              caller: "pipeline", concurrency: request.renderConcurrency, browserExecutable: request.browserExecutable,
+              onLog: (message, progress) => emit("render", "running", message, progress),
+            }),
+            native: () => createNativeRenderer({ onLog: (message, progress) => emit("render", "running", message, progress) }),
+            onChoice: (_choice, message) => emit("render", "running", message),
+          });
+          const job = createRenderJob({ film: outputFilm, format, outPath, profile: "final", frames: request.renderFrames }, renderer, { onLog: (message) => emit("render", "running", message) });
           const { output, master } = await job.run();
           if (master.status === "skipped") warnings.push(`${format} master skipped: ${master.reason}`);
           produced.push(output);

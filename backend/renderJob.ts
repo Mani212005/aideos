@@ -1,6 +1,6 @@
 /**
  * File Description: Renderer-independent render lifecycle, delivery policy and output provenance.
- * Inputs and outputs: a film snapshot, renderer and cancellation -> a mastered, probed output and content sidecar.
+ * Inputs and outputs: a film snapshot, renderer and cancellation -> a mastered, probed output and content sidecar (which names the renderer that drew it when the renderer says).
  * Used by: pipeline final renders, studio exports, review renders and the render CLI.
  */
 
@@ -97,6 +97,8 @@ export interface RenderContext {
 
 /** A native renderer implements this contract without importing any capture-framework types. */
 export interface Renderer {
+  /** Which renderer drew the frames ("remotion" or "native"); recorded in the sidecar when known. */
+  readonly name?: string;
   /** Identifies profile settings this adapter actually applies to its encoded output. */
   profileSettingsApplied?: Partial<Record<RenderProfileSetting, boolean>>;
   prepare?: (
@@ -324,6 +326,7 @@ export function createRenderJob(
           {
             filmId: request.film.id,
             filmHash,
+            ...(renderer.name ? { renderer: renderer.name } : {}),
             profile: request.profile,
             profilePolicy: RENDER_PROFILES[request.profile],
             profileSettingsApplied: Object.fromEntries(
