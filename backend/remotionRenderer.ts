@@ -21,12 +21,12 @@ import {
   glFlag,
   stagePublicDir,
 } from "./pipeline/render";
-import { checkRenderDiskBudget } from "./pipeline/renderDiskBudget";
+import { checkRenderJobDiskBudget } from "./pipeline/renderDiskBudget";
 import { runRenderCommand, type RenderProcessDeps } from "./renderProcess";
 import type { Renderer } from "./renderJob";
 
 export interface RemotionRendererDeps extends RenderProcessDeps {
-  checkDiskBudget?: typeof checkRenderDiskBudget;
+  checkDiskBudget?: typeof checkRenderJobDiskBudget;
   run?: typeof runRenderCommand;
 }
 
@@ -68,9 +68,9 @@ export function createRemotionRenderer(
       if (options.caller !== "manual") setActiveFilm(request.film.id);
       publicDir = stagePublicDir();
     },
-    /** Uses the existing measured disk estimator before capture. */
+    /** Checks the disk before capture: a hard frame-size bound where it fits, the measured sampler otherwise. */
     async checkDiskBudget(request, context) {
-      await (deps.checkDiskBudget ?? checkRenderDiskBudget)({
+      await (deps.checkDiskBudget ?? checkRenderJobDiskBudget)({
         film: request.film,
         format: request.format,
         range: request.frames ?? [

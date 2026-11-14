@@ -190,7 +190,12 @@ if either disk falls below the reserve. The guard keeps typical scene films with
 a 54 second 1080p film with 0.1 to 0.3 MB sampled frames is estimated below 1.5 GiB. The error names
 the heaviest sampled frame, estimate, free space and reserve; render a shorter range (`renderFrames`)
 or free space when it refuses. Sampling costs one extra bundle and browser start per format (about 15
-seconds). There is no override variable: tests inject a fake sampler and `statfs`.
+seconds), so a render job (`checkRenderJobDiskBudget`) first runs the same estimate with the largest
+PNG a frame of that format can be (`maxFramePngBytes`: 8 bytes per pixel plus 1%) in place of a
+sample. When that bound already fits with the reserve in every folder, the render is admitted without
+sampling, because no sample can exceed the bound. When it does not fit, real frames are measured and
+the refusal rests on the measurement. `checkRenderDiskBudget` always samples (J12 uses it). There is
+no override variable: tests inject a fake sampler and `statfs`.
 
 ## User journeys and what protects each
 

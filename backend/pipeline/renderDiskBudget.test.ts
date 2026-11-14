@@ -10,6 +10,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
+import zlib from "node:zlib";
+import { randomBytes } from "node:crypto";
 import test from "node:test";
 import { loadFixtureFilm } from "../testSupport/fixtureFilms";
 import {
@@ -19,6 +21,8 @@ import {
   RenderDiskError,
   assertRenderDiskBudget,
   checkRenderDiskBudget,
+  checkRenderJobDiskBudget,
+  maxFramePngBytes,
   estimateRenderTempBytes,
   pickSampleFrames,
   type RenderSample,
@@ -146,6 +150,41 @@ test("checkRenderDiskBudget forwards forced shutdown to the frame sampler", asyn
     forceSignal: forceController.signal,
   });
   assert.equal(received, forceController.signal);
+});
+
+// L1 (captain approved): a render job skips the sampler only where a hard frame-size bound fits.
+test("the hard frame bound is above the largest PNG a frame can be, even for incompressible pixels", () => {
+  const width = 1920, height = 1080;
+  // Random bytes cannot be compressed: this is the worst a deflate stream of one frame can do.
+  const rows = randomBytes(height * (1 + width * 4));
+  for (let y = 0; y < height; y++) rows[y * (1 + width * 4)] = 0;
+  const png = zlib.deflateSync(rows, { level: 9 });
+  assert.ok(png.length <= maxFramePngBytes("long"), `${png.length} bytes must not exceed the bound ${maxFramePngBytes("long")}`);
+  assert.ok(maxFramePngBytes("reel") > 1080 * 1920 * 8 && maxFramePngBytes("long") > 1920 * 1080 * 8, "the bound assumes the widest PNG pixel, 8 bytes");
+});
+
+test("a render job whose frames cannot fill the disk even at the bound is admitted without sampling", async () => {
+  const film = loadFixtureFilm("fixture-canvas-a");
+  let sampled = 0;
+  const sampler = async () => { sampled++; return sampleOf(100_000); };
+  const estimate = await checkRenderJobDiskBudget({ film, format: "long", range: [0, 30], dirs: ["/tmp"], sampler, statfs: free(100 * GIB) });
+  assert.equal(sampled, 0, "no sample was needed");
+  const sampledEstimate = await checkRenderDiskBudget({ film, format: "long", range: [0, 30], dirs: ["/tmp"], sampler, statfs: free(100 * GIB) });
+  assert.ok(estimate.totalBytes >= sampledEstimate.totalBytes, "the bound estimate is never below the sampled one");
+});
+
+test("a render job measures real frames when the bound does not fit and refuses on the measurement, not the bound", async () => {
+  const film = loadFixtureFilm("fixture-canvas-a");
+  const total = 1620;
+  let sampled = 0;
+  const sampler = async () => { sampled++; return sampleOf(250_000); };
+  // The bound for 1620 frames needs about 72 GiB; the measured 0.25 MB frames need about 1 GiB, so 7.2 GiB free admits it after sampling.
+  await checkRenderJobDiskBudget({ film, format: "long", range: [0, total - 1], dirs: ["/tmp"], sampler, statfs: free(7.2 * GIB) });
+  assert.equal(sampled, 1);
+  await assert.rejects(checkRenderJobDiskBudget({ film, format: "long", range: [0, total - 1], dirs: ["/tmp"], sampler, statfs: free(3 * GIB) }), RenderDiskError);
+  assert.equal(sampled, 2);
+  // A sampler failure is still a failure, never swallowed into an admit.
+  await assert.rejects(checkRenderJobDiskBudget({ film, format: "long", range: [0, total - 1], dirs: ["/tmp"], sampler: async () => { throw new Error("RENDER_SAMPLE_FAILED: x"); }, statfs: free(7.2 * GIB) }), /RENDER_SAMPLE_FAILED/);
 });
 
 test("footage samples span the range at about two-second intervals and cap at 40 frames", () => {

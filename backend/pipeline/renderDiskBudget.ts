@@ -1,7 +1,7 @@
 /**
- * File Description: The render disk guard. Remotion writes every frame of a format to the temp dir as a PNG before it stitches the mp4, so a long render can fill the disk. The guard renders real PNG frames of the actual film, measures their bytes, and refuses the render only when frames x the largest sample x a safety factor, plus the encoded output estimate, plus a 3 GiB reserve, would not fit in the free space.
+ * File Description: The render disk guard. Remotion writes every frame of a format to the temp dir as a PNG before it stitches the mp4, so a long render can fill the disk. The guard renders real PNG frames of the actual film, measures their bytes, and refuses the render only when frames x the largest sample x a safety factor, plus the encoded output estimate, plus a 3 GiB reserve, would not fit in the free space. A render whose frames could not fill the disk even at the largest PNG a frame can be (a hard bound, not a sample) skips the measuring.
  * Inputs and outputs: the film, a frame range, directories to check and (injectable) a sampler and statfs -> nothing when the render fits, or a RenderDiskError (RENDER_DISK_LOW) naming the sample, the estimate, the free space and the reserve.
- * Used by: backend/pipeline/run.ts (render stage), backend/journeys/harness.test.ts, backend/journeys/j12_render_disk.journey.ts, docs/CI.md.
+ * Used by: backend/remotionRenderer.ts (every Remotion render job), backend/journeys/harness.test.ts, backend/journeys/j12_render_disk.journey.ts, docs/CI.md.
  */
 
 import { runRenderCommand } from "../renderProcess";
@@ -202,8 +202,8 @@ export async function sampleRenderFrames(
   }
 }
 
-/** Samples real frames of the film, then refuses the render when its measured need plus the reserve does not fit. */
-export async function checkRenderDiskBudget(input: {
+/** What a disk check is asked: the film, the format, the frame range the render will write and where it writes. */
+export interface DiskBudgetCheckInput {
   film: Film;
   format: ProductionFormat;
   /** Inclusive frame range the render will write. */
@@ -219,7 +219,10 @@ export async function checkRenderDiskBudget(input: {
     options?: { browserExecutable?: string; signal?: AbortSignal; forceSignal?: AbortSignal },
   ) => Promise<RenderSample>;
   statfs?: StatFs;
-}): Promise<RenderEstimate> {
+}
+
+/** Samples real frames of the film, then refuses the render when its measured need plus the reserve does not fit. */
+export async function checkRenderDiskBudget(input: DiskBudgetCheckInput): Promise<RenderEstimate> {
   const picks = pickSampleFrames(input.film, input.range);
   const sample = await (input.sampler ?? sampleRenderFrames)(input.format, picks, {
     browserExecutable: input.browserExecutable,
@@ -232,4 +235,38 @@ export async function checkRenderDiskBudget(input: {
     dirs: input.dirs,
     statfs: input.statfs,
   });
+}
+
+/**
+ * Hard upper bound on the bytes of one PNG frame of a format. No sample can exceed it, so a render
+ * that fits at this size needs no measuring. A PNG pixel is at most 8 bytes (16-bit RGBA, the widest
+ * PNG sample), every scanline adds one filter byte, zlib expands incompressible data by under 0.1%
+ * and libpng wraps it in IDAT chunks of at least 8 KiB (12 bytes each, 0.15%), so 1% covers the
+ * stream; 1 MiB covers the signature, header and any colour profile or text chunks.
+ */
+export function maxFramePngBytes(format: ProductionFormat): number {
+  const { width, height } = FORMAT_SPECS[format];
+  return Math.ceil(height * (1 + width * 8) * 1.01) + MIB;
+}
+
+/**
+ * The render job's disk check. First asks the same question as the sampled check with the hard
+ * bound standing in for the measured frame: the estimate uses the same formula, safety factor,
+ * reserve and every-directory rule, and the bound is never below any real sample, so when it fits
+ * the sampled estimate fits too and the same render is admitted. Only when the bound does not fit
+ * (a long render on a small disk) does it measure real frames, so the refusal is still decided
+ * on measured bytes and never on the bound.
+ */
+export async function checkRenderJobDiskBudget(input: DiskBudgetCheckInput): Promise<RenderEstimate> {
+  try {
+    return assertRenderDiskBudget({
+      frames: input.range[1] - input.range[0] + 1,
+      sample: { width: FORMAT_SPECS[input.format].width, height: FORMAT_SPECS[input.format].height, frames: [{ frame: input.range[0], bytes: maxFramePngBytes(input.format) }] },
+      dirs: input.dirs,
+      statfs: input.statfs,
+    });
+  } catch (error) {
+    if (!(error instanceof RenderDiskError)) throw error;
+  }
+  return checkRenderDiskBudget(input);
 }
