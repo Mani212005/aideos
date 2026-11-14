@@ -60,6 +60,19 @@ for (const caller of ["pipeline", "studio", "review", "manual"] as const) {
           assert.notEqual(output, outPath, "capture writes to the private job artifact");
           assert.equal(path.basename(output), path.basename(outPath));
           const { args } = command;
+          const encodeFlags = [
+            "--codec=h264",
+            "--image-format=png",
+            "--crf=16",
+            "--pixel-format=yuv420p",
+            "--audio-codec=aac",
+            "--audio-bitrate=320k",
+          ];
+          // Every caller builds the same encode arguments from the one shared constant.
+          assert.deepEqual(
+            args.filter((arg) => /^--(codec|image-format|crf|pixel-format|audio-codec|audio-bitrate)=/.test(arg)),
+            encodeFlags,
+          );
           if (caller === "pipeline") {
             assert.deepEqual(args.slice(0, 4), [
               "remotion",
@@ -67,16 +80,7 @@ for (const caller of ["pipeline", "studio", "review", "manual"] as const) {
               "Reel",
               output,
             ]);
-            for (const flag of [
-              "--codec=h264",
-              "--image-format=png",
-              "--crf=16",
-              "--pixel-format=yuv420p",
-              "--audio-codec=aac",
-              "--audio-bitrate=320k",
-              "--gl=swangle",
-            ])
-              assert.ok(args.includes(flag), flag);
+            assert.ok(args.includes("--gl=swangle"));
           } else {
             assert.deepEqual(args.slice(0, 5), [
               "remotion",
@@ -85,13 +89,6 @@ for (const caller of ["pipeline", "studio", "review", "manual"] as const) {
               "Reel",
               output,
             ]);
-            assert.equal(
-              args.some(
-                (arg) =>
-                  arg.startsWith("--crf=") || arg.startsWith("--image-format="),
-              ),
-              false,
-            );
             assert.equal(args.includes("--gl=angle"), caller !== "studio");
             assert.equal(args.includes("--gl=swangle"), false);
           }
