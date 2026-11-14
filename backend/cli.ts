@@ -21,6 +21,7 @@ import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
 import { registerAudioCommands } from "./audioLibrary/cli";
 import { registerCharacterCommands } from "./characters/cli";
 import { registerReelCommands } from "./reelCut/cli";
+import { registerStudyCommands } from "./study/cli";
 
 dotenv.config({ quiet: true });
 
@@ -712,6 +713,7 @@ program
 registerAllCheckCommands(program);
 registerCharacterCommands(program);
 registerAudioCommands(program);
+registerStudyCommands(program);
 
 export { program };
 

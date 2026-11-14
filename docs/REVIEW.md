@@ -149,6 +149,8 @@ constraints above (global phase correlation hid every real camera move).
 
 References give measurable craft only (cadence, contrast, camera), never a creator's identity or likeness.
 
+aideos study applies this rule to every pixel-derived number of a reference study; see STUDY.md.
+
 ### Calibration
 
 `npm run calibrate:review` re-runs the three reference videos and fails unless the tool still
