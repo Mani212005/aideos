@@ -104,6 +104,8 @@ export interface NativeRendererOptions {
   onLog?: (message: string, progress?: number) => void;
   /** Receives the binary's final report. */
   onReport?: (report: NativeVideoReport) => void;
+  /** Supplies the emitted IR and package files instead of emitting them from the film (the farm worker renders a stored package). */
+  emit?: (film: Film, format: NativeFormat) => EmitResult;
 }
 
 /** Creates the native renderer adapter; one instance serves one render job. */
@@ -129,7 +131,7 @@ export function createNativeRenderer(options: NativeRendererOptions = {}, deps: 
     prepare(request) {
       const problem = nativeBinaryProblem(binary);
       if (problem) throw new Error(problem);
-      const emitted = emitFilmIr(request.film, request.format, binary);
+      const emitted = options.emit ? options.emit(request.film, request.format) : emitFilmIr(request.film, request.format, binary);
       stageDir = path.join(path.dirname(request.outPath), "native-package");
       irPath = stageRenderPackage(emitted, stageDir);
       fps = emitted.ir.film.fps;
