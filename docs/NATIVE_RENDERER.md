@@ -312,7 +312,7 @@ Remotion stays the default and the kill switch for everything not yet native. Th
 | Step | What | State |
 | --- | --- | --- |
 | P4.1 | `aideos.render/2` (the `stage3d` node and the `mesh` asset), its loaders and validators in TypeScript and Rust, the emitter (`backend/renderIr/emitStage3d.ts`), the mesh file codec and the reference pose (`backend/renderIr/stage3d.ts`) | done: nothing changes for users |
-| P4.2 | the CPU rasterizer of the stage3d node and the first film (iona-receive, cel, one performer), native goldens and the parity report | done: `nativeSupport` accepts cel-v1 with one performer |
+| P4.2 | the CPU rasterizer of the stage3d node and the first film (iona-receive, cel, one performer), native goldens and the parity report ([P4.2 parity on iona-receive](#p42-parity-on-iona-receive)) | done: `nativeSupport` accepts cel-v1 with one performer |
 | P4.3 | several performers (J5), Pip and Marlo | |
 | P4.4 | the `dots-v1` treatment (the IR cannot carry it yet) | |
 | P4.5 | journeys and goldens per the captain's decision | |
@@ -361,6 +361,36 @@ stage between its workers. The native goldens of `iona-receive` (see [Native gol
 
 **Limits.** One `stage3d` node, `cel-v1`, `dpr` 1, exposure 1, no tone mapping (the loader refuses the rest by name).
 A path in a face program is built in the user space current when it is filled, which is what the painter relies on.
+
+### P4.2 parity on iona-receive
+
+Two things are measured, and they are not the same gate. The strict golden tolerance gate is native against native
+goldens (`cargo test`, `tests/golden.rs`). The SSIM figures are evidence against Remotion, not a gate: every frame of
+both formats was measured (ffmpeg `ssim` and `psnr`, Remotion PNG sequence against the native PNGs, same machine).
+The evidence is kept at `/home/mani/aideos-linux-home/data/aideos-native-p42-raster/ssim/` (`parity-long`,
+`parity-reel`: `per-frame.json`, `summary.json` and the worst-frame side-by-sides).
+
+| Measure | Long (480 frames) | Reel (390 frames) |
+| --- | --- | --- |
+| Whole-frame SSIM min | 0.97965 (frame 345, end card) | 0.98056 (frame 345, end card) |
+| Whole-frame SSIM mean | 0.99067 | 0.99007 |
+| Whole-frame PSNR min | 28.31 dB | 29.21 dB |
+| Whole-frame PSNR mean | 35.46 dB | 37.07 dB |
+| Story frames SSIM min | 0.99458 (frames 0-299) | 0.98923 |
+| Story frames SSIM mean | 0.99642 | 0.99220 |
+| Story frames PSNR min | 35.19 dB | |
+| Story frames PSNR mean | 38.99 dB | |
+| End card SSIM min | 0.97965 (frames 300-479) | 0.98056 |
+| End card SSIM mean | 0.98110 | 0.98298 |
+| Character crop only SSIM min | 0.99893 | 0.99848 |
+| Character crop only SSIM mean | 0.99924 | 0.99894 |
+
+The 0.995 bar is **not** met on whole frames: the long story minimum is 0.99458, the reel story minimum is 0.98923
+and both end cards are below 0.99. The cause is the 2D text that is already native (the caption card width and
+wrap, the rail and the end card text in native fonts against Chrome text, as in the Phase 1 parity on
+claude-dreaming), not the stage. With the text out of the measure (the character crop, the stage isolated by
+region) the SSIM is 0.9985 or higher, and the stage differs from Remotion only by thin edge lines. No threshold and
+no golden was changed to reach these figures.
 
 ## The renderer flag
 
