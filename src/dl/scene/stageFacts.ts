@@ -14,7 +14,7 @@ import { applyCharacter } from "./characters/apply";
 import { applyProp, buildProp } from "./props/paperGlider";
 import type { StageCast } from "./stageContract";
 import { resolveStageCharacter } from "../characters/resolve";
-import { projectMeshParts, unionPartBounds, sampleMeshDepth, stagePlacement } from "./stageGeometry";
+import { projectMeshParts, unionPartBounds, sampleMeshDepth, stagePlacement, type DepthEvidence } from "./stageGeometry";
 import { declaredMaterialPalette } from "./stageMaterials";
 import { compileCameraTrack } from "./cameraTrack";
 import type { Scene } from "./types";
@@ -34,8 +34,11 @@ export function castIdentity(cast: StageCast) {
   return { id: resolved.cast.id, renderer: resolved.cast.renderer, treatment: resolved.cast.treatment, resourceHash: resolved.cast.resourceHash, kind: resolved.cast.kind, position: resolved.cast.position, unitsToStage: resolved.cast.unitsToStage, depth: resolved.cast.depth, character: characterIdentity(resolved.spec) };
 }
 
-// Prepares private CPU geometry and evaluators once, then projects the actual posed mesh bounds without WebGL.
-export function prepareStageFacts(scene: Scene, width: number, height: number) {
+/** Sampled depth evidence of one scene, which depends on the posed meshes only and never on the output crop, so facts prepared for several crops of the same scene can share it. */
+export type SharedDepthEvidence = Map<string, DepthEvidence>;
+
+// Prepares private CPU geometry and evaluators once, then projects the actual posed mesh bounds without WebGL. Pass one `sharedDepth` map to every crop of the same unchanged scene to sample each frame's depth once.
+export function prepareStageFacts(scene: Scene, width: number, height: number, sharedDepth?: SharedDepthEvidence) {
   const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize, scene.fps);
   const entries = (scene.performances ?? []).map((p) => {
     const actor = scene.cast?.find((c) => c.id === p.actor && c.kind === "character");
@@ -66,14 +69,22 @@ export function prepareStageFacts(scene: Scene, width: number, height: number) {
       return { p: entry.p, actorMeshes: entry.actorMeshes, propMeshes: entry.propMeshes, state };
     });
     const meshes = entries.flatMap((e) => [...e.actorMeshes, ...e.propMeshes]);
+    // Samples depth for one subject, reusing the evidence another crop of this scene already measured at the same frame.
+    const depthOf = (id: string, subject: "actor" | "prop", subjectMeshes: Mesh[]) => {
+      if (!sharedDepth) return sampleMeshDepth(subjectMeshes, meshes);
+      const key = `${f}/${id}/${subject}`;
+      let evidence = sharedDepth.get(key);
+      if (!evidence) sharedDepth.set(key, evidence = sampleMeshDepth(subjectMeshes, meshes));
+      return { ...evidence };
+    };
     return evaluated.map(({ p, actorMeshes, propMeshes, state }) => {
       const actorParts = projectMeshParts(actorMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits, includeMotionSignature);
       const propParts = projectMeshParts(propMeshes, camera[Math.floor(f)], width, height, scene.sceneSize, CEL_TREATMENT.outlineUnits, includeMotionSignature);
       const actorBounds = unionPartBounds(actorParts), propBounds = unionPartBounds(propParts);
       if (!actorBounds || !propBounds) throw new Error(`performance ${p.id}: ${!actorBounds ? p.actor : p.prop} has no drawable geometry at frame ${frame}`);
       return { id: p.id, actor: p.actor, prop: p.prop, phase: state.phase, ownership: state.contact.mode, afterState: state.contact.mode === "attached" ? p.afterState : "airborne", actorBounds, propBounds, actorParts, propParts,
-        actorVisibility: depth === "all" ? sampleMeshDepth(actorMeshes, meshes) : undefined,
-        propVisibility: depth ? sampleMeshDepth(propMeshes, meshes) : undefined,
+        actorVisibility: depth === "all" ? depthOf(p.id, "actor", actorMeshes) : undefined,
+        propVisibility: depth ? depthOf(p.id, "prop", propMeshes) : undefined,
         visibilityProvenance: "projected posed vertices with outline allowance; raster visibility unmeasured" as const };
     });
   };
