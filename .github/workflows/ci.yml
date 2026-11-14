@@ -1,4 +1,4 @@
-# File Description: Pull request and main CI. A first changes job classifies changed files in shadow mode, four parallel jobs (static, unit, journeys, legacy) each run one `npm run ci -- <job>`, and a final all-green job gives branch protection a single check to require.
+# File Description: Pull request and main CI. A first changes job classifies changed files in shadow mode, four parallel jobs (static, unit, journeys, legacy) each run one `npm run ci -- <job>` (journeys as three parallel shards), and a final all-green job gives branch protection a single check to require.
 # Inputs and outputs: pull requests, pushes to main, manual runs -> changed files analysis, job results, a timing table in each job summary, failing frames and reports as artifacts.
 # Used by: GitHub Actions. Documented in docs/CI.md.
 name: CI
@@ -135,10 +135,17 @@ jobs:
       - name: Unit and feature tests
         run: npm run ci -- unit
 
+  # The journeys run as parallel shards: each leg runs a disjoint, deterministic share of the journey files
+  # (scripts/ciJourneyShards.ts), and `needs.journeys.result` below is the aggregate of every leg. fail-fast is off
+  # so a failing shard never cancels the others and every shard keeps its own evidence.
   journeys:
-    name: journeys
+    name: journeys (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -194,12 +201,12 @@ jobs:
         run: npx remotion browser ensure
       # Includes the character and Three-stage suites selected by backend/journeys/**/*.journey.ts.
       - name: Journeys
-        run: npm run ci -- journeys
+        run: npm run ci -- journeys --shard ${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Keep failing frames and reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: journeys-evidence
+          name: journeys-evidence-${{ matrix.shard }}
           path: .ci-artifacts
           include-hidden-files: true
           if-no-files-found: ignore
@@ -275,6 +282,7 @@ jobs:
           retention-days: 14
 
   # One name for branch protection to require: it fails if any job above failed, was cancelled or was skipped.
+  # The journeys result is the aggregate of every shard: any failed or cancelled shard makes it non-success.
   all-green:
     name: all-green
     if: always()
