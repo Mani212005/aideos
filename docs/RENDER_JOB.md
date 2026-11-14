@@ -56,3 +56,8 @@ Behavior changes:
 
 This change does not tune Remotion capture, change GL selection, or add an active-film pointer
 lock. The known cross-process pointer race remains part of the legacy backend.
+
+The render farm ([FARM.md](FARM.md)) runs this same job in a worker from a persisted queue: it leases a task, renders a stored
+package into an attempt directory with `createRenderJob`, promotes the output into a content-addressed store and removes
+the directory. `createNativeRenderer({ emit })` lets a worker hand the native renderer a stored IR and package instead of
+emitting from a film; without `emit` nothing changes.
