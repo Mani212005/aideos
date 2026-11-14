@@ -47,20 +47,24 @@ export function createJanitor(options: JanitorOptions) {
     return bytes;
   };
 
+  /** Lists a directory; one that vanished (its worker shut down) lists as empty. */
+  const listDir = (dir: string): fs.Dirent[] => {
+    try {
+      return fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+  };
+
   return {
     /** One sweep. `keep` lists absolute attempt directories the caller is using right now. */
     async sweep(keep: ReadonlySet<string> = new Set(), self?: string): Promise<SweepReport> {
       const report: SweepReport = { attemptDirsRemoved: 0, workerDirsRemoved: 0, strayEntriesRemoved: 0, bytesRemoved: 0, storeTmpRemoved: 0, storeTmpBytes: 0 };
+      const entries = listDir(options.workRoot);
+      const listing = entries.map((entry) => ({ entry, full: path.join(options.workRoot, entry.name), inner: entry.isDirectory() ? listDir(path.join(options.workRoot, entry.name)) : [] }));
       const leases = await options.queue.liveLeases();
       const alive = new Set((await options.queue.liveWorkers(options.workerStaleMs)).map((w) => w.id));
-      let entries: fs.Dirent[] = [];
-      try {
-        entries = fs.readdirSync(options.workRoot, { withFileTypes: true });
-      } catch {
-        entries = [];
-      }
-      for (const entry of entries) {
-        const full = path.join(options.workRoot, entry.name);
+      for (const { entry, full, inner } of listing) {
         if (!entry.isDirectory()) {
           report.bytesRemoved += removeTree(full);
           report.strayEntriesRemoved++;
@@ -71,9 +75,9 @@ export function createJanitor(options: JanitorOptions) {
           report.workerDirsRemoved++;
           continue;
         }
-        for (const inner of fs.readdirSync(full, { withFileTypes: true })) {
-          const innerPath = path.join(full, inner.name);
-          const match = inner.isDirectory() ? ATTEMPT_DIR.exec(inner.name) : null;
+        for (const item of inner) {
+          const innerPath = path.join(full, item.name);
+          const match = item.isDirectory() ? ATTEMPT_DIR.exec(item.name) : null;
           const live = match !== null && (keep.has(innerPath) || leases.some((l) => l.worker === entry.name && l.taskId.startsWith(match[1]) && l.attempt === Number(match[2])));
           if (live) continue;
           report.bytesRemoved += removeTree(innerPath);

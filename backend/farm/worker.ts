@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { RENDER_RESERVE_BYTES } from "../renderProcess";
 import { directoryBytes, type ContentStore, type LocalCache } from "./contentStore";
+import { collectGarbage } from "./gc";
 import { attemptDirName, createJanitor } from "./janitor";
 import type { CompleteOutcome, FailOutcome, LeasedTask, TaskQueue, TaskRecord, TaskResult } from "./queue";
 import { freeDiskBytes, freeMemoryBytes, processTreeRssBytes, type StatFs } from "./resources";
@@ -103,8 +104,12 @@ export interface WorkerOptions {
   statfs?: StatFs;
   freeMemory?: () => number;
   sampleMemory?: () => number;
-  /** How often the loop runs the janitor (default 30 seconds). */
+  /** How often the loop runs the janitor and the store sweep while it is idle (default 30 seconds); both also run at start and after every task. */
   sweepMs?: number;
+  /** The films whose newest output the store sweep keeps whatever its age; absent means only the age limit decides. */
+  liveFilms?: () => ReadonlySet<string>;
+  /** How long the newest output of a film that is not live stays in the store (default 7 days). */
+  objectMaxAgeMs?: number;
   /** Receives one line per notable worker event (not per task; those go to the queue). */
   onEvent?: (line: string) => void;
 }
@@ -150,6 +155,20 @@ export function createWorker(options: WorkerOptions) {
 
   /** Reports a notable worker event. */
   const event = (line: string): void => options.onEvent?.(`[worker ${id}] ${line}`);
+
+  /** Sweeps the work root, the unfinished puts and the store; never throws, because a failed sweep must not stop the worker. */
+  const tidy = async (): Promise<void> => {
+    try {
+      const report = await janitor.sweep(new Set(currentDir ? [currentDir] : []), id);
+      if (report.attemptDirsRemoved || report.workerDirsRemoved || report.strayEntriesRemoved || report.storeTmpRemoved) {
+        event(`sweep removed ${report.attemptDirsRemoved} attempt dirs, ${report.workerDirsRemoved} dead worker dirs, ${report.strayEntriesRemoved} stray entries, ${report.storeTmpRemoved} unfinished puts (${report.bytesRemoved + report.storeTmpBytes} bytes)`);
+      }
+      const gc = await collectGarbage({ store, queue, liveFilms: options.liveFilms?.(), resultTtlMs: options.objectMaxAgeMs, now });
+      if (gc.removed) event(`store sweep removed ${gc.removed} objects (${gc.bytesFreed} bytes)`);
+    } catch (error) {
+      event(`sweep failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
 
   /** Why the worker must not lease now, or null when it may. */
   const gate = (): string | null => {
@@ -335,12 +354,9 @@ export function createWorker(options: WorkerOptions) {
 
     /** Registers the worker and sweeps what killed workers left behind. */
     async start(): Promise<void> {
-      fs.mkdirSync(workerDir, { recursive: true });
       await queue.registerWorker(id, { pid: process.pid, host: os.hostname() });
-      const report = await janitor.sweep(new Set(), id);
-      if (report.attemptDirsRemoved || report.workerDirsRemoved || report.strayEntriesRemoved || report.storeTmpRemoved) {
-        event(`startup sweep removed ${report.attemptDirsRemoved} attempt dirs, ${report.workerDirsRemoved} dead worker dirs, ${report.strayEntriesRemoved} stray entries, ${report.storeTmpRemoved} unfinished puts (${report.bytesRemoved + report.storeTmpBytes} bytes)`);
-      }
+      fs.mkdirSync(workerDir, { recursive: true });
+      await tidy();
     },
 
     /** One pass: check the gates, lease, run. */
@@ -351,20 +367,27 @@ export function createWorker(options: WorkerOptions) {
       if (blocked) return { kind: "paused", reason: blocked };
       const leased = await queue.claim(id, leaseMs);
       if (!leased) return { kind: "idle" };
-      return runTask(leased);
+      const step = await runTask(leased);
+      await tidy();
+      return step;
     },
 
-    /** Loops until `stop` is called, sweeping on a timer; leaves no directory behind. */
+    /** Loops until `stop` is called, sweeping when idle; a failed pass is reported and retried, never fatal; leaves no directory behind. */
     async run(): Promise<void> {
       await this.start();
       const sweepMs = options.sweepMs ?? 30_000;
       let lastSweep = now();
       while (!stopping) {
-        const step = await this.runOnce();
-        if (step.kind === "idle" || step.kind === "paused") await sleep(pollMs);
+        let step: WorkerStep | null = null;
+        try {
+          step = await this.runOnce();
+        } catch (error) {
+          event(`pass failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        if (step === null || step.kind === "idle" || step.kind === "paused") await sleep(pollMs);
         if (now() - lastSweep > sweepMs) {
           lastSweep = now();
-          await janitor.sweep(new Set(currentDir ? [currentDir] : []), id).catch(() => {});
+          await tidy();
         }
       }
       await this.shutdown();

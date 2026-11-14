@@ -373,8 +373,157 @@ test("garbage collection never removes a live object and removes the dead ones",
   const queuedTask = await f.queue.get(queued.id);
   const deadTask = await f.queue.get(dead.id);
   const leasedTask = await f.queue.get(leased.id);
-  for (const t of [queuedTask, deadTask, leasedTask]) for (const d of [t?.spec.irHash, t?.payload.filmDigest, ...Object.values(t?.spec.assetDigests ?? {})]) assert.equal(f.store.has(d as string), true, "the inputs of unfinished and dead tasks stay");
+  for (const t of [queuedTask, leasedTask]) for (const d of [t?.spec.irHash, t?.payload.filmDigest, ...Object.values(t?.spec.assetDigests ?? {})]) assert.equal(f.store.has(d as string), true, "the inputs of unfinished tasks stay");
+  assert.equal(f.store.has(deadTask?.spec.irHash as string), false, "the inputs of a dead task are no longer roots and go");
   assert.ok(report.removed >= 3 && report.removed === before - f.store.list().length);
   assert.equal((await f.submit("a")).outcome, "cache_hit");
   assert.equal((await f.submit("b")).outcome, "enqueued", "a collected output is a cache miss, so the film renders again");
+});
+
+/** Submits `film` with `frames` frames (a different IR per frame count) and finishes it with an output of `text`. */
+async function renderAndFinish(f: ReturnType<typeof rig>, film: number, frames: number, text: string, format: "long" | "reel" = "long") {
+  const submitted = await submitFilmTask({ queue: f.queue, store: f.store }, { film: stubFilm(film), emitted: stubEmit(film, frames), format, profile: "draft", rendererVersion: "stub-1", owner: "owner", priorityClass: "draft" });
+  const claimed = await f.queue.claim("w", 60_000);
+  assert.equal(claimed?.task.id, submitted.id);
+  const outputDigest = (await f.store.putBytes(text)).digest;
+  await f.queue.complete(claimed.token, { outputDigest, sidecarDigest: null, sizeBytes: text.length, workerId: "w", attempt: 1, stageSeconds: {}, workerSeconds: 1, peakDiskBytes: 0, peakMemoryBytes: 0, costUsd: 0 });
+  return { id: submitted.id, outputDigest };
+}
+
+test("a superseded output is removed by the next sweep and the newest output stays, per format", async () => {
+  const clock = fakeClock(Date.now());
+  const f = rig({ clock });
+  const first = await renderAndFinish(f, 1, 30, "first output of film 1");
+  const reel = await renderAndFinish(f, 1, 30, "reel output of film 1", "reel");
+  clock.advance(1_000);
+  const second = await renderAndFinish(f, 1, 60, "second output of film 1");
+  clock.advance(2 * 60 * 60_000);
+  const report = await collectGarbage({ store: f.store, queue: f.queue, now: clock.now });
+  assert.equal(f.store.has(first.outputDigest), false, "the superseded output is gone");
+  assert.equal(f.store.has(second.outputDigest), true, "the newest output stays");
+  assert.equal(f.store.has(reel.outputDigest), true, "the newest output of the other format stays");
+  assert.ok(report.removed >= 1);
+});
+
+test("the inputs of a dead task are removed after the grace period and those of a queued task stay", async () => {
+  const clock = fakeClock(Date.now());
+  const f = rig({ clock, maxAttempts: 1 });
+  const dead = await f.submit("dead");
+  const queued = await f.submit("queued");
+  const claimed = await f.queue.claim("w", 60_000);
+  assert.equal(claimed?.task.id, dead.id);
+  await f.queue.fail(claimed.token, "bad film");
+  assert.equal((await f.queue.get(dead.id))?.state, "dead");
+  clock.advance(2 * 60 * 60_000);
+  await collectGarbage({ store: f.store, queue: f.queue, now: clock.now });
+  const deadTask = await f.queue.get(dead.id);
+  const queuedTask = await f.queue.get(queued.id);
+  assert.ok(deadTask && queuedTask);
+  assert.equal(f.store.has(deadTask.spec.irHash), false, "the dead task's IR is gone");
+  assert.equal(f.store.has(deadTask.payload.filmDigest), false, "the dead task's film snapshot is gone");
+  assert.equal(f.store.has(queuedTask.spec.irHash), true, "the queued task's IR stays");
+  assert.equal(f.store.has(queuedTask.payload.filmDigest), true, "the queued task's film snapshot stays");
+});
+
+test("an unreferenced object and an unused cache object older than the age limit are removed, younger ones stay", async () => {
+  const clock = fakeClock(Date.now());
+  const DAY = 24 * 60 * 60_000;
+  const f = rig({ clock });
+  const orphan = (await f.store.putBytes("an orphan")).digest;
+  const cached = (await f.cache.ensure(f.store, orphan)).path;
+  assert.ok(fs.existsSync(cached));
+  clock.advance(6 * DAY);
+  const young = (await f.store.putBytes("a young orphan")).digest;
+  f.cache.evict();
+  assert.equal(fs.existsSync(cached), true, "a cache object inside the age limit stays");
+  clock.advance(2 * DAY);
+  f.cache.evict();
+  assert.equal(fs.existsSync(cached), false, "a cache object unused for more than 7 days goes");
+  await collectGarbage({ store: f.store, queue: f.queue, now: clock.now });
+  assert.equal(f.store.has(orphan), false, "the aged orphan goes");
+  assert.equal(f.store.has(young), false, "an orphan past the grace period goes too, whatever its age");
+});
+
+test("the objects of a live film are never removed, however old, and the worker sweeps the store after each task", async () => {
+  const clock = fakeClock(Date.now());
+  const DAY = 24 * 60 * 60_000;
+  const f = rig({ clock });
+  const kept = await renderAndFinish(f, 1, 30, "output of the live film");
+  const other = await renderAndFinish(f, 2, 30, "output of a film that is not live");
+  const pending = await f.submit(3);
+  clock.advance(30 * DAY);
+  const worker = f.worker("w1", { bytes: 1000 }, { now: clock.now, liveFilms: () => new Set(["film-1"]) });
+  await worker.start();
+  assert.equal(f.store.has(kept.outputDigest), true, "the live film's output survives the sweep at start");
+  assert.equal(f.store.has(other.outputDigest), false, "the output of a film that is not live goes after the age limit");
+  const task = await f.queue.get(pending.id);
+  assert.ok(task);
+  assert.equal(f.store.has(task.spec.irHash), true, "a pending task's inputs stay");
+  assert.equal((await worker.runOnce()).kind, "done");
+  assert.equal(f.store.has(kept.outputDigest), true, "the live film's output survives the sweep after a task");
+  assert.equal(f.store.has((await f.queue.get(pending.id))?.result?.outputDigest as string), true, "the fresh output stays");
+  assert.equal(f.tempBytes(), 0);
+  await worker.shutdown();
+});
+
+test("a transient queue error in a pass is reported and the worker keeps running and finishes the task", async () => {
+  const f = rig();
+  const { id } = await f.submit(1);
+  const events: string[] = [];
+  let failures = 1;
+  const flaky: TaskQueue = new Proxy(f.queue, {
+    get(target, prop, receiver) {
+      if (prop === "claim") {
+        return async (...args: Parameters<TaskQueue["claim"]>) => {
+          if (failures-- > 0) throw new Error("SQLITE_BUSY: database is locked");
+          return target.claim(...args);
+        };
+      }
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const worker = createWorker({
+    id: "w1",
+    queue: flaky,
+    store: f.store,
+    cache: f.cache,
+    workRoot: f.workRoot,
+    executor: createRenderJobExecutor({ makeRenderer: createStubRendererFactory({}), services: stubServices }),
+    leaseMs: 5_000,
+    pollMs: 10,
+    diskReserveBytes: 0,
+    budget: { diskBytes: 50 * 1024 ** 2, memoryBytes: 8 * 1024 ** 3 },
+    freeMemory: () => Number.MAX_SAFE_INTEGER,
+    onEvent: (line) => events.push(line),
+  });
+  const running = worker.run();
+  await until(async () => (await f.queue.get(id))?.state === "done", "the task to finish after the transient error");
+  worker.stop();
+  await running;
+  assert.ok(events.some((line) => line.includes("SQLITE_BUSY")), "the failed pass was reported");
+  assert.equal(f.tempBytes(), 0);
+});
+
+test("a sweep does not fail when a worker directory vanishes during it", async () => {
+  const f = rig();
+  await f.queue.registerWorker("w-gone", { pid: 1, host: "h" });
+  const attempt = path.join(f.workRoot, "w-gone", "attempt-0123456789abcdef-a1");
+  fs.mkdirSync(attempt, { recursive: true });
+  const queue: TaskQueue = new Proxy(f.queue, {
+    get(target, prop, receiver) {
+      if (prop === "liveLeases") {
+        return async () => {
+          fs.rmSync(path.join(f.workRoot, "w-gone"), { recursive: true, force: true });
+          return target.liveLeases();
+        };
+      }
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const { createJanitor } = await import("./janitor");
+  const report = await createJanitor({ workRoot: f.workRoot, queue, workerStaleMs: 60_000 }).sweep();
+  assert.equal(f.tempBytes(), 0);
+  assert.ok(report.attemptDirsRemoved <= 1);
 });

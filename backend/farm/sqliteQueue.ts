@@ -500,13 +500,24 @@ export function createSqliteQueue(file: string, options: QueueOptions = {}): Tas
     async liveDigests(policy: ReferencePolicy): Promise<Set<Digest>> {
       const at = now();
       const live = new Set<Digest>();
-      for (const r of db.prepare("SELECT * FROM tasks").all() as Row[]) {
+      const rows = db.prepare("SELECT * FROM tasks").all() as Row[];
+      const latest = new Map<string, Row>();
+      for (const r of rows) {
+        if (String(r.state) !== "done" || r.result_json === null) continue;
+        const spec = parseTaskSpec(JSON.parse(String(r.spec_json)));
+        const key = JSON.stringify([String(r.film_id), spec.format, spec.profile, spec.frameRange ?? null]);
+        const best = latest.get(key);
+        if (!best || num(r.finished_at) >= num(best.finished_at)) latest.set(key, r);
+      }
+      const newest = new Set([...latest.values()].map((r) => String(r.id)));
+      for (const r of rows) {
         const state = String(r.state);
+        if (state === "dead") continue;
         if (state !== "done") {
           for (const d of inputDigests(parseTaskSpec(JSON.parse(String(r.spec_json))), parseTaskPayload(JSON.parse(String(r.payload_json))))) live.add(d);
           continue;
         }
-        const keep = policy.liveFilms?.has(String(r.film_id)) || num(r.finished_at) >= at - policy.resultTtlMs;
+        const keep = newest.has(String(r.id)) && (policy.liveFilms?.has(String(r.film_id)) || num(r.finished_at) >= at - policy.resultTtlMs);
         if (!keep || r.result_json === null) continue;
         const result = JSON.parse(String(r.result_json)) as TaskResult;
         live.add(result.outputDigest);

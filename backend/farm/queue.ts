@@ -173,7 +173,7 @@ export interface LiveLease {
 
 /** Which stored objects the garbage collector must keep. */
 export interface ReferencePolicy {
-  /** Films whose finished outputs stay; when absent every finished output within `resultTtlMs` stays. */
+  /** Films whose newest finished output stays; when absent every newest output within `resultTtlMs` stays. A superseded output (a newer finished task of the same film, format, profile and frame range) never stays, and neither do the inputs of dead tasks. */
   liveFilms?: ReadonlySet<string>;
   /** How long the output of a finished task of a film that is not live stays in the store. */
   resultTtlMs: number;

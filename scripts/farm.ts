@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createContentStore, createLocalCache } from "../backend/farm/contentStore";
+import { createContentStore, createLocalCache, DEFAULT_OBJECT_MAX_AGE_MS } from "../backend/farm/contentStore";
 import { collectGarbage } from "../backend/farm/gc";
 import { createJanitor } from "../backend/farm/janitor";
 import { runLoadTest, formatLoadReport } from "../backend/farm/loadTest";
@@ -59,12 +59,22 @@ function numberFlag(flags: Map<string, string>, name: string, fallback: number):
   return value;
 }
 
+/** The age limit for stored objects: `--ttl-days`, default 7 days. */
+function objectMaxAgeMs(flags: Map<string, string>): number {
+  return numberFlag(flags, "ttl-days", DEFAULT_OBJECT_MAX_AGE_MS / 86_400_000) * 86_400_000;
+}
+
+/** The films that have a package under the videos directory; their newest output stays in the store. */
+function liveFilms(): Set<string> {
+  return new Set(fs.existsSync(getVideosDir()) ? fs.readdirSync(getVideosDir()) : []);
+}
+
 /** Runs one worker until it is told to stop. */
 async function workerCommand(flags: Map<string, string>): Promise<void> {
   const paths = farmPaths(farmRoot(flags.get("root")));
   const queue = createSqliteQueue(paths.queueFile);
   const store = createContentStore(paths.storeDir);
-  const cache = createLocalCache(paths.cacheDir, { maxBytes: numberFlag(flags, "cache-gb", 5) * GIB });
+  const cache = createLocalCache(paths.cacheDir, { maxBytes: numberFlag(flags, "cache-gb", 5) * GIB, maxAgeMs: objectMaxAgeMs(flags) });
   const kind = flags.get("executor") ?? "native";
   let executor;
   if (kind === "stub") {
@@ -88,6 +98,8 @@ async function workerCommand(flags: Map<string, string>): Promise<void> {
     leaseMs: numberFlag(flags, "lease-ms", 60_000),
     pollMs: numberFlag(flags, "poll-ms", 500),
     sweepMs: numberFlag(flags, "sweep-ms", 30_000),
+    liveFilms,
+    objectMaxAgeMs: objectMaxAgeMs(flags),
     monitorMs: numberFlag(flags, "monitor-ms", 500),
     pricePerHourUsd: numberFlag(flags, "price-per-hour", 0.714),
     onEvent: (line) => console.log(line),
@@ -160,8 +172,7 @@ async function gcCommand(flags: Map<string, string>): Promise<void> {
   const paths = farmPaths(farmRoot(flags.get("root")));
   const queue = createSqliteQueue(paths.queueFile);
   const store = createContentStore(paths.storeDir);
-  const liveFilms = new Set(fs.existsSync(getVideosDir()) ? fs.readdirSync(getVideosDir()) : []);
-  const report = await collectGarbage({ store, queue, liveFilms, resultTtlMs: numberFlag(flags, "ttl-days", 7) * 86_400_000, graceMs: numberFlag(flags, "grace-minutes", 60) * 60_000 });
+  const report = await collectGarbage({ store, queue, liveFilms: liveFilms(), resultTtlMs: objectMaxAgeMs(flags), graceMs: numberFlag(flags, "grace-minutes", 60) * 60_000 });
   console.log(JSON.stringify(report, null, 2));
   queue.close();
 }

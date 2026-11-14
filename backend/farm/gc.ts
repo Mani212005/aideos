@@ -1,19 +1,19 @@
 /**
- * File Description: Mark-and-sweep garbage collection of the content store. Mark: every object an unfinished or dead task reads and every output of a finished task of a live film (other films keep theirs for a time limit). Sweep: remove every unmarked object not touched within a grace period, re-checking the object's time right before the removal so an object a submitter just reused is never lost. A live object is never removed.
+ * File Description: Mark-and-sweep garbage collection of the content store. Mark: every object an unfinished task reads and the newest output of each film, format and profile (live films keep it, other films for a time limit); superseded outputs and the inputs of dead tasks are not marked. Sweep: remove every unmarked object not touched within a grace period, re-checking the object's time right before the removal so an object a submitter just reused is never lost. A live object is never removed.
  * Inputs and outputs: the store, the queue, the live films and the limits -> the removed objects and a report.
  * Used by: scripts/farm.ts, backend/farm/loadTest.ts and the farm tests.
  */
 
 import fs from "node:fs";
-import type { ContentStore } from "./contentStore";
+import { DEFAULT_OBJECT_MAX_AGE_MS, type ContentStore } from "./contentStore";
 import type { TaskQueue } from "./queue";
 
 export interface GcOptions {
   store: ContentStore;
   queue: TaskQueue;
-  /** Films whose outputs must stay; omit to keep every output younger than `resultTtlMs`. */
+  /** Films whose newest outputs must stay; omit to keep every newest output younger than `resultTtlMs`. */
   liveFilms?: ReadonlySet<string>;
-  /** How long outputs of films that are not live stay (default 7 days). */
+  /** How long the newest output of a film that is not live stays (default `DEFAULT_OBJECT_MAX_AGE_MS`, 7 days). */
   resultTtlMs?: number;
   /** Objects younger than this are never removed: a submitter may be about to reference them (default 1 hour). */
   graceMs?: number;
@@ -32,7 +32,7 @@ export interface GcReport {
 export async function collectGarbage(options: GcOptions): Promise<GcReport> {
   const now = options.now ?? Date.now;
   const graceMs = options.graceMs ?? 60 * 60_000;
-  const live = await options.queue.liveDigests({ liveFilms: options.liveFilms, resultTtlMs: options.resultTtlMs ?? 7 * 24 * 60 * 60_000 });
+  const live = await options.queue.liveDigests({ liveFilms: options.liveFilms, resultTtlMs: options.resultTtlMs ?? DEFAULT_OBJECT_MAX_AGE_MS });
   const objects = options.store.list();
   const report: GcReport = { scanned: objects.length, marked: 0, removed: 0, bytesFreed: 0, keptByGrace: 0 };
   for (const object of objects) {

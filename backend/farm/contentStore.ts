@@ -298,9 +298,14 @@ export interface EvictReport {
   remainingBytes: number;
 }
 
+/** How long an object may go unused before the sweeps remove it: 7 days. Overridable per cache (`maxAgeMs`), per collection (`resultTtlMs`) and on the farm command line (`--ttl-days`). */
+export const DEFAULT_OBJECT_MAX_AGE_MS = 7 * 24 * 60 * 60_000;
+
 export interface LocalCacheOptions {
   /** Bytes the cache may hold after an eviction pass; the plan's value is 5 GiB. */
   maxBytes: number;
+  /** Objects unused for longer than this are evicted whatever the byte bound says (default `DEFAULT_OBJECT_MAX_AGE_MS`). */
+  maxAgeMs?: number;
   now?: () => number;
 }
 
@@ -328,14 +333,15 @@ export function createLocalCache(root: string, options: LocalCacheOptions) {
       return { path: store.pathOf(digest), hit: false };
     },
 
-    /** Removes least recently used objects until the cache is within its bound; `protect` objects stay. */
+    /** Removes objects unused for longer than the age limit, then least recently used ones until the cache is within its bound; `protect` objects stay. */
     evict(protect: ReadonlySet<Digest> = new Set()): EvictReport {
       const objects = store.list().sort((a, b) => a.mtimeMs - b.mtimeMs);
       let total = objects.reduce((sum, object) => sum + object.size, 0);
       let removed = 0;
       let bytes = 0;
+      const cutoff = (options.now ?? Date.now)() - (options.maxAgeMs ?? DEFAULT_OBJECT_MAX_AGE_MS);
       for (const object of objects) {
-        if (total <= options.maxBytes) break;
+        if (total <= options.maxBytes && object.mtimeMs >= cutoff) break;
         if (protect.has(object.digest)) continue;
         const freed = store.remove(object.digest);
         total -= freed;

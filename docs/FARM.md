@@ -68,15 +68,18 @@ and renamed into place (atomic, repeat is a no-op, a mismatching digest is refus
 `BlobSource` (the seam for an object store), verifies the digest, and evicts the least recently used objects above its
 bound (5 GiB by default); a task works on hard links in its attempt directory, so an eviction never breaks a render.
 
-`gc.ts` is mark and sweep: it keeps every input of an unfinished or dead task and every output of a finished task of a
-live film (other films keep theirs for `resultTtlMs`, 7 days), and removes unmarked objects older than a grace period
-(1 hour). It re-checks the object's time right before removing, and `submitFilmTask` re-stages once if an input vanished
-after staging, so a submitter and a collection can overlap. `farm gc` treats every package under the videos directory as a live film.
+`gc.ts` is mark and sweep: it keeps every input of an unfinished task and the newest output of each film, format, profile
+and frame range (live films keep it; other films keep it for `resultTtlMs`). A superseded output (a newer finished task
+of the same film and format) and the inputs of dead tasks are not kept. Unmarked objects older than a grace period
+(1 hour) are removed. The default age limit is `DEFAULT_OBJECT_MAX_AGE_MS` (7 days); `--ttl-days` overrides it for the store
+and for the worker cache, which evicts objects unused for longer. It re-checks the object's time right before removing, and
+`submitFilmTask` re-stages once if an input vanished after staging, so a submitter and a collection can overlap. `farm gc`
+and the worker treat every package under the videos directory as a live film.
 
 ## The janitor
 
 `janitor.ts`. After every task, success or failure, the worker removes its attempt directory. A killed worker cannot, so
-the janitor sweeps at every worker start and on a timer (`--sweep-ms`): an attempt directory stays only while the queue shows a
+the janitor and the store sweep run at every worker start, after every task and on an idle timer (`--sweep-ms`); a failed pass or sweep is reported and the worker carries on: an attempt directory stays only while the queue shows a
 live lease for that worker, task and attempt; the directory of a worker that stopped answering goes entirely; stray
 entries and unfinished store or cache puts older than 10 minutes go. The pass bar is zero bytes left under the work root.
 `farm sweep` runs one sweep by hand.
