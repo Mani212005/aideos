@@ -24,6 +24,7 @@ import { receiveSchema } from "../../src/dl/scene/stageContract";
 import { captionWordsToVtt } from "../../src/dl/captionsParser";
 import { resolveSoundtrack } from "./soundtrack";
 import { planSpliceWindow, spacePosesAtCuts, SPLICE_EASING, type SpliceOptions } from "../reelCut/splice";
+import { planStretchedGlides, type GlideShot } from "../reelCut/glide";
 
 /** One narrated word with its offsets in seconds, as voiceover_words.json stores it. */
 export interface TimedWord {
@@ -61,12 +62,23 @@ export function narrationTimingForFilm(film: Film, words: TimedWord[]): Narratio
 export type DesignSource = "agent" | "server-model" | "hand-built";
 
 // Compiles camera poses into a keyframe track: each pose becomes a Timeline.camera() move from the previous one.
-function compileCamera(inputPoses: SpecCamera[], cues: Cues, errors: string[], splice?: SpliceOptions): CameraTrack | undefined {
+function compileCamera(inputPoses: SpecCamera[], cues: Cues, errors: string[], splice?: SpliceOptions, glide?: { keptShots: readonly GlideShot[]; fps: number; holdPush?: number }): CameraTrack | undefined {
   // A spliced reel drops the poses of dropped shots: the camera eases between the kept poses instead of collapsing them onto one frame.
-  const poses = splice && cues.collapsed?.size ? inputPoses.filter((pose) => !collapsedCueShot(pose.at, cues)) : inputPoses;
-  const spaced = splice && cues.collapsed?.size ? spacePosesAtCuts(poses.map((pose) => {
+  const spliced = splice && cues.collapsed?.size;
+  const poses = spliced ? inputPoses.filter((pose) => !collapsedCueShot(pose.at, cues)) : inputPoses;
+  const resolved = spliced ? poses.map((pose) => {
     try { return Math.min(resolveCue(pose.at, cues), cues.durationFrames - 1); } catch { return undefined; }
-  }), [...cues.collapsed.values()], splice.frames) : new Map<number, number>();
+  }) : [];
+  // A glide the splice window cannot hold under the camera rule is stretched into the next kept shot, or reported when that shot has no room.
+  const planned = spliced && splice.limits && glide ? planStretchedGlides({
+    poses: poses.map((pose, i) => ({ id: pose.id ?? `camera-${i}`, center: pose.center, zoom: pose.zoom, ...(pose.easing ? { easing: pose.easing } : {}) })),
+    frames: resolved, cuts: [...cues.collapsed!.values()], keptShots: glide.keptShots, totalFrames: cues.durationFrames, fps: glide.fps, sceneSize: SCENE_SIZE,
+    limits: splice.limits, gap: splice.frames, ...(glide.holdPush !== undefined ? { holdPush: glide.holdPush } : {}),
+  }) : undefined;
+  // A failed plan reports its error and leaves the frames as authored; the compile then fails on that error alone.
+  errors.push(...planned?.errors ?? []);
+  const stretched = planned && !planned.errors.length ? planned.frames : undefined;
+  const spaced = spliced ? spacePosesAtCuts(stretched ?? resolved, [...cues.collapsed!.values()], splice.frames) : new Map<number, number>();
   const timeline = new Timeline("camera", cues.durationFrames);
   const lastFrame = cues.durationFrames - 1;
   const seen = new Set<string>();
@@ -78,7 +90,7 @@ function compileCamera(inputPoses: SpecCamera[], cues: Cues, errors: string[], s
     let frame: number;
     try {
       // A cue on the film's end resolves one past the last frame; the camera must arrive on a real one.
-      frame = spaced.get(i) ?? Math.min(resolveCue(pose.at, cues), lastFrame);
+      frame = spaced.get(i) ?? stretched?.[i] ?? Math.min(resolveCue(pose.at, cues), lastFrame);
     } catch (err) {
       errors.push(`camera "${id}": ${err instanceof Error ? err.message : String(err)}`);
       return;
@@ -245,7 +257,8 @@ export function compileDesign(
     };
   });
 
-  const keyframes = spec.camera ? compileCamera(spec.camera, cues, errors, options.splice) : undefined;
+  const keptShots = film.shots.filter((shot) => !cues.collapsed?.has(shot.id)).map((shot) => ({ id: shot.id, from: cues.from(shot.id), to: cues.to(shot.id) }));
+  const keyframes = spec.camera ? compileCamera(spec.camera, cues, errors, options.splice, { keptShots, fps, holdPush: spec.holdPush }) : undefined;
   if (spec.holdPush !== undefined && !keyframes) errors.push("holdPush needs `camera` poses: a film with a fixed camera has no hold to push in on");
   const camera = keyframes && spec.holdPush !== undefined ? { ...keyframes, holdPush: spec.holdPush } : keyframes;
 
