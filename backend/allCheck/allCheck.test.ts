@@ -120,7 +120,8 @@ const POLICY: AideosConfig = {
 
 test("config: the committed aideos.config.json holds the video model policy", () => {
   const cfg = loadAideosConfig();
-  assert.deepEqual(cfg.videoModels.generation, { agent: "claude", model: "claude-sonnet-5-5" });
+  // Captain's rule: no fix or generation model is hard-coded; the committed config carries none (the generation override is optional).
+  assert.equal(cfg.videoModels.generation, undefined);
   assert.deepEqual(cfg.videoModels.reviewer, { agent: "agy", model: "gemini-3.8-flash-low" });
   assert.ok(forbiddenGenerationMatch("gemini-3.1-pro-high", cfg.videoModels));
   assert.ok(forbiddenGenerationMatch("Gemini-3-1-Pro", cfg.videoModels));
@@ -399,7 +400,7 @@ test("start: writes config, brief and launch script, opens one window, refuses a
     const started = startAllCheck(options, deps);
 
     assert.equal(started.agent.agent, "claude");
-    assert.equal(started.workspace.paneId, "w7:p1");
+    assert.equal(started.workspace?.paneId, "w7:p1");
     const dir = allCheckDir(slug);
     const config = JSON.parse(fs.readFileSync(path.join(dir, "config.json"), "utf8")) as AllCheckConfig;
     assert.deepEqual({ rounds: config.rounds, target: config.target, agent: config.agent, studioWasRunning: config.studioWasRunning }, { rounds: 4, target: 9.2, agent: "claude", studioWasRunning: false });
@@ -443,7 +444,8 @@ test("start: shell startup keeps the launcher lock live before agent detection",
   const slug = "ac-starting-shell";
   makePackage(slug);
   try {
-    const options = parseAllCheckOptions(slug);
+    // A replacement agent is now named explicitly (or inherited from a recorded session): none is configured by default.
+    const options = parseAllCheckOptions(slug, { agent: "claude" });
     const deps = fakeStart({
       now: () => new Date(),
       lock: fakeLock({ windows: new Set(), pids: new Set([process.pid]) }),
