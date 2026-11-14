@@ -1,4 +1,4 @@
-//! File Description: The cross-reference and range rules a JSON Schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film). Implements the same rules, issue codes and JSON Pointers as backend/renderIr/validate.ts; both are tested against the same fixtures.
+//! File Description: The cross-reference and range rules a JSON Schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, and the Three stage's graph, channels, parts, textures and face programs). Implements the same rules, issue codes and JSON Pointers as backend/renderIr/validate.ts; both are tested against the same fixtures.
 //! Inputs and outputs: a structurally valid `RenderIr` -> every `Issue` found, in document order.
 //! Used by: crate::load.
 
@@ -71,6 +71,7 @@ struct Checker<'a> {
     declared_reel: bool,
     assets: HashMap<&'a str, &'a Asset>,
     ids: HashSet<&'a str>,
+    stage3d_count: usize,
 }
 
 impl<'a> Checker<'a> {
@@ -157,19 +158,25 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// Walks a node tree in one space, checking each node.
-    fn walk(&mut self, nodes: &'a [Node], path: &str, space: Space) {
+    /// Walks a node tree in one space, checking each node; `top` is true for the space's own list.
+    fn walk(&mut self, nodes: &'a [Node], path: &str, space: Space, top: bool) {
         for (i, node) in nodes.iter().enumerate() {
             let p = at(path, &[&i]);
             if !self.ids.insert(node.id()) {
                 self.add("duplicate_node_id", at(&p, &[&"id"]), format!("node id {} is already used", node.id()));
             }
-            let allowed = match space {
-                Space::Stage => matches!(node, Node::Svg(_) | Node::Group(_)),
-                Space::Overlay => !matches!(node, Node::Svg(_)),
+            let allowed = match (node, space) {
+                (Node::Stage3d(_), _) => space == Space::Stage && top,
+                (_, Space::Stage) => matches!(node, Node::Svg(_) | Node::Group(_)),
+                (_, Space::Overlay) => !matches!(node, Node::Svg(_)),
             };
             if !allowed {
-                self.add("node_not_allowed", at(&p, &[&"kind"]), format!("a {} node cannot be drawn in the {}", node.kind_name(), space.name()));
+                let message = if matches!(node, Node::Stage3d(_)) {
+                    "a stage3d node is drawn only at the top of the stage".to_string()
+                } else {
+                    format!("a {} node cannot be drawn in the {}", node.kind_name(), space.name())
+                };
+                self.add("node_not_allowed", at(&p, &[&"kind"]), message);
             }
             if let Some(v) = node.visible() {
                 self.check_span(at(&p, &[&"visible"]), v.from_frame.0, v.to_frame.0);
@@ -177,7 +184,21 @@ impl<'a> Checker<'a> {
             match node {
                 Node::Group(n) => {
                     self.check_node_tracks(&p, &n.tracks);
-                    self.walk(&n.children, &at(&p, &[&"children"]), space);
+                    self.walk(&n.children, &at(&p, &[&"children"]), space, false);
+                }
+                Node::Stage3d(n) => {
+                    // Only a stage3d node in its place counts toward the one a document may draw.
+                    if allowed {
+                        self.stage3d_count += 1;
+                    }
+                    if allowed && self.stage3d_count > 1 {
+                        self.add("node_not_allowed", at(&p, &[&"kind"]), "a document draws at most one stage3d node".into());
+                    }
+                    let mesh = match self.need_asset(at(&p, &[&"mesh"]), &n.mesh, "mesh") {
+                        Some(Asset::Mesh(m)) => Some(m),
+                        _ => None,
+                    };
+                    self.check_stage3d(&p, n, mesh);
                 }
                 Node::Svg(n) => self.check_svg(&p, n),
                 Node::Rect(n) => {
@@ -272,6 +293,88 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Checks one stage3d node: its graph (unique ids, parents listed first), channels (one per node, every channel `sampleFrames` samples long, scale above zero), drawables (known node, part and texture) and face textures (programs that exist, one per sample frame).
+    fn check_stage3d(&mut self, p: &str, n: &Stage3dNode, mesh: Option<&MeshAsset>) {
+        let samples = n.sample_frames.0 as usize;
+        if n.sample_frames.0 > self.duration {
+            let d = self.duration;
+            self.add("frame_out_of_range", at(p, &[&"sampleFrames"]), format!("sampleFrames {} is past the film's {d} frames", n.sample_frames.0));
+        }
+        let mut node_ids: HashSet<&str> = HashSet::new();
+        for (i, g) in n.nodes.iter().enumerate() {
+            let gp = at(p, &[&"nodes", &i]);
+            if node_ids.contains(g.id.as_str()) {
+                self.add("duplicate_stage3d_id", at(&gp, &[&"id"]), format!("stage3d nodes id {} is already used", g.id));
+            }
+            if let Some(parent) = &g.parent {
+                if !node_ids.contains(parent.as_str()) {
+                    self.add("unknown_node", at(&gp, &[&"parent"]), format!("parent {parent} is not a node listed before {}", g.id));
+                }
+            }
+            node_ids.insert(g.id.as_str());
+        }
+        let mut tracked: HashSet<&str> = HashSet::new();
+        for (i, t) in n.channels.iter().enumerate() {
+            let tp = at(p, &[&"channels", &i]);
+            if !node_ids.contains(t.node.as_str()) {
+                self.add("unknown_node", at(&tp, &[&"node"]), format!("no stage3d node {}", t.node));
+            }
+            if !tracked.insert(t.node.as_str()) {
+                self.add("duplicate_track", tp.clone(), format!("node {} is driven by two tracks", t.node));
+            }
+            for (name, values, width) in [("position", &t.position, 3usize), ("quaternion", &t.quaternion, 4), ("scale", &t.scale, 1)] {
+                let Some(values) = values else { continue };
+                let want = samples * width;
+                if values.len() != want {
+                    self.add("sample_count_mismatch", at(&tp, &[&name]), format!("{name} has {} numbers, {samples} samples need {want}", values.len()));
+                }
+                if name == "scale" {
+                    if let Some(bad) = values.iter().position(|v| !(*v > 0.0)) {
+                        self.add("value_out_of_range", at(&tp, &[&name, &bad]), format!("scale {} is not above 0", values[bad]));
+                    }
+                }
+            }
+        }
+        let textures: HashSet<&str> = n.face_textures.iter().map(|t| t.id.as_str()).collect();
+        let parts: HashSet<&str> = mesh.map(|m| m.parts.iter().map(|part| part.id.as_str()).collect()).unwrap_or_default();
+        let mut drawable_ids: HashSet<&str> = HashSet::new();
+        for (i, d) in n.drawables.iter().enumerate() {
+            let dp = at(p, &[&"drawables", &i]);
+            if !drawable_ids.insert(d.id.as_str()) {
+                self.add("duplicate_stage3d_id", at(&dp, &[&"id"]), format!("stage3d drawables id {} is already used", d.id));
+            }
+            if !node_ids.contains(d.node.as_str()) {
+                self.add("unknown_node", at(&dp, &[&"node"]), format!("no stage3d node {}", d.node));
+            }
+            if let Some(m) = mesh {
+                if !parts.contains(d.part.as_str()) {
+                    self.add("unknown_part", at(&dp, &[&"part"]), format!("mesh {} has no part {}", m.id, d.part));
+                }
+            }
+            if let StageMaterial::Face(f) = &d.material {
+                if !textures.contains(f.texture.as_str()) {
+                    self.add("unknown_texture", at(&dp, &[&"material", &"texture"]), format!("no face texture {}", f.texture));
+                }
+            }
+        }
+        let mut texture_ids: HashSet<&str> = HashSet::new();
+        for (i, t) in n.face_textures.iter().enumerate() {
+            let fp = at(p, &[&"faceTextures", &i]);
+            if !texture_ids.insert(t.id.as_str()) {
+                self.add("duplicate_stage3d_id", at(&fp, &[&"id"]), format!("stage3d faceTextures id {} is already used", t.id));
+            }
+            if t.programs.len() != samples {
+                self.add("sample_count_mismatch", at(&fp, &[&"programs"]), format!("{} program indices, {samples} samples need {samples}", t.programs.len()));
+            }
+            if let Some(bad) = t.programs.iter().position(|index| index.0 as usize >= n.face_programs.len()) {
+                self.add("unknown_program", at(&fp, &[&"programs", &bad]), format!("program {} is not one of the {} face programs", t.programs[bad].0, n.face_programs.len()));
+            }
+        }
+        if n.projection.far <= n.projection.near {
+            self.add("value_out_of_range", at(p, &[&"projection", &"far"]), "the far plane must be beyond the near plane".into());
+        }
+    }
+
     /// Checks a captions node: font, per-format placement, word order and span order.
     fn check_captions(&mut self, p: &str, n: &CaptionsNode) {
         self.need_asset(at(p, &[&"font"]), &n.font, "font");
@@ -308,6 +411,7 @@ pub fn check(ir: &RenderIr) -> Vec<Issue> {
         declared_reel: ir.formats.reel.is_some(),
         assets: HashMap::new(),
         ids: HashSet::new(),
+        stage3d_count: 0,
     };
     if !c.declared_long && !c.declared_reel {
         c.add("no_formats", "/formats".into(), "declare at least one of long or reel".into());
@@ -331,10 +435,21 @@ pub fn check(ir: &RenderIr) -> Vec<Issue> {
                 }
             }
         }
+        if let Asset::Mesh(mesh) = asset {
+            let mut seen = HashSet::new();
+            for (j, part) in mesh.parts.iter().enumerate() {
+                if !seen.insert(part.id.as_str()) {
+                    c.add("duplicate_part_id", at(&p, &[&"parts", &j, &"id"]), format!("mesh part id {} is listed twice", part.id));
+                }
+                if part.indices.0 % 3 != 0 {
+                    c.add("indices_not_triangles", at(&p, &[&"parts", &j, &"indices"]), format!("{} indices are not a whole number of triangles", part.indices.0));
+                }
+            }
+        }
     }
 
-    c.walk(&ir.stage, "/stage", Space::Stage);
-    c.walk(&ir.overlay, "/overlay", Space::Overlay);
+    c.walk(&ir.stage, "/stage", Space::Stage, true);
+    c.walk(&ir.overlay, "/overlay", Space::Overlay, true);
 
     if let Some(cam) = &ir.camera {
         c.check_keyframes("/camera/centerX", &cam.center_x, None);

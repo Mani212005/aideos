@@ -1,27 +1,29 @@
 /**
- * File Description: Writes (or with --check verifies) the committed JSON Schema of the Render IR, so the Rust loader's embedded schema is always the one the zod source describes.
- * Inputs and outputs: optional --check flag -> rewrites native/aideos-render-ir/schema/aideos.render.1.schema.json, or exits 1 when it is out of date.
+ * File Description: Writes (or with --check verifies) the committed JSON Schemas of both Render IR versions, so the Rust loader's embedded schemas are always the ones the zod source describes.
+ * Inputs and outputs: optional --check flag -> rewrites native/aideos-render-ir/schema/aideos.render.{1,2}.schema.json, or exits 1 when either is out of date.
  * Used by: npm run render-ir:schema, backend/renderIr/renderIr.test.ts.
  */
 
 import fs from "node:fs";
 import path from "node:path";
-import { RENDER_IR_SCHEMA_PATH, renderIrJsonSchemaText } from "../backend/renderIr/jsonSchema";
+import { RENDER_IR_SCHEMA_PATH, RENDER_IR_SCHEMA_V2_PATH, renderIrJsonSchemaText, renderIrJsonSchemaV2Text } from "../backend/renderIr/jsonSchema";
 
-// Writes the schema file, or compares it when asked to check.
+// Writes each schema file, or compares them when asked to check.
 function main(): void {
-  const wanted = renderIrJsonSchemaText();
+  const files: Array<[string, string]> = [[RENDER_IR_SCHEMA_PATH, renderIrJsonSchemaText()], [RENDER_IR_SCHEMA_V2_PATH, renderIrJsonSchemaV2Text()]];
   if (process.argv.includes("--check")) {
-    const have = fs.existsSync(RENDER_IR_SCHEMA_PATH) ? fs.readFileSync(RENDER_IR_SCHEMA_PATH, "utf8") : "";
-    if (have !== wanted) {
-      console.error("Render IR JSON Schema is out of date: run `npm run render-ir:schema`.");
+    const stale = files.filter(([file, wanted]) => (fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "") !== wanted);
+    if (stale.length) {
+      console.error(`Render IR JSON Schema is out of date (${stale.map(([f]) => path.basename(f)).join(", ")}): run \`npm run render-ir:schema\`.`);
       process.exit(1);
     }
     return;
   }
-  fs.mkdirSync(path.dirname(RENDER_IR_SCHEMA_PATH), { recursive: true });
-  fs.writeFileSync(RENDER_IR_SCHEMA_PATH, wanted);
-  console.log(`wrote ${path.relative(process.cwd(), RENDER_IR_SCHEMA_PATH)}`);
+  for (const [file, wanted] of files) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, wanted);
+    console.log(`wrote ${path.relative(process.cwd(), file)}`);
+  }
 }
 
 main();

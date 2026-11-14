@@ -5,6 +5,7 @@
     "valid/integral-floats.json",
     "valid/minimal-reel.json",
     "valid/mirrored-element.json",
+    "valid/stage3d-minimal.json",
     "valid/tiny-scene.json"
   ],
   "invalid": {
@@ -226,6 +227,113 @@
         }
       ]
     },
+    "invalid/stage3d-in-version-1.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/stage3d-placement.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "duplicate_part_id",
+          "path": "/assets/0/parts/2/id"
+        },
+        {
+          "code": "indices_not_triangles",
+          "path": "/assets/0/parts/2/indices"
+        },
+        {
+          "code": "node_not_allowed",
+          "path": "/stage/0/children/0/kind"
+        },
+        {
+          "code": "asset_kind_mismatch",
+          "path": "/stage/1/mesh"
+        },
+        {
+          "code": "node_not_allowed",
+          "path": "/stage/2/kind"
+        },
+        {
+          "code": "node_not_allowed",
+          "path": "/overlay/0/kind"
+        }
+      ]
+    },
+    "invalid/stage3d-references.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "unknown_node",
+          "path": "/stage/1/nodes/2/parent"
+        },
+        {
+          "code": "duplicate_stage3d_id",
+          "path": "/stage/1/nodes/4/id"
+        },
+        {
+          "code": "unknown_node",
+          "path": "/stage/1/channels/1/node"
+        },
+        {
+          "code": "duplicate_track",
+          "path": "/stage/1/channels/2"
+        },
+        {
+          "code": "unknown_texture",
+          "path": "/stage/1/drawables/0/material/texture"
+        },
+        {
+          "code": "unknown_part",
+          "path": "/stage/1/drawables/1/part"
+        },
+        {
+          "code": "duplicate_stage3d_id",
+          "path": "/stage/1/drawables/2/id"
+        },
+        {
+          "code": "unknown_program",
+          "path": "/stage/1/faceTextures/0/programs/2"
+        }
+      ]
+    },
+    "invalid/stage3d-samples.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "frame_out_of_range",
+          "path": "/stage/1/sampleFrames"
+        },
+        {
+          "code": "sample_count_mismatch",
+          "path": "/stage/1/channels/0/position"
+        },
+        {
+          "code": "value_out_of_range",
+          "path": "/stage/1/channels/0/scale/2"
+        },
+        {
+          "code": "sample_count_mismatch",
+          "path": "/stage/1/faceTextures/0/programs"
+        },
+        {
+          "code": "value_out_of_range",
+          "path": "/stage/1/projection/far"
+        }
+      ]
+    },
+    "invalid/stage3d-shape.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
     "invalid/unknown-field.json": {
       "kind": "invalid_document",
       "issues": [
@@ -274,7 +382,7 @@
     },
     "invalid/unsupported-version.json": {
       "kind": "unsupported_version",
-      "found": "aideos.render/2"
+      "found": "aideos.render/3"
     },
     "invalid/wrong-type.json": {
       "kind": "invalid_document",
