@@ -1,5 +1,5 @@
 /**
- * File Description: The janitor of the farm. A worker removes its attempt directory after every task, but a killed worker cannot, so the janitor sweeps at worker start and on a timer: an attempt directory stays only while the queue shows a live lease for that worker, task and attempt; the directory tree of a worker that stopped answering goes entirely; unfinished store and cache puts older than a limit go too. The bar is zero bytes left.
+ * File Description: The janitor of the farm. A worker removes its attempt directory after every task, but a killed worker cannot, so the janitor sweeps at worker start, after every task and on a timer: an attempt directory stays only while the queue shows a live lease for that worker, task and attempt; the directory tree of a worker that stopped answering goes entirely; unfinished store and cache puts older than a limit go too. The bar is zero bytes left.
  * Inputs and outputs: the work root, the queue and the stores -> removed directories and a report of the bytes freed.
  * Used by: backend/farm/worker.ts, backend/farm/loadTest.ts, scripts/farm.ts.
  */

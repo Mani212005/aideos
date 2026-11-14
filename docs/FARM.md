@@ -36,7 +36,7 @@ retiming once, at submission, because workers render stored packages.
 | Priority | `studio_export`, then `draft`, then `review`, then `batch_final`. |
 | Fair share | Within a class the owner with the fewest running tasks goes first, then the oldest task. `setOwnerCap` limits one owner's concurrent tasks. |
 | Delivery | At least once. Output is idempotent, so a stale worker that finishes late is accepted once; the second finisher is told `already_done`. |
-| Attempts | Counted when leased, so a crash costs one. Three attempts, a retry waits 1 s, 4 s, ... (`backoffBaseMs`, times four each time), then the task is `dead` and a dead-letter row keeps the reason and the whole log. A dead task is not retried by a repeat submission; `requeueDead` is an explicit action. |
+| Attempts | Counted when leased, so a crash costs one. Three attempts, a retry waits 2 s, 8 s, ... (`backoffBaseMs`, times four each time, capped at 5 minutes), then the task is `dead` and a dead-letter row keeps the reason and the whole log. A dead task is not retried by a repeat submission; `requeueDead` is an explicit action. |
 | Back-pressure | `batch_final` work submitted while the oldest ready task is older than `maxBacklogAgeMs` is `parked`, not accepted and starved. Parked work is released oldest first when fewer than `resumeBelowDepth` tasks are ready. Urgent classes are never parked. |
 | Disk is a signal | `release` returns a task without spending an attempt, so a full disk pauses leasing instead of failing films. |
 | Cache | A finished task answers a repeat with `cache_hit` only while its output is still in the store (`isResultValid`); otherwise the task runs again. A repeat while in flight is `coalesced`, and a better priority class raises the class of the task in flight. |
@@ -79,7 +79,7 @@ and the worker treat every package under the videos directory as a live film.
 ## The janitor
 
 `janitor.ts`. After every task, success or failure, the worker removes its attempt directory. A killed worker cannot, so
-the janitor and the store sweep run at every worker start, after every task and on an idle timer (`--sweep-ms`); a failed pass or sweep is reported and the worker carries on: an attempt directory stays only while the queue shows a
+the janitor and the store sweep run at every worker start, after every task and on an idle timer (`--sweep-ms`); a failed pass or sweep is reported and the worker carries on. An attempt directory stays only while the queue shows a
 live lease for that worker, task and attempt; the directory of a worker that stopped answering goes entirely; stray
 entries and unfinished store or cache puts older than 10 minutes go. The pass bar is zero bytes left under the work root.
 `farm sweep` runs one sweep by hand.
@@ -87,11 +87,11 @@ entries and unfinished store or cache puts older than 10 minutes go. The pass ba
 ## Commands
 
 ```bash
-npm run farm -- worker [--root DIR] [--executor native|stub] [--lease-ms N] [--poll-ms N]
+npm run farm -- worker [--root DIR] [--executor native|stub] [--lease-ms N] [--poll-ms N] [--sweep-ms N] [--ttl-days N]
 npm run farm -- submit <slug> [--format long|reel|both] [--profile final] [--class batch_final] [--owner NAME]
 npm run farm -- status [--json]       # queue depth and age, seconds per state, retries, cache hit rate, free disk, dead letters
 npm run farm -- sweep                 # the janitor
-npm run farm -- gc                    # mark and sweep the store
+npm run farm -- gc [--ttl-days N]     # mark and sweep the store
 npm run farm -- load-test --films 100 --workers 4
 ```
 
