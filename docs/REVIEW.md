@@ -131,12 +131,23 @@ the review rubric keeps its wider -18 to -14 LUFS acceptance window.
 ### Trust a pixel-derived reference metric only after a second method
 
 A metric measured from pixels (camera motion, ink coverage, stillness, contrast, edge density) is a
-hypothesis until a second, different measurement method agrees with it. Do not put it into a style target,
-a look brief or a threshold on one pass. The reference study's first camera tool called a video 80% still;
-a second method on the same frames found 65% of it moving, and a style target built from the first answer
-would have encoded a wrong rule. This is the same lesson as the two design constraints above (global phase
-correlation hid every real camera move). Confirm with a method that fails differently (film data against
-pixels, a multi-tile sub-pixel correlation with captions masked against a global one) and record both numbers.
+hypothesis until a second, different measurement method agrees with it. The reference study's first camera
+tool called a video 80% still; a second method on the same frames found 65% of it moving, and a style target
+built from the first answer would have encoded a wrong rule. This is the same lesson as the two design
+constraints above (global phase correlation hid every real camera move).
+
+- **Gate.** The metric may enter a look target (`design/look.json`, the look brief), a style bible or a
+  threshold in `backend/review/thresholds.ts` only after a second method agrees with the first within a
+  tolerance stated before the comparison (for ratios, 10 percentage points unless the note names another).
+- **Independent.** The second method must fail differently from the first: a multi-tile sub-pixel
+  correlation with captions masked against a global one, or film data against pixels. A re-run of the same
+  tool, or the same method with other settings, does not count.
+- **Record.** Write both numbers, both method names and the tolerance together, next to the use of the
+  metric (the look brief, the style note or the threshold comment).
+- **Disagreement blocks.** If the two numbers differ by more than the tolerance, the metric stays out until
+  someone explains why. Do not average the two or pick the one that suits the target.
+
+References give measurable craft only (cadence, contrast, camera), never a creator's identity or likeness.
 
 ### Calibration
 
