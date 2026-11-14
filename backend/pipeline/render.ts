@@ -24,8 +24,11 @@ export const FORMAT_SPECS: Record<ProductionFormat, { composition: string; width
   reel: { composition: "Reel", width: 1080, height: 1920 },
 };
 
-/** Encoder settings shared by both formats. Tuned for text legibility, not for file size. */
-export const ENCODE_FLAGS = [
+/**
+ * Encoder settings for every Remotion mp4 (pipeline, studio export, review render, manual render),
+ * shared by both formats. Tuned for text legibility, not for file size.
+ */
+export const FINAL_ENCODE_FLAGS: readonly string[] = Object.freeze([
   "--codec=h264",
   // PNG frames rather than the default JPEG. The design language is fine hairlines and small
   // mono type, and JPEG chroma subsampling smears both before the encoder ever sees them. It
@@ -38,8 +41,10 @@ export const ENCODE_FLAGS = [
   "--pixel-format=yuv420p",
   "--audio-codec=aac",
   "--audio-bitrate=320k",
-  "--log=error",
-];
+]);
+
+/** The final encode flags plus quiet logging, as the pipeline passes them. */
+export const ENCODE_FLAGS: readonly string[] = Object.freeze([...FINAL_ENCODE_FLAGS, "--log=error"]);
 
 /**
  * The GL backend Remotion's headless Chrome uses. ANGLE is right on a Mac with a GPU. A CI runner

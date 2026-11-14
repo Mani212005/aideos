@@ -16,6 +16,7 @@ import {
 } from "./pipeline/filmStore";
 import {
   ENCODE_FLAGS,
+  FINAL_ENCODE_FLAGS,
   FORMAT_SPECS,
   glFlag,
   stagePublicDir,
@@ -90,11 +91,8 @@ export function createRemotionRenderer(
         ...(pipeline ? [] : ["src/index.ts"]),
         FORMAT_SPECS[request.format].composition,
         request.outPath,
-        ...(pipeline
-          ? [...ENCODE_FLAGS, glFlag()]
-          : options.caller === "studio"
-            ? []
-            : ["--gl=angle"]),
+        ...(pipeline ? [...ENCODE_FLAGS, glFlag()] : FINAL_ENCODE_FLAGS),
+        ...(pipeline || options.caller === "studio" ? [] : ["--gl=angle"]),
         ...(publicDir ? [`--public-dir=${publicDir.dir}`] : []),
         ...(request.frames
           ? [`--frames=${request.frames[0]}-${request.frames[1]}`]
