@@ -71,7 +71,7 @@ function compileCamera(inputPoses: SpecCamera[], cues: Cues, errors: string[], s
   }) : [];
   // A glide the splice window cannot hold under the camera rule is stretched into the next kept shot, or reported when that shot has no room.
   const planned = spliced && splice.limits && glide ? planStretchedGlides({
-    poses: poses.map((pose, i) => ({ id: pose.id ?? `camera-${i}`, center: pose.center, zoom: pose.zoom, ...(pose.easing ? { easing: pose.easing } : {}) })),
+    poses: poses.map((pose, i) => ({ id: pose.id ?? `camera-${i}`, center: [pose.center[0], pose.center[1]] as const, zoom: pose.zoom, ...(pose.easing ? { easing: pose.easing } : {}) })),
     frames: resolved, cuts: [...cues.collapsed!.values()], keptShots: glide.keptShots, totalFrames: cues.durationFrames, fps: glide.fps, sceneSize: SCENE_SIZE,
     limits: splice.limits, gap: splice.frames, ...(glide.holdPush !== undefined ? { holdPush: glide.holdPush } : {}),
   }) : undefined;

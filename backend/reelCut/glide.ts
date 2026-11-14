@@ -6,7 +6,7 @@
 import type { CameraTrack } from "../../src/dl/scene/types";
 import { compileCameraTrack, measureCameraMotion, MIN_CAMERA_HOLD_SHARE } from "../../src/dl/scene/cameraTrack";
 import { Timeline } from "../sceneKit";
-import type { CameraGlideLimits } from "./splice";
+import { spacePosesAtCuts, type CameraGlideLimits } from "./splice";
 
 /** One kept camera pose: where the camera looks and how it arrives. */
 export interface GlidePose {
@@ -137,6 +137,12 @@ function movingFramesIn(input: GlideInput, frames: ReadonlyArray<number | undefi
   return moving;
 }
 
+// Applies the spacing the compile runs at the cuts, so a plan is checked on the frames that are compiled.
+function spacedAtCuts(input: GlideInput, frames: ReadonlyArray<number | undefined>): Array<number | undefined> {
+  const spaced = spacePosesAtCuts([...frames], input.cuts, input.gap);
+  return frames.map((frame, index) => spaced.get(index) ?? frame);
+}
+
 // Reports the first later pose whose own move no longer has the frames it needs after the pose at `index` moved, or undefined when all fit.
 function laterPoseConflict(input: GlideInput, before: ReadonlyArray<number | undefined>, after: ReadonlyArray<number | undefined>, index: number): string | undefined {
   for (let j = index + 1; j < input.poses.length && after[j - 1] !== before[j - 1]; j++) {
@@ -176,14 +182,18 @@ export function planStretchedGlides(input: GlideInput): GlidePlan {
     if (!next) return { frames: [...raw], errors: [`camera "${to}": the glide from "${from}" needs ${needed} frames across the dropped shots but no kept shot follows them to finish in; keep a shot after the dropped span`] };
     // The move keeps the duration its own limits need; the poses after it must still fit and the real curve, with its neighbours, must hold the limits.
     let length = needed;
-    let stretched = withPoseAt(input, out, i, start + length);
+    let stretched = spacedAtCuts(input, withPoseAt(input, out, i, start + length));
     for (;;) {
+      if (stretched[i - 1] !== start || stretched[i] !== start + length) {
+        const shot = shotAt(input.keptShots, start + length);
+        return { frames: [...raw], errors: [`camera "${to}": kept shot "${shot}" has no room: the glide from "${from}" needs ${length} frames and finishes at frame ${start + length}, but the poses that follow it across the next dropped span must sit ${input.gap} frames apart at the cut, which pulls the glide back to frame ${stretched[i]}; give "${shot}" more narration or drop fewer shots`] };
+      }
       const conflict = laterPoseConflict(input, out, stretched, i);
       if (conflict) return { frames: [...raw], errors: [conflict] };
       if (curveFits(input, stretched, input.poses.length, start, start + length)) break;
       length++;
       if (start + length >= input.totalFrames) return { frames: [...raw], errors: [`camera "${to}": the glide from "${from}" cannot keep the camera speed, acceleration and zoom step limits at any length that fits the film`] };
-      stretched = withPoseAt(input, out, i, start + length);
+      stretched = spacedAtCuts(input, withPoseAt(input, out, i, start + length));
     }
     const holdFrames = Math.ceil(MIN_CAMERA_HOLD_SHARE * (next.to - next.from));
     const restFrames = next.to - next.from - movingFramesIn(input, stretched, next, i);
