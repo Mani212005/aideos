@@ -63,7 +63,8 @@ function extractCiJobIds(cmd: string): string[] {
     if (trimmed.startsWith("#")) continue;
     const match = trimmed.match(/^npm run ci\b(?:\s+--\s+([^\n|&]+))?/);
     if (match) {
-      const args = (match[1] ?? "").trim().split(/\s+/).filter((a) => a && !a.startsWith("-"));
+      // `--shard <i>/<n>` (the value may hold `${{ ... }}` expressions with spaces) is not a job name.
+      const args = (match[1] ?? "").trim().replace(/--shard\s+(?:\$\{\{.*?\}\}|[^\s$])+/g, "").split(/\s+/).filter((a) => a && !a.startsWith("-"));
       ids.push(...args);
     }
   }

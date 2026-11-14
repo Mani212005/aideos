@@ -4,7 +4,9 @@
  * a green run in one place means the same commands were green everywhere. Runs every step of a job
  * even after a failure (so one run reports every problem), prints a timing table and writes it to
  * the GitHub step summary when there is one.
- * Inputs and outputs: job names (static, unit, journeys, legacy, nightly; none means the PR set) and flags -> exit code 0 when every step passed or was skipped, 1 otherwise.
+ * The journeys job can run as one of N parallel shards (`--shard 2/3`): a deterministic plan from
+ * scripts/ciJourneyShards.ts gives each shard a disjoint set of journey files, and exactly one shard the studio smoke step.
+ * Inputs and outputs: job names (static, unit, journeys, legacy, nightly; none means the PR set) and flags (--bail, --list, --shard i/n for the journeys job) -> exit code 0 when every step passed or was skipped, 1 otherwise.
  * Used by: npm run ci, .github/workflows/*.yml, .no-mistakes.yaml, scripts/ci.test.ts.
  */
 
@@ -13,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { clearGoldenOutcome, readGoldenOutcome } from "../backend/journeys/goldenResult";
 import { findChromeBinary } from "../backend/scene/chromeBinary";
+import { parseShardSpec, planJourneyShard, type ShardPlan, type ShardSpec } from "./ciJourneyShards";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -35,6 +38,8 @@ export interface CiStep {
   todoCases?: boolean;
   /** A reason this step does not apply here (reported as skipped, never as a pass). */
   skip?: () => string | null;
+  /** Makes this step the part of itself that one shard runs (only the journeys job has sharded steps). */
+  forShard?: (plan: ShardPlan) => CiStep;
 }
 
 /** A named group of steps that runs as one GitHub job. */
@@ -124,6 +129,45 @@ const warmChromeStep: CiStep = {
   skip: () => (findChromeBinary() || inCi() ? null : "no Chrome installed; CI always runs it"),
 };
 
+/** The node test command for the journeys: every journey file by glob, or exactly the given files (one shard). */
+const journeyTestCmd = (files?: string[]): string[] => [
+  "node",
+  "--import",
+  "tsx",
+  "--import",
+  "./backend/testSupport/fixtureVideosDir.ts",
+  "--test",
+  "--test-concurrency=1",
+  ...(files ?? ["backend/journeys/**/*.journey.ts"]),
+];
+
+/** The journey tests. In a shard it runs only that shard's files; a shard with none is skipped, never widened (a bare `node --test` would run everything). */
+const journeyTestsStep: CiStep = {
+  name: "journey tests",
+  cmd: journeyTestCmd(),
+  // The studio journeys (backend/journeys/j3_studio_edit.journey.ts) need Chrome: under CI a missing one fails, never skips.
+  env: { ...softwareGl(), npm_config_loglevel: "silent", ...(inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {}) },
+  todoCases: true,
+  forShard: (plan) => ({
+    ...journeyTestsStep,
+    forShard: undefined,
+    cmd: journeyTestCmd(plan.journeyFiles),
+    skip: () => (plan.journeyFiles.length ? null : `no journey files are planned for shard ${plan.shard.index}/${plan.shard.total}`),
+  }),
+};
+
+/** The studio smoke check. In a shard it runs only where the plan put it; every other shard reports it skipped. */
+const studioSmokeStep: CiStep = {
+  name: "studio smoke and scrub",
+  cmd: ["npm", "run", "smoke:studio"],
+  env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {},
+  forShard: (plan) => ({
+    ...studioSmokeStep,
+    forShard: undefined,
+    skip: () => (plan.runsSmoke ? null : `runs in another shard (this is ${plan.shard.index}/${plan.shard.total})`),
+  }),
+};
+
 /** Every job. Add a step here and it runs in CI, in the local validation tool and for contributors. */
 export const JOBS: CiJob[] = [
   {
@@ -182,14 +226,8 @@ export const JOBS: CiJob[] = [
     title: "Headless user journeys: character and Three-stage checks, real pipeline, real render, real studio",
     steps: [
       warmChromeStep,
-      {
-        name: "journey tests",
-        cmd: ["node", "--import", "tsx", "--import", "./backend/testSupport/fixtureVideosDir.ts", "--test", "--test-concurrency=1", "backend/journeys/**/*.journey.ts"],
-        // The studio journeys (backend/journeys/j3_studio_edit.journey.ts) need Chrome: under CI a missing one fails, never skips.
-        env: { ...softwareGl(), npm_config_loglevel: "silent", ...(inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {}) },
-        todoCases: true,
-      },
-      { name: "studio smoke and scrub", cmd: ["npm", "run", "smoke:studio"], env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {} },
+      journeyTestsStep,
+      studioSmokeStep,
     ],
   },
   {
@@ -317,15 +355,31 @@ function banner(text: string, open: boolean): void {
   else if (open) console.log(`\n=== ${text}`);
 }
 
-/** Runs the named jobs in order and returns every step result. `bail` stops at the first failure. */
-export async function runJobs(ids: string[], options: { bail?: boolean } = {}): Promise<StepResult[]> {
+/** One line per file of a shard plan, for the console and the job summary, so a reader can see what this shard ran. */
+export function describeShardPlan(plan: ShardPlan): string {
+  const files = plan.journeyFiles.map((f) => `  - ${f}`).join("\n");
+  return [
+    `journeys shard ${plan.shard.index}/${plan.shard.total}: ${plan.journeyFiles.length} journey file(s)${plan.runsSmoke ? " and the studio smoke step" : ""}, planned ${plan.plannedSeconds} s`,
+    files,
+  ].join("\n");
+}
+
+/** Runs the named jobs in order and returns every step result. `bail` stops at the first failure; `shard` runs one shard of the journeys job. */
+export async function runJobs(ids: string[], options: { bail?: boolean; shard?: ShardSpec } = {}): Promise<StepResult[]> {
   const results: StepResult[] = [];
   for (const id of ids) {
     const job = JOBS.find((j) => j.id === id);
     if (!job) throw new Error(`unknown job "${id}"; valid jobs: ${JOBS.map((j) => j.id).join(", ")}`);
+    let plan: ShardPlan | null = null;
+    if (options.shard) {
+      if (!job.steps.some((s) => s.forShard)) throw new Error(`job "${id}" cannot be sharded; --shard applies to the journeys job only`);
+      plan = planJourneyShard(options.shard, ROOT);
+      console.log(`[ci] ${describeShardPlan(plan)}`);
+    }
     for (const step of job.steps) {
+      const runnable = plan && step.forShard ? step.forShard(plan) : step;
       banner(`${job.id}: ${step.name}`, true);
-      const result = await runStep(job, step);
+      const result = await runStep(job, runnable);
       banner("", false);
       results.push(result);
       console.log(`[ci] ${job.id} / ${step.name}: ${result.status === "not-covered" ? "NOT COVERED" : result.status}${result.note ? ` (${result.note})` : ""} in ${result.seconds.toFixed(1)}s`);
@@ -335,22 +389,40 @@ export async function runJobs(ids: string[], options: { bail?: boolean } = {}): 
   return results;
 }
 
+/** Splits command-line arguments into job names, flags and the value of `--shard` (either `--shard 2/3` or `--shard=2/3`). */
+export function parseArgs(args: string[]): { named: string[]; bail: boolean; list: boolean; shard?: ShardSpec } {
+  const named: string[] = [];
+  let shardValue: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--shard") {
+      shardValue = args[++i];
+      if (shardValue === undefined) throw new Error('--shard needs a value such as "2/3"');
+    } else if (arg.startsWith("--shard=")) shardValue = arg.slice("--shard=".length);
+    else if (!arg.startsWith("--")) named.push(arg);
+  }
+  const shard = shardValue === undefined ? undefined : parseShardSpec(shardValue);
+  if (shard && named.length === 0) throw new Error("--shard needs a job name, for example: npm run ci -- journeys --shard 1/3");
+  return { named, bail: args.includes("--bail"), list: args.includes("--list"), shard };
+}
+
 /** Entry point: parse arguments, run, print the table, set the exit code. */
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  if (args.includes("--list")) {
+  const { named, bail, list, shard } = parseArgs(process.argv.slice(2));
+  if (list) {
     for (const job of JOBS) {
       console.log(`${job.id}: ${job.title}`);
       for (const step of job.steps) console.log(`  - ${step.name}: ${step.cmd.join(" ")}`);
     }
     return;
   }
-  const bail = args.includes("--bail");
-  const named = args.filter((a) => !a.startsWith("--"));
-  const results = await runJobs(named.length ? named : PR_JOBS, { bail });
+  const results = await runJobs(named.length ? named : PR_JOBS, { bail, shard });
   const table = summaryTable(results);
   console.log(`\n${table}\n`);
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${table}\n`);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const heading = shard ? `**${describeShardPlan(planJourneyShard(shard, ROOT)).split("\n")[0]}**\n\n` : "";
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${heading}${table}\n`);
+  }
   // A check that compared nothing is never a pass line: a warning annotation, a note in the job summary, exit code still 0.
   for (const text of notCoveredNotices(results)) {
     if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=NOT COVERED::${text}`);
