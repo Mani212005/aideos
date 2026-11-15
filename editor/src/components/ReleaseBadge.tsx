@@ -45,8 +45,8 @@ export function ReleaseBadge() {
   return <>
     <div className="release-strip" aria-hidden="true" />
     <span className="release-badge" title={`${info.description}\n${info.root}`} aria-label={info.description}>
-      <span className="font-sans text-[13px] font-black">Aideos</span>
-      <span className="font-mono text-[10px] font-bold">{info.label}</span>
+      <span className="font-sans text-sm font-semibold">Aideos</span>
+      <span className="font-mono text-xs font-semibold">{info.label}</span>
     </span>
   </>;
 }

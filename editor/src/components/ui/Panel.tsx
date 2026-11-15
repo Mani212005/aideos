@@ -1,9 +1,9 @@
 /**
- * File Description: Slab container primitives for the Aideos editor chrome.
- * Panel is the outlined bone slab that carries a named region, PanelHeader is its seam-divided
- * caption bar, PanelBody is the padded scroll region inside it, and Card is the nested slab used
- * for list rows and stat blocks. Together they give every region of the editor the same border
- * weight, seam rhythm, spacing step and hard-shadow depth.
+ * File Description: Surface container primitives for the Aideos editor chrome.
+ * Panel is the white surface with a hairline border that carries a named region, PanelHeader is its
+ * seam-divided caption bar, PanelBody is the padded scroll region inside it, and Card is the nested
+ * surface used for list rows and stat blocks. Together they give every region of the editor the same
+ * border weight, corner radius and spacing step. There is no shadow.
  * Inputs and outputs: panel title, actions, and children -> styled container panel.
  * Used by: editor/src/components/ui/index.ts, editor stages and inspectors.
  */
@@ -14,21 +14,21 @@ import { cn } from "./cn";
 export type PanelTone = "raised" | "flat" | "sunken";
 
 export interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** raised = bone slab with a hard shadow, flat = same slab without it, sunken = recessed ground. */
+  /** raised and flat = white surface (kept as two names for existing callers), sunken = recessed ground. */
   tone?: PanelTone;
 }
 
 const PANEL_TONE: Record<PanelTone, string> = {
-  raised: "bg-paper-2 shadow-nb",
+  raised: "bg-paper-2",
   flat: "bg-paper-2",
   sunken: "bg-sunken",
 };
 
-/** Outlined slab that carries a named region of the editor. */
+/** White surface with a hairline border that carries a named region of the editor. */
 export function Panel({ tone = "raised", className, children, ...rest }: PanelProps) {
   return (
     <div
-      className={cn("flex min-h-0 min-w-0 flex-col border-2 border-ink text-ink", PANEL_TONE[tone], className)}
+      className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-line text-ink", PANEL_TONE[tone], className)}
       {...rest}
     >
       {children}
@@ -41,11 +41,11 @@ export interface PanelHeaderProps extends Omit<React.HTMLAttributes<HTMLDivEleme
   icon?: React.ReactNode;
   /** Right-aligned controls for this region. */
   actions?: React.ReactNode;
-  /** Fill the caption bar with the primary accent to mark the screen's focal region. */
+  /** Tint the caption bar with the accent to mark the screen's focal region. */
   accent?: boolean;
 }
 
-/** Caption bar for a Panel, separated from the body by a full-weight seam. */
+/** Caption bar for a Panel, separated from the body by a hairline seam. */
 export function PanelHeader({
   title,
   icon,
@@ -58,15 +58,15 @@ export function PanelHeader({
   return (
     <div
       className={cn(
-        "flex min-h-[38px] shrink-0 items-center justify-between gap-3 border-b-2 border-ink px-3 py-1.5",
-        accent ? "bg-primary" : "bg-paper",
+        "flex min-h-[38px] shrink-0 items-center justify-between gap-3 border-b border-line px-3 py-1.5",
+        accent ? "bg-select-tint" : "bg-paper-2",
         className,
       )}
       {...rest}
     >
       <div className="flex min-w-0 items-center gap-2">
         {icon ? <span className="shrink-0 text-ink">{icon}</span> : null}
-        <h2 className="truncate font-sans text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink">{title}</h2>
+        <h2 className="truncate font-sans text-xs font-semibold text-ink">{title}</h2>
         {children}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
@@ -100,14 +100,14 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
 }
 
-/** Nested slab for list rows, stat blocks and inspector groups. */
+/** Nested surface for list rows, stat blocks and inspector groups. */
 export function Card({ selected = false, interactive = false, className, children, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        "border-2 border-ink bg-paper-3 text-ink transition-[transform,box-shadow,background-color] duration-nb ease-nb",
-        interactive && "cursor-pointer shadow-nb-xs hover:-translate-x-px hover:-translate-y-px hover:shadow-nb-sm",
-        selected && "bg-select text-select-ink shadow-nb-sm hover:translate-x-0 hover:translate-y-0",
+        "rounded-lg border border-line bg-paper-3 text-ink transition-[background-color,border-color] duration-nb ease-nb",
+        interactive && "cursor-pointer hover:bg-paper",
+        selected && "border-select bg-select-tint",
         className,
       )}
       {...rest}

@@ -146,7 +146,7 @@ export function ReviewStage({ film, project, api, onSelectShot, onSeekFrame }: R
         <Panel>
           <PanelHeader title="Pacing by shot" />
           <PanelBody scroll={false} className="p-3">
-            <p className="mb-2 font-sans text-[11px] leading-snug text-ink-soft">
+            <p className="mb-2 font-sans text-xs leading-snug text-ink-soft">
               Each bar is one shot's run time. The dashed line is the average. Bars in red run over
               thirty seconds, which usually reads as a stall; bars in orange are under three seconds.
               Click a bar to inspect that shot.
@@ -171,7 +171,7 @@ export function ReviewStage({ film, project, api, onSelectShot, onSeekFrame }: R
         <Panel>
           <PanelHeader title="Script coverage" />
           <PanelBody scroll={false} className="p-3">
-            <p className="mb-2 font-sans text-[11px] leading-snug text-ink-soft">
+            <p className="mb-2 font-sans text-xs leading-snug text-ink-soft">
               One square per shot. Filled squares carry narration; hatched squares will play silent.
             </p>
             <CoverageMap cells={coverage} />

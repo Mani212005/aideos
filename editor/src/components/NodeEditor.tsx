@@ -111,9 +111,9 @@ export function NodeEditor({
   });
 
   return (
-    <div className="flex flex-col gap-3 text-sm bg-paper-3 p-3 border-2 border-ink shadow-nb-sm">
+    <div className="flex flex-col gap-3 text-sm bg-paper-3 p-3 border border-line">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="font-bold text-ink">Edit Node</h3>
+        <h3 className="font-semibold text-ink">Edit Node</h3>
         <button
           onClick={removeNode}
           disabled={film.canvas.nodes.length <= 2}
@@ -126,7 +126,7 @@ export function NodeEditor({
       <div className="flex flex-col gap-1">
         <label className="text-xs text-ink-soft">ID</label>
         <input
-          className="bg-paper-3 border-2 border-ink px-2 py-1 font-bold shadow-nb-sm"
+          className="bg-paper-3 border border-line px-2 py-1 font-semibold"
           value={localId}
           onChange={(e) => setLocalId(e.target.value)}
           onBlur={commitRename}
@@ -137,7 +137,7 @@ export function NodeEditor({
       <div className="flex flex-col gap-1">
         <label className="text-xs text-ink-soft">Label</label>
         <input
-          className="bg-paper-3 border-2 border-ink px-2 py-1 shadow-nb-sm"
+          className="bg-paper-3 border border-line px-2 py-1"
           value={node.label}
           onChange={(e) => updateNode({ label: e.target.value })}
         />
@@ -146,7 +146,7 @@ export function NodeEditor({
       <div className="flex flex-col gap-1">
         <label className="text-xs text-ink-soft">Subtitle</label>
         <input
-          className="bg-paper-3 border-2 border-ink px-2 py-1 shadow-nb-sm"
+          className="bg-paper-3 border border-line px-2 py-1"
           value={node.sub || ""}
           onChange={(e) => updateNode({ sub: e.target.value })}
         />
@@ -156,7 +156,7 @@ export function NodeEditor({
         <div className="flex flex-col gap-1 flex-1">
           <label className="text-xs text-ink-soft">X Position</label>
           <input
-            className="bg-paper-3 border-2 border-ink px-2 py-1 shadow-nb-sm"
+            className="bg-paper-3 border border-line px-2 py-1"
             type="number"
             value={node.x}
             onChange={(e) => updateNode({ x: Number(e.target.value) })}
@@ -165,7 +165,7 @@ export function NodeEditor({
         <div className="flex flex-col gap-1 flex-1">
           <label className="text-xs text-ink-soft">Y Position</label>
           <input
-            className="bg-paper-3 border-2 border-ink px-2 py-1 shadow-nb-sm"
+            className="bg-paper-3 border border-line px-2 py-1"
             type="number"
             value={node.y}
             onChange={(e) => updateNode({ y: Number(e.target.value) })}
@@ -174,8 +174,8 @@ export function NodeEditor({
       </div>
 
       {relatedShots.length > 0 && (
-        <div className="mt-4 border-t-2 border-ink pt-3">
-          <label className="text-xs text-ink-soft font-bold uppercase tracking-wider mb-2 block">
+        <div className="mt-4 border-t border-line pt-3">
+          <label className="text-xs text-ink-soft font-semibold mb-2 block">
             Related Shots
           </label>
           <div className="flex flex-col gap-2">

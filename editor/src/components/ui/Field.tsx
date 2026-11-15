@@ -1,8 +1,8 @@
 /**
  * File Description: Form control primitives for the Aideos editor chrome.
- * Field pairs a stencil-style label with its control and an optional hint, and Input, Textarea,
- * Select, NumberStepper and Range are the hard-edged controls themselves. Every control carries
- * the same 2px ink border, white ground and loud focus state so forms read as one system.
+ * Field pairs a plain label with its control and an optional hint, and Input, Textarea,
+ * Select, NumberStepper and Range are the controls themselves. Every control carries
+ * the same 1px line border, white ground, rounded corner and accent focus state so forms read as one system.
  * Inputs and outputs: field label, error, and child control -> form field wrapper component.
  * Used by: editor/src/components/ui/index.ts, editor forms.
  */
@@ -11,11 +11,11 @@ import React, { useId } from "react";
 import { cn } from "./cn";
 
 const CONTROL_BASE =
-  "w-full border-2 border-ink bg-paper-3 px-2.5 py-1.5 font-mono text-xs text-ink " +
+  "w-full rounded-lg border border-line bg-paper-3 px-2.5 py-1.5 font-mono text-xs text-ink " +
   "placeholder:text-ink-mute focus:outline-none focus-visible:outline-none " +
-  "focus:border-select focus:shadow-[inset_0_0_0_1px_var(--nb-select)] " +
+  "focus:border-select " +
   "disabled:cursor-not-allowed disabled:bg-sunken disabled:text-ink-mute " +
-  "transition-[border-color,box-shadow] duration-nb ease-nb";
+  "transition-[border-color] duration-nb ease-nb";
 
 export interface FieldProps {
   label: React.ReactNode;
@@ -32,20 +32,20 @@ export function Field({ label, hint, aside, htmlFor, className, children }: Fiel
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={htmlFor} className="font-sans text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">
+        <label htmlFor={htmlFor} className="font-sans text-xs font-semibold text-ink-soft">
           {label}
         </label>
-        {aside ? <span className="font-mono text-[10px] text-ink-mute">{aside}</span> : null}
+        {aside ? <span className="font-mono text-xs text-ink-mute">{aside}</span> : null}
       </div>
       {children}
-      {hint ? <p className="font-sans text-[10px] leading-snug text-ink-mute">{hint}</p> : null}
+      {hint ? <p className="font-sans text-xs leading-snug text-ink-mute">{hint}</p> : null}
     </div>
   );
 }
 
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
-/** Single-line text control with a hard ink border and a loud focus state. */
+/** Single-line text control with a hairline border and an accent focus state. */
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input({ className, ...rest }, ref) {
   return <input ref={ref} className={cn(CONTROL_BASE, className)} {...rest} />;
 });
@@ -62,7 +62,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(fun
 
 export type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement>;
 
-/** Native select restyled as a hard-edged slab with a stencil caret. */
+/** Native select restyled with a hairline border and a small caret. */
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function Select(
   { className, children, ...rest },
   ref,
@@ -77,7 +77,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
       )}
       style={{
         backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%2314140f'/%3E%3C/svg%3E\")",
+          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23111318'/%3E%3C/svg%3E\")",
       }}
       {...rest}
     >
@@ -88,7 +88,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
 
 export interface RangeProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
-/** Hard-edged slider used for zoom, speed and scalar settings. */
+/** Slider used for zoom, speed and scalar settings. */
 export const Range = React.forwardRef<HTMLInputElement, RangeProps>(function Range({ className, ...rest }, ref) {
   return <input ref={ref} type="range" className={cn("nb-range", className)} {...rest} />;
 });
@@ -137,7 +137,7 @@ export function NumberStepper({
   };
 
   return (
-    <div className={cn("inline-flex h-8 items-stretch border-2 border-ink bg-paper-3", className)} title={title}>
+    <div className={cn("inline-flex h-8 items-stretch overflow-hidden rounded-lg border border-line bg-paper-3", className)} title={title}>
       <input
         id={id}
         inputMode="decimal"
@@ -161,19 +161,19 @@ export function NumberStepper({
             onChange(clamp(value - step));
           }
         }}
-        className="w-16 bg-transparent px-1.5 text-right font-mono text-[11px] font-bold tabular-nums text-ink outline-none disabled:text-ink-mute"
+        className="w-16 bg-transparent px-1.5 text-right font-mono text-xs font-semibold tabular-nums text-ink outline-none disabled:text-ink-mute"
       />
       {unit ? (
-        <span className="flex items-center pr-1 font-mono text-[10px] font-bold text-ink-mute">{unit}</span>
+        <span className="flex items-center pr-1 font-mono text-xs font-semibold text-ink-mute">{unit}</span>
       ) : null}
-      <div className="flex w-5 shrink-0 flex-col border-l-2 border-ink">
+      <div className="flex w-5 shrink-0 flex-col border-l border-line">
         <button
           type="button"
           tabIndex={-1}
           disabled={disabled}
           aria-label="Increase"
           onClick={() => onChange(clamp(value + step))}
-          className="flex h-1/2 items-center justify-center border-b border-ink bg-paper text-[8px] leading-none text-ink hover:bg-primary disabled:opacity-40"
+          className="flex h-1/2 items-center justify-center border-b border-line bg-paper text-xs leading-none text-ink hover:bg-select-tint disabled:opacity-40"
         >
           &#9650;
         </button>
@@ -183,7 +183,7 @@ export function NumberStepper({
           disabled={disabled}
           aria-label="Decrease"
           onClick={() => onChange(clamp(value - step))}
-          className="flex h-1/2 items-center justify-center bg-paper text-[8px] leading-none text-ink hover:bg-primary disabled:opacity-40"
+          className="flex h-1/2 items-center justify-center bg-paper text-xs leading-none text-ink hover:bg-select-tint disabled:opacity-40"
         >
           &#9660;
         </button>

@@ -948,7 +948,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           >
             <SkipForward className="h-3.5 w-3.5" />
           </Button>
-          <div className="flex items-baseline gap-1 border-2 border-ink bg-paper-3 px-2 py-1 font-mono text-[11px] font-bold tabular-nums text-ink shadow-nb-sm">
+          <div className="flex items-baseline gap-1 border border-line bg-paper-3 px-2 py-1 font-mono text-xs font-semibold tabular-nums text-ink">
             <span>{formatFrameTimecode(playheadSec, fps)}</span>
             <span className="text-ink-mute">/</span>
             <span className="text-ink-soft">
@@ -1102,12 +1102,12 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Lane headers, scrolled vertically in lockstep with the lane stack. */}
         <div
-          className="relative shrink-0 overflow-hidden border-r-2 border-ink bg-paper"
+          className="relative shrink-0 overflow-hidden border-r border-line bg-paper"
           style={{ width: HEADER_WIDTH_PX }}
         >
-          <div className="flex h-[26px] items-center gap-1.5 border-b-2 border-ink bg-sunken-2 px-2">
+          <div className="flex h-[26px] items-center gap-1.5 border-b border-line bg-sunken-2 px-2">
             <Layers className="h-3 w-3 text-ink-soft" />
-            <span className="font-sans text-[9px] font-extrabold uppercase tracking-[0.12em] text-ink-soft">
+            <span className="font-sans text-xs font-semibold text-ink-soft">
               Lanes
             </span>
           </div>
@@ -1183,14 +1183,14 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     style={{ height: lane.height }}
                     onPointerDown={handleSurfacePointerDown}
                     className={cn(
-                      "relative border-b-2 border-ink",
+                      "relative border-b border-line",
                       lane.hidden ? "nb-hatch bg-sunken-3" : "bg-sunken",
                       lane.locked && "nb-hatch",
                       isDropTarget && "bg-primary/25",
                       dropHintLaneId === lane.id && "bg-primary/25",
                     )}
                   >
-                    {clips.some((clip) => clip.kind === "subtitle") ? film.shots.filter((shot) => shot.captionPlacement).map((shot) => <span key={shot.id} aria-label={`Caption position exception: ${shot.id}`} title={`Caption position exception: ${shot.id}`} className="pointer-events-none absolute top-0 z-20 h-2 w-2 rotate-45 border border-ink bg-primary" style={{ left: (shot.position ?? shot.startSec ?? film.shots.slice(0, film.shots.indexOf(shot)).reduce((sum, item) => sum + item.dur, 0)) * pxPerSec }} />) : null}
+                    {clips.some((clip) => clip.kind === "subtitle") ? film.shots.filter((shot) => shot.captionPlacement).map((shot) => <span key={shot.id} aria-label={`Caption position exception: ${shot.id}`} title={`Caption position exception: ${shot.id}`} className="pointer-events-none absolute top-0 z-20 h-2 w-2 rotate-45 border border-line bg-primary" style={{ left: (shot.position ?? shot.startSec ?? film.shots.slice(0, film.shots.indexOf(shot)).reduce((sum, item) => sum + item.dur, 0)) * pxPerSec }} />) : null}
                     {clips.map((clip, clipIndex) => {
                       const dur = clipDuration(clip);
                       if (
@@ -1244,7 +1244,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     {/* Trim preview showing the candidate in or out point. */}
                     {trimPreview && trimPreview.laneId === lane.id ? (
                       <div
-                        className="pointer-events-none absolute top-1 z-40 border-2 border-dashed border-select bg-select/20"
+                        className="pointer-events-none absolute top-1 z-40 border border-dashed border-select bg-select/20"
                         style={{
                           left: trimPreview.startSec * pxPerSec,
                           width: Math.max(
@@ -1258,7 +1258,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                     ) : null}
 
                     {clips.length === 0 ? (
-                      <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 font-sans text-[10px] font-bold uppercase tracking-[0.08em] text-ink-mute">
+                      <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 font-sans text-xs font-semibold text-ink-mute">
                         Drop media here
                       </span>
                     ) : null}
@@ -1271,18 +1271,18 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
             {endCard && endCard.endSec > endCard.startSec ? (
               <div
                 data-testid="timeline-end-card"
-                className="nb-hatch pointer-events-none absolute bottom-0 top-[26px] z-20 overflow-hidden border-l-2 border-ink bg-sunken-2"
+                className="nb-hatch pointer-events-none absolute bottom-0 top-[26px] z-20 overflow-hidden border-l border-line bg-sunken-2"
                 style={{ left: endCard.startSec * pxPerSec, width: (endCard.endSec - endCard.startSec) * pxPerSec }}
                 title={`End card ${(endCard.endSec - endCard.startSec).toFixed(1)}s: added to every video, not editable here`}
               >
                 {/* Zoomed out, the tail is narrower than its label, so it keeps only the lock. */}
                 {(endCard.endSec - endCard.startSec) * pxPerSec >= END_CARD_LABEL_PX ? (
-                  <span className="absolute left-1 top-1 inline-flex items-center gap-1 whitespace-nowrap border-2 border-ink bg-paper px-1 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-ink shadow-nb-sm">
+                  <span className="absolute left-1 top-1 inline-flex items-center gap-1 whitespace-nowrap border border-line bg-paper px-1 py-0.5 font-mono text-xs font-semibold text-ink">
                     <Lock className="h-2.5 w-2.5" aria-hidden />
                     End card {(endCard.endSec - endCard.startSec).toFixed(1)}s
                   </span>
                 ) : (endCard.endSec - endCard.startSec) * pxPerSec >= END_CARD_ICON_PX ? (
-                  <span className="absolute left-1 top-1 inline-flex items-center border-2 border-ink bg-paper p-0.5 text-ink shadow-nb-sm">
+                  <span className="absolute left-1 top-1 inline-flex items-center border border-line bg-paper p-0.5 text-ink">
                     <Lock className="h-2.5 w-2.5" aria-label="End card" />
                   </span>
                 ) : null}
@@ -1295,7 +1295,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
                 className="pointer-events-none absolute inset-y-0 z-40 w-0.5 bg-select"
                 style={{ left: drag.snapTarget.timeSec * pxPerSec }}
               >
-                <span className="absolute top-7 left-1 whitespace-nowrap border-2 border-ink bg-select px-1 py-0.5 font-mono text-[9px] font-bold text-select-ink shadow-nb-sm">
+                <span className="absolute top-7 left-1 whitespace-nowrap border border-line bg-select px-1 py-0.5 font-mono text-xs font-semibold text-select-ink">
                   {drag.snapTarget.label ?? drag.snapTarget.type}
                 </span>
               </div>
@@ -1314,13 +1314,13 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
               className="pointer-events-none absolute inset-y-0 z-50 w-0.5 bg-ink"
               style={{ left: playheadSec * pxPerSec }}
             >
-              <div className="absolute -left-[7px] top-0 h-3 w-4 border-2 border-ink bg-danger shadow-nb-sm" />
+              <div className="absolute -left-[7px] top-0 h-3 w-4 border border-line bg-danger" />
             </div>
 
             {/* Rubber-band selection rectangle, drawn in client space over the whole app. */}
             {drag.mode === "marquee" && drag.marquee && drag.hasMoved ? (
               <div
-                className="pointer-events-none fixed z-[60] border-2 border-dashed border-select bg-select/15"
+                className="pointer-events-none fixed z-[60] border border-dashed border-select bg-select/15"
                 style={{
                   left: Math.min(drag.marquee.x1, drag.marquee.x2),
                   top: Math.min(drag.marquee.y1, drag.marquee.y2),
@@ -1333,20 +1333,20 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t-2 border-ink bg-paper px-2.5 py-1.5">
-        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-ink-soft">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-line bg-paper px-2.5 py-1.5">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-ink-soft">
           <span>
-            <span className="font-bold text-ink">
+            <span className="font-semibold text-ink">
               {api.layered.clips.length}
             </span>{" "}
             clips on{" "}
-            <span className="font-bold text-ink">{api.lanes.length}</span> lanes
+            <span className="font-semibold text-ink">{api.lanes.length}</span> lanes
           </span>
           {selectedClipIds.length > 0 ? (
             <Badge tone="select">{selectedClipIds.length} selected</Badge>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[10px] text-ink-mute">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-ink-mute">
           <span className="inline-flex items-center gap-1">
             <KeyHint keys={["Space"]} /> play
           </span>

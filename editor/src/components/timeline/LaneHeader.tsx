@@ -70,13 +70,13 @@ export function LaneHeader({
       onClick={onSelect}
       style={{ height }}
       className={cn(
-        "flex shrink-0 flex-col justify-between gap-1 border-b-2 border-ink px-2 py-1.5",
+        "flex shrink-0 flex-col justify-between gap-1 border-b border-line px-2 py-1.5",
         selected ? "bg-select/15" : "bg-paper-2",
         isDropTarget && "bg-primary/40",
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
-        <Badge tone="quiet" className="px-1 py-0 font-mono text-[9px]" title={`Z-order ${layer.number}`}>
+        <Badge tone="quiet" className="px-1 py-0 font-mono text-xs" title={`Z-order ${layer.number}`}>
           {layer.number}
         </Badge>
         {editing ? (
@@ -93,14 +93,14 @@ export function LaneHeader({
               }
               e.stopPropagation();
             }}
-            className="min-w-0 flex-1 border-2 border-select bg-paper-3 px-1 py-0.5 font-sans text-[11px] font-bold text-ink outline-none"
+            className="min-w-0 flex-1 border border-select bg-paper-3 px-1 py-0.5 font-sans text-xs font-semibold text-ink outline-none"
           />
         ) : (
           <button
             type="button"
             onDoubleClick={() => setEditing(true)}
             title={`${layer.label} (double click to rename)`}
-            className="min-w-0 flex-1 truncate text-left font-sans text-[11px] font-extrabold uppercase tracking-[0.04em] text-ink"
+            className="min-w-0 flex-1 truncate text-left font-sans text-xs font-semibold text-ink"
           >
             {layer.label}
           </button>
@@ -137,7 +137,7 @@ export function LaneHeader({
             title={layer.locked ? `Unlock ${layer.label}` : `Lock ${layer.label}`}
           />
           <span
-            className="ml-1 shrink-0 font-mono text-[9px] tabular-nums text-ink-mute"
+            className="ml-1 shrink-0 font-mono text-xs tabular-nums text-ink-mute"
             title={`${clipCount} clips on this lane`}
           >
             {clipCount}

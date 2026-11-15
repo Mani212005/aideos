@@ -82,11 +82,11 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 text-sm bg-paper p-5 border-2 border-ink text-ink font-sans">
+    <div className="flex flex-col gap-4 text-sm bg-paper p-5 border border-line text-ink font-sans">
       {/* Header Info Bar */}
-      <div className="flex items-center justify-between border-b-2 border-ink pb-4">
+      <div className="flex items-center justify-between border-b border-line pb-4">
         <div>
-          <h3 className="font-bold text-lg text-ink flex items-center gap-2">
+          <h3 className="font-semibold text-lg text-ink flex items-center gap-2">
             <Subtitles size={18} className="text-select-text" /> Kinetic Subtitles
           </h3>
           <p className="text-xs text-ink-soft">
@@ -99,9 +99,9 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
       {/* Grid Layout: Left Interactive Word Column (Full Script) | Right Full Script Text */}
       <div className="grid grid-cols-12 gap-5">
         {/* Left Column: Interactive Word List Column */}
-        <div className="col-span-5 flex flex-col gap-3 bg-paper p-4 border-2 border-ink">
+        <div className="col-span-5 flex flex-col gap-3 bg-paper p-4 border border-line">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold text-ink flex items-center gap-1.5">
               <FileText size={14} className="text-select-text" />
               Interactive Word Column
             </h4>
@@ -121,7 +121,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search words in script..."
-              className="w-full bg-paper-3 border-2 border-ink pl-9 pr-3 py-1.5 text-xs text-ink focus:outline-none focus:border-select"
+              className="w-full bg-paper-3 border border-line pl-9 pr-3 py-1.5 text-xs text-ink focus:outline-none focus:border-select"
             />
           </div>
 
@@ -130,7 +130,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
             {filteredWords.map((wordItem, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-2 bg-paper-3 border-2 border-ink hover:border-select/50 transition-colors group"
+                className="flex items-center justify-between p-2 bg-paper-3 border border-line hover:border-select/50 transition-colors group"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <button
@@ -168,7 +168,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 font-mono text-[11px] text-ink-soft">
+                <div className="flex items-center gap-2 font-mono text-xs text-ink-soft">
                   <span className="flex items-center gap-1">
                     <Clock size={10} />f{wordItem.startFrame}-
                     {wordItem.endFrame}
@@ -193,7 +193,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
               Full Script Text:
             </label>
             <textarea
-              className="w-full bg-paper-3 border-2 border-ink p-3 text-ink text-xs focus:outline-none focus:border-select font-sans"
+              className="w-full bg-paper-3 border border-line p-3 text-ink text-xs focus:outline-none focus:border-select font-sans"
               rows={3}
               value={fullText}
               onChange={handleFullTextChange}
@@ -201,7 +201,7 @@ export const KineticCaptionEditor: React.FC<KineticCaptionEditorProps> = ({
             />
           </div>
 
-          <p className="border-2 border-ink bg-paper-3 p-3 font-sans text-xs text-ink-soft">
+          <p className="border border-line bg-paper-3 p-3 font-sans text-xs text-ink-soft">
             To move captions, click them in the Edit preview.
           </p>
         </div>

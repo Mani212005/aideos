@@ -47,7 +47,7 @@ export function LookStage({ film, commit, accent, onAccentChange, onSelectShot }
             ]}
           />
         </ToolbarGroup>
-        <span className="ml-auto font-sans text-[10px] text-ink-mute">
+        <span className="ml-auto font-sans text-xs text-ink-mute">
           {view === "design"
             ? "This film's own design: the idea, its artwork, and why each shot shows what it shows."
             : view === "theme"

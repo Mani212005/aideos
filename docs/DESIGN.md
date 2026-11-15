@@ -20,7 +20,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 2. **Audio-First Pipeline**: Audio narration duration locks the story timeline; each delivered video always appends its configured end card, and delivery refuses a video without music, sound effects or the end card. Kinetic word-level subtitles measure their words with `@remotion/layout-utils` `measureText`, the same measurer the renderer and the caption checks use.
 3. **Dual Design System Separation**:
    - **Rendered Video Design System (`src/dl/README.md`)**: The output video is strictly governed by a per-film declared palette with a measured contrast floor, Geist + JetBrains Mono typography, and `ease-out-expo` motion.
-   - **Editor Chrome Neobrutalism Design System (`editor/src/styles/tokens.css`)**: The editor application is a pure light-themed interface with bone paper tones (`--nb-paper`, `--nb-surface`, `--nb-subtle`), 2-4px hard borders, 0px border radius, and hard offset shadows. The only dark surface is `--nb-matte`, reserved for the video canvas matte behind the preview player.
+   - **Editor Chrome Design System, direction "Strip" (`editor/src/styles/tokens.css`)**: The editor application is a pure light-themed interface: a light grey ground (`--nb-paper`), white surfaces (`--nb-paper-2`, `--nb-paper-3`), 1px hairline borders in `--nb-line`, an 8px corner radius, one accent (`--nb-select`) and one 1px shadow, under the picture (`--nb-shadow-frame`). Type scale is 12, 13, 15, 20 and 28 px in Geist, with JetBrains Mono for numbers. The only dark surface is `--nb-matte`, reserved for the video canvas matte behind the preview player. The `nb` token prefix is a historical name and has no style meaning.
 4. **Pure Data Non-Linear Layer Model**: Timeline operations (move, trim, split, ripple, layer mute/hide/lock) are pure functions over `LayeredFilm` that round-trip losslessly to `Film` JSON documents.
 
 ---
@@ -30,7 +30,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   AIDEOS WEB EDITOR SHELL                                   │
-│            (React 19 + TailwindCSS + Neobrutalism UI Primitives + Vite Dev Server)          │
+│            (React 19 + TailwindCSS + Strip UI Primitives + Vite Dev Server)                  │
 │                      [Top Bar: Transport | Timecode | Aspect Ratio | Undo/Redo]             │
 └──────────────────────────────────────────────┬──────────────────────────────────────────────┘
                                                │
@@ -115,7 +115,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 ## 💻 Tech Stack Summary
 
 - **Frontend Shell**: React 19, Vite, TailwindCSS, Lucide Icons, `@remotion/player`.
-- **UI Design System**: Neobrutalism tokens (`tokens.css`), custom UI primitives (`src/components/ui/`), bone paper palette.
+- **UI Design System**: Strip tokens (`tokens.css`), custom UI primitives (`src/components/ui/`), light grey and white palette with one accent.
 - **Timeline Engine**: Pure TypeScript non-linear geometry (`backend/timeline/`), pure drag state machine (`drag_machine.ts`), sticky snapping (`snap.ts`).
 - **Vector Graphics**: Pure SVG scene engine (`src/dl/scene/`).
 - **Typography & Motion**: Remotion `@remotion/layout-utils` `measureText`, Remotion `useCurrentFrame()`, `interpolate()`, `spring()`.

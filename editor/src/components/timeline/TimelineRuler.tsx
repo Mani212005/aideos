@@ -63,7 +63,7 @@ export function TimelineRuler({ durationSec, pxPerSec, widthPx, height = 26, cla
 
   return (
     <div
-      className={cn("relative shrink-0 border-b-2 border-ink bg-sunken-2 select-none", className)}
+      className={cn("relative shrink-0 border-b border-line bg-sunken-2 select-none", className)}
       style={{ height, width: widthPx }}
     >
       {ticks.map(({ sec, major }) => (
@@ -73,7 +73,7 @@ export function TimelineRuler({ durationSec, pxPerSec, widthPx, height = 26, cla
           style={{ left: sec * pxPerSec }}
         >
           {major ? (
-            <span className="absolute -top-[15px] left-1 whitespace-nowrap font-mono text-[9px] font-bold leading-none text-ink-soft">
+            <span className="absolute -top-[15px] left-1 whitespace-nowrap font-mono text-xs font-semibold leading-none text-ink-soft">
               {formatTimecode(sec, step < 1)}
             </span>
           ) : null}

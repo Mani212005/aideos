@@ -215,8 +215,8 @@ export function DescribeMotion({ film, notify }: DescribeMotionProps) {
               )}
             </div>
             {shot?.scriptText ? (
-              <p className="border-t-2 border-ink bg-paper-3 px-3 py-2 font-sans text-[12px] leading-snug text-ink">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-ink-soft">Says </span>
+              <p className="border-t border-line bg-paper-3 px-3 py-2 font-sans text-xs leading-snug text-ink">
+                <span className="font-mono text-xs font-semibold text-ink-soft">Says </span>
                 {shot.scriptText}
               </p>
             ) : null}
@@ -248,7 +248,7 @@ export function DescribeMotion({ film, notify }: DescribeMotionProps) {
               {!agent?.online ? (
                 <Note tone="warn">No agent is connected, so the server model will try (when one is configured). Connect your own agent from the header for better results.</Note>
               ) : null}
-              <p className="text-[11px] leading-snug text-ink-mute">
+              <p className="text-xs leading-snug text-ink-mute">
                 The motion is written into this film's design (static artwork plus clips cued to the words) and only reaches the film once it passes the design check.
               </p>
             </PanelBody>
@@ -262,18 +262,18 @@ export function DescribeMotion({ film, notify }: DescribeMotionProps) {
               {requests.length === 0 ? (
                 <EmptyState title="Nothing asked for yet" description="Describe a motion above; each request and what came of it is listed here." />
               ) : (
-                <ol className="divide-y-2 divide-ink">
+                <ol className="divide-y-2 divide-line">
                   {requests.map((r) => (
                     <li key={r.id} className="flex flex-col gap-1.5 px-3 py-2.5">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Badge tone={STATE_TONE[r.state]}>{STATE_LABEL[r.state]}</Badge>
                         <Badge tone="neutral">{r.shotId}</Badge>
-                        <span className="font-mono text-[10px] text-ink-mute">
+                        <span className="font-mono text-xs text-ink-mute">
                           {r.by === "agent" ? "agent" : r.by === "server-model" ? "server model" : "not sent"} · {new Date(r.at).toLocaleTimeString()}
                         </span>
                       </div>
-                      <p className="font-sans text-[12.5px] leading-snug text-ink">{r.prompt}</p>
-                      {r.message ? <p className="font-mono text-[10.5px] leading-snug text-ink-soft">{r.message}</p> : null}
+                      <p className="font-sans text-sm leading-snug text-ink">{r.prompt}</p>
+                      {r.message ? <p className="font-mono text-xs leading-snug text-ink-soft">{r.message}</p> : null}
                       <div className="flex gap-1.5">
                         <Button
                           size="xs"

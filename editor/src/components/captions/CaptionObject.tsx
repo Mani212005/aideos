@@ -536,7 +536,7 @@ export function CaptionObject({
             >
               {rect.label ? (
                 <span
-                  className={`absolute top-1 whitespace-nowrap bg-paper px-1 font-mono text-[9px] text-ink ${rect.kind === "zone" ? "right-full mr-1" : "left-1"}`}
+                  className={`absolute top-1 whitespace-nowrap bg-paper px-1 font-mono text-xs text-ink ${rect.kind === "zone" ? "right-full mr-1" : "left-1"}`}
                 >
                   {rect.label}
                 </span>
@@ -555,11 +555,11 @@ export function CaptionObject({
         {dragView?.guides.map((guide) =>
           guide.axis === "x" ? (
             <div key="x" data-caption-snap="x" className="absolute top-0 h-full w-px bg-select" style={{ left: guide.line * width * viewport.scale }}>
-              <span className="absolute left-1 top-1 whitespace-nowrap bg-select px-1 font-mono text-[9px] text-select-ink">{guide.label}</span>
+              <span className="absolute left-1 top-1 whitespace-nowrap bg-select px-1 font-mono text-xs text-select-ink">{guide.label}</span>
             </div>
           ) : (
             <div key="y" data-caption-snap="y" className="absolute left-0 h-px w-full bg-select" style={{ top: guide.line * height * viewport.scale }}>
-              <span className="absolute right-1 top-1 whitespace-nowrap bg-select px-1 font-mono text-[9px] text-select-ink">{guide.label}</span>
+              <span className="absolute right-1 top-1 whitespace-nowrap bg-select px-1 font-mono text-xs text-select-ink">{guide.label}</span>
             </div>
           ),
         )}
@@ -603,7 +603,7 @@ export function CaptionObject({
                   <div
                     data-caption-ring
                     className={`absolute border-select ${ghost ? "border-dashed" : "border-solid"} ${
-                      selected ? "border-2" : "border-[1.5px] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+                      selected ? "border" : "border-[1.5px] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
                     }`}
                     style={{
                       inset: HIT_PAD,
@@ -616,7 +616,7 @@ export function CaptionObject({
                   {selected ? (
                     <span
                       data-caption-chip
-                      className={`pointer-events-none absolute left-1.5 flex items-center gap-1 whitespace-nowrap bg-select px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-select-ink ${chipBelow ? "top-full mt-2" : "bottom-full mb-2"}`}
+                      className={`pointer-events-none absolute left-1.5 flex items-center gap-1 whitespace-nowrap bg-select px-1.5 py-0.5 font-mono text-xs font-semibold text-select-ink ${chipBelow ? "top-full mt-2" : "bottom-full mb-2"}`}
                     >
                       {lockedBadge ? <LockKeyhole role="img" aria-label="Caption placement locked" size={11} /> : null}
                       {dragView && dragView.kind === "move"

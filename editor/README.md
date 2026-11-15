@@ -1,4 +1,4 @@
-<!-- File Description: Architectural overview, design system guide, and stage reference for the Aideos Neobrutalism Web Editor client. -->
+<!-- File Description: Architectural overview, design system guide, and stage reference for the Aideos Web Editor client. -->
 
 # Aideos Web Editor
 
@@ -6,14 +6,15 @@ The Aideos Web Editor is an interactive web studio for authoring, arranging, tim
 
 ---
 
-## 🎨 Neobrutalism Design System
+## 🎨 Design System (direction "Strip")
 
-The editor chrome uses a dedicated Neobrutalism design system, entirely decoupled from the rendered video design language in `src/dl/README.md`:
+The editor chrome uses a dedicated design system, entirely decoupled from the rendered video design language in `src/dl/README.md`:
 
-- **Light Paper Palette**: Pure light presentation using bone paper tokens (`--nb-paper`, `--nb-surface`, `--nb-subtle`, `--nb-ink`, `--nb-muted`, `--nb-accent`). The one dark token (`--nb-matte`) is strictly reserved for the video canvas matte directly behind the video preview.
-- **Physical Geometry**: Thick hard borders (2-4px), 0px border radius, visible grid seams, and hard blur-free offset box shadows (`shadow-[3px_3px_0_var(--nb-border)]`).
-- **Tactile Feedback**: Chunky button depression on press (`translate-x-[2px] translate-y-[2px]`), prominent focus outlines, and snappy interactions.
-- **Typography**: Heavy geometric headings with JetBrains Mono for all numeric timecodes, frame counters, durations, and system metrics.
+- **Light Palette**: A light grey ground (`--nb-paper`, `#f3f4f6`) with white surfaces (`--nb-paper-2`, `--nb-paper-3`), ink text (`--nb-ink`, `--nb-ink-soft`) and one accent (`--nb-select`, `#4b43e0`, 6.6:1 on white). The one dark token (`--nb-matte`) is strictly reserved for the video canvas matte directly behind the video preview. The prefix `nb` is a historical name and has no style meaning.
+- **Geometry**: 1px hairline borders in `--nb-line`, one 8px corner radius (`--nb-radius`), spacing steps of 4, 8, 12, 16, 24 and 32 px. There are no shadows except one 1px shadow under the picture (`--nb-shadow-frame`).
+- **Feedback**: Colour and opacity changes on hover and press, a 2px accent focus ring, and ease-out-expo motion (`cubic-bezier(0.16, 1, 0.3, 1)`, 160ms).
+- **Typography**: Geist for words at 12, 13, 15, 20 and 28 px, and JetBrains Mono at 12 px for all numeric timecodes, frame counters, durations, and system metrics.
+- **Film accent**: The film's own accent (`theme.accentChosen`) is bound inline by the components that draw it, such as the AI edit Plan button. It is not an editor token.
 - **Shared Primitives (`src/components/ui/`)**: All components consume handcrafted UI primitives (`Button`, `Panel`, `Modal`, `Field`, `Feedback`, `Badge`, `Charts`, `Tabs`, `Toolbar`) styled via CSS variables in `src/styles/tokens.css` and configured in `tailwind.config.js`.
 
 ---

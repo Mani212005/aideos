@@ -1,6 +1,6 @@
 /**
  * File Description: Hand-rolled SVG data visualisations for the Aideos editor.
- * Every chart is drawn with plain SVG in the editor's Neobrutalism language (ink outlines, flat
+ * Every chart is drawn with plain SVG in the editor's Strip language (hairline outlines, flat
  * accent fills, mono numerals, no gradients or blur) so the editor gains no charting dependency.
  * Each one answers a specific editing question: where time is going, where narration is dense,
  * which script beats reached the timeline, and whether the project is ready to export.
@@ -56,7 +56,7 @@ export function BarChart({
     return (
       <div
         className={cn(
-          "nb-hatch flex items-center justify-center border-2 border-ink bg-sunken font-mono text-[10px] uppercase tracking-[0.08em] text-ink-mute",
+          "nb-hatch flex items-center justify-center border border-line bg-sunken font-mono text-xs text-ink-mute",
           className,
         )}
         style={{ height }}
@@ -71,16 +71,16 @@ export function BarChart({
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       <div
-        className="relative flex items-end gap-[var(--bar-gap)] border-2 border-ink bg-paper-3 p-1"
+        className="relative flex items-end gap-[var(--bar-gap)] border border-line bg-paper-3 p-1"
         style={{ height, ["--bar-gap" as string]: `${gap}px` }}
       >
         {typeof reference === "number" && reference > 0 ? (
           <div
-            className="pointer-events-none absolute inset-x-1 border-t-2 border-dashed border-ink/50"
+            className="pointer-events-none absolute inset-x-1 border-t border-dashed border-line"
             style={{ bottom: `${(reference / max) * (height - 8) + 4}px` }}
           >
             {referenceLabel ? (
-              <span className="absolute -top-3 right-0 bg-paper-3 px-1 font-mono text-[8px] font-bold text-ink-soft">
+              <span className="absolute -top-3 right-0 bg-paper-3 px-1 font-mono text-xs font-semibold text-ink-soft">
                 {referenceLabel}
               </span>
             ) : null}
@@ -100,7 +100,7 @@ export function BarChart({
               onBlur={() => setHover(null)}
               onClick={() => onSelect?.(i)}
               className={cn(
-                "relative min-w-[3px] flex-1 border-2 border-ink transition-[filter] duration-nb ease-nb",
+                "relative min-w-[3px] flex-1 border border-line transition-[filter] duration-nb ease-nb",
                 onSelect ? "cursor-pointer" : "cursor-default",
                 isActive && "outline outline-2 outline-offset-1 outline-select",
               )}
@@ -113,10 +113,10 @@ export function BarChart({
         })}
       </div>
 
-      <div className="flex items-baseline justify-between font-mono text-[9px] text-ink-mute">
+      <div className="flex items-baseline justify-between font-mono text-xs text-ink-mute">
         <span className="truncate">
           {hover !== null ? `${data[hover].label}: ` : ""}
-          <span className="font-bold text-ink">
+          <span className="font-semibold text-ink">
             {hover !== null ? `${data[hover].value.toFixed(2)}${unit}` : `peak ${max.toFixed(2)}${unit}`}
           </span>
         </span>
@@ -189,7 +189,7 @@ export function DensityStrip({ spans, totalSec, height = 26, className, markerSe
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <div className="relative w-full border-2 border-ink bg-sunken-2" style={{ height }}>
+      <div className="relative w-full border border-line bg-sunken-2" style={{ height }}>
         {spans.map((s, i) => {
           const left = (Math.max(0, s.startSec) / safeTotal) * 100;
           const width = (Math.max(0, s.endSec - s.startSec) / safeTotal) * 100;
@@ -210,12 +210,12 @@ export function DensityStrip({ spans, totalSec, height = 26, className, markerSe
           />
         ) : null}
       </div>
-      <div className="flex items-baseline justify-between font-mono text-[9px] text-ink-mute">
+      <div className="flex items-baseline justify-between font-mono text-xs text-ink-mute">
         <span>
-          narration <span className="font-bold text-ink">{coverage.toFixed(0)}%</span>
+          narration <span className="font-semibold text-ink">{coverage.toFixed(0)}%</span>
         </span>
         <span>
-          silence <span className="font-bold text-ink">{(100 - coverage).toFixed(0)}%</span>
+          silence <span className="font-semibold text-ink">{(100 - coverage).toFixed(0)}%</span>
         </span>
       </div>
     </div>
@@ -239,14 +239,14 @@ export function CoverageMap({ cells, className }: CoverageMapProps) {
             key={`${c.label}-${i}`}
             title={c.detail ?? `${c.label}: ${c.covered ? "on timeline" : "not placed"}`}
             className={cn(
-              "h-4 w-4 border-2 border-ink",
+              "h-4 w-4 border border-line",
               c.covered ? "bg-success" : "nb-hatch-dense bg-paper-3",
             )}
           />
         ))}
       </div>
-      <p className="font-mono text-[9px] text-ink-mute">
-        <span className="font-bold text-ink">
+      <p className="font-mono text-xs text-ink-mute">
+        <span className="font-semibold text-ink">
           {covered}/{cells.length}
         </span>{" "}
         script beats placed on the timeline
@@ -317,8 +317,8 @@ export function HealthGauge({ value, label, size = 104, className }: HealthGauge
         </g>
       </svg>
       <div className="mt-1 flex flex-col items-center">
-        <span className="font-mono text-xl font-bold tabular-nums leading-none text-ink">{Math.round(pct)}</span>
-        <span className="mt-0.5 font-sans text-[9px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">
+        <span className="font-mono text-lg font-semibold tabular-nums leading-none text-ink">{Math.round(pct)}</span>
+        <span className="mt-0.5 font-sans text-xs font-semibold text-ink-soft">
           {label}
         </span>
       </div>
@@ -350,7 +350,7 @@ export function Sparkline({ values, width = 96, height = 24, color = "var(--nb-s
   if (!path) return null;
 
   return (
-    <svg className={cn("block border-2 border-ink bg-paper-3", className)} width={width} height={height} aria-hidden>
+    <svg className={cn("block border border-line bg-paper-3", className)} width={width} height={height} aria-hidden>
       <path d={path} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="miter" />
     </svg>
   );

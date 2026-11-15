@@ -232,15 +232,15 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `sameColour(a, b)`: Case-insensitive comparison of two hex color strings (`#rrggbb`).
 * `savedAccent(film, accent)`: Resolves the accent to persist on save (the active accent if the film already had one, else undefined).
 
-### Editor Chrome Neobrutalism Design System (`editor/src/styles/tokens.css`)
-* `--nb-paper`: `#EDE9DE` (Main light application background canvas)
-* `--nb-surface`: `#F8F5EE` (Raised panel and editor card surface)
-* `--nb-subtle`: `#E2DDD0` (Sunken background, lane tracks, inputs)
-* `--nb-ink`: `#121214` (High-contrast typography and borders)
-* `--nb-muted`: `#66645E` (Secondary helper text and metadata)
-* `--nb-border`: `#121214` (Solid 2-4px structural boundaries)
-* `--nb-accent`: `#FF5500` (Neobrutal primary action accent)
-* `--nb-matte`: `#0A0A0B` (Strictly reserved for video frame matte behind preview)
+### Editor Chrome Design System, direction "Strip" (`editor/src/styles/tokens.css`)
+* `--nb-paper`: `#F3F4F6` (Light grey application ground). `--nb-paper-2` and `--nb-paper-3`: `#FFFFFF` (Panel, card, modal and input surfaces)
+* `--nb-sunken`, `--nb-sunken-2`, `--nb-sunken-3`: `#ECEEF2`, `#E2E5EB`, `#D3D7DE` (Recessed grounds: lane tracks, ruler, disabled)
+* `--nb-ink`: `#111318` (High-contrast text). `--nb-ink-soft` and `--nb-ink-mute`: `#575D6B` (Secondary text)
+* `--nb-line`: `#DDE0E6` (The one border colour, 1px)
+* `--nb-select` and `--nb-primary`: `#4B43E0` (The one accent). `--nb-select-tint`: `#ECEAFF` (Selected row, soft highlight)
+* `--nb-success`, `--nb-danger`, `--nb-warn`, `--nb-info`: `#12794F`, `#B42318`, `#8A5300`, `#1D5FA8` (Role colours, text and fill safe)
+* `--nb-radius`: `8px`. `--nb-shadow-frame`: `0 1px 2px rgba(0,0,0,.12)` (The only shadow, under the picture)
+* `--nb-matte`: `#0E0E12` (Strictly reserved for video frame matte behind preview)
 
 ### `EXPO` Motion Token (`src/dl/motion.ts`)
 * `EXPO = [0.16, 1, 0.3, 1]`: Native ease-out-expo cubic-bezier easing curve ensuring high initial velocity and soft, organic landing.
@@ -644,19 +644,19 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`autoPromptState.ts` (`editor/src/state/autoPromptState.ts`)**: Pure state rules for the Auto-Prompt button: single-flight execution guard dropping concurrent duplicate clicks (`createSingleFlight`) and delivery badge resolution (`autoPromptBadge`).
 
 ### Studio Inspector & Telemetry Components (`editor/src/components/`)
-* **`ExportProgressModal.tsx`**: Neobrutalist export dialog opened from the header Export button or progress chip. Displays a Start screen (facts fixed from the job), tracks real frame-by-frame renderer progress, provides a Cancel button that kills the render and deletes partial video, hides to a header progress chip on dismiss while rendering, and shows an explicit Download button on completion without auto-downloading.
+* **`ExportProgressModal.tsx`**: Export dialog opened from the header Export button or progress chip. Displays a Start screen (facts fixed from the job), tracks real frame-by-frame renderer progress, provides a Cancel button that kills the render and deletes partial video, hides to a header progress chip on dismiss while rendering, and shows an explicit Download button on completion without auto-downloading.
 * **`AgentActivityInspector.tsx`**: Live real-time agent telemetry timeline subscribing to SSE stream (`/api/agent/trace`) with filterable execution steps, live status pills (LIVE / CONNECTING / OFFLINE), and empty state.
 * **`AgentConnect.tsx`**: Header badge and dialog modal supporting two linking modes (running agent session via MCP and downloadable connector), presence heartbeating, reconnecting state recovery across restarts, and live activity feeds.
 * **`NewProjectModal.tsx`**: Modal dialog for creating a new project (paste script or start empty) with title, binding theme and accent selection, and voiceover voice.
 
-### Handcrafted Neobrutalism UI Primitives (`editor/src/components/ui/`)
+### Handcrafted UI Primitives (`editor/src/components/ui/`)
 * **`Badge.tsx`**: Status indicators and token chips.
-* **`Button.tsx`**: Neobrutalist buttons with tactile depression on click.
+* **`Button.tsx`**: Rounded hairline buttons with tone variants; one solid accent for the primary action.
 * **`Charts.tsx`**: Pure SVG data visualizations (coverage map, duration distribution, loudness curve, pacing breakdown).
 * **`Feedback.tsx`**: Inline error, warning, empty states, and toast notifications.
 * **`Field.tsx`**: Text, numeric, and select inputs with monospace technical typography.
 * **`Modal.tsx`**: Accessible dialog wrappers with focus trap and backdrop dismiss.
-* **`Panel.tsx`**: Bordered containers and sections with hard shadows.
+* **`Panel.tsx`**: Bordered containers and sections with no shadow.
 * **`Tabs.tsx`**: Segmented switches and tab lists.
 * **`Toolbar.tsx`**: Grouped action strips and icon button bars.
 

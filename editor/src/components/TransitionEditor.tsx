@@ -43,9 +43,9 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
   const framesCount = getTransitionFrames(durationSec, fps);
 
   return (
-    <div className="flex flex-col gap-2 border-2 border-ink bg-paper-3 p-2.5 shadow-nb-sm">
+    <div className="flex flex-col gap-2 border border-line bg-paper-3 p-2.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-sans text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">
+        <span className="font-sans text-xs font-semibold text-ink-soft">
           Entry transition
         </span>
         <Button size="xs" onClick={onApplyToAll} title="Use this transition on every shot">
@@ -66,11 +66,11 @@ export const TransitionEditor: React.FC<TransitionEditorProps> = ({
               className="flex flex-col gap-0.5 p-1.5"
               title={preset.description}
             >
-              <span className="flex items-center gap-1 font-sans text-[10px] font-extrabold uppercase tracking-[0.04em]">
+              <span className="flex items-center gap-1 font-sans text-xs font-semibold">
                 <Icon className="h-3 w-3 shrink-0" />
                 {preset.name}
               </span>
-              <span className={cn("nb-clamp-2 font-sans text-[9px] leading-snug", isSelected ? "opacity-90" : "text-ink-mute")}>
+              <span className={cn("nb-clamp-2 font-sans text-xs leading-snug", isSelected ? "opacity-90" : "text-ink-mute")}>
                 {preset.description}
               </span>
             </Card>

@@ -1,7 +1,7 @@
 /**
  * File Description: Status vocabulary primitives for the Aideos editor chrome.
- * Badge is the small outlined tag used for states, counts and channel labels; Stat is the
- * label/value row used by metric blocks; KeyHint renders a keyboard shortcut as a physical key.
+ * Badge is the small pill used for states, counts and channel labels; Stat is the
+ * label/value row used by metric blocks; KeyHint renders a keyboard shortcut as a small key.
  * All three lock numbers and technical labels to the mono face so readouts line up column-wise.
  * Inputs and outputs: badge label and variant -> rendered badge UI element.
  * Used by: editor/src/components/ui/index.ts, editor screens and inspectors.
@@ -13,14 +13,14 @@ import { cn } from "./cn";
 export type BadgeTone = "neutral" | "primary" | "select" | "success" | "danger" | "warn" | "info" | "quiet";
 
 const TONE_CLASSES: Record<BadgeTone, string> = {
-  neutral: "bg-paper-3 text-ink",
-  primary: "bg-primary text-ink",
-  select: "bg-select text-select-ink",
-  success: "bg-success text-ink",
-  danger: "bg-danger text-ink",
-  warn: "bg-warn text-ink",
-  info: "bg-info text-ink",
-  quiet: "bg-sunken text-ink-soft",
+  neutral: "border-line bg-paper-3 text-ink",
+  primary: "border-primary bg-primary text-select-ink",
+  select: "border-select bg-select text-select-ink",
+  success: "border-success/40 bg-success/10 text-success",
+  danger: "border-danger/40 bg-danger/10 text-danger",
+  warn: "border-warn/40 bg-warn/10 text-warn",
+  info: "border-info/40 bg-info/10 text-info",
+  quiet: "border-line bg-sunken text-ink-soft",
 };
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -28,12 +28,12 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   icon?: React.ReactNode;
 }
 
-/** Small outlined tag that names a state, channel or count. */
+/** Small pill that names a state, channel or count. */
 export function Badge({ tone = "neutral", icon, className, children, ...rest }: BadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 border-2 border-ink px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none tracking-[0.06em]",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs font-semibold leading-none",
         TONE_CLASSES[tone],
         className,
       )}
@@ -65,8 +65,9 @@ const STAT_VALUE_TONE: Record<NonNullable<StatProps["tone"]>, string> = {
 export function Stat({ label, value, tone = "ink", className }: StatProps) {
   return (
     <div className={cn("flex items-baseline justify-between gap-3 py-0.5", className)}>
-      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.08em] text-ink-soft">{label}</span>
-      <span className={cn("font-mono text-[11px] font-bold tabular-nums", STAT_VALUE_TONE[tone])}>{value}</span>
+      {/* Upper case on purpose: scripts/smoke_studio.ts reads the "CLIPS" count from the page text. */}
+      <span className="font-sans text-xs font-semibold uppercase text-ink-soft">{label}</span>
+      <span className={cn("font-mono text-xs font-semibold tabular-nums", STAT_VALUE_TONE[tone])}>{value}</span>
     </div>
   );
 }
@@ -77,14 +78,14 @@ export interface KeyHintProps {
   className?: string;
 }
 
-/** Renders a keyboard shortcut as a row of physical-looking keycaps. */
+/** Renders a keyboard shortcut as a row of small keys. */
 export function KeyHint({ keys, className }: KeyHintProps) {
   return (
     <span className={cn("inline-flex items-center gap-0.5", className)}>
       {keys.map((k) => (
         <kbd
           key={k}
-          className="inline-flex min-w-[18px] items-center justify-center border-2 border-ink bg-paper-3 px-1 py-px font-mono text-[9px] font-bold uppercase leading-none text-ink shadow-nb-xs"
+          className="inline-flex min-w-[18px] items-center justify-center rounded border border-line bg-paper-3 px-1 py-px font-mono text-xs leading-none text-ink"
         >
           {k}
         </kbd>

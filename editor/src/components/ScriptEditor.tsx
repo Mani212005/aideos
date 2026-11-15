@@ -200,12 +200,12 @@ function StoryParagraphRow({
           placeholder="Write what the narrator says..."
           aria-label="Narration paragraph"
           rows={Math.max(2, Math.ceil(paragraph.narration.length / 90))}
-          className="w-full bg-paper border-2 border-ink p-3 text-sm leading-relaxed text-ink outline-none resize-none focus:border-select placeholder:text-ink-mute font-sans"
+          className="w-full bg-paper border border-line p-3 text-sm leading-relaxed text-ink outline-none resize-none focus:border-select placeholder:text-ink-mute font-sans"
         />
-        <div className="flex items-center gap-3 text-[11px] text-ink-soft">
+        <div className="flex items-center gap-3 text-xs text-ink-soft">
           <span className="font-mono">{words} words</span>
           {needsRecording && paragraph.narration.trim() && (
-            <span className="font-mono font-bold text-ink bg-warn/40 border border-ink px-1.5">needs recording</span>
+            <span className="font-mono font-semibold text-ink bg-warn/40 border border-line px-1.5">needs recording</span>
           )}
           <button onClick={onAddBelow} className="inline-flex items-center gap-1 hover:text-ink" title="Add a paragraph below">
             <Plus size={11} /> paragraph
@@ -216,11 +216,11 @@ function StoryParagraphRow({
         </div>
       </div>
 
-      <div className="border-2 border-ink bg-paper-3 shadow-nb-sm">
+      <div className="border border-line bg-paper-3">
         <button
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-ink"
+          className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-ink"
         >
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
           <StickyNote size={12} /> Notes
@@ -228,24 +228,24 @@ function StoryParagraphRow({
         </button>
         {open && (
           <div className="flex flex-col gap-2 px-2.5 pb-2.5">
-            <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wide text-ink-soft">
+            <label className="flex flex-col gap-1 text-xs font-semibold text-ink-soft">
               Visual
               <textarea
                 value={paragraph.visual.join("\n")}
                 onChange={(e) => onChange({ visual: noteLines(e.target.value) })}
                 placeholder="Your agent fills this in"
                 rows={2}
-                className="w-full bg-paper border border-ink/60 p-1.5 text-xs font-normal normal-case tracking-normal text-ink outline-none resize-none placeholder:text-ink-mute"
+                className="w-full bg-paper border border-line p-1.5 text-xs font-normal normal-case tracking-normal text-ink outline-none resize-none placeholder:text-ink-mute"
               />
             </label>
-            <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wide text-ink-soft">
+            <label className="flex flex-col gap-1 text-xs font-semibold text-ink-soft">
               On screen
               <textarea
                 value={paragraph.onScreen.join("\n")}
                 onChange={(e) => onChange({ onScreen: noteLines(e.target.value) })}
                 placeholder="Your agent fills this in"
                 rows={2}
-                className="w-full bg-paper border border-ink/60 p-1.5 text-xs font-normal normal-case tracking-normal text-ink outline-none resize-none placeholder:text-ink-mute"
+                className="w-full bg-paper border border-line p-1.5 text-xs font-normal normal-case tracking-normal text-ink outline-none resize-none placeholder:text-ink-mute"
               />
             </label>
           </div>
@@ -762,14 +762,14 @@ export function ScriptEditor({
   return (
     <div className="w-full h-full bg-paper text-ink flex flex-col p-6 overflow-y-auto font-sans">
       {/* Top Header & Project Metadata */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-ink">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
         <div>
           <div className="flex items-center gap-2">
             <FileEdit size={18} className="text-select-text" />
-            <h2 className="text-xl font-extrabold tracking-[-0.02em]">
+            <h2 className="text-lg font-semibold">
               Script & Voiceover Studio
             </h2>
-            <span className="text-xs bg-paper-3 text-ink-soft border-2 border-ink px-2.5 py-0.5 font-mono shadow-nb-sm">
+            <span className="text-xs bg-paper-3 text-ink-soft border border-line px-2.5 py-0.5 font-mono">
               {film.id}
             </span>
           </div>
@@ -784,7 +784,7 @@ export function ScriptEditor({
           <button
             onClick={handleSaveScript}
             disabled={saving || loading}
-            className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-paper-3 text-ink"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 font-sans text-xs font-semibold transition-colors duration-nb ease-nb disabled:pointer-events-none disabled:opacity-40 bg-paper-3 text-ink"
           >
             {saving ? (
               "Saving..."
@@ -798,7 +798,7 @@ export function ScriptEditor({
           <button
             onClick={handleAutoBuildScenes}
             disabled={buildingScenes || loading || !script.trim()}
-            className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-warn text-ink"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 font-sans text-xs font-semibold transition-colors duration-nb ease-nb disabled:pointer-events-none disabled:opacity-40 bg-select text-select-ink"
             title="Automatically parse timestamped scenes into video shots and dispatch to terminal AI agent"
           >
             {buildingScenes ? (
@@ -816,7 +816,7 @@ export function ScriptEditor({
           <button
             onClick={() => handlePromptAgentDirectly()}
             disabled={promptingAgent || loading}
-            className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-info/40 text-ink"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 font-sans text-xs font-semibold transition-colors duration-nb ease-nb disabled:pointer-events-none disabled:opacity-40 bg-info/40 text-ink"
             title="Automatically dispatch current directing prompt into active terminal coding agent in tmux session"
           >
             {promptingAgent ? (
@@ -830,7 +830,7 @@ export function ScriptEditor({
           <button
             onClick={handleGenerateVoiceover}
             disabled={generating || loading || !script.trim()}
-            className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:pointer-events-none disabled:opacity-40 bg-primary text-ink"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 font-sans text-xs font-semibold transition-colors duration-nb ease-nb disabled:pointer-events-none disabled:opacity-40 bg-primary text-select-ink"
           >
             <Mic size={13} className={generating ? "animate-pulse" : ""} />
             <span>
@@ -844,10 +844,10 @@ export function ScriptEditor({
 
       {/* Live Auto-Prompter Dispatch Status */}
       {lastDispatchResult && (
-        <div className="mt-3 px-3.5 py-2.5 bg-success/20 border-2 border-ink flex items-center justify-between font-mono text-xs shadow-nb-sm animate-in fade-in duration-150">
+        <div className="mt-3 px-3.5 py-2.5 bg-success/20 border border-line flex items-center justify-between font-mono text-xs animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
-            <span className="font-bold text-ink">AUTO-PROMPTER:</span>
+            <span className="font-semibold text-ink">AUTO-PROMPTER:</span>
             <span className="text-ink">
               {paneDelivery?.state === "sent" && !paneDelivery.duplicate
                 ? `Prompt sent to your ${paneDelivery.agent} agent`
@@ -872,16 +872,16 @@ export function ScriptEditor({
 
       {/* Agent Directing Bridge Banner */}
       {agentDirective && (
-        <div className="mt-4 bg-paper-2 border-2 border-ink p-4 shadow-nb flex flex-col gap-3 font-sans animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="mt-4 bg-paper-2 border border-line p-4 flex flex-col gap-3 font-sans animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-primary border-2 border-ink text-ink shadow-nb-sm">
+              <div className="p-2 bg-primary border border-line text-select-ink">
                 <Bot size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-ink tracking-tight flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-ink tracking-tight flex items-center gap-2">
                   <span>🎬 Agent Directing Prompt Ready</span>
-                  <span className="text-[10px] font-mono bg-success/25 border border-ink text-ink px-1.5 py-0.5 font-bold">
+                  <span className="text-xs font-mono bg-success/25 border border-line text-ink px-1.5 py-0.5 font-semibold">
                     ACTIVE DIRECTIVE
                   </span>
                 </h3>
@@ -899,7 +899,7 @@ export function ScriptEditor({
             </button>
           </div>
 
-          <div className="relative bg-sunken border-2 border-ink p-3 rounded-none">
+          <div className="relative bg-sunken border border-line p-3 rounded-none">
             <pre className="text-xs font-mono text-ink whitespace-pre-wrap select-all leading-relaxed overflow-x-auto max-h-36">
               {agentDirective.prompt}
             </pre>
@@ -909,7 +909,7 @@ export function ScriptEditor({
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => copyToClipboard(agentDirective.prompt)}
-                className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-primary text-ink"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 font-sans text-xs font-semibold transition-colors duration-nb ease-nb bg-primary text-select-ink"
               >
                 {copiedPrompt ? (
                   <>
@@ -924,8 +924,8 @@ export function ScriptEditor({
                 )}
               </button>
               {agentDirective.taskFile && (
-                <span className="text-[11px] font-mono text-ink-soft">
-                  Saved: <span className="font-bold text-ink">{agentDirective.taskFile}</span> & <span className="font-bold text-ink">.aideos_task.md</span>
+                <span className="text-xs font-mono text-ink-soft">
+                  Saved: <span className="font-semibold text-ink">{agentDirective.taskFile}</span> & <span className="font-semibold text-ink">.aideos_task.md</span>
                 </span>
               )}
             </div>
@@ -933,7 +933,7 @@ export function ScriptEditor({
             {onNavigateToVideo && (
               <button
                 onClick={onNavigateToVideo}
-                className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 font-sans text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-paper-3 text-ink"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 font-sans text-xs font-semibold transition-colors duration-nb ease-nb bg-paper-3 text-ink"
               >
                 <span>Open Studio Timeline</span>
                 <ArrowRight size={13} />
@@ -948,10 +948,10 @@ export function ScriptEditor({
         <div
           className={`mt-4 p-3 border text-xs font-medium flex items-center justify-between transition-all ${
             statusMsg.type === "success"
-              ? "bg-success/25 border-2 border-ink text-ink"
+              ? "bg-success/25 border border-line text-ink"
               : statusMsg.type === "error"
-                ? "bg-danger/25 border-2 border-ink text-ink"
-                : "bg-info/25 border-2 border-ink text-ink"
+                ? "bg-danger/25 border border-line text-ink"
+                : "bg-info/25 border border-line text-ink"
           }`}
         >
           <span>{statusMsg.text}</span>
@@ -969,26 +969,26 @@ export function ScriptEditor({
         {/* LEFT 3 COLS: Big Screenplay Editor */}
         <div className="lg:col-span-3 flex flex-col gap-3 min-h-[420px]">
           {/* Story header bar */}
-          <div className="flex items-center justify-between bg-paper-3 border-2 border-ink px-4 py-2 flex-wrap gap-2 shadow-nb-sm">
+          <div className="flex items-center justify-between bg-paper-3 border border-line px-4 py-2 flex-wrap gap-2">
             <div className="flex items-center gap-4 text-xs text-ink-soft">
               <span>
                 <strong>Paragraphs:</strong>{" "}
-                <span className="text-ink font-mono font-bold">{paragraphCount}</span>
+                <span className="text-ink font-mono font-semibold">{paragraphCount}</span>
               </span>
               <span>
                 <strong>Spoken:</strong>{" "}
-                <span className="text-ink font-mono font-bold">{spokenWords.length} words</span>
+                <span className="text-ink font-mono font-semibold">{spokenWords.length} words</span>
               </span>
               <span>
                 <strong>Duration:</strong>{" "}
                 {duration > 0 ? (
-                  <span className="text-ink font-mono font-bold">{formatTime(duration)}</span>
+                  <span className="text-ink font-mono font-semibold">{formatTime(duration)}</span>
                 ) : (
                   <span className="text-ink-soft font-mono italic">--:-- (Pending VO)</span>
                 )}
               </span>
               {dirty && (
-                <span className="text-[11px] bg-warn/40 text-ink px-2 py-0.5 border-2 border-ink font-medium shadow-nb-sm">
+                <span className="text-xs bg-warn/40 text-ink px-2 py-0.5 border border-line font-medium">
                   Unsaved edits
                 </span>
               )}
@@ -996,16 +996,16 @@ export function ScriptEditor({
           </div>
 
           {diskChanged && (
-            <div className="px-3.5 py-2.5 bg-info/25 border-2 border-ink text-xs flex items-center justify-between gap-3" role="status">
+            <div className="px-3.5 py-2.5 bg-info/25 border border-line text-xs flex items-center justify-between gap-3" role="status">
               <span>Your agent changed the script while you had unsaved edits here. Save to keep yours, or reload to see the agent's version.</span>
-              <button onClick={reloadFromDisk} className="border-2 border-ink px-2.5 py-1 font-bold uppercase text-[11px] bg-paper-3 shadow-nb-sm">
+              <button onClick={reloadFromDisk} className="border border-line px-2.5 py-1 font-semibold text-xs bg-paper-3">
                 Reload
               </button>
             </div>
           )}
 
           {/* The story: one block per paragraph, notes beside it */}
-          <div className="flex-1 relative bg-paper-3 border-x border-b-2 border-ink overflow-hidden flex flex-col">
+          <div className="flex-1 relative bg-paper-3 border-x border-b border-line overflow-hidden flex flex-col">
             <div className="w-full h-full min-h-[380px] p-4 bg-paper overflow-y-auto flex flex-col gap-5" data-testid="story-editor">
               {loading && <p className="text-xs text-ink-soft">Loading the story...</p>}
 
@@ -1022,19 +1022,19 @@ export function ScriptEditor({
                     placeholder={"#Start\nOne idea per paragraph...\n\n#Conclusion\nHow it ends."}
                     aria-label="Paste your story"
                     rows={8}
-                    className="w-full bg-paper-3 border-2 border-ink p-3 text-sm text-ink outline-none focus:border-select resize-y placeholder:text-ink-mute"
+                    className="w-full bg-paper-3 border border-line p-3 text-sm text-ink outline-none focus:border-select resize-y placeholder:text-ink-mute"
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={addPastedStory}
                       disabled={!pasteText.trim()}
-                      className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm bg-primary text-ink disabled:opacity-40"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-semibold bg-primary text-select-ink disabled:opacity-40"
                     >
                       <Plus size={13} /> Add to story
                     </button>
                     <button
                       onClick={() => addParagraphBelow(0, 0)}
-                      className="inline-flex h-8 items-center gap-1.5 border-2 border-ink px-3 text-[11px] font-bold uppercase tracking-[0.06em] shadow-nb-sm bg-paper-3 text-ink"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-semibold bg-paper-3 text-ink"
                     >
                       Start with a blank paragraph
                     </button>
@@ -1045,10 +1045,10 @@ export function ScriptEditor({
               {story.map((section, si) => (
                 <section key={section.id} className="flex flex-col gap-3" data-testid="story-section">
                   {(!isDerivedTitle(section) || section.timeStart) && (
-                    <div className="flex items-center gap-2 border-b-2 border-ink pb-1">
-                      {!isDerivedTitle(section) && <h3 className="text-sm font-extrabold tracking-tight text-ink">{section.title}</h3>}
+                    <div className="flex items-center gap-2 border-b border-line pb-1">
+                      {!isDerivedTitle(section) && <h3 className="text-sm font-semibold tracking-tight text-ink">{section.title}</h3>}
                       {section.timeStart && section.timeEnd && (
-                        <span className="text-[10px] bg-paper-3 text-ink-soft border-2 border-ink px-2 py-0.5 font-mono shadow-nb-sm">
+                        <span className="text-xs bg-paper-3 text-ink-soft border border-line px-2 py-0.5 font-mono">
                           {section.timeStart}-{section.timeEnd}
                         </span>
                       )}
@@ -1071,14 +1071,14 @@ export function ScriptEditor({
 
           {/* AUDIO PLAYER EMBEDDED BELOW SCRIPT */}
           {audioUrl && (
-            <div className="mt-2 bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 shadow-nb-sm">
+            <div className="mt-2 bg-paper-3 border border-line p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-select/20 text-select-text flex items-center justify-center font-bold text-sm">
+                  <div className="w-8 h-8 bg-select/20 text-select-text flex items-center justify-center font-semibold text-sm">
                     <Volume2 size={16} className="text-select-text" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-ink">
+                    <h4 className="text-sm font-semibold text-ink">
                       Generated Voiceover Audio
                     </h4>
                     <p className="text-xs text-ink-soft font-mono break-all">
@@ -1092,7 +1092,7 @@ export function ScriptEditor({
                   <a
                     href={audioUrl}
                     download={`voiceover_${film.id}.wav`}
-                    className="text-xs px-3 py-1.5 bg-paper-3 hover:bg-sunken border-2 border-ink text-ink hover:text-ink font-medium flex items-center gap-1.5 shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                    className="text-xs px-3 py-1.5 bg-paper-3 hover:bg-sunken border border-line text-ink hover:text-ink font-medium flex items-center gap-1.5"
                   >
                     <Download size={13} /> Download .wav
                   </a>
@@ -1105,7 +1105,7 @@ export function ScriptEditor({
                         }
                         onNavigateToVideo();
                       }}
-                      className="text-xs px-3 py-1.5 bg-success hover:bg-success text-ink font-bold flex items-center gap-1.5"
+                      className="text-xs px-3 py-1.5 bg-success hover:bg-success text-select-ink font-semibold flex items-center gap-1.5"
                     >
                       <FilmIcon size={13} /> View in Video Player
                     </button>
@@ -1133,10 +1133,10 @@ export function ScriptEditor({
               />
 
               {/* Custom High-Fidelity Audio Controls */}
-              <div className="flex items-center gap-4 bg-paper border-2 border-ink p-3  shadow-nb-sm">
+              <div className="flex items-center gap-4 bg-paper border border-line p-3">
                 <button
                   onClick={togglePlayAudio}
-                  className="w-10 h-10 bg-select hover:bg-select text-select-ink flex items-center justify-center font-bold text-sm shadow-nb-sm transition-all active:scale-95 shrink-0"
+                  className="w-10 h-10 bg-select hover:bg-select text-select-ink flex items-center justify-center font-semibold text-sm transition-all active:scale-95 shrink-0"
                   title={isPlaying ? "Pause audio" : "Play voiceover"}
                 >
                   {isPlaying ? (
@@ -1170,7 +1170,7 @@ export function ScriptEditor({
                   {formatTime(duration)}
                 </span>
 
-                <div className="flex items-center gap-1 bg-paper-3 p-0.5 border-2 border-ink shadow-nb-sm">
+                <div className="flex items-center gap-1 bg-paper-3 p-0.5 border border-line">
                   {[1.0, 1.25, 1.5].map((speed) => (
                     <button
                       key={speed}
@@ -1179,9 +1179,9 @@ export function ScriptEditor({
                         if (audioRef.current)
                           audioRef.current.playbackRate = speed;
                       }}
-                      className={`text-[11px] px-2 py-0.5 font-mono ${
+                      className={`text-xs px-2 py-0.5 font-mono ${
                         playbackRate === speed
-                          ? "bg-select text-select-ink font-bold"
+                          ? "bg-select text-select-ink font-semibold"
                           : "text-ink-soft hover:text-ink"
                       }`}
                     >
@@ -1197,8 +1197,8 @@ export function ScriptEditor({
         {/* RIGHT 1 COL: Voice Settings & Workflow Guide */}
         <div className="flex flex-col gap-4">
           {/* Voice Model Selector Card */}
-          <div className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 shadow-nb-sm">
-            <h3 className="text-sm font-bold text-ink flex items-center gap-1.5">
+          <div className="bg-paper-3 border border-line p-4 flex flex-col gap-3">
+            <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
               <Mic size={15} className="text-select-text" /> AI Voice Synthesis
               Engine
             </h3>
@@ -1210,7 +1210,7 @@ export function ScriptEditor({
               value={selectedVoice}
               onChange={(e) => setSelectedVoice(e.target.value)}
               aria-label="Narration voice"
-              className="w-full bg-paper-3 border-2 border-ink p-2.5 text-xs text-ink outline-none focus:border-select font-medium shadow-nb-sm"
+              className="w-full bg-paper-3 border border-line p-2.5 text-xs text-ink outline-none focus:border-select font-medium"
             >
               <optgroup label="Kokoro Local Neural (ONNX)">
                 {VOICES.filter((v) => v.provider === "Kokoro Neural").map(
@@ -1241,7 +1241,7 @@ export function ScriptEditor({
               </optgroup>
             </select>
 
-            <div className="p-2.5 bg-paper-3 border-2 border-ink text-[11px] text-ink-soft space-y-1 shadow-nb-sm">
+            <div className="p-2.5 bg-paper-3 border border-line text-xs text-ink-soft space-y-1">
               <div>
                 • <strong>Spoken Narration:</strong> {spokenWords.length} spoken
                 dialogue words
@@ -1256,11 +1256,11 @@ export function ScriptEditor({
           </div>
 
           {/* Narration change list */}
-          <div className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 shadow-nb-sm" data-testid="narration-changes">
-            <h3 className="text-sm font-bold text-ink flex items-center gap-1.5">
+          <div className="bg-paper-3 border border-line p-4 flex flex-col gap-3" data-testid="narration-changes">
+            <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
               <History size={15} className="text-select-text" /> Narration changes
             </h3>
-            <p className="text-[11px] text-ink-soft">
+            <p className="text-xs text-ink-soft">
               {narration
                 ? unrecordedCount === 0
                   ? "Every narration line has a recording."
@@ -1268,19 +1268,19 @@ export function ScriptEditor({
                 : "Loading..."}
             </p>
             {narration && narration.entries.length === 0 && (
-              <p className="text-[11px] text-ink-soft border-t-2 border-ink pt-2">
+              <p className="text-xs text-ink-soft border-t border-line pt-2">
                 No changes yet. Edits you or your agent make to the narration are listed here.
               </p>
             )}
             {narration && narration.entries.length > 0 && (
-              <ul className="flex flex-col gap-2 border-t-2 border-ink pt-2 max-h-72 overflow-y-auto">
+              <ul className="flex flex-col gap-2 border-t border-line pt-2 max-h-72 overflow-y-auto">
                 {narration.entries.map((entry) => (
-                  <li key={entry.id} className="text-[11px] text-ink flex flex-col gap-0.5" data-testid="narration-change">
+                  <li key={entry.id} className="text-xs text-ink flex flex-col gap-0.5" data-testid="narration-change">
                     <div className="flex items-center gap-1.5">
-                      <span className={`font-mono font-bold uppercase px-1.5 border border-ink ${entry.source === "agent" ? "bg-info/40" : "bg-success/30"}`}>
+                      <span className={`font-mono font-semibold px-1.5 border border-line ${entry.source === "agent" ? "bg-info/40" : "bg-success/30"}`}>
                         {entry.source === "agent" ? "Agent" : "You"}
                       </span>
-                      <span className="font-bold uppercase tracking-wide">{entry.kind}</span>
+                      <span className="font-semibold">{entry.kind}</span>
                       <span className="ml-auto font-mono text-ink-soft">{new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     </div>
                     {entry.before !== undefined && <div className="text-ink-soft line-through break-words">{entry.before}</div>}
@@ -1292,11 +1292,11 @@ export function ScriptEditor({
           </div>
 
           {/* How it works */}
-          <div className="bg-paper-3 border-2 border-ink p-4 flex flex-col gap-3 text-xs text-ink-soft shadow-nb-sm">
-            <h3 className="text-sm font-bold text-ink flex items-center gap-1.5">
+          <div className="bg-paper-3 border border-line p-4 flex flex-col gap-3 text-xs text-ink-soft">
+            <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
               <Clapperboard size={15} className="text-select-text" /> How the script works
             </h3>
-            <ul className="space-y-2 list-disc list-inside text-[11px]">
+            <ul className="space-y-2 list-disc list-inside text-xs">
               <li>
                 <strong>Your words stay yours:</strong> write the story as paragraphs. Nothing reformats
                 it; your agent only fills in the notes beside each paragraph.

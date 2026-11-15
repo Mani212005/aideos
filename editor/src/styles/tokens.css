@@ -1,29 +1,27 @@
 /**
- * File Description: Neobrutalism design tokens for the Aideos editor chrome.
- * Single source of truth for colour, border weight, hard-shadow offset, motion and typography
- * used by every editor panel, toolbar, lane, modal and control. The editor is a light
- * application end to end: the only dark surface in the product is --nb-matte, the small matte
- * drawn directly behind the video frame so footage exposure is judged correctly. Contrast pairs
- * are documented inline and are all WCAG AA or better. This file styles the editor only; the
- * rendered video design language lives in src/dl/README.md and is deliberately untouched.
- * Inputs and outputs: none -> CSS custom properties for Neobrutalism design tokens.
+ * File Description: Design tokens for the Aideos editor chrome (direction "Strip": light grey ground, white surfaces, hairline borders, one accent).
+ * Single source of truth for colour, type scale, spacing, radius and motion used by every editor panel, toolbar, lane, modal and control.
+ * The editor is a light application end to end: the only dark surface in the product is --nb-matte, the small matte drawn directly behind the video frame so footage exposure is judged correctly.
+ * The only shadow in the editor is --nb-shadow-frame, one 1 px shadow under the picture. Borders are 1 px hairlines in --nb-line.
+ * The prefix "nb" is a historical name kept so every Tailwind utility and component keeps working; it carries no style meaning.
+ * Contrast pairs are documented inline and are all WCAG AA or better. This file styles the editor only; the rendered video design language lives in src/dl/README.md and is deliberately untouched.
+ * Inputs and outputs: none -> CSS custom properties for the editor design tokens.
  * Used by: editor/tailwind.config.js, editor/src/index.css.
  */
 
 :root {
-  /* --- Paper: the chrome ------------------------------------------------
-     Warm bone slabs carry the whole application. Every slab is outlined in
-     ink and dropped with a hard, blur-free shadow. */
-  --nb-paper: #ede9de; /* app canvas */
-  --nb-paper-2: #f7f4ec; /* raised panel / card */
+  /* --- Surfaces ---------------------------------------------------------
+     A light grey ground carries the application. Panels and inputs are white. */
+  --nb-paper: #f3f4f6; /* app ground */
+  --nb-paper-2: #ffffff; /* panel, card, modal */
   --nb-paper-3: #ffffff; /* inputs, highest surface */
 
   /* --- Sunken: dense working surfaces -----------------------------------
      Timeline canvas, lane gutters, code and script grounds. Recessed by
-     being darker paper, never by going dark. */
-  --nb-sunken: #dfd9c9; /* working canvas (timeline lanes, script ground) */
-  --nb-sunken-2: #d2cbb8; /* deeper recess (ruler, lane gutters, tracks) */
-  --nb-sunken-3: #c3bba5; /* deepest recess (inactive / disabled ground) */
+     being a darker grey, never by going dark. */
+  --nb-sunken: #eceef2; /* working canvas (timeline lanes, script ground) */
+  --nb-sunken-2: #e2e5eb; /* deeper recess (ruler, lane gutters, tracks) */
+  --nb-sunken-3: #d3d7de; /* deepest recess (inactive / disabled ground) */
 
   /* --- Matte -------------------------------------------------------------
      The only dark surface in the editor. Sized to the video frame itself so
@@ -32,66 +30,79 @@
   --nb-matte-text: #efede6;
 
   /* --- Ink ---------------------------------------------------------------
-     ink on paper 15.5:1 | on sunken 13.3:1 | on sunken-2 11.6:1
-     ink-soft on paper 6.4:1 | on sunken 5.5:1 | on sunken-2 4.8:1
-     ink-mute on paper 5.2:1 | on sunken 4.5:1 (labels only on sunken-2) */
-  --nb-ink: #14140f;
-  --nb-ink-soft: #55524a;
-  --nb-ink-mute: #63604f;
+     ink on ground 16.9:1 | on white 18.6:1 | on sunken-2 14.7:1
+     ink-soft on ground 6.0:1 | on white 6.6:1 | on sunken-2 5.2:1 | on sunken-3 4.6:1
+     ink-mute is the same grey as ink-soft: one secondary text colour. */
+  --nb-ink: #111318;
+  --nb-ink-soft: #575d6b;
+  --nb-ink-mute: #575d6b;
 
-  /* --- Role accents ------------------------------------------------------
-     Each accent has exactly one role and always sits inside an ink border.
-     Contrast of its own text colour on the fill:
-     primary 13.0:1 (ink) | select 5.3:1 (bone) | success 8.1:1 (ink)
-     danger 5.7:1 (ink)   | warn 7.9:1 (ink)    | info 7.9:1 (ink) */
-  --nb-primary: #ffd23f; /* primary action */
-  --nb-select: #5b4bff; /* selection, active navigation, snap guide */
-  --nb-select-ink: #ffffff;
-  --nb-success: #35c08a; /* healthy, synced, committed */
-  --nb-danger: #ff4d4d; /* destructive, playhead head */
-  --nb-warn: #ff8a00; /* pending, drifted, needs attention */
-  --nb-info: #3bb3e8; /* informational */
+  /* --- Line ---------------------------------------------------------------
+     The one border colour: 1 px hairlines between and around surfaces. */
+  --nb-line: #dde0e6;
 
-  /* Text-safe variants of the two accents that fall below AA as small text on paper.
-     select-text 5.7:1 | danger-text 4.6:1 */
-  --nb-select-text: #4a38e8;
-  --nb-danger-text: #c42b2b;
+  /* --- Accent ------------------------------------------------------------
+     One accent for primary action, selection and navigation. It is a dark
+     indigo so it passes as text and as a fill under white text:
+     white on accent 6.6:1 | accent on white 6.6:1 | accent on ground 6.0:1
+     The film's own accent (theme.accentChosen) is drawn by the components
+     that bind it inline; it is not a token. */
+  --nb-primary: #4b43e0; /* primary action */
+  --nb-select: #4b43e0; /* selection, active navigation, snap guide */
+  --nb-select-ink: #ffffff; /* text on a solid accent or role fill */
+  --nb-select-tint: #eceaff; /* selected row, soft highlight (ink on it 15.7:1) */
+
+  /* --- Role colours ------------------------------------------------------
+     Dark enough to be text on white and a fill under white text.
+     white on fill: success 5.4:1 | danger 6.6:1 | warn 6.3:1 | info 6.5:1 */
+  --nb-success: #12794f; /* healthy, synced, committed */
+  --nb-danger: #b42318; /* destructive, playhead head */
+  --nb-warn: #8a5300; /* pending, drifted, needs attention */
+  --nb-info: #1d5fa8; /* informational */
+
+  /* Text variants. They are the same values as the fills: the role colours already pass as text. */
+  --nb-select-text: #4b43e0;
+  --nb-danger-text: #b42318;
 
   /* --- Timeline clip palette --------------------------------------------
-     Clip bodies are saturated pastels so ink text and ink borders read on
-     them at lane heights as small as 28px. Ink on each fill:
-     anim 9.0:1 | video 11.6:1 | audio 12.4:1 | text 11.9:1 | sub 10.1:1 */
-  --nb-clip-anim: #b9a7ff;
-  --nb-clip-video: #7fd8f5;
-  --nb-clip-audio: #8ee6a8;
-  --nb-clip-text: #ffc49b;
-  --nb-clip-subtitle: #f2a9d0;
-  --nb-clip-image: #d7e88c;
+     Clip bodies are soft tints so ink text reads on them at lane heights as
+     small as 28px. Ink on each fill: anim 13.6:1 | video 14.5:1 | audio 14.9:1
+     text 14.6:1 | sub 14.0:1 | image 15.3:1 */
+  --nb-clip-anim: #dcd9ff;
+  --nb-clip-video: #d3e6f5;
+  --nb-clip-audio: #cdeedd;
+  --nb-clip-text: #f5e2bd;
+  --nb-clip-subtitle: #f2d9e6;
+  --nb-clip-image: #e4edc8;
 
   /* --- Structure --------------------------------------------------------- */
-  --nb-border: 2px; /* default slab outline */
-  --nb-border-thick: 3px; /* modals, primary actions, focus */
+  --nb-border: 1px; /* every border */
+  --nb-border-thick: 2px; /* keyboard focus ring only */
   --nb-border-hair: 1px; /* seams inside dense working surfaces */
-  --nb-radius: 0px;
-
-  --nb-offset-sm: 2px;
-  --nb-offset: 4px;
-  --nb-offset-lg: 6px;
+  --nb-radius: 8px; /* the one corner radius */
+  --nb-shadow-frame: 0 1px 2px rgba(0, 0, 0, 0.12); /* the one shadow: under the picture */
 
   /* --- Motion ------------------------------------------------------------
-     Short and mechanical. Nothing floats, nothing fades slowly. */
-  --nb-ease: cubic-bezier(0.2, 0.9, 0.2, 1);
-  --nb-dur: 90ms;
-  --nb-dur-fast: 50ms;
+     ease-out-expo, short. Nothing bounces. */
+  --nb-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --nb-dur: 160ms;
+  --nb-dur-fast: 90ms;
 
   /* --- Spacing rhythm ----------------------------------------------------
-     All editor padding and gaps step on this 4px scale. */
+     All editor padding and gaps step on this scale: 4 8 12 16 24 32 (Tailwind 1 2 3 4 6 8). */
   --nb-gutter: 12px;
-  --nb-gutter-lg: 20px;
+  --nb-gutter-lg: 24px;
 
-  /* --- Typography -------------------------------------------------------- */
+  /* --- Typography --------------------------------------------------------
+     Geist for words, JetBrains Mono for time, numbers, code and system text.
+     Sizes (px): 12 / 13 / 15 / 20 / 28. Mono is 12. */
   --nb-font-sans: "Geist", system-ui, -apple-system, sans-serif;
   --nb-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --nb-text-xs: 12px;
+  --nb-text-sm: 13px;
+  --nb-text-base: 15px;
+  --nb-text-lg: 20px;
+  --nb-text-xl: 28px;
   --nb-track-tight: -0.02em;
-  --nb-track-label: 0.08em;
+  --nb-track-label: 0.02em;
 }

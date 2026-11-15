@@ -45,7 +45,7 @@ export function CaptionsStage({ film, commit, onSeekFrame }: CaptionsStageProps)
       <Panel tone="flat" className="shrink-0">
         <PanelHeader title="Narration density" />
         <PanelBody scroll={false} className="p-3">
-          <p className="mb-2 font-sans text-[11px] leading-snug text-ink-soft">
+          <p className="mb-2 font-sans text-xs leading-snug text-ink-soft">
             Green is spoken narration, the gap behind it is silence. Long silences usually mean a shot is
             longer than the line it carries.
           </p>

@@ -110,7 +110,7 @@ export function ClipInspector({
 
   return (
     <div className="flex flex-col gap-3 p-2">
-      <Panel tone="flat" className="border-2">
+      <Panel tone="flat" className="border">
         <PanelHeader
           title={clip.kind}
           actions={
@@ -119,7 +119,7 @@ export function ClipInspector({
         />
         <PanelBody scroll={false} className="flex flex-col gap-2 p-2">
           <p
-            className="nb-clamp-2 font-mono text-[10px] leading-snug text-ink-soft"
+            className="nb-clamp-2 font-mono text-xs leading-snug text-ink-soft"
             title={describeClip(clip)}
           >
             {describeClip(clip)}
@@ -132,15 +132,15 @@ export function ClipInspector({
             value={`${Math.round(clip.position * fps)} to ${Math.round(clipEndSec(clip) * fps)}`}
           />
           {partner ? (
-            <div className="mt-1 flex items-center gap-1.5 border-2 border-ink bg-primary px-2 py-1 shadow-nb-sm">
+            <div className="mt-1 flex items-center gap-1.5 border border-line bg-select-tint px-2 py-1">
               <Link2 className="h-3 w-3" />
-              <span className="truncate font-mono text-[10px] font-bold">
+              <span className="truncate font-mono text-xs font-semibold">
                 Linked to {partner.id}
               </span>
             </div>
           ) : null}
           {readOnly ? (
-            <p className="border-2 border-ink bg-sunken px-2 py-1 font-sans text-[10px] leading-snug text-ink-soft shadow-nb-sm">
+            <p className="border border-line bg-sunken px-2 py-1 font-sans text-xs leading-snug text-ink-soft">
               {locked
                 ? `Lane "${lane?.label}" is locked. Unlock it in the timeline to edit this clip.`
                 : "Subtitle cues are generated from the caption track. Edit their timing in the Captions stage."}
@@ -149,7 +149,7 @@ export function ClipInspector({
         </PanelBody>
       </Panel>
 
-      <Panel tone="flat" className="border-2">
+      <Panel tone="flat" className="border">
         <PanelHeader title="Timing" />
         <PanelBody scroll={false} className="flex flex-col gap-2.5 p-2">
           <Field label="Position" aside="seconds on the timeline">
@@ -204,7 +204,7 @@ export function ClipInspector({
       </Panel>
 
       {clip.kind === "audio" || clip.kind === "video" ? (
-        <Panel tone="flat" className="border-2">
+        <Panel tone="flat" className="border">
           <PanelHeader title="Level" />
           <PanelBody scroll={false} className="flex flex-col gap-1.5 p-2">
             <Field
@@ -227,7 +227,7 @@ export function ClipInspector({
         </Panel>
       ) : null}
 
-      <Panel tone="flat" className="border-2">
+      <Panel tone="flat" className="border">
         <PanelHeader title="Lane" />
         <PanelBody scroll={false} className="flex flex-col gap-2 p-2">
           <Field label="On lane" htmlFor="clip-lane">
