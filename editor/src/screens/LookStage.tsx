@@ -3,18 +3,22 @@
  * Brings together what answers "how does this film look": the film's own design, the project-wide theme
  * (palette, typography, video type, camera) and the per-shot styleboard. They are sub-views of one
  * stage because a user thinking about look moves between them constantly, and keeping them apart
- * made the old top navigation disagree with the side rail.
- * Inputs and outputs: film project, theme tokens -> theme customization and styleboard stage.
+ * made the old top navigation disagree with the side rail. The Design view also carries Ask
+ * (components/LookAsk.tsx): the chosen shot as a picture with one box under it that sends a change
+ * to the connected agent.
+ * Inputs and outputs: film project, theme tokens, chosen shot -> theme customization, styleboard and Ask stage.
  * Used by: editor/src/App.tsx.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LayoutGrid, Palette, Sparkles } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { SegmentedTabs, Toolbar, ToolbarGroup, ToolbarLabel } from "../components/ui";
 import { CustomizationEditor } from "../components/CustomizationEditor";
 import { Styleboard } from "../components/Styleboard";
 import { DesignView } from "../components/DesignView";
+import { LookAsk } from "../components/LookAsk";
+import type { NoteTone } from "../components/ui";
 
 type LookView = "design" | "theme" | "styleboard";
 
@@ -24,12 +28,24 @@ export interface LookStageProps {
   accent: string;
   onAccentChange: (color: string) => void;
   onSelectShot: (id: string) => void;
+  notify: (tone: NoteTone, text: string) => number;
 }
 
 /** Project theme and per-shot styleboard, as two views of one stage. */
-export function LookStage({ film, commit, accent, onAccentChange, onSelectShot }: LookStageProps) {
+export function LookStage({ film, commit, accent, onAccentChange, onSelectShot, notify }: LookStageProps) {
   // A film with its own design opens on it; a template film opens on the shared theme.
   const [view, setView] = useState<LookView>(film.design && film.design.source !== "templates" ? "design" : "theme");
+  // The shot that Ask applies to. It follows the shot list and the Shot select.
+  const [shotId, setShotId] = useState(film.shots[0]?.id ?? "");
+  // Keep the chosen shot valid when the film changes under it.
+  useEffect(() => {
+    if (!film.shots.some((s) => s.id === shotId)) setShotId(film.shots[0]?.id ?? "");
+  }, [film.shots, shotId]);
+  // Choose a shot for Ask and tell the shell.
+  const chooseShot = (id: string) => {
+    setShotId(id);
+    onSelectShot(id);
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -58,7 +74,12 @@ export function LookStage({ film, commit, accent, onAccentChange, onSelectShot }
 
       <div className="min-h-0 flex-1 overflow-hidden">
         {view === "design" ? (
-          <DesignView film={film} onSelectShot={onSelectShot} />
+          <DesignView
+            film={film}
+            onSelectShot={chooseShot}
+            selectedShotId={shotId}
+            topPanel={<LookAsk film={film} shotId={shotId} onShotChange={chooseShot} notify={notify} />}
+          />
         ) : view === "theme" ? (
           <CustomizationEditor
             film={film}

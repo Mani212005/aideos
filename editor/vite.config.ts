@@ -1545,86 +1545,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        // Handle /api/visuals (List the SVG animations authored for a video package)
-        if (url === '/api/visuals' && req.method === 'GET') {
-          const parsed = new URL(req.url || '', 'http://localhost');
-          const filmId = parsed.searchParams.get('filmId') || '';
-          if (!FILM_ID.test(filmId)) {
-            sendJson(res, 400, { error: 'filmId is required' });
-            return;
-          }
-          const visualsDir = path.join(videosDir, filmId, 'visuals');
-          if (!fs.existsSync(visualsDir)) {
-            sendJson(res, 200, { ok: true, visuals: [] });
-            return;
-          }
-          const visuals = fs
-            .readdirSync(visualsDir)
-            .filter(f => f.toLowerCase().endsWith('.svg'))
-            .map(f => {
-              const stats = fs.statSync(path.join(visualsDir, f));
-              return {
-                name: f.replace(/\.svg$/i, ''),
-                src: `videos/${filmId}/visuals/${f}`,
-                sizeBytes: stats.size,
-                updatedAt: stats.mtimeMs,
-              };
-            })
-            .sort((a, b) => b.updatedAt - a.updatedAt);
-          sendJson(res, 200, { ok: true, visuals });
-          return;
-        }
-
-        // Handle /api/visuals/save (Write an authored SVG animation into the video package)
-        if (url === '/api/visuals/save' && req.method === 'POST') {
-          void readBody(req)
-            .then((body: any) => {
-              const { filmId, name, svg } = body || {};
-              if (!FILM_ID.test(String(filmId || ''))) {
-                sendJson(res, 400, { error: 'filmId must be a film id (lowercase letters, digits and dashes)' });
-                return;
-              }
-              const safeName = String(name || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 48);
-              if (!safeName) {
-                sendJson(res, 400, { error: 'name is required' });
-                return;
-              }
-              if (typeof svg !== 'string' || !svg.includes('<svg')) {
-                sendJson(res, 400, { error: 'svg must be SVG markup containing an <svg> root' });
-                return;
-              }
-              const visualsDir = path.join(videosDir, String(filmId), 'visuals');
-              fs.mkdirSync(visualsDir, { recursive: true });
-              const filePath = path.join(visualsDir, `${safeName}.svg`);
-              fs.writeFileSync(filePath, svg, 'utf8');
-              sendJson(res, 200, {
-                ok: true,
-                name: safeName,
-                src: `videos/${filmId}/visuals/${safeName}.svg`,
-              });
-            })
-            .catch(err => sendJson(res, 400, { error: String(err) }));
-          return;
-        }
-
-        // Handle /api/visuals/delete (Remove an authored SVG animation from the video package)
-        if (url === '/api/visuals/delete' && req.method === 'POST') {
-          void readBody(req)
-            .then((body: any) => {
-              const { filmId, name } = body || {};
-              const safeName = String(name || '').trim().replace(/[^a-z0-9-]/g, '');
-              if (!FILM_ID.test(String(filmId || '')) || !safeName) {
-                sendJson(res, 400, { error: 'filmId and name are required' });
-                return;
-              }
-              const filePath = path.join(videosDir, String(filmId), 'visuals', `${safeName}.svg`);
-              if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-              sendJson(res, 200, { ok: true });
-            })
-            .catch(err => sendJson(res, 400, { error: String(err) }));
-          return;
-        }
-
         // Handle /api/media/list (List all uploaded / available media assets)
         if (url === '/api/media/list' && req.method === 'GET') {
           const mediaDir = path.resolve(__dirname, '../public/media');
@@ -2441,7 +2361,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         // Handle /api/design/:id/approve-look (Look stage: captain approval recorded to look.json)
         // Handle /api/design/:id[/shots/:shotId/(visual|redesign)] (the Look stage's design view,
         // "why this visual" swaps and per-shot redesign requests to the connected agent)
-        // Handle /api/design/:id/motion (the Motion stage: described motions, their outcomes, revert)
+        // Handle /api/design/:id/motion (the Look stage's Ask: requests to the agent for a shot, their outcomes, undo)
         const approveLookRoute = url.match(/^\/api\/design\/([a-z0-9-]+)\/approve-look$/);
         if (approveLookRoute) {
           if (req.method !== 'POST') {

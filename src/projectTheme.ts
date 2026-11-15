@@ -12,7 +12,7 @@
  * editor/src/components/CustomizationEditor.tsx, editor/src/components/Styleboard.tsx, and (for
  * DEFAULT_PROJECT_ACCENT, the fallback when a film names no accent) backend/designSpec/shotTools.ts,
  * backend/editPlanner/validator.ts, backend/critique/engine.ts, backend/sceneKit/svg.ts, src/dl/convertFilm.ts,
- * editor/src/App.tsx, editor/src/components/DescribeMotion.tsx, editor/src/state/placeholderFilm.ts.
+ * editor/src/App.tsx, editor/src/components/LookAsk.tsx, editor/src/state/placeholderFilm.ts.
  */
 
 import type { BackgroundPreset, ThemeConfig } from "./dl/schema";

@@ -63,7 +63,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 
 ---
 
-## ⚙️ 6 Core Editor Stages (`editor/src/screens/`)
+## ⚙️ 4 Core Editor Stages (`editor/src/screens/`)
 
 ### 1. Script Stage (`ScriptStage.tsx` / `ScriptEditor.tsx`)
 - **Purpose**: Narrative authoring studio where creators write their script as a plain story (paragraphs, optional `#Start`/`#Conclusion` markers) with the agent's visual and on-screen notes as collapsible notes beside each paragraph, and see every narration change the user or the agent makes.
@@ -77,12 +77,9 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
   - **Design View (`DesignView.tsx`)**: Inspects the film's look plan (`design/look.json`, `LOOK.md` preview), stage, persistent cast, per-shot treatments (`scene`, `scene+card`, `device`, `footage`), captain look approval (`approveLookPlan`), scene artwork, motion timeline, and honest visual swaps (`POST /api/design/:id/shots/:shot/visual`).
   - **Theme Customization (`CustomizationEditor.tsx`)**: Allows background canvas texture selection (`paper-white`, `blueprint`, `charcoal`, `parchment`), accent color customization, and typography configuration (`geist`, `mono`, `space-grotesk`).
   - **Styleboard Gallery (`Styleboard.tsx`)**: Per-shot storyboard cards with direct keyframe inspection.
+  - **Ask (`LookAsk.tsx`)**: The one agent box of the stage. The chosen shot loops as a picture, and the text under it goes to the connected agent as a design task for that shot (`POST /api/design/:id/shots/:shot/motion`, server model fallback). The last Ask shows its state and Undo.
 
-### 3. Motion Stage (`MotionStage.tsx`)
-- **Purpose**: Dedicated authoring studio for custom SVG movie animations and element-level keyframing.
-- **Features**: Live scrubbing of declarative SVG timelines, element ID discovery, pre-built motion templates (staged entry, pulse, draw-on strokes, vector paths) drawn in the film's bound accent, and audio-first retiming against spoken narration.
-
-### 4. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
+### 3. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
 - **Purpose**: Non-linear multi-track timeline editor with direct manipulation, track controls, and clip inspection.
 - **Features**:
   - **Movable Caption Object (`captions/CaptionObject.tsx`)**: Direct-manipulation caption card in the preview (click to select without playback, drag for the whole video, edge resize handles, drag snap guides, format copying, and default position restoration).
@@ -92,14 +89,10 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
   - **Track Controls**: Independent layer locking, muting, hiding, reordering, and track addition.
   - **Magnetic Snapping (`backend/timeline/snap.ts`)**: Snaps clip boundaries to playhead, markers, and other clips with self-ignore and zoom-adaptive thresholds.
   - **Audio Waveforms (`src/components/timeline/useAudioPeaks.ts`)**: Server pre-computed peak fetching (`/api/audio/peaks`) with Web Audio API fallback rendered directly on clip bodies.
-  - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management.
+  - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management. A selected caption word clip shows one text control (`ClipInspector.tsx`, `captions/captionWordEdit.ts`): Enter saves the word into the film's caption track as one undo step.
   - **Model-Driven AI Editor Panel (`OnCanvasAiEditor.tsx`)**: Interprets natural-language editing instructions into discrete, validated `EditOp` sequences with dry-run preview, atomic rollback, and automatic dispatch across Agent Bridge channels.
 
-### 5. Captions Stage (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)
-- **Purpose**: Word-level caption timing editor: word text and per-word frame ranges. Caption position is not set here: click the captions in the Edit preview and drag them.
-- **Features**: Syncs individual word timestamps directly with voiceover audio and seeks the preview to a word.
-
-### 6. Review Stage (`ReviewStage.tsx` / `CritiqueStudio.tsx` / `ExportProgressModal.tsx`)
+### 4. Review Stage (`ReviewStage.tsx` / `CritiqueStudio.tsx` / `ExportProgressModal.tsx`)
 - **Purpose**: Final quality assurance, pacing inspection, AI critique drawer, and video export.
 - **Features**:
   - **Data Visualizations (`src/components/ui/Charts.tsx`)**: Renders script-to-timeline coverage maps, shot duration distribution, narration vs silence density, and pacing health metrics in pure SVG.
