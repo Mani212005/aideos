@@ -53,5 +53,65 @@
       111,
       240
     ]
+  },
+  {
+    "film": "pixels-stage-pip",
+    "format": "long",
+    "ir": "pixels-stage-pip/render.long.json",
+    "frames": [
+      30,
+      111,
+      180,
+      285
+    ]
+  },
+  {
+    "film": "pixels-stage-pip",
+    "format": "reel",
+    "ir": "pixels-stage-pip/render.reel.json",
+    "frames": [
+      111,
+      240
+    ]
+  },
+  {
+    "film": "pixels-stage-marlo",
+    "format": "long",
+    "ir": "pixels-stage-marlo/render.long.json",
+    "frames": [
+      30,
+      111,
+      180,
+      285
+    ]
+  },
+  {
+    "film": "pixels-stage-marlo",
+    "format": "reel",
+    "ir": "pixels-stage-marlo/render.reel.json",
+    "frames": [
+      111,
+      240
+    ]
+  },
+  {
+    "film": "journey-three-characters",
+    "format": "long",
+    "ir": "journey-three-characters/render.long.json",
+    "frames": [
+      30,
+      111,
+      180,
+      285
+    ]
+  },
+  {
+    "film": "journey-three-characters",
+    "format": "reel",
+    "ir": "journey-three-characters/render.reel.json",
+    "frames": [
+      111,
+      240
+    ]
   }
 ]

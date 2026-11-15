@@ -1,5 +1,5 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
@@ -176,7 +176,7 @@ the package directory (including through a symlink).
 
 `native/aideos-render/tests/golden.rs` holds the CPU raster's own reference frames, separate from the Chrome
 goldens in `backend/journeys/goldens/` (those still guard the default Remotion render and are untouched). The set
-covers the native-supported fixture films, `hello-scene`, `still-talking` and the Three-stage `iona-receive`, in long and reel, at the same frames
+covers the native-supported fixture films, `hello-scene`, `still-talking` and the Three-stage character films `iona-receive`, `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters` (the J5 film: Iona, Pip and Marlo, each with a glider), in long and reel, at the same frames
 and the same quarter scale as the Chrome goldens (`fixtures/golden/frames/<film>/<format>-<frame>.png`, 480 x 270
 or 270 x 480, a 4 x 4 box average of the 1920 x 1080 CPU frame). `fixtures/golden/<film>/render.<format>.json` are
 the emitter's IR for those films with the audio clips dropped (the frame raster never opens audio), with the
@@ -294,7 +294,7 @@ differ per format.
 | Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` |
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
-refuses (with every reason, `nativeSupport`) a node-graph film, a Three-stage film with several performers (P4.3) or the dots-v1 treatment (P4.4, below), an actor scene, sub-group
+refuses (with every reason, `nativeSupport`) a node-graph film, a Three-stage film in the dots-v1 treatment (P4.4, below), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
@@ -313,17 +313,16 @@ Remotion stays the default and the kill switch for everything not yet native. Th
 | --- | --- | --- |
 | P4.1 | `aideos.render/2` (the `stage3d` node and the `mesh` asset), its loaders and validators in TypeScript and Rust, the emitter (`backend/renderIr/emitStage3d.ts`), the mesh file codec and the reference pose (`backend/renderIr/stage3d.ts`) | done: nothing changes for users |
 | P4.2 | the CPU rasterizer of the stage3d node and the first film (iona-receive, cel, one performer), native goldens and the parity report ([P4.2 parity on iona-receive](#p42-parity-on-iona-receive)) | done: `nativeSupport` accepts cel-v1 with one performer |
-| P4.3 | several performers (J5), Pip and Marlo | |
+| P4.3 | several performers (the J5 film, Iona, Pip and Marlo each with a glider), Pip and Marlo as the performer: data and emitter work on the P4.2 rasterizer, native goldens for `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters`, and the parity report ([P4.3 parity on Pip, Marlo and J5](#p43-parity-on-pip-marlo-and-j5)) | done: `nativeSupport` accepts cel-v1 with any number of performers |
 | P4.4 | the `dots-v1` treatment (the IR cannot carry it yet) | |
 | P4.5 | journeys and goldens per the captain's decision | |
 
-Since P4.2, `nativeSupport` accepts a Three-stage film in the cel treatment with one performer and keeps every other
-Three-stage film on Remotion with one reason per missing step: several performers (P4.3) and dots-v1 (P4.4).
-`supportGaps` splits those into what the IR cannot carry (`uncarried`, refused even by a development emit) and what
-it carries but the renderer does not draw (`undrawn`, today only several performers);
-`emitRenderIr(input, { allowUndrawn: true })` writes the `/2` document of such a film for tests and renderer
-development, and the render path never sets that option. A film without a Three stage is still emitted as `/1`,
-byte for byte as before.
+Since P4.2, `nativeSupport` accepts a Three-stage film in the cel treatment with one performer, and since P4.3 with
+any number of performers: it keeps only the dots-v1 treatment (P4.4) on Remotion, with its reason. Every other reason
+`nativeSupport` lists is unchanged. The IR carries every performer in one `stage3d` node (the emitter builds each
+performer and its prop as `ThreeStage` does, so ids are `<cast>.mesh.<name>` and `<cast>.group.<name>`, unique across
+performers), so there is no development-only emit any more: what the IR carries the renderer draws.
+A film without a Three stage is still emitted as `/1`, byte for byte as before.
 
 For a Three film the emitter writes the stage as `SceneStage` draws it: a `ground-plane` group (the background
 and `plane: "background"` props; props with no plane are not drawn on a Three film), the `stage3d` node, then a
@@ -331,8 +330,9 @@ and `plane: "background"` props; props with no plane are not drawn on a Three fi
 (as `Film.tsx`), and the end card's slow push stays in the document camera's zoom (Remotion scales the whole
 canvas about the frame centre; for the orthographic stage that is the same projection). The stage is sampled at
 frames 0 to `min(storyFrames, scene.durationFrames) - 1` and holds after, which is what `ThreeStage` sees
-through `Freeze` and its own clamp. `stage3d.test.ts` checks, for every frame of the iona-receive fixture, that
-the world vertices posed from the IR equal the posed vertices `prepareStageFacts` measures, bit for bit in f32.
+through `Freeze` and its own clamp. `stage3d.test.ts` checks, for every frame of the iona-receive fixture (and every
+fifth frame of the three-performer J5 film), that the world vertices posed from the IR equal the posed vertices
+`prepareStageFacts` measures, bit for bit in f32.
 
 ### How the stage is drawn (P4.2)
 
@@ -357,7 +357,7 @@ Skia composites it (at the node's opacity) over what the earlier planes drew.
 reads only its own list and writes only its own pixels. There is no clock, randomness or thread-dependent state, so a
 frame is the same bytes on every run, in any frame order and at any thread count. `tests/stage3d.rs` checks that on
 synthetic scenes (a repeat render, frames backwards, four threads sharing one stage) and `video` shares the loaded
-stage between its workers. The native goldens of `iona-receive` (see [Native golden frames](#native-golden-frames)) are Linux only, like the others.
+stage between its workers. The native goldens of the character films (see [Native golden frames](#native-golden-frames)) are Linux only, like the others.
 
 **Limits.** One `stage3d` node, `cel-v1`, `dpr` 1, exposure 1, no tone mapping (the loader refuses the rest by name).
 A path in a face program is built in the user space current when it is filled, which is what the painter relies on.
@@ -392,6 +392,37 @@ claude-dreaming), not the stage. With the text out of the measure (the character
 region) the SSIM is 0.9985 or higher, and the stage differs from Remotion only by thin edge lines. No threshold and
 no golden was changed to reach these figures.
 
+### P4.3 parity on Pip, Marlo and the J5 film
+
+P4.3 changes no raster code: the P4.2 rasterizer already draws every performer the emitter writes (one `stage3d` node,
+each performer's own objects, face texture and per-frame face program track, drawables ordered by material creation
+as three sorts them, one depth buffer). Mirrored left and right parts are baked into the geometry (the mesh file holds
+each shared geometry once) and the round eyes are ordinary face program ops, so both needed no renderer work. What P4.3
+adds is the acceptance of several performers by `nativeSupport`, native goldens for `pixels-stage-pip`,
+`pixels-stage-marlo` and `journey-three-characters` (the J5 film: Iona, Pip and Marlo, each with a glider) in the
+native golden set, and this measurement. Same method and machine as P4.2 (every frame of both formats, ffmpeg `ssim`
+and `psnr` for the whole frame; the stage crop and the rest of the frame are the 11 x 11 gaussian SSIM map averaged
+over that region; the crop is the union of every performer's and prop's projected bounds over the story plus 24 px).
+Evidence: `/home/mani/aideos-linux-home/data/aideos-native-p43-pip-marlo/parity/<film>-<format>/`.
+
+| Film, format | Stage crop SSIM story min / mean | Whole frame story SSIM min / mean | Whole frame end card SSIM min / mean | Whole frame story PSNR min / mean (dB) |
+| --- | --- | --- | --- | --- |
+| J5 three characters, long | 0.99686 / 0.99714 | 0.99457 / 0.99642 | 0.97977 / 0.98113 | 35.17 / 38.95 |
+| J5 three characters, reel | 0.99896 / 0.99914 | 0.98923 / 0.99220 | 0.98061 / 0.98302 | 34.20 / 38.69 |
+| Pip, long | 0.99880 / 0.99915 | 0.99453 / 0.99637 | 0.97986 / 0.98124 | 35.16 / 38.93 |
+| Pip, reel | 0.99886 / 0.99922 | 0.98914 / 0.99215 | 0.98071 / 0.98314 | 34.20 / 38.67 |
+| Marlo, long | 0.99937 / 0.99951 | 0.99459 / 0.99643 | 0.97986 / 0.98124 | 35.19 / 39.01 |
+| Marlo, reel | 0.99949 / 0.99963 | 0.98925 / 0.99222 | 0.98069 / 0.98310 | 34.22 / 38.76 |
+
+The 3D stage crop meets the 0.995 bar on every story frame of all six runs. The whole-frame bar is not met, for the
+same reason as at P4.2: the already-native 2D text (caption card width and wrap, rail, end card text in native fonts
+against Chrome text; the rest of the frame outside the crop reaches 0.9858 at worst and the end card 0.9798), not the
+stage. That is tracked as `aideos-native-2d-text-parity`. The end card frames carry the end card text inside the stage
+crop's box, so the crop figure is only meaningful on story frames. Against the committed Remotion stage stills of
+`test_fixtures/characters/stage-stills/`, native frame 111 of Pip and Marlo has a stage crop SSIM of 0.9997 to 0.9998
+(whole frame 0.9956 long, 0.9887 reel). The strict golden tolerance is the gate for native against native goldens only
+(`cargo test`); no threshold or golden was changed.
+
 ## The renderer flag
 
 Every render job chooses its renderer through `createSelectedRenderer` (`backend/rendererSelection.ts`): the
@@ -424,7 +455,8 @@ mastering, probe and sidecar are shared; the sidecar records the CRF as applied 
 studio's progress bar reads the binary's `frames D/T` lines (a frame counts once it is encoded).
 
 **Which films are native today.** Every film `nativeSupport` accepts, which since P4.2 includes the one-performer cel
-Three-stage character film. Node-graph films, Three-stage films with several performers or dots-v1 and the other
+Three-stage character film and since P4.3 the cel films with several performers (Pip, Marlo and the J5 film).
+Node-graph films, Three-stage films with dots-v1 and the other
 refusals listed in [The emitter](#the-emitter-r4) stay on Remotion. A journey's render job takes the native path when
 the release binary is built (the CI journeys job builds it); the Player-versus-export journeys keep a Remotion export
 as their oracle until a WASM preview exists.
@@ -433,6 +465,6 @@ as their oracle until a WASM preview exists.
 
 Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
-and the Three stage with several performers (P4.3) or the dots-v1 treatment (P4.4); a single-performer cel stage is
-carried by `aideos.render/2` since P4.1 and drawn since P4.2. `image`, `audio` and `mesh`
+and the Three stage in the dots-v1 treatment (P4.4); the cel stage with any number of performers is carried by
+`aideos.render/2` since P4.1 and drawn since P4.2 and P4.3. `image`, `audio` and `mesh`
 assets are not opened by the frame raster.
