@@ -114,7 +114,7 @@ Before deploying, ensure you have:
 3. **Verify Interactive Studio**:
    - Open `https://<your-vercel-app>.vercel.app`.
    - The Studio Editor should load cleanly with the 2D infinite spatial canvas and playback controls.
-   - Switch stages (Story, Stage, Motion, Edit) to confirm live UI functionality.
+   - Switch stages (Words, Look, Cut, Check) to confirm live UI functionality.
    - Test screenplay generation and natural-language critique to verify Gemini API integration.
 
 ---
