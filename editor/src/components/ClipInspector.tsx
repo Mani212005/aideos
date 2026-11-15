@@ -4,12 +4,12 @@
  * dragging: timeline position, source in and out points, derived duration, volume, and the lane it
  * lives on. Every change goes through the same layer-engine operations the drag gestures use, so
  * typing a number and dragging a handle produce identical, equally undoable results. A caption word
- * (a subtitle clip) shows one text control instead: the caption words are edited here, in Cut.
+ * (a subtitle clip) shows its text and frame range controls instead: the caption words are edited here, in Cut.
  * Inputs and outputs: selected clip, layer information and a caption word edit callback -> clip inspector form and properties controls.
  * Used by: editor/src/components/shell/InspectorPanel.tsx.
  */
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { Link2, Scissors, Trash2, Unlink } from "lucide-react";
 import type { Clip } from "../../../src/dl/layeredSchema";
 import type {
@@ -24,7 +24,7 @@ import {
   clipEndSec,
 } from "../../../backend/timeline/layer_engine";
 import type { LayeredTimelineApi } from "../state/useLayeredTimeline";
-import { captionWordIndex } from "./captions/captionWordEdit";
+import { captionWordIndex, type CaptionWordEdit } from "./captions/captionWordEdit";
 import {
   Badge,
   Button,
@@ -55,8 +55,8 @@ export interface ClipInspectorProps {
   fps: number;
   onSeekFrame: (frame: number) => void;
   onClose: () => void;
-  /** Sets the text of caption word `index`. */
-  onEditCaptionWord: (index: number, text: string) => void;
+  /** Edits caption word `index`. Returns an error message, or null when the edit is saved. */
+  onEditCaptionWord: (index: number, edit: CaptionWordEdit) => string | null;
 }
 
 /** Human summary of what a clip actually contains. */
@@ -82,47 +82,100 @@ function describeClip(clip: Clip): string {
 
 export interface CaptionWordEditorProps {
   text: string;
-  startSec: number;
-  endSec: number;
+  startFrame: number;
+  endFrame: number;
   fps: number;
   /** True when the lane is locked: the word shows but does not change. */
   disabled: boolean;
-  onCommit: (text: string) => void;
+  /** Saves an edit. Returns an error message, or null when it is saved. */
+  onCommit: (edit: CaptionWordEdit) => string | null;
 }
 
-/** One text control for one caption word. Enter or leaving the field saves it. Escape puts the old word back. */
-function CaptionWordEditor({ text, startSec, endSec, fps, disabled, onCommit }: CaptionWordEditorProps) {
+/** Text and frame controls for one caption word. Enter or leaving a field saves it. Escape puts the old value back. */
+function CaptionWordEditor({ text, startFrame, endFrame, fps, disabled, onCommit }: CaptionWordEditorProps) {
   const [draft, setDraft] = useState(text);
+  const [startDraft, setStartDraft] = useState(String(startFrame));
+  const [endDraft, setEndDraft] = useState(String(endFrame));
+  const [error, setError] = useState<string | null>(null);
 
-  /** Saves the draft when it is a new, non-empty word. An empty draft puts the old word back. */
-  const commit = () => {
+  /** Sends an edit. A refused edit shows its error and puts the old values back. */
+  const save = (edit: CaptionWordEdit) => {
+    const message = onCommit(edit);
+    setError(message);
+    if (message) {
+      setDraft(text);
+      setStartDraft(String(startFrame));
+      setEndDraft(String(endFrame));
+    }
+  };
+
+  /** Saves the word text when it changed. */
+  const commitText = () => {
     const next = draft.trim();
-    if (!next) setDraft(text);
-    else if (next !== text) onCommit(next);
+    if (next === text) setDraft(text);
+    else save({ text: next });
+  };
+
+  /** Saves one frame field when it changed. */
+  const commitFrame = (key: "startFrame" | "endFrame", raw: string) => {
+    const current = key === "startFrame" ? startFrame : endFrame;
+    const value = raw.trim() === "" ? Number.NaN : Number(raw);
+    if (value === current) return;
+    save({ [key]: value });
+  };
+
+  /** Builds the key handler of one field: Enter saves, Escape restores. */
+  const keys = (restore: () => void) => (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") e.currentTarget.blur();
+    else if (e.key === "Escape") restore();
   };
 
   return (
     <Panel tone="flat" className="border">
-      <PanelHeader title="Caption word" actions={<Badge tone="primary">{(endSec - startSec).toFixed(2)}s</Badge>} />
+      <PanelHeader title="Caption word" actions={<Badge tone="primary">{((endFrame - startFrame) / fps).toFixed(2)}s</Badge>} />
       <PanelBody scroll={false} className="flex flex-col gap-2 p-2">
         <Field label="Word" htmlFor="caption-word" hint={disabled ? "The lane is locked. Unlock it to edit." : undefined}>
           <Input
             id="caption-word"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              else if (e.key === "Escape") setDraft(text);
-            }}
+            onBlur={commitText}
+            onKeyDown={keys(() => setDraft(text))}
             spellCheck={false}
             autoComplete="off"
             disabled={disabled}
           />
         </Field>
-        <Stat label="Start" value={`${startSec.toFixed(2)}s`} />
-        <Stat label="End" value={`${endSec.toFixed(2)}s`} />
-        <Stat label="Frames" value={`${Math.round(startSec * fps)} to ${Math.round(endSec * fps)}`} />
+        <Field label="Start" htmlFor="caption-word-start" aside="frames">
+          <Input
+            id="caption-word-start"
+            type="number"
+            step={1}
+            value={startDraft}
+            onChange={(e) => setStartDraft(e.target.value)}
+            onBlur={() => commitFrame("startFrame", startDraft)}
+            onKeyDown={keys(() => setStartDraft(String(startFrame)))}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="End" htmlFor="caption-word-end" aside="frames">
+          <Input
+            id="caption-word-end"
+            type="number"
+            step={1}
+            value={endDraft}
+            onChange={(e) => setEndDraft(e.target.value)}
+            onBlur={() => commitFrame("endFrame", endDraft)}
+            onKeyDown={keys(() => setEndDraft(String(endFrame)))}
+            disabled={disabled}
+          />
+        </Field>
+        {error ? (
+          <p role="alert" className="font-sans text-xs leading-snug text-ink-soft">
+            {error}
+          </p>
+        ) : null}
+        <Stat label="Seconds" value={`${(startFrame / fps).toFixed(2)} to ${(endFrame / fps).toFixed(2)}`} />
       </PanelBody>
     </Panel>
   );
@@ -173,13 +226,13 @@ export function ClipInspector({
     return (
       <div className="flex flex-col gap-3 p-2">
         <CaptionWordEditor
-          key={clip.id}
+          key={`${clip.id}-${Math.round(clip.position * fps)}-${Math.round(clipEndSec(clip) * fps)}`}
           text={(clip.payload as SubtitlePayload).text}
-          startSec={clip.position}
-          endSec={clipEndSec(clip)}
+          startFrame={Math.round(clip.position * fps)}
+          endFrame={Math.round(clipEndSec(clip) * fps)}
           fps={fps}
           disabled={locked}
-          onCommit={(text) => onEditCaptionWord(captionIndex, text)}
+          onCommit={(edit) => onEditCaptionWord(captionIndex, edit)}
         />
         <Button size="sm" block onClick={() => onSeekFrame(Math.round(clip.position * fps))}>
           Go to word

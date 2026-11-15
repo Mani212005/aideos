@@ -74,9 +74,11 @@ export function InspectorPanel({
             fps={fps}
             onSeekFrame={onSeekFrame}
             onClose={() => onSelectionChange(null)}
-            onEditCaptionWord={(index, text) => {
-              const next = editCaptionWord(film, index, text);
-              if (next) project.commit(next, "Edit caption word");
+            onEditCaptionWord={(index, edit) => {
+              const result = editCaptionWord(film, index, edit);
+              if (!result.ok) return result.error;
+              if (result.film !== film) project.commit(result.film, edit.text === undefined ? "Edit caption timing" : "Edit caption word");
+              return null;
             }}
           />
         ) : null}

@@ -3,7 +3,7 @@
  * Implements 12 granular patch operations with strict locality, validation gating, continuity gating,
  * and immutable state guarantees. (Axiom 1: pure data).
  * Inputs and outputs: Scene data and transactional patch operations -> updated immutable Scene.
- * Used by: editor/src/screens/MotionStage.tsx, backend/scene/scene.test.ts.
+ * Used by: backend/critique/engine.ts, backend/scene/scene.test.ts.
  */
 
 import type { Scene, ActorInstance, Vec2 } from "./types";
