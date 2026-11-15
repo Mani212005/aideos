@@ -1,9 +1,9 @@
 /**
- * File Description: Client state for the studio export: whether the dialog is open, the live job the dev
- * server reports, and the Start, Cancel, hide and reset actions. Nothing starts until start() is called
- * from the Start button, and a finished job is never downloaded here: the dialog's Download button does that.
- * Inputs and outputs: the film and format to export -> job snapshot, dialog visibility and actions.
- * Used by: editor/src/App.tsx.
+ * File Description: Client state for the studio export: whether Export is armed (the Check lens shows Start), the live job the dev
+ * server reports, and the Start, Cancel, disarm and reset actions. Nothing starts until start() is called
+ * from the Start button, and a finished job is never downloaded here: the Download button of the Check lens does that.
+ * Inputs and outputs: the film and format to export -> job snapshot, armed flag and actions.
+ * Used by: editor/src/App.tsx, editor/src/components/CheckExport.tsx.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,9 +21,12 @@ const LOST_JOB = "Lost track of the export: the studio server restarted, so the 
 /** Polling cadence for a running export, in milliseconds. */
 const POLL_MS = 700;
 
-/** Owns the export dialog and the one export job it shows. */
+/** What the Check lens gets from the export hook. */
+export type ExportJobApi = ReturnType<typeof useExportJob>;
+
+/** Owns the armed flag and the one export job the Check lens shows. */
 export function useExportJob(onFinished: (job: ExportJobSnapshot) => void) {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [job, setJob] = useState<ExportJobSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -69,7 +72,7 @@ export function useExportJob(onFinished: (job: ExportJobSnapshot) => void) {
     return () => clearInterval(timer);
   }, [jobId, active]);
 
-  /** Tells the app once when a job reaches a final state, even while the dialog is hidden. */
+  /** Tells the app once when a job reaches a final state, even while another lens is open. */
   useEffect(() => {
     if (job && !active && reported.current !== job.id) {
       reported.current = job.id;
@@ -77,8 +80,8 @@ export function useExportJob(onFinished: (job: ExportJobSnapshot) => void) {
     }
   }, [job, active]);
 
-  /** Opens the dialog; an export already running is shown again rather than a second one offered. */
-  const open = useCallback(() => setDialogOpen(true), []);
+  /** Arms Export: the Check lens shows Start. An export already running is shown again rather than a second one offered. */
+  const arm = useCallback(() => setArmed(true), []);
 
   /** Starts the render. Called only by the Start button. */
   const start = useCallback(async (film: Film, format: "long" | "reel") => {
@@ -117,18 +120,18 @@ export function useExportJob(onFinished: (job: ExportJobSnapshot) => void) {
     }
   }, [job]);
 
-  /** The cross: hides the dialog while a render continues, keeps a finished video for Download, and clears a failed or cancelled job. */
-  const close = useCallback(() => {
-    setDialogOpen(false);
+  /** Disarms Export: a render continues, a finished video stays for Download, and a failed or cancelled job is cleared. */
+  const disarm = useCallback(() => {
+    setArmed(false);
     setError(null);
     if (job?.status === "failed" || job?.status === "cancelled") setJob(null);
   }, [job]);
 
-  /** Back to the Start screen after a finished, failed or cancelled export. */
+  /** Back to the Export button after a finished, failed or cancelled export. */
   const reset = useCallback(() => {
     setJob(null);
     setError(null);
   }, []);
 
-  return { dialogOpen, job, error, starting, active, open, start, cancel, close, reset };
+  return { armed, job, error, starting, active, arm, start, cancel, disarm, reset };
 }

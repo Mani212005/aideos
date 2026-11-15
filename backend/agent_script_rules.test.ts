@@ -28,7 +28,6 @@ const EVENTS: AgentEventType[] = [
   "custom_directive",
   "produce_film",
   "canvas_updated",
-  "critique",
   "design_film",
   "reel_cut",
   "frame_review",

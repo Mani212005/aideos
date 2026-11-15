@@ -34,7 +34,7 @@ const LEGACY_ANY = [
   "backend/timeline/{layer_manager,snap,updates}.ts",
   "scripts/smoke_studio.ts",
   "scripts/validate_film.ts",
-  "editor/src/components/{AgentActivityInspector,CritiqueStudio,OnCanvasAiEditor,ScriptEditor,ShotInspector}.tsx",
+  "editor/src/components/{AgentActivityInspector,OnCanvasAiEditor,ScriptEditor,ShotInspector}.tsx",
   "editor/src/state/useFilmProject.ts",
 ];
 

@@ -13,7 +13,7 @@ import { deliverReel } from '../backend/reelCut/writer.ts';
 import { loadReelContext, readReelCut, reelPackageDir } from '../backend/reelCut/brief.ts';
 import { checkReelCut } from '../backend/reelCut/check.ts';
 import { formatInputs, reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
-import { acceptanceSummary, acceptanceSummaryForFilm, hashFileOrNull, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
+import { acceptanceCheck, acceptanceCheckForFilm, hashFileOrNull, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
 import { REEL_MAX_SEC, reelCutSchema } from '../backend/reelCut/schema.ts';
 import { deliveryTimeline, DELIVERY_CONFIG } from '../src/dl/delivery.ts';
 import { persistStudioSoundtrack, rebuildStudioSoundtrack, studioSoundtrackRequestSchema } from '../backend/designSpec/soundtrackStudio.ts';
@@ -47,7 +47,6 @@ import { buildEditContext } from '../backend/editContext/buildEditContext.ts'
 import { planEdits, applyEditProgram } from '../backend/editPlanner/index.ts'
 import { appendEditProvenanceRecord, readEditProvenanceLog } from '../backend/editPlanner/provenanceLog.ts'
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/convertFilm.ts'
-import { executeCritique } from '../backend/critique/engine.ts'
 import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
   ScriptIntakeError,
@@ -947,7 +946,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        // Whether the posted film export will prepare and render is the film that was reviewed.
+        // The Check lens view (state, six hard gates, score against the bar) of the posted film: whether it is the film that was reviewed.
         const acceptanceMatch = /^\/api\/acceptance\/([a-z0-9-]+)$/.exec(url.split('?')[0]);
         if (acceptanceMatch && req.method === 'POST') {
           const id = acceptanceMatch[1];
@@ -966,16 +965,16 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             if (format === 'reel') {
               const reelInputs = formatInputs(id, 'reel');
               if (path.resolve(reelInputs.film) !== path.resolve(path.join(videosDir, id, 'film.json'))) {
-                sendJson(res, 200, acceptanceSummary(path.join(videosDir, id), format, hashFileOrNull(reelInputs.film)));
+                sendJson(res, 200, { check: acceptanceCheck(path.join(videosDir, id), format, hashFileOrNull(reelInputs.film)) });
                 return;
               }
             }
-            sendJson(res, 200, acceptanceSummaryForFilm(path.join(videosDir, id), format, exportFilm));
+            sendJson(res, 200, { check: acceptanceCheckForFilm(path.join(videosDir, id), format, exportFilm) });
           }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;
         }
 
-        // The export still in flight, so a reloaded page can pick the dialog and header chip back up.
+        // The export still in flight, so a reloaded page can pick the Check lens and header chip back up.
         if (url === '/api/export/current' && req.method === 'GET') {
           sendJson(res, 200, { job: exportJobs.current() ?? null });
           return;
@@ -2087,70 +2086,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               });
             }
           }).catch(err => sendJson(res, 500, { error: String(err) }));
-          return;
-        }
-
-        // Handle /api/critique (Natural-Language Critique & Film Patching Engine)
-        if (url === '/api/critique' && req.method === 'POST') {
-          void readBody(req).then(async (body: any) => {
-            const { critique, film, scene } = body || {};
-            if (!critique || !film) {
-              sendJson(res, 400, { error: 'critique and film are required' });
-              return;
-            }
-
-            const dispatch = await dispatchTask({
-              ownerKey: ownerOf(req),
-              eventType: "critique",
-              filmId: film.id,
-              filmTitle: film.title || film.id,
-              customInstruction: critique,
-              shotCount: film.shots?.length || 0,
-              metadata: { critique, scene },
-            });
-
-            const result = executeCritique({ critique, film, scene });
-
-            traceBus.recordStep({
-              phase: "validation",
-              source: "pipeline",
-              filmId: film.id,
-              title: `Critique: "${critique.slice(0, 60)}"`,
-              description: result.explanation || "Executing natural-language film patch",
-              status: result.ok ? "done" : "failed",
-              details: [
-                `Target: ${result.target}`,
-                `Patch Ops: ${result.patchOps?.length ?? 0}`,
-                `Outcome: ${result.explanation}`,
-              ],
-            });
-
-            // Persist conversation history to disk for full assistant & developer context
-            try {
-              const dataDir = path.resolve(__dirname, '../data');
-              if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-              const logFile = path.join(dataDir, 'chatbot_conversations.json');
-              let history: any[] = [];
-              if (fs.existsSync(logFile)) {
-                try {
-                  history = JSON.parse(fs.readFileSync(logFile, 'utf8'));
-                } catch (_) {}
-              }
-              history.push({
-                timestamp: new Date().toISOString(),
-                filmId: film.id,
-                filmTitle: film.title,
-                userMessage: critique,
-                assistantResponse: result.explanation,
-                target: result.target,
-                appliedOps: result.patchOps,
-                ok: result.ok,
-              });
-              fs.writeFileSync(logFile, JSON.stringify(history.slice(-100), null, 2), 'utf8');
-            } catch (_) {}
-
-            sendJson(res, 200, { ...result, dispatch });
-          }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;
         }
 

@@ -61,18 +61,4 @@ export {
   type ToolbarGroupProps,
   type ToolbarDividerProps,
 } from "./Toolbar";
-export {
-  BarChart,
-  Waveform,
-  DensityStrip,
-  CoverageMap,
-  HealthGauge,
-  Sparkline,
-  type BarChartDatum,
-  type BarChartProps,
-  type WaveformProps,
-  type DensityStripProps,
-  type CoverageMapProps,
-  type HealthGaugeProps,
-  type SparklineProps,
-} from "./Charts";
+export { Waveform, type WaveformProps } from "./Waveform";

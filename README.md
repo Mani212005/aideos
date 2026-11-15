@@ -53,7 +53,7 @@ Aideos solves this with **Video as Pure Data**:
 
 - **Audio-First Master Clock**: Narration is the single source of truth for time. Pluggable speech backends (offline Kokoro-82M ONNX, Google Cloud TTS, or macOS say) synthesize narration per shot. Silence trimming and sample-domain assembly guarantee that visual transitions align to speech within +-50ms.
 - **Word-Level Kinetic Subtitles**: Phrase-locked captions reveal words in sync with voiceover audio, using active semantic theme tokens. Caption placement can be repositioned and locked per format in the Studio preview.
-- **Aideos Studio Web Editor**: Interactive web app (React 19 + Tailwind CSS + Remotion Player) running locally. Features 4 dedicated stages: Words (script) authoring, Look styling with Ask, Non-linear multi-track Cut (edit) with caption words, and Check (review) critique. When it detects a concurrent film change, it offers the choice to keep the open version or use the newer version.
+- **Aideos Studio Web Editor**: Interactive web app (React 19 + Tailwind CSS + Remotion Player) running locally. Features 4 dedicated stages: Words (script) authoring, Look styling with Ask, Non-linear multi-track Cut (edit) with caption words, and Check (gates, fix list and Export). When it detects a concurrent film change, it offers the choice to keep the open version or use the newer version.
 - **Non-Linear Timeline Geometry**: OpenShot-grade timeline with transaction-grouped edits, magnetic ripple editing (toggle via `R` key), sticky boundary snapping, audio waveforms, and atomic undo/redo (`Cmd + Z`).
 - **Soundtrack Mixing & Voice Activity Ducking**: Multi-track audio mixer uses a shared voice activity timeline for music ducking and review measurements. Audio assets and sound effects are cached and hash-locked (`aideos audio fetch`, `aideos audio verify`). See [soundtrack mixing](docs/AUDIO_LIBRARY.md#2-soundtrack-mixing).
 - **Configurable End Cards**: Automatically appends a branded like-and-subscribe card (6 seconds on Long, 3 seconds on Reel; handles and copy set in `aideos.config.json`). The end card is compulsory and cannot be turned off for a film.
@@ -187,7 +187,7 @@ The Aideos Studio (`editor/`) is a web application built with React 19, Tailwind
 | **1** | **Words** | Story-first paragraph authoring, collapsible visual notes, visible change list, per-line TTS voiceover, and terminal agent auto-prompting. |
 | **2** | **Look** | Look planning inspection (`design/look.json`), the shots with their artwork, the film accent and background, and Ask: one box under the shot picture that sends a change to the agent. |
 | **3** | **Cut** | Non-linear multi-track timeline, magnetic ripple editing, linked audio-video trimming, movable captions, and caption word editing in the clip inspector. |
-| **4** | **Check** | Pacing analytics charts, AI critique drawer, and review readiness metrics. |
+| **4** | **Check** | The 6 hard gates and the 9.0 bar from `acceptance.json`, a fix list, and Export (Start, Cancel, Download). |
 
 ---
 
@@ -241,7 +241,7 @@ Yes. Speech synthesis defaults to Kokoro-82M ONNX, which runs locally without ne
 The synthesized narration audio track serves as the master clock for the film. Total shot durations must sum to the voiceover length within +-50ms. When dialogue changes, narration is stored per line by content fingerprint (`voiceover_lines/`) so only changed lines are re-recorded. The synthesizer updates the audio spine, measures exact word boundaries, and retimes all camera transitions and subtitle reveals accordingly.
 
 #### Can I edit the video visually instead of editing code?
-Yes. Launch `npm run editor` to open Aideos Studio. You can drag concept nodes on the 2D spatial canvas, reposition caption cards directly in the video preview, scrub and trim clips on the multi-track timeline, adjust themes, and review pacing charts in the browser.
+Yes. Launch `npm run editor` to open Aideos Studio. You can drag concept nodes on the 2D spatial canvas, reposition caption cards directly in the video preview, scrub and trim clips on the multi-track timeline, adjust themes, and check the 6 hard gates and export in the browser.
 
 ---
 
