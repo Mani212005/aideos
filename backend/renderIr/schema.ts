@@ -297,12 +297,17 @@ const linearRgb = z.tuple([unit, unit, unit]);
 export const STAGE_SIDES = ["front", "back", "double"] as const;
 const side = z.enum(STAGE_SIDES);
 
-/** One part of a mesh asset: its vertex and index counts and whether it carries texture coordinates. */
+/** What a mesh part holds: `triangles` (the default: positions, normals, optional uvs, indexed triangles), `points` (a frozen dot sample field: positions, normals and a rank per vertex, no indices; the dots-v1 treatment) or `lines` (line segment end points, pairs of positions, no indices; the dots-v1 prop edges). */
+export const MESH_PART_KINDS = ["triangles", "points", "lines"] as const;
+
+/** One part of a mesh asset: its kind, vertex and index counts and whether it carries texture coordinates. */
 export const meshPartSchema = z.strictObject({
   id,
+  /** Absent means `triangles`. */
+  kind: z.enum(MESH_PART_KINDS).optional(),
   vertices: count,
-  /** A whole number of triangles: a multiple of 3. */
-  indices: count,
+  /** Triangles: a whole number of triangles (a multiple of 3). Points and lines: 0. */
+  indices: z.number().int().min(0).max(MAX_FRAME),
   uv: z.boolean(),
 });
 
@@ -345,6 +350,42 @@ export const stageTrackSchema = z.strictObject({
   scale: z.array(finite).optional(),
 });
 
+/** The stage treatments the IR carries: the cel look and the dots-v1 stipple (materials/dots.ts). */
+export const STAGE_TREATMENTS = ["cel-v1", "dots-v1"] as const;
+const treatmentName = z.enum(STAGE_TREATMENTS);
+
+/** What a drawable is drawn as while its treatment is dots-v1: the paper material three swaps in, as three holds it. */
+export const dotsMaterialSchema = z.discriminatedUnion("kind", [
+  /** The flat paper (MeshBasicMaterial, no map, no polygon offset): black paper, or white for a light fill. */
+  z.strictObject({ kind: z.literal("basic"), color: linearRgb, side }),
+  /** The face paper: the face texture times `color`, then the luma ramp `vec3(smoothstep(0.06, 0.4, luma))` (grey, no chroma). */
+  z.strictObject({ kind: z.literal("faceLuma"), texture: id, color: linearRgb, side }),
+  /** The ink hull with the dots ink colour (white, or black behind a light fill). */
+  z.strictObject({ kind: z.literal("ink"), color: linearRgb, width: z.number().min(0), side }),
+]);
+
+/** The dots-v1 look of one drawable: its paper, its sort key, its stipple and (prop only) its edge lines. */
+export const dotsLookSchema = z.strictObject({
+  material: dotsMaterialSchema,
+  /** three's creation id of the paper material: the opaque draw order is ascending by this key (the cel key is the drawable's own `order`). */
+  order: z.number().int().min(0),
+  /** The point sprite field of this drawable's mesh; absent when the drawable carries no dots (head and light fills). */
+  samples: z.strictObject({
+    /** A part id of kind `points`. */
+    part: id,
+    /** `1 - lightness` of the original material's linear colour: the dots shader's tone uniform. */
+    tone: unit,
+  }).optional(),
+  /** Edge lines (white, 1 px, opaque) drawn on this drawable's mesh. */
+  edges: z.strictObject({
+    /** A part id of kind `lines`. */
+    part: id,
+    color: linearRgb,
+    /** three's creation id of the line material: its opaque draw order. */
+    order: z.number().int().min(0),
+  }).optional(),
+});
+
 /** One mesh part drawn with one material at one node, in draw order. */
 export const stageDrawableSchema = z.strictObject({
   id,
@@ -352,6 +393,22 @@ export const stageDrawableSchema = z.strictObject({
   /** A part id of the stage's mesh asset. */
   part: id,
   material: stageMaterialSchema,
+  /** The treatment group (a cast member) this drawable belongs to; required with `dots`. */
+  group: id.optional(),
+  /** three's creation id of `material`: the opaque draw order key of the cel look. Present on every drawable of a document that uses dots-v1. */
+  order: z.number().int().min(0).optional(),
+  /** The drawable's dots-v1 look; absent on a drawable that is always cel. */
+  dots: dotsLookSchema.optional(),
+});
+
+/** The treatment of one cast member (character or prop) before the scene's spans: its own treatment, else the scene's. */
+export const treatmentGroupSchema = z.strictObject({ id, treatment: treatmentName });
+
+/** A scene treatment span: frames `startFrame` up to (not including) `endFrame` draw every group in `treatment` (`stageTreatmentAt`). */
+export const treatmentSpanSchema = z.strictObject({
+  startFrame: z.number().int().min(0).max(MAX_FRAME),
+  endFrame: count,
+  treatment: treatmentName,
 });
 
 /** A paint as the face painter sets it: a colour with its exact alpha, or a linear gradient in canvas units. */
@@ -411,7 +468,11 @@ export const stage3dNodeSchema = z.strictObject({
   ...nodeBase,
   /** The mesh asset holding every drawable's part. */
   mesh: id,
-  treatment: z.literal("cel-v1"),
+  /** The scene's default treatment. A document without dots-v1 always says `cel-v1` and carries no groups or spans. */
+  treatment: treatmentName,
+  /** One entry per cast member whose drawables carry `dots`; the treatment at frame f is the first span containing f, else the group's, else `treatment`. */
+  groups: z.array(treatmentGroupSchema).optional(),
+  spans: z.array(treatmentSpanSchema).optional(),
   /** The orthographic camera: at z = cameraZ looking down -z; its frustum comes from the document camera and the format. */
   projection: z.strictObject({ cameraZ: finite, near: z.number().gt(0), far: z.number().gt(0) }),
   lighting: z.strictObject({

@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the Three stage in the Render IR (`aideos.render/2`, P4.1) on the real iona-receive fixture film: the emitted document validates and survives a JSON round trip; for every frame of the film, the world vertices posed from the IR (mesh file plus graph and channels, through the reference pose in stage3d.ts) equal the posed vertices prepareStageFacts measures, bit for bit in f32; the stage sits between the ground and foreground planes; two emits are byte-identical; and nativeSupport accepts the cel films (one performer, and the three-character J5 film of P4.3) while refusing dots-v1. The three-character film is checked the same way, performer by performer.
+ * File Description: Behavioural tests of the Three stage in the Render IR (`aideos.render/2`, P4.1) on the real iona-receive fixture film: the emitted document validates and survives a JSON round trip; for every frame of the film, the world vertices posed from the IR (mesh file plus graph and channels, through the reference pose in stage3d.ts) equal the posed vertices prepareStageFacts measures, bit for bit in f32; the stage sits between the ground and foreground planes; two emits are byte-identical; and nativeSupport accepts the cel films (one performer, and the three-character J5 film of P4.3) and the dots-v1 film (P4.4: the dots look itself is tested in dots.test.ts). The three-character film is checked the same way, performer by performer.
  * Inputs and outputs: the iona-receive fixture package and the journey-three-characters, pixels-stage-pip and pixels-stage-marlo packages built through buildDesign in the test videos directory, a fake measurer -> asserted IR values and vertex bits.
  * Used by: npm test (Node test runner).
  */
@@ -185,7 +185,7 @@ test("the stage sits between the ground plane and the foreground, holds its last
   assert.deepEqual(stageOf(emit(film, "long")), stage);
 });
 
-test("nativeSupport accepts the cel Three film with one performer and with several (P4.3) and still refuses dots-v1 (P4.4)", () => {
+test("nativeSupport accepts the cel Three film with one performer and with several (P4.3) and the dots-v1 film (P4.4), and still refuses what no step draws", () => {
   const film = ionaFilm();
   for (const format of ["long", "reel"] as const) {
     assert.deepEqual(nativeSupport(film, format), []);
@@ -193,9 +193,16 @@ test("nativeSupport accepts the cel Three film with one performer and with sever
     assert.equal(stageOf(emit(film, format)).kind, "stage3d");
   }
 
+  // P4.4: the dots-v1 treatment is carried and drawn, so a dots film is accepted and emitted with its dots look.
   const dots = structuredClone(film);
   (dots.scene as unknown as Scene).treatment = "dots-v1";
-  const dotReasons = nativeSupport(dots, "reel");
-  assert.ok(dotReasons.some((r) => r.includes("dots-v1") && r.includes("P4.4")));
-  assert.throws(() => emit(dots, "reel"), (e: unknown) => e instanceof NativeUnsupportedError && e.reasons.some((r) => r.includes("dots-v1")));
+  for (const cast of (dots.scene as unknown as Scene).cast ?? []) delete cast.treatment;
+  assert.deepEqual(nativeSupport(dots, "reel"), []);
+  assert.equal(stageOf(emit(dots, "reel")).treatment, "dots-v1");
+
+  // A Three stage with nothing to draw is still refused, with its reason.
+  const empty = structuredClone(film);
+  (empty.scene as unknown as Scene).performances = [];
+  assert.ok(nativeSupport(empty, "reel").some((r) => r.includes("no performances")));
+  assert.throws(() => emit(empty, "reel"), (e: unknown) => e instanceof NativeUnsupportedError && e.reasons.some((r) => r.includes("no performances")));
 });

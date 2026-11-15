@@ -294,7 +294,7 @@ differ per format.
 | Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` |
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
-refuses (with every reason, `nativeSupport`) a node-graph film, a Three-stage film in the dots-v1 treatment (P4.4, below), an actor scene, sub-group
+refuses (with every reason, `nativeSupport`) a node-graph film, an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
@@ -314,11 +314,11 @@ Remotion stays the default and the kill switch for everything not yet native. Th
 | P4.1 | `aideos.render/2` (the `stage3d` node and the `mesh` asset), its loaders and validators in TypeScript and Rust, the emitter (`backend/renderIr/emitStage3d.ts`), the mesh file codec and the reference pose (`backend/renderIr/stage3d.ts`) | done: nothing changes for users |
 | P4.2 | the CPU rasterizer of the stage3d node and the first film (iona-receive, cel, one performer), native goldens and the parity report ([P4.2 parity on iona-receive](#p42-parity-on-iona-receive)) | done: `nativeSupport` accepts cel-v1 with one performer |
 | P4.3 | several performers (the J5 film, Iona, Pip and Marlo each with a glider), Pip and Marlo as the performer: data and emitter work on the P4.2 rasterizer, native goldens for `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters`, and the parity report ([P4.3 parity on Pip, Marlo and J5](#p43-parity-on-pip-marlo-and-j5)) | done: `nativeSupport` accepts cel-v1 with any number of performers |
-| P4.4 | the `dots-v1` treatment (the IR cannot carry it yet) | |
+| P4.4 | the `dots-v1` treatment: the IR carries it (additive), the CPU rasterizer draws point sprites, edge lines and treatment spans, native goldens for the J3 and J4 film, and the parity report ([P4.4 parity on the dots film](#p44-parity-on-the-dots-film)) | done: `nativeSupport` accepts dots-v1 |
 | P4.5 | journeys and goldens per the captain's decision | |
 
 Since P4.2, `nativeSupport` accepts a Three-stage film in the cel treatment with one performer, and since P4.3 with
-any number of performers: it keeps only the dots-v1 treatment (P4.4) on Remotion, with its reason. Every other reason
+any number of performers, and since P4.4 the dots-v1 treatment too. Every other reason
 `nativeSupport` lists is unchanged. The IR carries every performer in one `stage3d` node (the emitter builds each
 performer and its prop as `ThreeStage` does, so ids are `<cast>.mesh.<name>` and `<cast>.group.<name>`, unique across
 performers), so there is no development-only emit any more: what the IR carries the renderer draws.
@@ -359,8 +359,32 @@ frame is the same bytes on every run, in any frame order and at any thread count
 synthetic scenes (a repeat render, frames backwards, four threads sharing one stage) and `video` shares the loaded
 stage between its workers. The native goldens of the character films (see [Native golden frames](#native-golden-frames)) are Linux only, like the others.
 
-**Limits.** One `stage3d` node, `cel-v1`, `dpr` 1, exposure 1, no tone mapping (the loader refuses the rest by name).
+**Limits.** One `stage3d` node, `cel-v1` and `dots-v1`, `dpr` 1, exposure 1, no tone mapping (the loader refuses the rest by name).
 A path in a face program is built in the user space current when it is filled, which is what the painter relies on.
+
+### How dots-v1 is drawn (P4.4)
+
+`materials/dots.ts` is the source of truth; the emitter reads its result off three's own objects (see
+`docs/RENDER_IR.md`, "The dots-v1 treatment") and `raster/stage3d/dots.rs` draws it. Every rule of the point sprites
+below was measured on Chrome's SwiftShader with standalone WebGL2 probes (the same shaders, a grid of points at
+random sub-pixel positions, sizes and depths, 4x MSAA, `readPixels`), not assumed, and then confirmed on the real
+film (frame 111, the 3D stage's mean absolute difference from Remotion fell to 0.02 of 255):
+
+| Step | Rule |
+| --- | --- |
+| Treatment | per cast member and frame: the first scene span holding `min(frame, sampleFrames - 1)`, else the cast member's own treatment, else the scene's (`stageTreatmentAt`) |
+| Draw order | opaque pass first: every drawable's triangles in the look in use (cel, dots paper, ink hull) and the prop's edge lines, ascending by three's material creation order (the IR carries the ranks of those ids); then the dots as three's transparent pass, objects far first by the window depth of their sample field's bounding box centre |
+| Paper | flat `0x0a0a0b` (white for a light fill, the face texture through `smoothstep(0.06, 0.4, luma)` for the head), the original side, no polygon offset; the hull white or black |
+| Vertex stage | per sample, in view space (the camera at the document camera's centre, rolling about z): lighting band of `dot(n, normalize(3, 6, 5))` (0.25, 0.58 or 0.93), `lod = clamp(ppu / 100, 0.18, 1)`, `density`, `coverage = smoothstep(rank - 0.1, rank + 0.1, density)`, the back face cull toward the camera origin, `size = max(1, clamp(ppu * 0.024, 2, 4.6) * sqrt(coverage))` (the GL point size range starts at 1), window depth minus `1e-6` |
+| Sprite coverage | a sample is covered when it lies in `[round16(c - s/2), round16(c + s/2))` on both axes (GL window space, y up, 1/16 pixel units, `c` the unsnapped centre); 0 mismatches in 230,000 probe pixels |
+| Fragment | shaded once per pixel at its centre: `r` from the point coordinate whose origin uses the centre snapped to 1/16 pixel; `edge = max(fwidth(r), 0.04)` with `fwidth` the COARSE derivative of the 2x2 quad (pairs of columns and of GL rows, read from the even GL row and even column); `alpha = 1 - smoothstep(0.5 - edge, 0.5, r)`, discarded below 0.01 |
+| Depth and blend | per sample LEQUAL against the opaque depth buffer, the dots never write depth; `round(255 * (alpha + dst / 255 * (1 - alpha)))` per channel and layer, alpha included |
+| Triangle depth in a dots document | SwiftShader evaluates a triangle's depth plane at the sample's x mirrored about the pixel centre; applied to documents that use dots-v1 only, so the cel documents' pictures stay as they were |
+| Edge lines | opaque white, a width 1 rectangle around the segment with its four corners snapped to 1/16 pixel, depth interpolated along the segment, depth written |
+
+**Determinism.** The sprites are prepared per frame in IR order, binned into the same 32 x 32 pixel tiles after the
+triangles, and each tile draws its triangles then its sprites in that order, so a frame with dots is the same bytes
+on every run and at every thread count (`tests/stage3d_dots.rs`, and every native golden).
 
 ### P4.2 parity on iona-receive
 
@@ -423,6 +447,27 @@ crop's box, so the crop figure is only meaningful on story frames. Against the c
 (whole frame 0.9956 long, 0.9887 reel). The strict golden tolerance is the gate for native against native goldens only
 (`cargo test`); no threshold or golden was changed.
 
+### P4.4 parity on the dots film
+
+Same method and machine as P4.2 and P4.3 (every frame of both formats, ffmpeg `ssim` and `psnr` for the whole frame; the
+stage crop and the rest of the frame are the 11 x 11 gaussian SSIM map averaged over that region; the crop is the union
+of every performer's and prop's projected bounds over the story plus 24 px). Film: `journey-j3-j4-dots` (Iona in
+dots-v1 beside a cel Iona with her own glider; `backend/testSupport/characterFilms.ts`). Evidence:
+`/home/mani/aideos-linux-home/data/aideos-native-p44-dots/parity/journey-j3-j4-dots-<format>/`.
+
+| Format | Stage crop SSIM story min / mean | Whole frame story SSIM min / mean | Whole frame end card SSIM min / mean | Story PSNR min / mean (dB) | End card PSNR min / mean (dB) |
+| --- | --- | --- | --- | --- | --- |
+| long (480) | 0.99981 / 0.99990 | 0.99465 / 0.99651 | 0.97856 / 0.98027 | 35.20 / 39.03 | 28.25 / 29.36 |
+| reel (390) | 0.99981 / 0.99996 | 0.98931 / 0.99229 | 0.97986 / 0.98217 | 34.23 / 38.79 | 29.15 / 30.99 |
+
+The 3D stage crop meets the 0.995 bar on every story frame of both formats (minimum 0.99981). The whole-frame bar is not met,
+for the same reason as at P4.2 and P4.3: the already-native 2D text (caption card, rail and end card text in native fonts
+against Chrome text), tracked as `aideos-native-2d-text-parity`; the end card frames carry text inside the crop box, which is
+why the crop measure falls to 0.93 there. Getting the stage crop here took measured rules, written up in
+[How dots-v1 is drawn](#how-dots-v1-is-drawn-p44): the first draw of the dots (rules taken from the shader source alone)
+scored 0.9906 on the crop; the last two corrections (the derivative's reference row, and the x mirrored depth sample
+positions) took one frame's mean absolute difference from Remotion from 1.13 to 0.02. No threshold and no golden was changed.
+
 ## The renderer flag
 
 Every render job chooses its renderer through `createSelectedRenderer` (`backend/rendererSelection.ts`): the
@@ -455,8 +500,8 @@ mastering, probe and sidecar are shared; the sidecar records the CRF as applied 
 studio's progress bar reads the binary's `frames D/T` lines (a frame counts once it is encoded).
 
 **Which films are native today.** Every film `nativeSupport` accepts, which since P4.2 includes the one-performer cel
-Three-stage character film and since P4.3 the cel films with several performers (Pip, Marlo and the J5 film).
-Node-graph films, Three-stage films with dots-v1 and the other
+Three-stage character film, since P4.3 the cel films with several performers (Pip, Marlo and the J5 film) and since P4.4
+the dots-v1 films (the J3 and J4 film). Node-graph films and the other
 refusals listed in [The emitter](#the-emitter-r4) stay on Remotion. A journey's render job takes the native path when
 the release binary is built (the CI journeys job builds it); the Player-versus-export journeys keep a Remotion export
 as their oracle until a WASM preview exists.
@@ -465,6 +510,6 @@ as their oracle until a WASM preview exists.
 
 Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
-and the Three stage in the dots-v1 treatment (P4.4); the cel stage with any number of performers is carried by
-`aideos.render/2` since P4.1 and drawn since P4.2 and P4.3. `image`, `audio` and `mesh`
+and nothing of the Three stage any more: the cel stage with any number of performers is carried by
+`aideos.render/2` since P4.1 and drawn since P4.2 and P4.3, and dots-v1 is carried and drawn since P4.4. `image`, `audio` and `mesh`
 assets are not opened by the frame raster.

@@ -105,6 +105,13 @@ export function checkSemantics(ir: RenderIr): Issue[] {
         if (seen.has(part.id)) add("duplicate_part_id", at(p, "parts", j, "id"), `mesh part id ${part.id} is listed twice`);
         seen.add(part.id);
         if (part.indices % 3 !== 0) add("indices_not_triangles", at(p, "parts", j, "indices"), `${part.indices} indices are not a whole number of triangles`);
+        const kind = part.kind ?? "triangles";
+        if (kind === "triangles" && part.indices === 0) add("indices_not_triangles", at(p, "parts", j, "indices"), "a triangles part holds at least one triangle");
+        if (kind !== "triangles") {
+          if (part.indices !== 0) add("part_kind_mismatch", at(p, "parts", j, "indices"), `a ${kind} part has no indices`);
+          if (part.uv) add("part_kind_mismatch", at(p, "parts", j, "uv"), `a ${kind} part has no uvs`);
+          if (kind === "lines" && part.vertices % 2 !== 0) add("part_kind_mismatch", at(p, "parts", j, "vertices"), "a lines part holds whole segments (an even number of end points)");
+        }
       });
     }
   });
@@ -290,7 +297,7 @@ function checkStage3d(node: Stage3dNode, p: string, mesh: Extract<Asset, { kind:
   const n = node.sampleFrames;
   if (n > duration) add("frame_out_of_range", at(p, "sampleFrames"), `sampleFrames ${n} is past the film's ${duration} frames`);
   // Graph nodes, drawables and face textures each have their own id space inside the stage (a drawable usually shares its node's id).
-  const spaces = { nodes: new Set<string>(), drawables: new Set<string>(), faceTextures: new Set<string>() };
+  const spaces = { nodes: new Set<string>(), drawables: new Set<string>(), faceTextures: new Set<string>(), groups: new Set<string>() };
   const claim = (space: keyof typeof spaces, path: string, id: string) => {
     if (spaces[space].has(id)) add("duplicate_stage3d_id", path, `stage3d ${space} id ${id} is already used`);
     spaces[space].add(id);
@@ -320,13 +327,35 @@ function checkStage3d(node: Stage3dNode, p: string, mesh: Extract<Asset, { kind:
     }
   });
   const textures = new Map(node.faceTextures.map((t) => [t.id, t]));
-  const parts = new Set(mesh?.parts.map((part) => part.id) ?? []);
+  const parts = new Map(mesh?.parts.map((part) => [part.id, part.kind ?? "triangles"]) ?? []);
+  // Checks that a part exists in the mesh and is of the wanted kind.
+  const needPart = (path: string, id: string, want: "triangles" | "points" | "lines") => {
+    if (!mesh) return;
+    const kind = parts.get(id);
+    if (kind === undefined) add("unknown_part", path, `mesh ${mesh.id} has no part ${id}`);
+    else if (kind !== want) add("part_kind_mismatch", path, `part ${id} is a ${kind} part, a ${want} part is needed here`);
+  };
+  node.groups?.forEach((g, i) => claim("groups", at(p, "groups", i, "id"), g.id));
+  node.spans?.forEach((span, i) => {
+    const sp = at(p, "spans", i, "endFrame");
+    if (span.endFrame <= span.startFrame) add("invalid_span", sp, "a span must end after it starts");
+    else if (span.endFrame > duration) add("invalid_span", sp, `a span may not run past the film's ${duration} frames`);
+  });
+  const usesDots = node.drawables.some((d) => d.dots !== undefined);
   node.drawables.forEach((d, i) => {
     const dp = at(p, "drawables", i);
     claim("drawables", at(dp, "id"), d.id);
     if (!graph.has(d.node)) add("unknown_node", at(dp, "node"), `no stage3d node ${d.node}`);
-    if (mesh && !parts.has(d.part)) add("unknown_part", at(dp, "part"), `mesh ${mesh.id} has no part ${d.part}`);
+    needPart(at(dp, "part"), d.part, "triangles");
     if (d.material.kind === "face" && !textures.has(d.material.texture)) add("unknown_texture", at(dp, "material", "texture"), `no face texture ${d.material.texture}`);
+    if (d.group !== undefined && !spaces.groups.has(d.group)) add("unknown_group", at(dp, "group"), `no treatment group ${d.group}`);
+    if (usesDots && d.order === undefined) add("dots_incomplete", at(dp, "order"), "every drawable of a document that uses dots-v1 carries its draw order");
+    if (d.dots) {
+      if (d.group === undefined) add("dots_incomplete", at(dp, "group"), "a drawable with a dots-v1 look belongs to a treatment group");
+      if (d.dots.material.kind === "faceLuma" && !textures.has(d.dots.material.texture)) add("unknown_texture", at(dp, "dots", "material", "texture"), `no face texture ${d.dots.material.texture}`);
+      if (d.dots.samples) needPart(at(dp, "dots", "samples", "part"), d.dots.samples.part, "points");
+      if (d.dots.edges) needPart(at(dp, "dots", "edges", "part"), d.dots.edges.part, "lines");
+    }
   });
   node.faceTextures.forEach((t, i) => {
     const fp = at(p, "faceTextures", i);

@@ -1,11 +1,12 @@
-//! File Description: The tile rasterizer of the stage3d node. The frame's triangles are binned, in draw order, into 32 x 32 pixel tiles; each tile is drawn on its own with a depth and a colour buffer of its own (z-buffer, LEQUAL, GL-pattern MSAA samples, coverage from exact integer edge equations with the top-left rule), shading each pixel once at its centre (three's toon, basic, face and ink shaders, sRGB encoded to 8 bits), then resolved by averaging the samples into a premultiplied RGBA layer. A tile reads only its own triangle list and writes only its own pixels, so tiles can run in any order or on any number of threads and the layer is the same bytes.
+//! File Description: The tile rasterizer of the stage3d node. The frame's triangles (and, in the dots-v1 treatment, its point sprites after them, see dots.rs) are binned, in draw order, into 32 x 32 pixel tiles; each tile is drawn on its own with a depth and a colour buffer of its own (z-buffer, LEQUAL, GL-pattern MSAA samples, coverage from exact integer edge equations with the top-left rule), shading each pixel once at its centre (three's toon, basic, face and ink shaders, sRGB encoded to 8 bits), then resolved by averaging the samples into a premultiplied RGBA layer. A tile reads only its own triangle list and writes only its own pixels, so tiles can run in any order or on any number of threads and the layer is the same bytes.
 //! Inputs and outputs: the `Prepared` triangles of a frame and the loaded scene -> a premultiplied RGBA8 `Layer` covering the touched pixels, or None when nothing is drawn.
 //! Used by: crate::raster::stage3d (`render_layer`).
 
 use std::sync::OnceLock;
 
+use super::dots::{blend_white, smoothstep, Sprite};
 use super::face::Texture;
-use super::setup::{Prepared, Tri};
+use super::setup::{Look, Prepared, Tri};
 use super::{encode_channel, Layer, Shading, Stage3dScene, SUBPIXEL};
 use aideos_render_ir::types::Side;
 
@@ -66,7 +67,21 @@ fn sample_face(tex: &Texture, u: f32, v: f32, flip_y: bool) -> [f32; 3] {
 /// Shades one pixel of a triangle from its barycentric coordinates at the pixel centre; the result is opaque RGBA8.
 fn shade(scene: &Stage3dScene, prep: &Prepared, t: &Tri, lam: [f32; 3]) -> u32 {
     let d = &scene.drawables[t.drawable as usize];
-    match &d.shading {
+    let shading = match t.look {
+        Look::Cel => &d.shading,
+        Look::Dots => match &d.dots {
+            Some(dots) => &dots.shading,
+            None => return 0xff00_0000,
+        },
+        Look::Edge => {
+            return d
+                .dots
+                .as_ref()
+                .and_then(|l| l.edges.as_ref())
+                .map_or(0xff00_0000, |e| e.rgba)
+        }
+    };
+    match shading {
         Shading::Flat { rgba } => *rgba,
         Shading::Toon { bands } => {
             let normals = &prep.normals[t.drawable as usize];
@@ -87,7 +102,7 @@ fn shade(scene: &Stage3dScene, prep: &Prepared, t: &Tri, lam: [f32; 3]) -> u32 {
             let band = (((dot * 0.5 + 0.5) * count as f32).floor() as i32).clamp(0, count - 1);
             bands[band as usize]
         }
-        Shading::Face { texture, color } => {
+        Shading::Face { texture, color } | Shading::FaceLuma { texture, color } => {
             let part = &scene.parts[d.part];
             let (u, v) = match &part.uvs {
                 Some(uvs) => {
@@ -103,7 +118,13 @@ fn shade(scene: &Stage3dScene, prep: &Prepared, t: &Tri, lam: [f32; 3]) -> u32 {
             match &prep.textures[*texture] {
                 Some(tex) => {
                     let s = sample_face(tex, u, v, scene.texture_flip_y(*texture));
-                    let lit = [s[0] * color[0], s[1] * color[1], s[2] * color[2]];
+                    let mut lit = [s[0] * color[0], s[1] * color[1], s[2] * color[2]];
+                    if matches!(shading, Shading::FaceLuma { .. }) {
+                        // The dots face paper: no chroma, a grey ramp of the painted luma.
+                        let luma = 0.2126 * lit[0] + 0.7152 * lit[1] + 0.0722 * lit[2];
+                        let g = smoothstep(0.06, 0.4, f64::from(luma)) as f32;
+                        lit = [g, g, g];
+                    }
                     encode_channel(lit[0])
                         | (encode_channel(lit[1]) << 8)
                         | (encode_channel(lit[2]) << 16)
@@ -154,9 +175,15 @@ fn raster_triangle(
                     if mask >> s & 1 == 0 {
                         continue;
                     }
-                    let w0 = (e[s][0] + t.off[0]) as f64;
-                    let w1 = (e[s][1] + t.off[1]) as f64;
-                    let w2 = (e[s][2] + t.off[2]) as f64;
+                    // SwiftShader evaluates a triangle's depth plane at the sample's x mirrored about the pixel centre (measured: zero mismatches over 7,000 probe pixels on five slopes), not at the sample itself.
+                    let mx = if scene.mirror_depth {
+                        SUBPIXEL - 2 * samples[s].0
+                    } else {
+                        0
+                    };
+                    let w0 = (e[s][0] + t.off[0] + t.a[0] * mx) as f64;
+                    let w1 = (e[s][1] + t.off[1] + t.a[1] * mx) as f64;
+                    let w2 = (e[s][2] + t.off[2] + t.a[2] * mx) as f64;
                     let z = (w0 * t.z[0] + w1 * t.z[1] + w2 * t.z[2]) * t.inv_area;
                     // The clip planes: a sample outside the near and far planes is not drawn.
                     if !(0.0..=1.0).contains(&z) {
@@ -176,8 +203,8 @@ fn raster_triangle(
                     );
                     let mut lam = [0f32; 3];
                     for (i, v) in lam.iter_mut().enumerate() {
-                        *v = ((t.a[i] * cx + t.b[i] * cy + t.c[i] + t.off[i]) as f64
-                            * t.inv_area) as f32;
+                        *v = ((t.a[i] * cx + t.b[i] * cy + t.c[i] + t.off[i]) as f64 * t.inv_area)
+                            as f32;
                     }
                     let rgba = shade(scene, prep, t, lam);
                     for s in 0..count {
@@ -197,6 +224,37 @@ fn raster_triangle(
     }
 }
 
+/// Draws one point sprite into one tile's sample buffers: the fragment is shaded once per pixel at its centre, then blended (white at its alpha) into every covered sample that passes the LEQUAL depth test; the depth buffer is not written.
+fn raster_sprite(
+    scene: &Stage3dScene,
+    sp: &Sprite,
+    tile: (i32, i32),
+    height: i32,
+    depth: &[f32],
+    color: &mut [u32],
+) {
+    let samples = scene.samples;
+    let (x0, x1) = (sp.x0.max(tile.0), sp.x1.min(tile.0 + TILE - 1));
+    let (y0, y1) = (sp.y0.max(tile.1), sp.y1.min(tile.1 + TILE - 1));
+    for py in y0..=y1 {
+        for px in x0..=x1 {
+            let mask = sp.coverage(px, py, height, samples);
+            if mask == 0 {
+                continue;
+            }
+            let Some(alpha) = sp.alpha(px, py, height) else {
+                continue;
+            };
+            let base = (((py - tile.1) * TILE + (px - tile.0)) as usize) * samples.len();
+            for s in 0..samples.len() {
+                if mask >> s & 1 == 1 && sp.z <= depth[base + s] {
+                    color[base + s] = blend_white(color[base + s], alpha);
+                }
+            }
+        }
+    }
+}
+
 /// Draws every triangle of a frame tile by tile and resolves the samples into one premultiplied layer.
 pub(crate) fn draw(
     scene: &Stage3dScene,
@@ -204,26 +262,39 @@ pub(crate) fn draw(
     width: u32,
     height: u32,
 ) -> Option<Layer> {
-    if prep.tris.is_empty() {
+    if prep.tris.is_empty() && prep.sprites.is_empty() {
         return None;
     }
     let (mut bx0, mut by0, mut bx1, mut by1) = (i32::MAX, i32::MAX, i32::MIN, i32::MIN);
-    for t in &prep.tris {
-        bx0 = bx0.min(t.x0);
-        by0 = by0.min(t.y0);
-        bx1 = bx1.max(t.x1);
-        by1 = by1.max(t.y1);
+    let bounds = prep
+        .tris
+        .iter()
+        .map(|t| (t.x0, t.y0, t.x1, t.y1))
+        .chain(prep.sprites.iter().map(|s| (s.x0, s.y0, s.x1, s.y1)));
+    for (x0, y0, x1, y1) in bounds {
+        bx0 = bx0.min(x0);
+        by0 = by0.min(y0);
+        bx1 = bx1.max(x1);
+        by1 = by1.max(y1);
     }
     debug_assert!(bx0 >= 0 && by0 >= 0 && bx1 < width as i32 && by1 < height as i32);
     let (tx0, ty0, tx1, ty1) = (bx0 / TILE, by0 / TILE, bx1 / TILE, by1 / TILE);
     let tiles_w = (tx1 - tx0 + 1) as usize;
     let tiles_h = (ty1 - ty0 + 1) as usize;
-    // Bin the triangles into tiles, keeping their draw order inside each tile.
+    // Bin the triangles and then the sprites into tiles, keeping their draw order inside each tile.
     let mut bins: Vec<Vec<u32>> = vec![Vec::new(); tiles_w * tiles_h];
+    let mut sprite_bins: Vec<Vec<u32>> = vec![Vec::new(); tiles_w * tiles_h];
     for (i, t) in prep.tris.iter().enumerate() {
         for ty in t.y0 / TILE..=t.y1 / TILE {
             for tx in t.x0 / TILE..=t.x1 / TILE {
                 bins[(ty - ty0) as usize * tiles_w + (tx - tx0) as usize].push(i as u32);
+            }
+        }
+    }
+    for (i, s) in prep.sprites.iter().enumerate() {
+        for ty in s.y0 / TILE..=s.y1 / TILE {
+            for tx in s.x0 / TILE..=s.x1 / TILE {
+                sprite_bins[(ty - ty0) as usize * tiles_w + (tx - tx0) as usize].push(i as u32);
             }
         }
     }
@@ -234,8 +305,9 @@ pub(crate) fn draw(
     let mut color = vec![0u32; (TILE * TILE) as usize * count];
     for ty in ty0..=ty1 {
         for tx in tx0..=tx1 {
-            let list = &bins[(ty - ty0) as usize * tiles_w + (tx - tx0) as usize];
-            if list.is_empty() {
+            let slot = (ty - ty0) as usize * tiles_w + (tx - tx0) as usize;
+            let (list, sprites) = (&bins[slot], &sprite_bins[slot]);
+            if list.is_empty() && sprites.is_empty() {
                 continue;
             }
             let origin = (tx * TILE, ty * TILE);
@@ -248,6 +320,16 @@ pub(crate) fn draw(
                     &prep.tris[i as usize],
                     origin,
                     &mut depth,
+                    &mut color,
+                );
+            }
+            for &i in sprites {
+                raster_sprite(
+                    scene,
+                    &prep.sprites[i as usize],
+                    origin,
+                    height as i32,
+                    &depth,
                     &mut color,
                 );
             }
