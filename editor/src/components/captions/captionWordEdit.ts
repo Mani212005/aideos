@@ -60,6 +60,7 @@ function writeCaptionTrack(words: CaptionWord[], fps: number): string | null {
 
 /** Returns the film with caption word `index` edited, or an error message. An edit that changes nothing returns the same film object. */
 export function editCaptionWord(film: Film, index: number, edit: CaptionWordEdit): CaptionWordEditResult {
+  if (film.captions === "off" || film.subtitles === false) return { ok: false, error: "Captions are off. Turn them on first." };
   const words = generateWordsFromFilm(film as unknown as Record<string, unknown>);
   if (!Number.isInteger(index) || index < 0 || index >= words.length) return { ok: false, error: "That word is gone." };
   const word = words[index];

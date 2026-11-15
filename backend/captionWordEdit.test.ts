@@ -74,3 +74,22 @@ test("Caption word edit: an edit that changes nothing returns the same film", ()
   const result = editCaptionWord(film, 2, { text: "we" });
   assert.equal(result.ok && result.film === film, true);
 });
+
+test("Caption word edit: a film with captions off is never given a caption track", () => {
+  const film = { ...makeFilm(), captions: "off" } as unknown as Film;
+  const result = editCaptionWord(film, 0, { text: "At" });
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.match(result.error, /captions are off/i);
+  assert.equal(film.captions, "off");
+  const hidden = { ...makeFilm(), subtitles: false } as unknown as Film;
+  assert.equal(editCaptionWord(hidden, 0, { text: "At" }).ok, false);
+});
+
+test("Caption word edit: an End past the next word start is kept as written after a reload", () => {
+  const film = makeFilm();
+  const result = editCaptionWord(film, 3, { endFrame: 28 });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(wordsOf(reload(result.film))[3].endFrame, 28);
+});

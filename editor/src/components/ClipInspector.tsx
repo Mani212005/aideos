@@ -223,13 +223,16 @@ export function ClipInspector({
   const captionIndex = isSubtitle ? captionWordIndex(clip.id) : null;
 
   if (captionIndex !== null) {
+    const word = clip.payload as SubtitlePayload;
+    const startFrame = word.startFrame ?? Math.round(clip.position * fps);
+    const endFrame = word.endFrame ?? Math.round(clipEndSec(clip) * fps);
     return (
       <div className="flex flex-col gap-3 p-2">
         <CaptionWordEditor
-          key={`${clip.id}-${Math.round(clip.position * fps)}-${Math.round(clipEndSec(clip) * fps)}`}
-          text={(clip.payload as SubtitlePayload).text}
-          startFrame={Math.round(clip.position * fps)}
-          endFrame={Math.round(clipEndSec(clip) * fps)}
+          key={`${clip.id}-${word.text}-${startFrame}-${endFrame}`}
+          text={word.text}
+          startFrame={startFrame}
+          endFrame={endFrame}
           fps={fps}
           disabled={locked}
           onCommit={(edit) => onEditCaptionWord(captionIndex, edit)}
