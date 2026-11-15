@@ -1,4 +1,4 @@
-//! File Description: Behavioural tests of the Three stage rasterizer (`aideos.render/2`, the stage3d node) through the public `Renderer`, on short synthetic scenes (a few triangles, written as an IR document and a mesh file by the test): a toon triangle takes the ramp band's colour at the pixel the camera puts it, back faces are culled by the material's side, the nearer triangle wins whatever the draw order, a shared edge leaves no gap (top-left rule on a sample that sits exactly on it), a face texture painted from recorded ops reaches the picture, the stage composes between the SVG planes and under the node's opacity, and the picture is byte-identical on a repeat render, in any frame order and across threads. Hand-computed expectations are noted where they appear.
+//! File Description: Behavioural tests of the Three stage rasterizer (`aideos.render/2`, the stage3d node) through the public `Renderer`, on short synthetic scenes (a few triangles, written as an IR document and a mesh file by the test): a toon triangle takes the ramp band's colour at the pixel the camera puts it, back faces are culled by the material's side, the nearer triangle wins whatever the draw order, a shared edge leaves no gap (top-left rule on a sample that sits exactly on it), a face texture painted from recorded ops reaches the picture, several performers each keep their own face texture and per-frame face program (P4.3), the stage composes between the SVG planes and under the node's opacity, and the picture, for one performer and for several, is byte-identical on a repeat render, in any frame order and across threads. Hand-computed expectations are noted where they appear.
 //! Inputs and outputs: synthetic stage3d IR documents and mesh files in scratch packages -> asserted pixels and byte equality.
 //! Used by: `cargo test --manifest-path native/Cargo.toml`.
 
@@ -350,6 +350,79 @@ fn a_face_texture_reaches_the_picture() {
     );
 }
 
+/// Two performers' heads: head `name` is a triangle of 600 world units centred at x = `cx` on y = 0, drawn with the face texture `face`.
+fn performer_head(name: &'static str, cx: f32, face: &str) -> (Part, Value) {
+    let part = Part {
+        id: name,
+        positions: vec![
+            [cx - 300.0, -300.0, 0.0],
+            [cx + 300.0, -300.0, 0.0],
+            [cx, 300.0, 0.0],
+        ],
+        normals: vec![[0.0, 0.0, 1.0]; 3],
+        uvs: Some(vec![[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]]),
+        indices: vec![0, 1, 2],
+    };
+    let drawable = json!({"id": name, "node": name, "part": name, "material": {"kind": "face", "texture": face, "color": [1, 1, 1], "side": "front"}});
+    (part, drawable)
+}
+
+/// A stage of two performers, each with its own face texture and its own per-frame program track (the several-performer films of P4.3).
+fn two_performer_scene() -> Scene {
+    let mut scene = Scene::new();
+    for (name, cx, face, programs) in [
+        ("head-a", -600.0, "face-a", [0, 1, 1]),
+        ("head-b", 600.0, "face-b", [1, 1, 0]),
+    ] {
+        let (part, drawable) = performer_head(name, cx, face);
+        scene.parts.push(part);
+        scene.drawables.push(drawable);
+        scene.face_textures.push(json!({"id": face, "size": 64, "flipY": true, "filter": "linear", "mipmaps": false, "colorSpace": "srgb", "programs": programs}));
+    }
+    let fill = |hex: &str| json!({"ops": [{"op": "fillStyle", "paint": {"kind": "color", "color": hex, "alpha": 1}}, {"op": "fillRect", "args": [0, 0, 64, 64]}]});
+    scene.face_programs = vec![fill("#c86432"), fill("#2f80ed")];
+    scene
+}
+
+/// Several performers each paint their own face: a face texture is bound to its own head and follows its own program track frame by frame.
+#[test]
+fn several_performers_keep_their_own_face_and_program_track() {
+    let renderer = two_performer_scene().renderer("two-faces");
+    let orange = [200, 100, 50, 255];
+    let blue = [0x2f, 0x80, 0xed, 255];
+    // Frame 0: A shows program 0 and B program 1; frame 1: both program 1; frame 2: A program 1 and B program 0.
+    for (frame, want_a, want_b) in [
+        (0, orange, blue),
+        (1, blue, blue),
+        (2, blue, orange),
+        (5, blue, orange),
+    ] {
+        let f = renderer.render_frame(Format::Long, frame).unwrap();
+        assert_eq!(
+            at(&f, -600.0, -150.0),
+            want_a,
+            "performer A at frame {frame}"
+        );
+        assert_eq!(
+            at(&f, 600.0, -150.0),
+            want_b,
+            "performer B at frame {frame}"
+        );
+        // Between the two heads nothing is drawn.
+        assert_eq!(
+            at(&f, 0.0, -150.0),
+            BACKGROUND,
+            "between the performers at frame {frame}"
+        );
+    }
+}
+
+/// Several performers, with faces, are the same bytes on a repeat render, in any frame order and on four threads.
+#[test]
+fn several_performers_render_deterministically() {
+    assert_deterministic(&two_performer_scene(), "two-performers-determinism");
+}
+
 /// A plane before the stage is drawn under it and one after the stage over it, as the document order says.
 #[test]
 fn the_stage_sits_between_the_planes_in_document_order() {
@@ -409,20 +482,9 @@ fn the_stage_honours_its_opacity() {
     }
 }
 
-/// A repeat render, a render after other frames and renders on several threads over one shared stage are all the same bytes.
-#[test]
-fn rendering_is_deterministic_in_any_order_and_on_any_number_of_threads() {
-    let mut scene = Scene::new();
-    scene.parts.push(triangle("a", BIG, 0.0, [0.0, 0.0, 1.0]));
-    scene.parts.push(triangle(
-        "b",
-        [[-300.0, -500.0], [700.0, -100.0], [100.0, 500.0]],
-        50.0,
-        [-0.3, -0.6, -0.5],
-    ));
-    scene.drawables.push(toon("a", "a", "double"));
-    scene.drawables.push(toon("b", "b", "double"));
-    let (ir, dir) = scene.write("determinism");
+/// Asserts that a scene's picture is the same bytes on a repeat render, after other frames and on four threads sharing one stage.
+fn assert_deterministic(scene: &Scene, name: &str) {
+    let (ir, dir) = scene.write(name);
     let serial = Renderer::open(&ir, Some(&dir)).expect("opens");
     let reference: Vec<Vec<u8>> = (0..6)
         .map(|f| serial.render_frame(Format::Long, f).unwrap().rgba)
@@ -457,6 +519,22 @@ fn rendering_is_deterministic_in_any_order_and_on_any_number_of_threads() {
     for h in handles {
         h.join().expect("a render thread panicked");
     }
+}
+
+/// A repeat render, a render after other frames and renders on several threads over one shared stage are all the same bytes.
+#[test]
+fn rendering_is_deterministic_in_any_order_and_on_any_number_of_threads() {
+    let mut scene = Scene::new();
+    scene.parts.push(triangle("a", BIG, 0.0, [0.0, 0.0, 1.0]));
+    scene.parts.push(triangle(
+        "b",
+        [[-300.0, -500.0], [700.0, -100.0], [100.0, 500.0]],
+        50.0,
+        [-0.3, -0.6, -0.5],
+    ));
+    scene.drawables.push(toon("a", "a", "double"));
+    scene.drawables.push(toon("b", "b", "double"));
+    assert_deterministic(&scene, "determinism");
 }
 
 /// A stage whose mesh file is missing, or whose file does not match the IR, is refused with the asset named.

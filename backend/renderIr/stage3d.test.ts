@@ -1,6 +1,6 @@
 /**
- * File Description: Behavioural tests of the Three stage in the Render IR (`aideos.render/2`, P4.1) on the real iona-receive fixture film: the emitted document validates and survives a JSON round trip; for every frame of the film, the world vertices posed from the IR (mesh file plus graph and channels, through the reference pose in stage3d.ts) equal the posed vertices prepareStageFacts measures, bit for bit in f32; the stage sits between the ground and foreground planes; two emits are byte-identical; and nativeSupport accepts the one-performer cel film while refusing several performers and dots-v1.
- * Inputs and outputs: the iona-receive fixture package built through buildDesign in the test videos directory, a fake measurer -> asserted IR values and vertex bits.
+ * File Description: Behavioural tests of the Three stage in the Render IR (`aideos.render/2`, P4.1) on the real iona-receive fixture film: the emitted document validates and survives a JSON round trip; for every frame of the film, the world vertices posed from the IR (mesh file plus graph and channels, through the reference pose in stage3d.ts) equal the posed vertices prepareStageFacts measures, bit for bit in f32; the stage sits between the ground and foreground planes; two emits are byte-identical; and nativeSupport accepts the cel films (one performer, and the three-character J5 film of P4.3) while refusing dots-v1. The three-character film is checked the same way, performer by performer.
+ * Inputs and outputs: the iona-receive fixture package and the journey-three-characters, pixels-stage-pip and pixels-stage-marlo packages built through buildDesign in the test videos directory, a fake measurer -> asserted IR values and vertex bits.
  * Used by: npm test (Node test runner).
  */
 
@@ -16,6 +16,7 @@ import { meshIsDrawn } from "../../src/dl/scene/stageGeometry";
 import type { Scene } from "../../src/dl/scene/types";
 import type { Film } from "../../src/dl/schema";
 import { fakeMeasurer } from "../testSupport/nativeSceneFilm";
+import { buildCharacterFilm, type CharacterFilmSlug } from "../testSupport/characterFilms";
 import { emitRenderIr, nativeSupport, NativeUnsupportedError, type EmitResult, type NativeFormat } from "./emit";
 import { decodeMesh } from "./mesh";
 import { RENDER_IR_VERSION_2, type MeshAsset, type Stage3dNode } from "./schema";
@@ -33,10 +34,18 @@ function ionaFilm(): Film {
   return structuredClone(built);
 }
 
-// Emits one format of a film, allowing what the renderer does not draw yet.
-function emit(film: Film, format: NativeFormat, allowUndrawn = true): EmitResult {
+const characterFilms = new Map<CharacterFilmSlug, Film>();
+// Builds a character film once (Pip, Marlo or the three-character J5 film, through the real buildDesign) and returns a fresh copy.
+function characterFilm(slug: CharacterFilmSlug): Film {
+  let film = characterFilms.get(slug);
+  if (!film) characterFilms.set(slug, film = buildCharacterFilm(slug));
+  return structuredClone(film);
+}
+
+// Emits one format of a film exactly as the render path does (no development allowance: nativeSupport must accept it).
+function emit(film: Film, format: NativeFormat): EmitResult {
   const svgSources = loadSceneAssets(film.scene as unknown as Scene).svgSources;
-  return emitRenderIr({ film, format, svgSources, measure: fakeMeasurer(), resolvePath: (p) => `/repo/${p}` }, { allowUndrawn });
+  return emitRenderIr({ film, format, svgSources, measure: fakeMeasurer(), resolvePath: (p) => `/repo/${p}` });
 }
 
 // The stage3d node of an emitted document.
@@ -64,8 +73,8 @@ test("a Three film emits a valid aideos.render/2 document that survives a JSON r
   assert.ok(result.files.some((f) => f.path === mesh.path && "bytes" in f));
 });
 
-test("for every frame, the IR-posed world vertices equal prepareStageFacts' posed vertices bit for bit in f32", () => {
-  const film = ionaFilm();
+// Checks that, at each given frame, the world vertices posed from the IR equal the posed vertices prepareStageFacts measures, bit for bit in f32, for every drawn mesh of every performer.
+function assertPosedVerticesMatch(film: Film, frames: number[], minVertices: number): void {
   const scene = film.scene as unknown as Scene;
   const result = emit(film, "long");
   // The document goes through JSON text, as the renderer reads it.
@@ -78,17 +87,23 @@ test("for every frame, the IR-posed world vertices equal prepareStageFacts' pose
   try {
     // The glider stays hidden until a performance first places it, so drawn meshes are counted on a posed frame.
     facts.at(0);
-    const meshes = facts.materials.flatMap((m) => m.meshes).filter(meshIsDrawn);
+    const entries = facts.materials.map((entry) => {
+      const performance = facts.performances.find((p) => p.actor === entry.actor);
+      assert.ok(performance, `no performance for ${entry.actor}`);
+      return { owners: [entry.actor, performance.prop], meshes: entry.meshes.filter(meshIsDrawn) };
+    });
+    const meshes = entries.flatMap((e) => e.meshes);
     assert.equal(meshes.length, stage.drawables.length, "every drawn mesh is one drawable");
-    // Each measured mesh's drawable: ids are `<cast>.<mesh name>`, and mesh names are unique on this stage.
-    const drawableOf = new Map(meshes.map((mesh) => {
-      const found = stage.drawables.filter((d) => d.id.endsWith(`.${mesh.name}`));
-      assert.equal(found.length, 1, `mesh ${mesh.name}`);
+    // Each measured mesh's drawable: ids are `<cast>.mesh.<mesh name>`; names are unique within one performer and its prop.
+    const drawableOf = new Map(entries.flatMap(({ owners, meshes: own }) => own.map((mesh) => {
+      const found = stage.drawables.filter((d) => owners.some((o) => d.id === `${o}.mesh.${mesh.name}`));
+      assert.equal(found.length, 1, `mesh ${mesh.name} of ${owners.join("/")}`);
       return [mesh, found[0]] as const;
-    }));
+    })));
+    assert.equal(new Set(drawableOf.values()).size, stage.drawables.length, "no two meshes share a drawable");
     const point = new Vector3();
     let checked = 0;
-    for (let frame = 0; frame < scene.durationFrames; frame++) {
+    for (const frame of frames) {
       facts.at(frame);
       const world = poseStage3d(stage, frame);
       for (const mesh of meshes) {
@@ -108,9 +123,50 @@ test("for every frame, the IR-posed world vertices equal prepareStageFacts' pose
         checked += position.count;
       }
     }
-    assert.ok(checked > scene.durationFrames * 10_000, `only ${checked} vertices were compared`);
+    assert.ok(checked > minVertices, `only ${checked} vertices were compared`);
   } finally {
     facts.dispose();
+  }
+}
+
+test("for every frame, the IR-posed world vertices equal prepareStageFacts' posed vertices bit for bit in f32", () => {
+  const film = ionaFilm();
+  const scene = film.scene as unknown as Scene;
+  assertPosedVerticesMatch(film, Array.from({ length: scene.durationFrames }, (_, frame) => frame), scene.durationFrames * 10_000);
+});
+
+test("three performers, each with a glider (the J5 film), are posed from the IR exactly as prepareStageFacts poses them", () => {
+  const film = characterFilm("journey-three-characters");
+  const scene = film.scene as unknown as Scene;
+  assert.equal(scene.performances!.length, 3);
+  // Every fifth frame, plus the last, covers the approach, the catch and the hold of all three performers.
+  const frames = Array.from({ length: scene.durationFrames }, (_, frame) => frame).filter((frame) => frame % 5 === 0 || frame === scene.durationFrames - 1);
+  assertPosedVerticesMatch(film, frames, frames.length * 30_000);
+});
+
+test("a several-performer film emits one stage with every performer's own objects, face and glider", () => {
+  const film = characterFilm("journey-three-characters");
+  for (const format of ["long", "reel"] as const) {
+    assert.deepEqual(nativeSupport(film, format), []);
+    const result = emit(film, format);
+    const stage = stageOf(result);
+    assert.deepEqual(stage.faceTextures.map((f) => f.id), ["iona.face", "pip.face", "marlo.face"]);
+    for (const owner of ["iona", "pip", "marlo", "glider-iona", "glider-pip", "glider-marlo"]) {
+      assert.ok(stage.drawables.some((d) => d.id.startsWith(`${owner}.mesh.`)), `${owner} has no drawable`);
+    }
+    // Ids are unique across performers, and every performer's face paints its own programs.
+    assert.equal(new Set(stage.drawables.map((d) => d.id)).size, stage.drawables.length);
+    assert.equal(new Set(stage.nodes.map((n) => n.id)).size, stage.nodes.length);
+    for (const face of stage.faceTextures) assert.equal(face.programs.length, stage.sampleFrames, `${face.id} programs`);
+    // A mirrored left and right part share one geometry, so the file holds exactly the parts the drawables name, each once.
+    const mesh = result.ir.assets.find((a): a is MeshAsset => a.kind === "mesh")!;
+    assert.deepEqual(mesh.parts.map((p) => p.id).sort(), [...new Set(stage.drawables.map((d) => d.part))].sort());
+  }
+  // The one-performer films of Pip and Marlo are accepted too, with their own mesh and a single face.
+  for (const slug of ["pixels-stage-pip", "pixels-stage-marlo"] as const) {
+    const one = characterFilm(slug);
+    assert.deepEqual(nativeSupport(one, "long"), []);
+    assert.equal(stageOf(emit(one, "long")).faceTextures.length, 1);
   }
 });
 
@@ -129,25 +185,17 @@ test("the stage sits between the ground plane and the foreground, holds its last
   assert.deepEqual(stageOf(emit(film, "long")), stage);
 });
 
-test("nativeSupport accepts the one-performer cel Three film (P4.2) and still refuses several performers (P4.3) and dots-v1 (P4.4)", () => {
+test("nativeSupport accepts the cel Three film with one performer and with several (P4.3) and still refuses dots-v1 (P4.4)", () => {
   const film = ionaFilm();
   for (const format of ["long", "reel"] as const) {
     assert.deepEqual(nativeSupport(film, format), []);
     // The render path emits it with no development allowance.
-    assert.equal(stageOf(emit(film, format, false)).kind, "stage3d");
+    assert.equal(stageOf(emit(film, format)).kind, "stage3d");
   }
-
-  const several = structuredClone(film);
-  const scene = several.scene as unknown as Scene;
-  scene.performances = [...scene.performances!, { ...scene.performances![0], id: "second" }];
-  const severalReasons = nativeSupport(several, "long");
-  assert.ok(severalReasons.some((r) => r.includes("several performers (2)") && r.includes("P4.3")));
-  assert.throws(() => emit(several, "long", false), (e: unknown) => e instanceof NativeUnsupportedError && e.reasons.join() === severalReasons.join());
 
   const dots = structuredClone(film);
   (dots.scene as unknown as Scene).treatment = "dots-v1";
   const dotReasons = nativeSupport(dots, "reel");
   assert.ok(dotReasons.some((r) => r.includes("dots-v1") && r.includes("P4.4")));
-  // The IR cannot carry dots yet, so even a development emit refuses it.
   assert.throws(() => emit(dots, "reel"), (e: unknown) => e instanceof NativeUnsupportedError && e.reasons.some((r) => r.includes("dots-v1")));
 });

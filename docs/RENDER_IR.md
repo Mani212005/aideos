@@ -135,9 +135,8 @@ and the mixer reads them on the film clock. The gain is held before the first an
 
 **Not in `/1`.** Transitions and effect stacks (paper curl, blur, masks, blend modes), springs and
 particles, footage clips, Lottie, 3D and the Three-stage character films. They arrive with the phases
-that need them, as a new version. `/2` carries the Three stage; the native renderer draws it for one performer in
-the cel treatment (P4.2), and the other character films keep rendering through Remotion until their step (P4.3
-several performers, P4.4 dots-v1).
+that need them, as a new version. `/2` carries the Three stage; the native renderer draws it in the cel treatment with any number of performers
+(P4.2 one performer, P4.3 several), and the dots-v1 films keep rendering through Remotion until P4.4.
 
 ## The Three stage (`aideos.render/2`)
 
@@ -185,7 +184,8 @@ child's is its parent's world matrix times its local one.
 and sample straight off three's Object3Ds after `applyCharacter` and `applyProp`, so these are the numbers three
 composes. JSON text carries f64 exactly (JavaScript writes the shortest round-trip text; the Rust crate turns on
 serde_json's `float_roundtrip` so it parses correctly rounded). `stage3d.test.ts` checks every frame of the
-iona-receive fixture: the IR-posed world vertices equal `prepareStageFacts`' posed vertices bit for bit.
+iona-receive fixture (and every fifth frame of the three-performer J5 film): the IR-posed world vertices equal
+`prepareStageFacts`' posed vertices bit for bit.
 
 **Materials** (inline in each drawable, discriminated on `kind`): `toon { color, side }` (lit through `ramp`),
 `basic { color, side }` (unlit), `face { texture, color, side }` (the face texture times `color`, unlit) and

@@ -1,5 +1,5 @@
 /**
- * File Description: Emits the Render IR documents and artwork the native golden frames are rendered from (hello-scene, still-talking and the Three-stage iona-receive, long and reel) into native/aideos-render/fixtures/golden/, plus cases.json naming the golden frames. Narration, music and effect clips are dropped from the committed IR (the frame raster never opens audio), so the files stay small; everything the picture depends on is the emitter's own output (for iona-receive that includes the stage3d node, its face programs and the mesh file).
+ * File Description: Emits the Render IR documents and artwork the native golden frames are rendered from (hello-scene, still-talking and the Three-stage character films iona-receive, pixels-stage-pip, pixels-stage-marlo and journey-three-characters, long and reel) into native/aideos-render/fixtures/golden/, plus cases.json naming the golden frames. Narration, music and effect clips are dropped from the committed IR (the frame raster never opens audio), so the files stay small; everything the picture depends on is the emitter's own output (for the Three-stage films that includes the stage3d node, its face programs and the mesh file).
  * Inputs and outputs: the committed example and fixture films, the release aideos-render binary (text measurement) -> native/aideos-render/fixtures/golden/<film>/render.<format>.json, visuals/*.svg and cases.json.
  * Used by: `npm run goldens:native:ir` (run before `AIDEOS_NATIVE_GOLDEN_UPDATE=1 cargo test ... --test golden`), docs/NATIVE_RENDERER.md.
  */
@@ -8,6 +8,7 @@ import "../backend/testSupport/fixtureVideosDir";
 import fs from "node:fs";
 import path from "node:path";
 import { buildDesign } from "../backend/designSpec/build";
+import { buildCharacterFilm, CHARACTER_FILM_SLUGS, type CharacterFilmSlug } from "../backend/testSupport/characterFilms";
 import { readFilm } from "../backend/pipeline/filmStore";
 import { reelForRender } from "../backend/reelCut/store";
 import { emitFilmIr } from "../backend/nativeRenderer";
@@ -17,22 +18,27 @@ import type { NativeFormat } from "../backend/renderIr/emit";
 const OUT = path.resolve(__dirname, "../native/aideos-render/fixtures/golden");
 
 /** One film and the frames (as fractions of its story length) kept per format, the same picks as the Chrome goldens. */
-const SPECS: Array<{ slug: string; frames: Record<NativeFormat, number[]>; buildFirst?: boolean }> = [
+const SPECS: Array<{ slug: string; frames: Record<NativeFormat, number[]>; build?: () => void }> = [
   { slug: "hello-scene", frames: { long: [0.1, 0.5, 0.9], reel: [0.5] } },
   { slug: "still-talking", frames: { long: [0.2, 0.6], reel: [0.4] } },
-  // The Three-stage character film (P4.2): the fixture is a design package, built through the real buildDesign as the journeys do.
-  { slug: "iona-receive", frames: { long: [0.1, 0.37, 0.6, 0.95], reel: [0.37, 0.8] }, buildFirst: true },
+  // The Three-stage character films: design packages, built through the real buildDesign as the journeys do. P4.2 is the one-performer
+  // iona-receive fixture; P4.3 adds Pip and Marlo as the performer and the three-character film (Iona, Pip and Marlo, each with a glider).
+  { slug: "iona-receive", frames: { long: [0.1, 0.37, 0.6, 0.95], reel: [0.37, 0.8] }, build: buildIonaReceive },
+  ...CHARACTER_FILM_SLUGS.map((slug: CharacterFilmSlug) => ({ slug, frames: { long: [0.1, 0.37, 0.6, 0.95], reel: [0.37, 0.8] }, build: () => void buildCharacterFilm(slug) })),
 ];
+
+/** Builds the iona-receive fixture package in place. */
+function buildIonaReceive(): void {
+  const built = buildDesign("iona-receive", "hand-built");
+  if (built.state !== "passed") throw new Error(`cannot build iona-receive: ${JSON.stringify(built).slice(0, 500)}`);
+}
 
 /** Emits every IR and writes the files plus the case list. */
 function main(): void {
   fs.rmSync(OUT, { recursive: true, force: true });
   const cases: Array<{ film: string; format: NativeFormat; ir: string; frames: number[] }> = [];
   for (const spec of SPECS) {
-    if (spec.buildFirst) {
-      const built = buildDesign(spec.slug, "hand-built");
-      if (built.state !== "passed") throw new Error(`cannot build ${spec.slug}: ${JSON.stringify(built).slice(0, 500)}`);
-    }
+    spec.build?.();
     const base = readFilm(spec.slug);
     if (!base) throw new Error(`missing film ${spec.slug}`);
     const storyFrames = deliveryTimeline(base, "long").storyFrames;
