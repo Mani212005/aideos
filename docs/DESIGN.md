@@ -63,7 +63,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 
 ---
 
-## ⚙️ 7 Core Editor Stages (`editor/src/screens/`)
+## ⚙️ 6 Core Editor Stages (`editor/src/screens/`)
 
 ### 1. Script Stage (`ScriptStage.tsx` / `ScriptEditor.tsx`)
 - **Purpose**: Narrative authoring studio where creators write their script as a plain story (paragraphs, optional `#Start`/`#Conclusion` markers) with the agent's visual and on-screen notes as collapsible notes beside each paragraph, and see every narration change the user or the agent makes.
@@ -71,22 +71,18 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 - **Audio Synthesis**: Triggers multi-provider voiceover generation (local Kokoro, Deepgram, Google Cloud TTS, macOS say) and locks timeline duration boundaries. Narration lines are cached under `voiceover_lines/` by content fingerprint (`backend/voiceLines.ts`), so regenerating re-records only changed lines.
 - **Auto-Prompt Agent**: Directly dispatches directing instructions to the connected terminal coding agent via `/api/prompt-agent`, with idempotent task reuse on repeated clicks (an existing task counts as open only while younger than `OPEN_AFTER_TIMEOUT_MS`, 10 minutes, measured from when the task was created or last sent, regardless of whether it is pending, claimed, or timed out with a sent pane, so the same prompt is never typed twice inside that window; after the window a click creates a new task) and single-flight execution guards, displaying live queue status and badges (queued, sending, sent, already queued, already sent, not sent) as the per-pane queue waits for the agent to become idle.
 
-### 2. Story Stage (`StoryStage.tsx` / `MindMap.tsx` / `NodeEditor.tsx`)
-- **Purpose**: Interactive 2D spatial canvas rendering the underlying graph topology (`CanvasNode` and `CanvasEdge`).
-- **Features**: Allows creators to drag spatial anchors in 2D space, connect directed edges, edit concept card properties, preview camera pan/zoom trajectories, and automatically dispatches spatial actions (`add_node`, `add_edge`, `add_shot`) to connected coding agents via `/api/canvas/event`.
-
-### 3. Look Stage (`LookStage.tsx` / `DesignView.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)
+### 2. Look Stage (`LookStage.tsx` / `DesignView.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)
 - **Purpose**: Visual styling, look planning, and storyboard gallery combining bespoke design/look inspection, theme customization, and keyframe inspection.
 - **Features**:
   - **Design View (`DesignView.tsx`)**: Inspects the film's look plan (`design/look.json`, `LOOK.md` preview), stage, persistent cast, per-shot treatments (`scene`, `scene+card`, `device`, `footage`), captain look approval (`approveLookPlan`), scene artwork, motion timeline, and honest visual swaps (`POST /api/design/:id/shots/:shot/visual`).
   - **Theme Customization (`CustomizationEditor.tsx`)**: Allows background canvas texture selection (`paper-white`, `blueprint`, `charcoal`, `parchment`), accent color customization, and typography configuration (`geist`, `mono`, `space-grotesk`).
   - **Styleboard Gallery (`Styleboard.tsx`)**: Per-shot storyboard cards with direct keyframe inspection.
 
-### 4. Motion Stage (`MotionStage.tsx`)
+### 3. Motion Stage (`MotionStage.tsx`)
 - **Purpose**: Dedicated authoring studio for custom SVG movie animations and element-level keyframing.
 - **Features**: Live scrubbing of declarative SVG timelines, element ID discovery, pre-built motion templates (staged entry, pulse, draw-on strokes, vector paths) drawn in the film's bound accent, and audio-first retiming against spoken narration.
 
-### 5. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
+### 4. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
 - **Purpose**: Non-linear multi-track timeline editor with direct manipulation, track controls, and clip inspection.
 - **Features**:
   - **Movable Caption Object (`captions/CaptionObject.tsx`)**: Direct-manipulation caption card in the preview (click to select without playback, drag for the whole video, edge resize handles, drag snap guides, format copying, and default position restoration).
@@ -99,11 +95,11 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
   - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management.
   - **Model-Driven AI Editor Panel (`OnCanvasAiEditor.tsx`)**: Interprets natural-language editing instructions into discrete, validated `EditOp` sequences with dry-run preview, atomic rollback, and automatic dispatch across Agent Bridge channels.
 
-### 6. Captions Stage (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)
+### 5. Captions Stage (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)
 - **Purpose**: Word-level caption timing editor: word text and per-word frame ranges. Caption position is not set here: click the captions in the Edit preview and drag them.
 - **Features**: Syncs individual word timestamps directly with voiceover audio and seeks the preview to a word.
 
-### 7. Review Stage (`ReviewStage.tsx` / `CritiqueStudio.tsx` / `ExportProgressModal.tsx`)
+### 6. Review Stage (`ReviewStage.tsx` / `CritiqueStudio.tsx` / `ExportProgressModal.tsx`)
 - **Purpose**: Final quality assurance, pacing inspection, AI critique drawer, and video export.
 - **Features**:
   - **Data Visualizations (`src/components/ui/Charts.tsx`)**: Renders script-to-timeline coverage maps, shot duration distribution, narration vs silence density, and pacing health metrics in pure SVG.

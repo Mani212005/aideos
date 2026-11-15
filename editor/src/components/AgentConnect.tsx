@@ -183,7 +183,7 @@ export function AgentConnect() {
         title={phase === "online" ? `Connected to ${status?.agentLabel} on ${status?.machine}, checked in ${ago(status?.lastSeen)}` : "Connect your coding agent"}
       >
         <Badge tone={phase === "online" ? "success" : linked ? "warn" : "neutral"} icon={<Bot className="h-3 w-3" />} className="cursor-pointer">
-          <span className="max-w-[180px] truncate">{label}</span>
+          <span className="hidden max-w-[180px] truncate sm:inline">{label}</span>
         </Badge>
       </button>
 

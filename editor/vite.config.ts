@@ -1357,47 +1357,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        // Handle /api/canvas/event (Dispatches canvas node/edge/shot additions and spatial map updates to Agent Bridge)
-        if (url === '/api/canvas/event' && req.method === 'POST') {
-          void readBody(req).then(async (body: any) => {
-            const { film, action, description, details, nodeId, shotId } = body || {};
-            if (!film || !action) {
-              sendJson(res, 400, { error: 'film and action are required' });
-              return;
-            }
-
-            const filmId = film.id || 'film';
-            const actionText = description || `Canvas action: ${action}`;
-
-            const dispatch = await dispatchTask({
-              ownerKey: ownerOf(req),
-              eventType: "canvas_updated",
-              filmId,
-              filmTitle: film.title || filmId,
-              customInstruction: actionText,
-              shotCount: film.shots?.length || 0,
-              metadata: { action, nodeId, shotId, details },
-            });
-
-            traceBus.recordStep({
-              phase: "authoring",
-              source: "canvas",
-              filmId,
-              title: `Canvas: ${String(action).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}`,
-              description: actionText,
-              status: "done",
-              details: Array.isArray(details) ? details : [
-                `Nodes: ${film.canvas?.nodes?.length || 0}`,
-                `Edges: ${film.canvas?.edges?.length || 0}`,
-                `Shots: ${film.shots?.length || 0}`,
-              ],
-            });
-
-            sendJson(res, 200, { ok: true, dispatch });
-          }).catch((err) => sendJson(res, 500, { error: String(err) }));
-          return;
-        }
-
         // Handle /api/agent-session (Read/Update active agent session metadata)
         if (url === '/api/agent-session' && req.method === 'GET') {
           const session = getAgentSession();

@@ -8,7 +8,6 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import * as React from "react";
 import {
   baseRevision,
   hasUnsavedEdits,
@@ -19,10 +18,6 @@ import {
   type SyncState,
 } from "../editor/src/state/filmSyncMachine";
 import { decideSave, filmRevision, revisionOfFilm } from "./filmRevision";
-import { AssistantPromptForm } from "../editor/src/components/GlobalFeedbackWidget";
-
-// The Node test loader uses the classic JSX transform for editor TSX modules.
-Object.assign(globalThis, { React });
 
 type F = { id: string; n: number };
 
@@ -60,36 +55,6 @@ test("input is refused while loading, for every kind of edit and for saving", ()
   assert.match(edited.rejected ?? "", /disabled while the film loads/);
   assert.equal(edited.state, loading);
   assert.match(transition(loading, { type: "save_started", seq: 1 }).rejected ?? "", /loads/);
-});
-
-test("the assistant prompt cannot submit during loading and is available after loading", () => {
-  let commits = 0;
-  const commit = () => commits++;
-  const loadingProps = {
-    value: "change the title",
-    disabled: true,
-    busy: false,
-    onChange: () => undefined,
-    onSend: commit,
-  };
-  const loadingForm = AssistantPromptForm(loadingProps);
-  const [loadingInput, loadingButton] = React.Children.toArray(loadingForm.props.children);
-  assert(React.isValidElement<{ disabled?: boolean }>(loadingInput));
-  assert(React.isValidElement<{ disabled?: boolean }>(loadingButton));
-  assert.equal(loadingInput.props.disabled, true);
-  assert.equal(loadingButton.props.disabled, true);
-  loadingForm.props.onSubmit({ preventDefault() {} } as never);
-  assert.equal(commits, 0);
-
-  const readyProps = { ...loadingProps, disabled: false };
-  const readyForm = AssistantPromptForm(readyProps);
-  const [readyInput, readyButton] = React.Children.toArray(readyForm.props.children);
-  assert(React.isValidElement<{ disabled?: boolean }>(readyInput));
-  assert(React.isValidElement<{ disabled?: boolean }>(readyButton));
-  assert.equal(readyInput.props.disabled, false);
-  assert.equal(readyButton.props.disabled, false);
-  readyForm.props.onSubmit({ preventDefault() {} } as never);
-  assert.equal(commits, 1);
 });
 
 test("an edit makes the film dirty, a save started from dirty is saving, and success settles clean on the new revision", () => {

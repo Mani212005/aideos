@@ -516,8 +516,9 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
 
         const loaded = await fetchFilm(activeId);
         if (live && loaded) {
+          // Only a user pick (selectFilm, registerFilm) writes the pointer: a late write here would
+          // overwrite a pointer set while this load was in flight.
           opened = openFilmState(loaded.film, loaded.rev, loaded.order, seq);
-          localStorage.setItem("aideos_active_film_id", activeId);
         }
       } catch {
         // Offline or server-less: the bundled film stays open.
