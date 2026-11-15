@@ -1,10 +1,11 @@
 /**
  * File Description: Emits the Three stage of a character film as an `aideos.render/2` `stage3d` node plus its binary mesh file. It builds each performer exactly as ThreeStage does (placement, frozen character and prop builders), evaluates the frozen performance evaluator for every sample frame, and reads back three's own local transforms, materials, lights and texture settings, so the IR carries data and never a second copy of the builders, the evaluator or the face painter. Face paint is recorded as Canvas 2D programs through a recording context and deduplicated. Nothing here draws.
+ * The dots-v1 treatment (P4.4) is carried the same way: for every performer whose scene uses dots anywhere the emitter runs the real `buildDots` (as ThreeStage does), reads back from three's own objects the paper materials, the ink colours, the sort keys (three's material creation ids), the frozen Poisson sample fields (points parts) and the prop edge lines (lines parts), and writes the scene's treatment spans and each cast member's resolved treatment, so the native rasterizer never decides what a look means. A film without dots-v1 emits exactly the document it did before.
  * Inputs and outputs: a validated Three-stage scene and the number of sample frames -> the stage3d node, the mesh asset declaration and the mesh file bytes; or a list of reasons the IR cannot carry the stage.
  * Used by: backend/renderIr/emit.ts (build), backend/renderIr/stage3d.test.ts.
  */
 
-import { AmbientLight, BackSide, DirectionalLight, DoubleSide, FrontSide, Group, LinearFilter, Mesh, MeshBasicMaterial, MeshToonMaterial, ShaderMaterial, SRGBColorSpace, type BufferGeometry, type Color, type Material, type Object3D, type Side } from "three";
+import { AmbientLight, BackSide, DirectionalLight, DoubleSide, FrontSide, Group, LinearFilter, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial, MeshToonMaterial, Points, ShaderMaterial, SRGBColorSpace, type BufferGeometry, type Color, type Material, type Object3D, type Side } from "three";
 import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { resolveStageCharacter } from "../../src/dl/characters/resolve";
@@ -12,11 +13,17 @@ import { addCelLights, buildCharacter } from "../../src/dl/scene/characters/buil
 import { applyCharacter } from "../../src/dl/scene/characters/apply";
 import { paintFace, type FaceContext } from "../../src/dl/scene/characters/face";
 import { applyProp, buildProp } from "../../src/dl/scene/props/paperGlider";
+import { buildDots, type DotsArt } from "../../src/dl/scene/materials/dots";
 import { CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
 import { STAGE_CAMERA_DEPTH, STAGE_CAMERA_FAR, STAGE_CAMERA_NEAR } from "../../src/dl/scene/projection";
 import type { Scene } from "../../src/dl/scene/types";
 import { encodeMesh, type MeshPartData } from "./mesh";
 import { ID_PATTERN, type FaceOp, type MeshAsset, type Stage3dNode, type StageMaterial } from "./schema";
+
+/** One drawable's dots-v1 look as the schema holds it. */
+type DotsLook = NonNullable<Stage3dNode["drawables"][number]["dots"]>;
+/** The stage treatments by name. */
+type Treatment = Stage3dNode["treatment"];
 
 /** Where the emitter writes the stage's mesh file inside the render package. */
 export const STAGE_MESH_PATH = "meshes/stage.mesh";
@@ -38,7 +45,6 @@ export function stageTreatments(scene: Scene): string[] {
 /** Reasons the IR cannot carry this Three stage yet; empty means `emitStage3d` can write it. */
 export function stage3dCarryReasons(scene: Scene): string[] {
   const reasons: string[] = [];
-  if (stageTreatments(scene).includes("dots-v1")) reasons.push("the dots-v1 treatment (point sprites and prop edge lines) is P4.4 of the native renderer");
   if (!scene.performances?.length) reasons.push("a Three stage with no performances has nothing to draw");
   return reasons;
 }
@@ -169,7 +175,11 @@ export class FaceRecorder implements FaceContext {
 /** One performer's private three objects, built as ThreeStage builds them. */
 interface Performer {
   placement: Group;
-  objects: Array<{ object: Object3D; id: string }>;
+  objects: Array<{ object: Object3D; id: string; group: string }>;
+  /** The dots-v1 art of the actor and of the prop, built when the scene uses dots anywhere (as ThreeStage builds it). */
+  dots?: { actor: DotsArt; prop: DotsArt };
+  /** The actor's and the prop's cast ids with their own treatments (before the scene's spans). */
+  casts: { actor: { id: string; treatment: Treatment }; prop: { id: string; treatment: Treatment } };
   evaluate: ReturnType<typeof createPerformanceEvaluator>;
   art: ReturnType<typeof buildCharacter>;
   prop: ReturnType<typeof buildProp>;
@@ -196,17 +206,23 @@ function buildPerformer(scene: Scene, performance: NonNullable<Scene["performanc
   const propObjects = new Set<Object3D>();
   prop.root.traverse((o) => propObjects.add(o));
   // A joint and a part may share a name (the head joint carries the head part), so meshes and groups have their own id spaces.
-  placement.traverse((o) => objects.push({ object: o, id: irId(`${propObjects.has(o) ? propCast.id : cast.id}.${o instanceof Mesh ? "mesh" : "group"}`, o.name) }));
+  placement.traverse((o) => objects.push({ object: o, id: irId(`${propObjects.has(o) ? propCast.id : cast.id}.${o instanceof Mesh ? "mesh" : "group"}`, o.name), group: propObjects.has(o) ? propCast.id : cast.id }));
   const seen = new Set<string>();
   for (const { id } of objects) {
     if (seen.has(id)) throw new Error(`stage object id ${id} is used twice`);
     seen.add(id);
   }
+  // The same condition and the same calls as ThreeStage: the dots art of both is built when any treatment of this performer or the scene is dots-v1, after the cel art and before anything draws.
+  const usesDots = [cast.treatment, propCast.treatment, scene.treatment, ...(scene.treatments ?? []).map((span) => span.treatment)].includes("dots-v1");
+  const faceMeshes = new Set(art.parts.resolved.filter((part) => part.geometry.kind === "head").map((part) => art.parts.meshes[part.id]));
+  const dots = usesDots ? { actor: buildDots(art.rig.root, faceMeshes), prop: buildDots(prop.root, undefined, true) } : undefined;
+  const sceneTreatment: Treatment = scene.treatment ?? "cel-v1";
   return {
-    placement, objects, art, prop,
+    placement, objects, art, prop, dots,
+    casts: { actor: { id: cast.id, treatment: cast.treatment ?? sceneTreatment }, prop: { id: propCast.id, treatment: propCast.treatment ?? sceneTreatment } },
     evaluate: createPerformanceEvaluator(rigFromCharacter(spec), performance.data),
     face: { id: irId(cast.id, "face"), size: spec.face.size, paint: (values) => { const r = new FaceRecorder(); paintFace(r, spec.face, spec.palette, values); return r.ops; } },
-    dispose: () => { art.dispose(); prop.dispose(); },
+    dispose: () => { dots?.actor.dispose(); dots?.prop.dispose(); art.dispose(); prop.dispose(); },
   };
 }
 
@@ -289,6 +305,42 @@ export function emitStage3d(scene: Scene, sampleFrames: number, id = "stage3d"):
       return { id: ids.get(mesh)!, node: ids.get(mesh)!, part, material: stageMaterial(mesh.material, faceOf.get(mesh)) };
     });
 
+    // The dots-v1 looks. The cel state is read above; every key of the cel look is read before the dots art is switched on.
+    const usesDots = performers.some((p) => p.dots);
+    const groups: NonNullable<Stage3dNode["groups"]> = [];
+    if (usesDots) {
+      const celOrder = new Map(order.map((m) => [m, materialId(m)]));
+      const groupOf = new Map(objects.map(({ object, group }) => [object, group]));
+      const dotted = new Set<string>();
+      for (const p of performers) {
+        if (!p.dots) continue;
+        p.dots.actor.setEnabled(true, 1080);
+        p.dots.prop.setEnabled(true, 1080);
+        groups.push({ id: p.casts.actor.id, treatment: p.casts.actor.treatment }, { id: p.casts.prop.id, treatment: p.casts.prop.treatment });
+        for (const g of [p.casts.actor.id, p.casts.prop.id]) dotted.add(g);
+      }
+      const samplePart = new Map<BufferGeometry, string>();
+      const edgePart = new Map<BufferGeometry, string>();
+      order.forEach((mesh, i) => {
+        const group = groupOf.get(mesh)!;
+        const d = drawables[i];
+        d.order = celOrder.get(mesh)!;
+        if (!dotted.has(group)) return;
+        d.group = group;
+        d.dots = readDotsLook(mesh, d.id, faceOf.get(mesh), parts, samplePart, edgePart);
+      });
+      // three's creation ids depend on how many materials this process made before; only their order matters, so write each key's rank among all of them (the document is the same bytes in any process).
+      const keys = drawables.flatMap((d) => [d.order!, d.dots?.order, d.dots?.edges?.order].filter((k): k is number => k !== undefined));
+      const rank = new Map([...new Set(keys)].sort((a, b) => a - b).map((k, i) => [k, i]));
+      for (const d of drawables) {
+        d.order = rank.get(d.order!)!;
+        if (d.dots) {
+          d.dots.order = rank.get(d.dots.order)!;
+          if (d.dots.edges) d.dots.edges.order = rank.get(d.dots.edges.order)!;
+        }
+      }
+    }
+
     const faceTextures: Stage3dNode["faceTextures"] = performers.map((p, i) => {
       const head = [...faceOf.keys()].find((m) => faceOf.get(m) === p.face.id);
       const map = (head?.material as MeshBasicMaterial | undefined)?.map;
@@ -306,13 +358,14 @@ export function emitStage3d(scene: Scene, sampleFrames: number, id = "stage3d"):
     const meshBytes = encodeMesh(parts);
     const mesh: MeshAsset = {
       kind: "mesh", id: STAGE_MESH_ID, path: STAGE_MESH_PATH,
-      parts: parts.map((p) => ({ id: p.id, vertices: p.positions.length / 3, indices: p.indices.length, uv: p.uvs !== undefined })),
+      parts: parts.map((p) => ({ id: p.id, ...(p.kind && p.kind !== "triangles" ? { kind: p.kind } : {}), vertices: p.positions.length / 3, indices: p.indices.length, uv: p.uvs !== undefined })),
     };
     const node: Stage3dNode = {
       kind: "stage3d",
       id,
       mesh: STAGE_MESH_ID,
-      treatment: "cel-v1",
+      treatment: scene.treatment ?? "cel-v1",
+      ...(usesDots ? { groups, ...(scene.treatments?.length ? { spans: scene.treatments.map((t) => ({ startFrame: t.startFrame, endFrame: t.endFrame, treatment: t.treatment })) } : {}) } : {}),
       projection: { cameraZ: STAGE_CAMERA_DEPTH, near: STAGE_CAMERA_NEAR, far: STAGE_CAMERA_FAR },
       lighting: {
         directional: { position: sun.position.toArray(), target: sun.target.position.toArray(), color: rgb(sun.color), intensity: sun.intensity },
@@ -331,6 +384,68 @@ export function emitStage3d(scene: Scene, sampleFrames: number, id = "stage3d"):
   } finally {
     performers.forEach((p) => p.dispose());
   }
+}
+
+// Reads one mesh's dots-v1 look from three's own objects (the dots art is switched on): its paper or ink material, its sort key, its sample field and its edge lines. New parts are appended to `parts`, one per source geometry.
+function readDotsLook(mesh: Mesh, drawableId: string, faceTexture: string | undefined, parts: MeshPartData[], samplePart: Map<BufferGeometry, string>, edgePart: Map<BufferGeometry, string>): DotsLook {
+  const material = mesh.material;
+  if (Array.isArray(material)) throw new Error(`mesh ${mesh.name} has several materials`);
+  if (material instanceof ShaderMaterial) {
+    const width = material.uniforms.w?.value as number | undefined, colour = material.uniforms.c?.value as Color | undefined;
+    if (typeof width !== "number" || !colour) throw new Error(`mesh ${mesh.name}: a shader material other than the ink outline is on the stage`);
+    return { material: { kind: "ink", color: rgb(colour), width, side: sideName(material.side) }, order: materialId(mesh) };
+  }
+  if (!(material instanceof MeshBasicMaterial)) throw new Error(`mesh ${mesh.name}: the dots paper is not a basic material (${material.type})`);
+  const side = sideName(material.side);
+  let paper: DotsLook["material"];
+  if (material.map) {
+    if (!faceTexture) throw new Error(`mesh ${mesh.name}: a textured dots paper is not the face`);
+    paper = { kind: "faceLuma", texture: faceTexture, color: rgb(material.color), side };
+  } else paper = { kind: "basic", color: rgb(material.color), side };
+  const look: DotsLook = { material: paper, order: materialId(mesh) };
+  const points = mesh.children.find((c): c is Points => c instanceof Points);
+  if (!points || !(points.material instanceof ShaderMaterial)) throw new Error(`mesh ${mesh.name}: the dots art added no point field`);
+  const u = points.material.uniforms;
+  if (typeof u.tone?.value !== "number" || typeof u.faceSpan?.value !== "number" || typeof u.doubleSided?.value !== "number") throw new Error(`mesh ${mesh.name}: the dots shader uniforms are not the ones the IR carries`);
+  if ((u.doubleSided.value > 0.5) !== (side === "double")) throw new Error(`mesh ${mesh.name}: the dots shader's double sided flag disagrees with the paper's side`);
+  const sampled = points.geometry.getAttribute("position");
+  if (u.faceSpan.value === 0 && sampled.count > 0) {
+    let part = samplePart.get(mesh.geometry);
+    if (part === undefined) {
+      part = `${drawableId}.dots`;
+      samplePart.set(mesh.geometry, part);
+      parts.push(pointsPart(part, points.geometry));
+    }
+    look.samples = { part, tone: u.tone.value };
+  }
+  const lines = mesh.children.find((c): c is LineSegments => c instanceof LineSegments);
+  if (lines && lines.material instanceof LineBasicMaterial && lines.geometry.getAttribute("position").count > 0) {
+    let part = edgePart.get(mesh.geometry);
+    if (part === undefined) {
+      part = `${drawableId}.edges`;
+      edgePart.set(mesh.geometry, part);
+      parts.push(linesPart(part, lines.geometry));
+    }
+    look.edges = { part, color: rgb(lines.material.color), order: (lines.material as unknown as { id: number }).id };
+  }
+  return look;
+}
+
+// Copies a dot sample field (positions, normals, ranks) as a points part.
+function pointsPart(id: string, geometry: BufferGeometry): MeshPartData {
+  const position = geometry.getAttribute("position"), normal = geometry.getAttribute("normal"), rank = geometry.getAttribute("rank");
+  for (const [name, attr, size] of [["position", position, 3], ["normal", normal, 3], ["rank", rank, 1]] as const) {
+    if (!attr || attr.itemSize !== size || !(attr.array instanceof Float32Array) || attr.array.length !== attr.count * size || ("isInterleavedBufferAttribute" in attr)) throw new Error(`points ${id}: ${name} is not a plain f32 attribute`);
+  }
+  if (normal.count !== position.count || rank.count !== position.count) throw new Error(`points ${id}: attribute counts differ`);
+  return { id, kind: "points", positions: Float32Array.from(position.array as Float32Array), normals: Float32Array.from(normal.array as Float32Array), ranks: Float32Array.from(rank.array as Float32Array), indices: new Uint32Array(0) };
+}
+
+// Copies edge line segments (pairs of end points) as a lines part.
+function linesPart(id: string, geometry: BufferGeometry): MeshPartData {
+  const position = geometry.getAttribute("position");
+  if (!position || position.itemSize !== 3 || !(position.array instanceof Float32Array) || position.array.length !== position.count * 3 || ("isInterleavedBufferAttribute" in position) || position.count % 2 !== 0 || geometry.getIndex()) throw new Error(`lines ${id}: the edge geometry is not plain, non-indexed f32 segments`);
+  return { id, kind: "lines", positions: Float32Array.from(position.array as Float32Array), normals: new Float32Array(0), indices: new Uint32Array(0) };
 }
 
 // Copies one geometry's attributes as the mesh file stores them; unindexed geometry gets sequential indices (the same triangles).

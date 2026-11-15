@@ -286,6 +286,60 @@
       "width": 270,
       "height": 480,
       "bytes": 12388
+    },
+    {
+      "name": "frames/journey-j3-j4-dots/long-30.png",
+      "film": "journey-j3-j4-dots",
+      "format": "long",
+      "frame": 30,
+      "width": 480,
+      "height": 270,
+      "bytes": 20884
+    },
+    {
+      "name": "frames/journey-j3-j4-dots/long-111.png",
+      "film": "journey-j3-j4-dots",
+      "format": "long",
+      "frame": 111,
+      "width": 480,
+      "height": 270,
+      "bytes": 21673
+    },
+    {
+      "name": "frames/journey-j3-j4-dots/long-180.png",
+      "film": "journey-j3-j4-dots",
+      "format": "long",
+      "frame": 180,
+      "width": 480,
+      "height": 270,
+      "bytes": 20401
+    },
+    {
+      "name": "frames/journey-j3-j4-dots/long-285.png",
+      "film": "journey-j3-j4-dots",
+      "format": "long",
+      "frame": 285,
+      "width": 480,
+      "height": 270,
+      "bytes": 21737
+    },
+    {
+      "name": "frames/journey-j3-j4-dots/reel-111.png",
+      "film": "journey-j3-j4-dots",
+      "format": "reel",
+      "frame": 111,
+      "width": 270,
+      "height": 480,
+      "bytes": 22007
+    },
+    {
+      "name": "frames/journey-j3-j4-dots/reel-240.png",
+      "film": "journey-j3-j4-dots",
+      "format": "reel",
+      "frame": 240,
+      "width": 270,
+      "height": 480,
+      "bytes": 20618
     }
   ]
 }

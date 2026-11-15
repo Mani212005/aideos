@@ -1,0 +1,107 @@
+{
+ "//": "Shared by backend/renderIr/dots.test.ts and native/aideos-render-ir/tests/mesh.rs: dots-parts.mesh is exactly what encodeMesh writes for these parts (a triangle part, a dot sample field and line segments), and decoding it against `asset` gives them back. The floats are exact in f32.",
+ "asset": {
+  "kind": "mesh",
+  "id": "stage-mesh",
+  "path": "meshes/stage.mesh",
+  "parts": [
+   {
+    "id": "tri",
+    "vertices": 3,
+    "indices": 3,
+    "uv": false
+   },
+   {
+    "id": "tri.dots",
+    "kind": "points",
+    "vertices": 2,
+    "indices": 0,
+    "uv": false
+   },
+   {
+    "id": "tri.edges",
+    "kind": "lines",
+    "vertices": 4,
+    "indices": 0,
+    "uv": false
+   }
+  ]
+ },
+ "parts": [
+  {
+   "id": "tri",
+   "positions": [
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "normals": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1
+   ],
+   "indices": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "tri.dots",
+   "kind": "points",
+   "positions": [
+    0.25,
+    0.25,
+    0,
+    0.5,
+    0.125,
+    0
+   ],
+   "normals": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    1
+   ],
+   "ranks": [
+    0.125,
+    0.875
+   ],
+   "indices": []
+  },
+  {
+   "id": "tri.edges",
+   "kind": "lines",
+   "positions": [
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "normals": [],
+   "indices": []
+  }
+ ]
+}
