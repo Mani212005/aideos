@@ -33,6 +33,8 @@ export interface CheckView {
   state: CheckState;
   gates: CheckGate[];
   score: CheckScore;
+  /** True when the reviewer itself failed a hard gate: the six rows then show no result, because the reviewer does not name the gate. */
+  reviewerGatesFail?: true;
 }
 
 /** The six hard gates of the measured review, in the order the lens lists them. Keys are the criterion keys in acceptance.json. */
@@ -78,6 +80,7 @@ export function checkView(record: AcceptanceRecord | null, currentFilmHash: stri
     case "measured-passed":
       return { state: "pass", gates: gatesWith(() => "pass"), score: none };
     case "revise":
+      if (last?.gatesPassed === false) return { state: "fail", gates: gatesWith(() => "none"), score, reviewerGatesFail: true };
       return { state: "fail", gates: gatesWith(() => "pass"), score };
     case "judged":
       return { state: "pass", gates: gatesWith(() => "pass"), score };

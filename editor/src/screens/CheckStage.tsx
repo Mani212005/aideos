@@ -114,6 +114,7 @@ function verdictHint(view: CheckView): string {
       return "Film changed. Check again.";
     case "fail":
       if (failed > 0) return "Gates fail.";
+      if (view.reviewerGatesFail) return "Reviewer gate fails.";
       return `Score ${view.score.text}. Bar ${view.score.bar}.`;
     case "pass":
       return view.score.text ? `Gates and score pass. Score ${view.score.text}.` : "Gates pass.";
