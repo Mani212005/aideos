@@ -25,7 +25,7 @@ import { buildDesign } from "./designSpec/build";
 import { backgroundPresetSchema, filmSchema, parseFilm, themeSchema, type Film } from "../src/dl/schema";
 import { convertFilmToLayeredFilm } from "../src/dl/convertFilm";
 import { validateLayeredFilm } from "../src/dl/validateLayeredFilm";
-import { boundTheme, DEFAULT_PROJECT_ACCENT, filmAccent, newProjectFilmTheme, PROJECT_THEMES, resolveProjectTheme, savedAccent } from "../src/projectTheme";
+import { boundTheme, DEFAULT_PROJECT_ACCENT, filmAccent, newProjectFilmTheme, PROJECT_THEMES, resolveProjectTheme } from "../src/projectTheme";
 import { getVideosDir } from "../src/dl/videoPackageLoader";
 import { TEST_VIDEOS_DIR } from "./testSupport/fixtureVideosDir";
 import { loadFixtureFilm } from "./testSupport/fixtureFilms";
@@ -222,14 +222,6 @@ test("themeBinding: a new project's film theme marks the accent chosen exactly w
   assert.equal(unchosen.accentChosen, undefined);
   assert.equal(boundTheme({ theme: unchosen }), null);
   assert.ok(themeSchema.safeParse(chosen).success, "the theme is a valid film theme");
-});
-
-test("themeBinding: a Styleboard or customization save persists a picked purple and leaves an untouched accent as it was", () => {
-  const picked = { accent: "#635BFF", theme: { accent: "#635BFF", accentChosen: true } };
-  assert.equal(savedAccent(picked, "#635BFF"), "#635BFF", "the user picked purple, so purple is saved");
-  const orange = { accent: ORANGE, theme: { accent: ORANGE, accentChosen: true } };
-  assert.equal(savedAccent(orange, ORANGE), ORANGE, "an untouched save keeps the film's accent");
-  assert.equal(savedAccent({ theme: {} }, "#635BFF"), undefined, "the on-screen default of a film with no accent is not written");
 });
 
 test("themeBinding: a design build binds the accent in the current film.json, not the one in the base-film snapshot", () => {

@@ -1,26 +1,16 @@
 /**
- * File Description: Look stage for Aideos Studio.
- * Brings together what answers "how does this film look": the film's own design, the project-wide theme
- * (palette, typography, video type, camera) and the per-shot styleboard. They are sub-views of one
- * stage because a user thinking about look moves between them constantly, and keeping them apart
- * made the old top navigation disagree with the side rail. The Design view also carries Ask
- * (components/LookAsk.tsx): the chosen shot as a picture with one box under it that sends a change
- * to the connected agent.
- * Inputs and outputs: film project, theme tokens, chosen shot -> theme customization, styleboard and Ask stage.
+ * File Description: Look lens for Aideos Studio. One lens, no sub-views. It shows the chosen shot as a picture with the Ask box under it (components/LookAsk.tsx), the footage action for a shot that needs footage, the look plan, the two film-wide choices (accent and background) and the shots with their pictures. The old theme gallery, Styleboard and shot modal are gone: texture, fonts, camera angle and per-shot fields are not director choices here, and an agent changes them through Ask.
+ * Inputs and outputs: film project, accent, chosen shot -> the Look lens; accent and background changes as film commits.
  * Used by: editor/src/App.tsx.
  */
 
 import { useEffect, useState } from "react";
-import { LayoutGrid, Palette, Sparkles } from "lucide-react";
-import type { Film } from "../../../src/dl/schema";
-import { SegmentedTabs, Toolbar, ToolbarGroup, ToolbarLabel } from "../components/ui";
-import { CustomizationEditor } from "../components/CustomizationEditor";
-import { Styleboard } from "../components/Styleboard";
+import type { BackgroundPreset, Film } from "../../../src/dl/schema";
 import { DesignView } from "../components/DesignView";
 import { LookAsk } from "../components/LookAsk";
+import { LookChoices } from "../components/LookChoices";
+import { LookFootage } from "../components/LookFootage";
 import type { NoteTone } from "../components/ui";
-
-type LookView = "design" | "theme" | "styleboard";
 
 export interface LookStageProps {
   film: Film;
@@ -31,10 +21,8 @@ export interface LookStageProps {
   notify: (tone: NoteTone, text: string) => number;
 }
 
-/** Project theme and per-shot styleboard, as two views of one stage. */
+/** The Look lens: picture, Ask, look plan, accent, background and the shots. */
 export function LookStage({ film, commit, accent, onAccentChange, onSelectShot, notify }: LookStageProps) {
-  // A film with its own design opens on it; a template film opens on the shared theme.
-  const [view, setView] = useState<LookView>(film.design && film.design.source !== "templates" ? "design" : "theme");
   // The shot that Ask applies to. It follows the shot list and the Shot select.
   const [shotId, setShotId] = useState(film.shots[0]?.id ?? "");
   // Keep the chosen shot valid when the film changes under it.
@@ -46,57 +34,25 @@ export function LookStage({ film, commit, accent, onAccentChange, onSelectShot, 
     setShotId(id);
     onSelectShot(id);
   };
+  // Sets the film background as one undo step.
+  const setBackground = (background: BackgroundPreset) => {
+    commit({ ...film, theme: { ...(film.theme ?? {}), background } }, "Change background");
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <Toolbar seam="bottom">
-        <ToolbarGroup>
-          <ToolbarLabel>View</ToolbarLabel>
-          <SegmentedTabs
-            ariaLabel="Look view"
-            value={view}
-            onChange={setView}
-            items={[
-              { value: "design", label: "Design", icon: <Sparkles className="h-3.5 w-3.5" /> },
-              { value: "theme", label: "Theme", icon: <Palette className="h-3.5 w-3.5" /> },
-              { value: "styleboard", label: "Styleboard", icon: <LayoutGrid className="h-3.5 w-3.5" />, suffix: String(film.shots.length) },
-            ]}
-          />
-        </ToolbarGroup>
-        <span className="ml-auto font-sans text-xs text-ink-mute">
-          {view === "design"
-            ? "This film's own design: the idea, its artwork, and why each shot shows what it shows."
-            : view === "theme"
-            ? "Theme choices apply to the whole film and are written into its manifest."
-            : "Each card is one shot. Click a card to inspect it on the right."}
-        </span>
-      </Toolbar>
-
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {view === "design" ? (
-          <DesignView
-            film={film}
-            onSelectShot={chooseShot}
-            selectedShotId={shotId}
-            topPanel={<LookAsk film={film} shotId={shotId} onShotChange={chooseShot} notify={notify} />}
-          />
-        ) : view === "theme" ? (
-          <CustomizationEditor
-            film={film}
-            onUpdateFilm={(next) => commit(next, "Update theme")}
-            accent={accent}
-            onAccentChange={onAccentChange}
-          />
-        ) : (
-          <Styleboard
-            film={film}
-            accent={accent}
-            onAccentChange={onAccentChange}
-            onSelectShot={onSelectShot}
-            onUpdateFilm={(next) => commit(next, "Update styleboard")}
-          />
-        )}
-      </div>
+      <DesignView
+        film={film}
+        onSelectShot={chooseShot}
+        selectedShotId={shotId}
+        topPanel={
+          <>
+            <LookAsk film={film} shotId={shotId} onShotChange={chooseShot} notify={notify} />
+            <LookFootage film={film} shotId={shotId} commit={commit} />
+          </>
+        }
+        choicesPanel={<LookChoices film={film} accent={accent} onAccentChange={onAccentChange} onBackgroundChange={setBackground} />}
+      />
     </div>
   );
 }

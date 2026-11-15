@@ -2,7 +2,7 @@
  * File Description: React context that hands screens the project's one save path (commit and save
  * through the film sync machine), so no component posts a film to the dev server on its own.
  * Inputs and outputs: the project's saveFilm function -> a useFilmSave hook returning it.
- * Used by: editor/src/App.tsx (provider), ScriptEditor, CustomizationEditor, Styleboard, OnCanvasAiEditor.
+ * Used by: editor/src/App.tsx (provider), ScriptEditor, OnCanvasAiEditor.
  */
 
 import { createContext, useContext } from "react";

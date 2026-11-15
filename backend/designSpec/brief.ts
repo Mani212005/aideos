@@ -94,7 +94,7 @@ export function renderDesignBrief(film: Film, lookPlan?: LookPlan): string {
     .join("\n");
   const chosen = boundTheme(film);
   const accent = filmAccent(film);
-  const accentNote = chosen ? `, which is \`${chosen.accent}\`, fixed by the user with the theme they chose ("${boundThemeName(chosen.background)}"). Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel` : ` (\`${accent}\`)`;
+  const accentNote = chosen ? `, which is \`${chosen.accent}\`, fixed by the user with the theme they chose ("${boundThemeName(chosen.background)}"). Do not change it: if the user wants a different accent, tell them to change it in the Look lens of the editor` : ` (\`${accent}\`)`;
   const purpleClaim = chosen ? " Never reach for purple unless it is that accent: the build fails any other chromatic colour." : "";
   const accentField = chosen ? "omit it to keep the user's chosen accent; any other value fails the build" : "it replaces the film's accent";
   const performanceSection = lookPlan?.schema === "aideos.look/2" ? renderPerformanceSection(lookPlan) : "";

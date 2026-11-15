@@ -203,7 +203,7 @@ export function renderLookBrief(film: Film, characters: AvailableCharacter[] = a
   const chosen = boundTheme(film);
   const accent = filmAccent(film);
   const accentLine = chosen
-    ? `\`${chosen.accent}\`, fixed by the user with the theme they chose ("${boundThemeName(chosen.background)}"); \`palette.accent\` in look.json must be exactly this. Do not change it: if the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel`
+    ? `\`${chosen.accent}\`, fixed by the user with the theme they chose ("${boundThemeName(chosen.background)}"); \`palette.accent\` in look.json must be exactly this. Do not change it: if the user wants a different accent, tell them to change it in the Look lens of the editor`
     : `\`${accent}\``;
   return `# Look Brief: ${film.title} (\`${film.id}\`)
 
