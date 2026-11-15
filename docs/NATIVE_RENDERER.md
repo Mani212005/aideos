@@ -125,9 +125,9 @@ in the IR (a new field, never a quiet change) where parity with the Remotion ren
 | `text` placement | laid out to the box width, top aligned at the box top; not clipped to the box height |
 | Caption phrase end | trimmed to the next phrase's start when either phrase's span has a `w` (an owner-chosen card), as `buildCaptionPhrases` does for a non-default placement |
 | Caption words not yet spoken | the primary colour at 38% (KineticSubtitles uses white at 38%) |
-| Caption card | KineticSubtitles' card: 12 x 28 px padding, 16 px radius, 1 px white 12% border, the shadow, a 16 px backdrop blur (skipped while the phrase fades, as Chrome isolates a partly transparent element's backdrop), rows balanced to two lines |
+| Caption card | KineticSubtitles' card: 12 x 28 px padding, 16 px radius, 1 px white 12% border, the shadow, a 16 px backdrop blur (skipped while the phrase fades, as Chrome isolates a partly transparent element's backdrop), rows balanced to two lines; the card is as wide as the phrase on one row, capped at 92% of the placement width, and a wrapped phrase keeps the capped width (`text-wrap: balance` evens the rows but never narrows the box); its edges snap to whole pixels as Chrome snaps a box (the left and right edges in the frame of the `translateX(-50%)` container, the top and bottom on the page); nothing is clipped to the card's content box, so the active word's spring scale and glow reach into the padding |
 | Rail | the `scrim` colour fades out over the top 44% of `scrimHeight`; the label row is at the top of the box in `labelColor` and the bar at its bottom, filled in `ink` over `trackColor`; the reel's continuous bar fills over `progressFrames` (the film duration when absent); segment gap 8 px, bar 2 px (long) or 3 px (reel), scaled by width / 1920 (long) or width / 1080 (reel) like `useLayout().px`. `accent` is not drawn (Film.tsx fills with the label colour) |
-| End card colours and faces | `surface`, `hairline`, `muted` and `chipFont` when the IR gives them (the emitter always does: the theme's surface, hairline and muted, JetBrains Mono 700 chips over a 400 label and handle); when absent, panel surface: the dim colour made opaque and mixed 6% toward `ink`; hairline: `ink` at 12%; label and handle: `ink` at 60%; chips in `monoFont`; LIKE outline: `ink` at 35%; pill text: whichever of the opaque dim colour and `ink` contrasts more with `fill` (`readableInkOn`) |
+| End card colours and faces | `surface`, `hairline`, `muted` and `chipFont` when the IR gives them (the emitter always does: the theme's surface, hairline and muted, JetBrains Mono 700 chips over a 400 label and handle); when absent, panel surface: the dim colour made opaque and mixed 6% toward `ink`; hairline: `ink` at 12%; label and handle: `ink` at 60%; chips in `monoFont`; LIKE outline: `ink` at 35%, a 2 px border added to the chip's width and content offset (the chip's width is auto); pill text: whichever of the opaque dim colour and `ink` contrasts more with `fill` (`readableInkOn`) |
 | End card timing | EndCard.tsx: the dim settles over 600 ms from `visible.fromFrame`, parts enter 150 ms in on the one entrance (400 ms, 70 ms stagger, 12 px rise), the pill presses for 360 ms from `pressFrame` |
 
 ### Fonts and text
@@ -141,7 +141,7 @@ Every typeface comes from a `font` asset of the IR (a vendored file in the packa
 through Skia's FreeType manager with **no system font scan**, and text layout (Skia textlayout: HarfBuzz
 shaping, ICU line breaking) runs with **font fallback disabled**, so a render never depends on the fonts
 installed on the host and never touches the network. Each face is registered under its asset id, so a text
-node's `font` names one exact file. Hinting is off. SVG `<text>` resolves its `font-family` list against the
+node's `font` names one exact file. Skia's paragraph painter always draws with slight hinting (turning hinting off in the paragraph style has no effect on it), while the Chrome render draws unhinted outlines, so `Text::paint` (`raster/text.rs`) reads the shaped runs back from the paragraph and draws the glyphs itself with hinting off, which is what makes a 45 px Geist capital 32 px tall as in Chrome (33 hinted). It also places text as Blink does: the font's ascent, descent and gap rounded to whole pixels, half the leading above the line rounded down, the baseline rounded to a whole pixel, a line's height the CSS line height (Skia rounds it up to a whole pixel), the letter spacing all after each glyph (Skia puts half before and half after) and CSS `text-shadow` order (the first shadow on top). Translucent colour is blended as Chrome's compositor blends it, rounding to the nearest level, where Skia's 8-bit CPU blend truncates (a 55% dim of the canvas colour over the canvas colour came out one level too dark, which costs 0.005 SSIM on a flat dark frame): the end card's full-frame dim is painted with the alpha and colour, each within two levels, whose 8-bit blend over the film background (probed on a one pixel surface, cached) is nearest the rounded exact blend, and every other translucent solid colour (the chrome's fills and strokes and SVG fills and strokes) is painted by a one-colour shader that Skia blends in floating point. A half-float frame surface did the same for every layer but cost a quarter more CPU time, and a shader dim cost 5 ms a frame. SVG `<text>` resolves its `font-family` list against the
 IR's font assets (generic `monospace` picks a family named "Mono", other generic names the first family
 that is not); a family no asset provides is refused at load. On macOS Skia has no FreeType, so the platform
 manager loads the same files and glyph rasterization is CoreText's: byte identity holds per platform, and
@@ -467,6 +467,43 @@ why the crop measure falls to 0.93 there. Getting the stage crop here took measu
 [How dots-v1 is drawn](#how-dots-v1-is-drawn-p44): the first draw of the dots (rules taken from the shader source alone)
 scored 0.9906 on the crop; the last two corrections (the derivative's reference row, and the x mirrored depth sample
 positions) took one frame's mean absolute difference from Remotion from 1.13 to 0.02. No threshold and no golden was changed.
+
+### 2D text parity with Chrome (aideos-native-2d-text-parity)
+
+The follow-up the P4.2 to P4.4 parity notes above point to. Same method (every frame of both formats, ffmpeg `ssim` and
+`psnr` on the whole frame against the Remotion PNG sequence). Seven causes were measured and fixed;
+none changed a threshold, a Chrome golden or the film design language:
+
+| Cause (measured) | Where | What Chrome does |
+| --- | --- | --- |
+| a 1 level dark bias on every flat dark pixel under a translucent layer (0.005 SSIM on the end card, about a fifth of its shortfall) | `raster/chrome.rs` | the compositor rounds to the nearest level (Skia's 8-bit blend truncates): the dim's alpha and colour are tuned against a one pixel probe, other translucent solid colours use a float shader |
+| glyphs drawn with slight hinting (cap height 33 px at 45 px Geist, Chrome 32) | `raster/text.rs` | unhinted outlines, drawn by `Text::paint` |
+| baselines on fractions of a pixel, line heights rounded up by Skia | `raster/text.rs` | ascent, descent and gap rounded, leading floored, baseline on a whole pixel, exact line height |
+| letter spacing half before each glyph | `raster/text.rs` | all of it after each glyph (0.5 to 1.5 px on spaced labels) |
+| the caption card narrower than Chrome's in the reel | `raster/chrome.rs` | `text-wrap: balance` keeps the box at the capped width |
+| the cut-off full stop (a clip to the card's content box) | `raster/chrome.rs` | no content-box clip: the spring scale and glow reach the padding |
+| end card panel and chips: LIKE chip 4 px narrow, panel 2 px narrow, fractional box edges | `raster/chrome.rs` | borders add to auto widths, boxes pixel-snap, the entrance's fractional rise moves them after |
+
+Whole-frame SSIM against Remotion, all frames (bar 0.995, before this change > after it). Evidence:
+`/home/mani/aideos-linux-home/data/aideos-native-2d-text-parity/` (`runB/parity/<film>-<format>/`, `deliver/`).
+
+| Film, format | Story SSIM min | End card SSIM min | Frames under 0.995 |
+| --- | --- | --- | --- |
+| iona-receive, long / reel | 0.99458 > 0.99857 / 0.98923 > 0.99903 | 0.97965 > 0.99886 / 0.98056 > 0.99877 | 174 > 0 of 480 / 285 > 0 of 390 |
+| journey-three-characters, long / reel | 0.99457 > 0.99857 / 0.98923 > 0.99901 | 0.97977 > 0.99885 / 0.98061 > 0.99885 | 174 > 0 / 285 > 0 |
+| pixels-stage-pip, long / reel | 0.99453 > 0.99849 / 0.98914 > 0.99895 | 0.97986 > 0.99897 / 0.98071 > 0.99900 | 174 > 0 / 285 > 0 |
+| pixels-stage-marlo, long / reel | 0.99459 > 0.99857 / 0.98925 > 0.99905 | 0.97986 > 0.99896 / 0.98069 > 0.99894 | 174 > 0 / 285 > 0 |
+| journey-j3-j4-dots, long / reel | 0.99465 > 0.99865 / 0.98931 > 0.99912 | 0.97856 > 0.99779 / 0.97986 > 0.99750 | 174 > 0 / 287 > 0 |
+| hello-scene, long / reel | 0.98740 > 0.99794 / 0.98495 > 0.99851 | 0.97945 > 0.99906 / 0.98033 > 0.99910 | 476 > 0 of 480 / 320 > 0 of 390 |
+| still-talking (story frames 0-299 and the end card), long / reel | 0.98145 > 0.99416 / 0.98623 > 0.99617 | 0.97959 > 0.99370 / 0.98007 > 0.99591 | 480 > 50 of 480 / 389 > 0 of 390 |
+
+The 0.995 bar is met on every frame of every film and format except one: still-talking long, where 50 frames are
+under it (frames 4 to 21, 266 to 299 and 4621 to 4625, minimum 0.99370). On the story frames of that film 74% to 82% of
+the SSIM loss is the scene's own artwork (gradient banding and the anti-aliasing of the star discs), not text; on frame
+4621 the loss is the text card, whose words sit about 0.9 px left of Chrome's and whose stems are lighter (a text
+gamma of 1.2 with no extra contrast reproduces Chrome's total ink on that frame to 0.1% where Skia's default is 4%
+heavier, but it moves no SSIM figure by more than 0.0002, so it is not applied). The text card row layout in
+`emit.ts` is measured with Skia widths against Chrome's DOM widths, which is the likely source of the 0.9 px.
 
 ## The renderer flag
 

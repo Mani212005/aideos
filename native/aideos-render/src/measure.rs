@@ -124,16 +124,14 @@ pub fn measure(request: &MeasureRequest, base: &Path) -> Result<MeasureReport, S
             return Err(format!("metrics for {:?}: size must be above 0", q.font));
         }
         let paragraph = fonts.paragraph(&spec("Hx", &q.font, q.size, 0.0), f32::INFINITY);
-        let line = paragraph
-            .get_line_metrics()
-            .into_iter()
-            .next()
+        let (baseline, height, ascent, descent) = paragraph
+            .first_line()
             .ok_or_else(|| format!("metrics for {:?}: no line was laid out", q.font))?;
         metrics.push(LineMetrics {
-            baseline: line.baseline,
-            height: line.height,
-            ascent: line.ascent,
-            descent: line.descent,
+            baseline,
+            height,
+            ascent,
+            descent,
         });
     }
     Ok(MeasureReport { widths, metrics })

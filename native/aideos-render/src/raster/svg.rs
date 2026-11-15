@@ -139,12 +139,8 @@ fn make_paint(
     paint.set_anti_alias(true);
     match p {
         Paint::None => return None,
-        Paint::Color(c) => {
-            paint.set_color4f(color4f(c.with_alpha_scaled(alpha)), None);
-        }
-        Paint::CurrentColor => {
-            paint.set_color4f(color4f(style.color.with_alpha_scaled(alpha)), None);
-        }
+        Paint::Color(c) => solid(&mut paint, c.with_alpha_scaled(alpha)),
+        Paint::CurrentColor => solid(&mut paint, style.color.with_alpha_scaled(alpha)),
         Paint::Url(id) => {
             let g = draw.doc.gradients.get(id)?;
             paint.set_shader(gradient_shader(g, bbox, alpha)?);
@@ -152,6 +148,19 @@ fn make_paint(
         }
     };
     Some(paint)
+}
+
+/// Sets a solid colour on a paint: a translucent one through the float shader so it blends as Chrome's does.
+fn solid(paint: &mut SkPaint, c: Rgba) {
+    let colour = super::text::to_color(c);
+    match super::exact_colour(colour) {
+        Some(shader) => {
+            paint.set_shader(shader);
+        }
+        None => {
+            paint.set_color4f(color4f(c), None);
+        }
+    }
 }
 
 /// Converts a straight-alpha colour to Skia's float colour.

@@ -93,6 +93,24 @@ pub fn draw_frame(
     Ok(())
 }
 
+thread_local! {
+    /// The one-colour shader `exact_colour` builds from (compiled once per thread).
+    static SOLID_COLOUR: Option<skia_safe::RuntimeEffect> = skia_safe::RuntimeEffect::make_for_shader("uniform float4 c; half4 main(float2 p) { return half4(c); }", None).ok();
+}
+
+/// A shader that paints one translucent colour, or None for an opaque or fully transparent colour (a plain paint is exact
+/// there). Skia's CPU pipeline blends a plain translucent colour in 8 bits with truncation, one level darker than Chrome's
+/// rounding compositor on a flat dark pixel (0.005 SSIM); a runtime-effect shader is blended in floating point and rounded.
+pub(crate) fn exact_colour(colour: skia_safe::Color) -> Option<skia_safe::Shader> {
+    if colour.a() == 255 || colour.a() == 0 {
+        return None;
+    }
+    let a = f32::from(colour.a()) / 255.0;
+    let premul = [f32::from(colour.r()) / 255.0 * a, f32::from(colour.g()) / 255.0 * a, f32::from(colour.b()) / 255.0 * a, a];
+    let uniform: Vec<u8> = premul.iter().flat_map(|v| v.to_le_bytes()).collect();
+    SOLID_COLOUR.with(|effect| effect.as_ref().and_then(|e| e.make_shader(skia_safe::Data::new_copy(&uniform), &[], None)))
+}
+
 /// Stage siblings in drawing order: by svg `layer` (groups count as layer 0), document order breaking ties.
 fn stage_order(nodes: &[Node]) -> Vec<&Node> {
     let mut ordered: Vec<&Node> = nodes.iter().collect();
