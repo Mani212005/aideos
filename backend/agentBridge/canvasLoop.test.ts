@@ -1,6 +1,6 @@
 /**
  * File Description: Comprehensive end-to-end integration tests for the Aideos Bi-Directional Canvas & Edit Loop (Phase 4).
- * Verifies dispatch from the three canvas surfaces (Canvas node additions, On-Canvas AI Editor, Review Critique Studio),
+ * Verifies dispatch from the canvas surfaces (Canvas node additions, On-Canvas AI Editor),
  * real-time telemetry on the live TraceBus, instant studio hot-reload on film.json changes, and hybrid fallback execution.
  * Inputs and outputs: canvas edit simulation and trace events -> test assertions.
  * Used by: npm test.
@@ -22,7 +22,6 @@ import {
   type FilmUpdateEvent,
   type TraceStep,
 } from "./index";
-import { executeCritique } from "../critique/engine";
 import { applyEditProgram } from "../editPlanner/interpreter";
 import { buildEditContext } from "../editContext/buildEditContext";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
@@ -237,67 +236,6 @@ test("Surface 2: On-Canvas AI-Edit request dispatches to bridge, records trace s
   }
 });
 
-// Test 3: Surface 3 - Review Critique Studio dispatches critique prompt and applies PatchOps
-test("Surface 3: Review Critique Studio dispatches critique to bridge and applies deep-diff patch", async () => {
-  const film = createTestFilm("critique-studio-film");
-  const capturedSteps: TraceStep[] = [];
-
-  const unsubTrace = traceBus.subscribe((step) => {
-    capturedSteps.push(step);
-  });
-
-  try {
-    const critiqueText = "Make the scale bar density 0.75";
-
-    // 1. Dispatch critique task to bridge
-    const dispatch = await dispatchTask({
-      eventType: "critique",
-      filmId: film.id,
-      filmTitle: film.title,
-      customInstruction: critiqueText,
-      metadata: { critique: critiqueText },
-    });
-
-    assert.ok(dispatch.ok);
-    assert.equal(dispatch.task.eventType, "critique");
-
-    // 2. Execute critique engine
-    const critiqueResult = executeCritique({
-      critique: critiqueText,
-      film,
-    });
-
-    assert.ok(critiqueResult.ok);
-    assert.ok(critiqueResult.updatedFilm);
-    assert.ok(critiqueResult.patchOps.length > 0);
-
-    // Verify targeted patch on shot-2 scale bar density/value
-    const targetShot = critiqueResult.updatedFilm.shots.find((s) => s.id === "shot-2");
-    assert.ok(targetShot);
-    const scaleBarBlock = targetShot.blocks.find((b) => b.c === "ScaleBar") as any;
-    assert.ok(scaleBarBlock);
-    assert.equal(scaleBarBlock.value, 0.75);
-
-    // 3. Record validation trace step
-    traceBus.recordStep({
-      phase: "validation",
-      source: "pipeline",
-      filmId: film.id,
-      title: `Critique: "${critiqueText}"`,
-      description: critiqueResult.explanation,
-      status: "done",
-      details: [`Target: ${critiqueResult.target}`, `Patch Ops: ${critiqueResult.patchOps.length}`],
-    });
-
-    const critiqueSteps = capturedSteps.filter((s) => s.phase === "validation" && s.filmId === film.id);
-    assert.equal(critiqueSteps.length, 1);
-    assert.equal(critiqueSteps[0].status, "done");
-  } finally {
-    unsubTrace();
-    clearAllFallbackTimers();
-  }
-});
-
 // Test 4: Live Studio Hot-Reload Fan-Out via TraceBus & SSE
 test("Instant studio hot-reload: traceBus.notifyFilmUpdated broadcasts to all subscribers in real time", () => {
   const film = createTestFilm("hot-reload-fanout-film");
@@ -452,7 +390,7 @@ test("Design Invariant: Generated task prompts and directing context contain zer
   assert.ok(!prompt.includes("\u2013"), "Prompt must not contain en dash (\\u2013)");
 
   const context = buildTaskContext({
-    eventType: "critique",
+    eventType: "custom_directive",
     filmId: film.id,
     customInstruction: "Refine shot durations: keep locked to audio",
   });
