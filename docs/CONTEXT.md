@@ -230,7 +230,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `boundTheme(film)`: Returns the binding `{ background, accent }` only when the film carries `theme.accentChosen: true` (set when the New project dialog or `/api/projects/new` received a chosen theme or accent) and a valid hex `theme.accent`, else `null`. Legacy projects and accents a look plan picked are never bound.
 * `filmAccent(film)`: Returns the film's effective drawing accent (`boundTheme(film)?.accent ?? film.accent ?? DEFAULT_PROJECT_ACCENT`).
 * `sameColour(a, b)`: Case-insensitive comparison of two hex color strings (`#rrggbb`).
-* `savedAccent(film, accent)`: Resolves the accent to persist on save (the active accent if the film already had one, else undefined).
+* `ACCENT_CHOICES`: The named accent colours (`{ name, hex }`) the Look lens offers, one click each.
 
 ### Editor Chrome Design System, direction "Strip" (`editor/src/styles/tokens.css`)
 * `--nb-paper`: `#F3F4F6` (Light grey application ground). `--nb-paper-2` and `--nb-paper-3`: `#FFFFFF` (Panel, card, modal and input surfaces)
@@ -628,7 +628,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### 4 Sequential Editing Stages (`editor/src/screens/`)
 * **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Story-first script editor (plain paragraphs with collapsible visual and on-screen notes beside each, tags kept internal), a visible narration change list, per-line Kokoro ONNX TTS voiceover synthesis, and direct Auto-Prompt agent dispatching with single-flight click protection, idempotent task reuse on repeated clicks, and live queue delivery status (`autoPromptBadge`).
-* **`LookStage.tsx` (`DesignView.tsx`, `LookAsk.tsx`, `Styleboard.tsx`, `CustomizationEditor.tsx`)**: Look stage Ask (the chosen shot as a picture plus one box that sends a change to the agent) and sub-views for bespoke design and look plan inspection (stage, cast, treatments, LOOK.md preview, captain approval, artwork, motion, and visual swaps), canvas texture presets, typography controls, and storyboard keyframe gallery.
+* **`LookStage.tsx` (`DesignView.tsx`, `LookAsk.tsx`, `LookChoices.tsx`, `LookFootage.tsx`)**: The one Look lens: Ask (the chosen shot as a picture plus one box that sends a change to the agent), the look plan (stage, cast, captain approval), the shots with their artwork, the film's accent and background, and the footage action for a shot that needs footage.
 * **`EditStage.tsx` (`TimelineEditor.tsx`, `captions/CaptionObject.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, captions as a direct object in the preview (click to select, drag for the whole video, side handles, snap guides while dragging, `captions/CaptionObject.tsx`, `captions/CaptionStrip.tsx`, pure snap math in `captions/captionGuides.ts`), sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip/shot inspector (a selected caption word clip shows one text control for that word, `captions/captionWordEdit.ts`), and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
 * **`ReviewStage.tsx` (`CritiqueStudio.tsx`)**: AI critique drawer executing natural-language feedback and patches via `/api/critique`, dispatching review critiques to connected agents, and pacing and coverage health charts (`Charts.tsx`).
 

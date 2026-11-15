@@ -185,7 +185,7 @@ The Aideos Studio (`editor/`) is a web application built with React 19, Tailwind
 | Stage | Name | Key Functionality |
 | :--- | :--- | :--- |
 | **1** | **Words** | Story-first paragraph authoring, collapsible visual notes, visible change list, per-line TTS voiceover, and terminal agent auto-prompting. |
-| **2** | **Look** | Look planning inspection (`design/look.json`), theme customization (paper, blueprint, charcoal), styleboards, and Ask: one box under the shot picture that sends a change to the agent. |
+| **2** | **Look** | Look planning inspection (`design/look.json`), the shots with their artwork, the film accent and background, and Ask: one box under the shot picture that sends a change to the agent. |
 | **3** | **Cut** | Non-linear multi-track timeline, magnetic ripple editing, linked audio-video trimming, movable captions, and caption word editing in the clip inspector. |
 | **4** | **Check** | Pacing analytics charts, AI critique drawer, and review readiness metrics. |
 

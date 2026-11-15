@@ -31,7 +31,7 @@ export const DESIGN_INVARIANTS: string[] = [
 export function themeDirective(theme: { background: string; accent: string } | null | undefined): string {
   if (!theme) return "";
   const name = boundThemeName(theme.background);
-  return `🎨 Theme (binding): the user chose the "${name}" theme (background preset \`${theme.background}\`) with the accent \`${theme.accent}\`. The accent is fixed by the user: use exactly it in look.json (\`palette.accent\`), design.json (omit \`accent\` or set it to this value) and every SVG, and no other chromatic colour. Do not change it and do not default to purple; \`aideos design check\` fails any other accent. If the user wants a different accent, tell them to change it in the editor's Styleboard or customization panel.\n`;
+  return `🎨 Theme (binding): the user chose the "${name}" theme (background preset \`${theme.background}\`) with the accent \`${theme.accent}\`. The accent is fixed by the user: use exactly it in look.json (\`palette.accent\`), design.json (omit \`accent\` or set it to this value) and every SVG, and no other chromatic colour. Do not change it and do not default to purple; \`aideos design check\` fails any other accent. If the user wants a different accent, tell them to change it in the Look lens of the editor.\n`;
 }
 
 /** Reads the checked look plan's treatment and cast objects for one shot. */

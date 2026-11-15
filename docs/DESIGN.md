@@ -40,13 +40,13 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 │ 1. SCRIPT  │ │ 2. STORY   │ │ 3. LOOK    │ │ 4. MOTION  │ │ 5. EDIT    │ │ 6. CAPTIONS│ │ 7. REVIEW  │
 │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │
 ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤
-│ • Markdown │ │ • 2D Spatial│ │ • Styleboard│ │ • Custom SVG│ │ • Layered  │ │ • Word Sync│ │ • Critique │
-│   Screenplay│ │   Mind Map │ │   Gallery  │ │   Animation│ │   Timeline │ │ • Kinetic   │ │   Studio   │
-│ • Claude   │ │ • Node Drag│ │ • Accent    │ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • Health & │
+│ • Markdown │ │ • 2D Spatial│ │ • Accent    │ │ • Custom SVG│ │ • Layered  │ │ • Word Sync│ │ • Critique │
+│   Screenplay│ │   Mind Map │ │   Color    │ │   Animation│ │   Timeline │ │ • Kinetic   │ │   Studio   │
+│ • Claude   │ │ • Node Drag│ │ • Background│ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • Health & │
 │   Intake   │ │ • Directed │ │   Color    │ │   Timeline │ │ • Drag     │ │ • Phrase   │ │   Pacing   │
-│ • Spoken VO│ │   Edges    │ │ • Theme    │ │ • Motion   │ │   Machine  │ │   Locks    │ │ • Headless │
-│   Extract  │ │ • Camera   │ │   Customizer│ │   Templates│ │ • Inspector│ │ • Subtitle │ │   MP4 Export│
-│ • TTS Synth│ │   Anchors  │ │ • Typography│ │ • Frame-Sync│ │ • Asset Bin │ │   Timing   │ │   Progress │
+│ • Spoken VO│ │   Edges    │ │ • Shot     │ │ • Motion   │ │   Machine  │ │   Locks    │ │ • Headless │
+│   Extract  │ │ • Camera   │ │   Pictures │ │   Templates│ │ • Inspector│ │ • Subtitle │ │   MP4 Export│
+│ • TTS Synth│ │   Anchors  │ │ • Ask box  │ │ • Frame-Sync│ │ • Asset Bin │ │   Timing   │ │   Progress │
 └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘
       │              │              │              │              │              │              │
       └──────────────┴──────────────┴───────┬──────┴──────────────┴──────────────┴──────────────┘
@@ -71,12 +71,12 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 - **Audio Synthesis**: Triggers multi-provider voiceover generation (local Kokoro, Deepgram, Google Cloud TTS, macOS say) and locks timeline duration boundaries. Narration lines are cached under `voiceover_lines/` by content fingerprint (`backend/voiceLines.ts`), so regenerating re-records only changed lines.
 - **Auto-Prompt Agent**: Directly dispatches directing instructions to the connected terminal coding agent via `/api/prompt-agent`, with idempotent task reuse on repeated clicks (an existing task counts as open only while younger than `OPEN_AFTER_TIMEOUT_MS`, 10 minutes, measured from when the task was created or last sent, regardless of whether it is pending, claimed, or timed out with a sent pane, so the same prompt is never typed twice inside that window; after the window a click creates a new task) and single-flight execution guards, displaying live queue status and badges (queued, sending, sent, already queued, already sent, not sent) as the per-pane queue waits for the agent to become idle.
 
-### 2. Look Stage (`LookStage.tsx` / `DesignView.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)
-- **Purpose**: Visual styling, look planning, and storyboard gallery combining bespoke design/look inspection, theme customization, and keyframe inspection.
+### 2. Look Stage (`LookStage.tsx` / `DesignView.tsx` / `LookChoices.tsx` / `LookFootage.tsx`)
+- **Purpose**: One lens for how the film looks. It has no sub-views.
 - **Features**:
-  - **Design View (`DesignView.tsx`)**: Inspects the film's look plan (`design/look.json`, `LOOK.md` preview), stage, persistent cast, per-shot treatments (`scene`, `scene+card`, `device`, `footage`), captain look approval (`approveLookPlan`), scene artwork, motion timeline, and honest visual swaps (`POST /api/design/:id/shots/:shot/visual`).
-  - **Theme Customization (`CustomizationEditor.tsx`)**: Allows background canvas texture selection (`paper-white`, `blueprint`, `charcoal`, `parchment`), accent color customization, and typography configuration (`geist`, `mono`, `space-grotesk`).
-  - **Styleboard Gallery (`Styleboard.tsx`)**: Per-shot storyboard cards with direct keyframe inspection.
+  - **Look plan (`DesignView.tsx`)**: Shows the look plan (`design/look.json`): stage, cast with their artwork, captain look approval (`approveLookPlan`). The shot list shows each shot with the artwork it is drawn from. A film on the template design gets one action: send it to the connected agent.
+  - **Film choices (`LookChoices.tsx`)**: The accent colour and the background preset. A pick is one undo step on the film. The accent goes through the shell's accent setter and never touches `theme.accentChosen`, so a chosen accent stays the film's only accent. Texture, font, camera angle, video type and story style are not edited in the studio: a film keeps the values it has (`src/dl/Film.tsx` still reads `theme.fontFamily`) and an agent changes them through Ask.
+  - **Footage (`LookFootage.tsx`)**: For a chosen shot that needs footage: the state of the clip and one button that starts the GPU job (`POST /api/broll/generate`, `GET /api/broll/status`). While the lens is open, a clip on disk is wired into every shot that needs footage and does not hold it yet, as one undo step per poll result ("Add footage"). A shot right after a clip shot stays unwired, because the film schema forbids two clips in a row.
   - **Ask (`LookAsk.tsx`)**: The one agent box of the stage. The chosen shot loops as a picture, and the text under it goes to the connected agent as a design task for that shot (`POST /api/design/:id/shots/:shot/motion`, server model fallback). The last Ask shows its state and Undo.
 
 ### 3. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)

@@ -5,11 +5,11 @@
  * bound: an accent written any other way (an old project's default, a look plan's own pick) is not a
  * choice. Every later stage reads that choice back from here: the agent task prompt, the agent briefs
  * and the design check, so no stage falls back to a colour of its own.
- * Inputs and outputs: theme ids, accents and films -> theme options, resolved theme, a new project's film theme, bound theme, the accent a theme save persists.
+ * Inputs and outputs: theme ids, accents and films -> theme options, accent choices, resolved theme, a new project's film theme, bound theme.
  * Used by: editor/src/components/NewProjectModal.tsx, editor/vite.config.ts,
  * backend/agentBridge/contextBuilder.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
  * backend/designCheck/designCheck.ts, backend/pipeline/design.ts, backend/designSpec/build.ts,
- * editor/src/components/CustomizationEditor.tsx, editor/src/components/Styleboard.tsx, and (for
+ * editor/src/components/LookChoices.tsx, and (for
  * DEFAULT_PROJECT_ACCENT, the fallback when a film names no accent) backend/designSpec/shotTools.ts,
  * backend/editPlanner/validator.ts, backend/critique/engine.ts, backend/sceneKit/svg.ts, src/dl/convertFilm.ts,
  * editor/src/App.tsx, editor/src/components/LookAsk.tsx, editor/src/state/placeholderFilm.ts.
@@ -34,6 +34,17 @@ export const PROJECT_THEMES: readonly ProjectThemeOption[] = [
   { id: "paper-white", name: "Paper White", accent: "#635BFF", swatch: "#F5F5F5" },
   { id: "blueprint", name: "Blueprint", accent: "#00E5FF", swatch: "#F5F5F5" },
   { id: "dot-grid", name: "Terminal Dots", accent: "#10B981", swatch: "#F5F5F5" },
+];
+
+/** The accents the Look lens offers, one click each. A film's own accent that is not in this list is shown beside them. */
+export const ACCENT_CHOICES: ReadonlyArray<{ name: string; hex: string }> = [
+  { name: "Orange", hex: "#FF6B00" },
+  { name: "Indigo", hex: "#635BFF" },
+  { name: "Green", hex: "#10B981" },
+  { name: "Cyan", hex: "#00D2D3" },
+  { name: "Rose", hex: "#F43F5E" },
+  { name: "Amber", hex: "#F59E0B" },
+  { name: "Violet", hex: "#8B5CF6" },
 ];
 
 /** The theme a project gets when its creator chose none. */
@@ -91,9 +102,4 @@ export function sameColour(a: string, b: string): boolean {
 /** The accent a film draws with: its chosen one, else its manifest accent, else the default theme's accent. */
 export function filmAccent(film: { accent?: string; theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): string {
   return boundTheme(film)?.accent ?? (film?.accent && HEX.test(film.accent) ? film.accent : DEFAULT_PROJECT_ACCENT);
-}
-
-/** The accent a Styleboard or customization save writes: the one on screen, or none when the film has never had an accent. */
-export function savedAccent(film: { accent?: string; theme?: { accent?: string } }, accent: string): string | undefined {
-  return film.accent || film.theme?.accent ? accent : undefined;
 }
