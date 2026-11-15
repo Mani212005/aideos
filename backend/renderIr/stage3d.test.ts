@@ -196,7 +196,7 @@ test("nativeSupport accepts the cel Three film with one performer and with sever
   // P4.4: the dots-v1 treatment is carried and drawn, so a dots film is accepted and emitted with its dots look.
   const dots = structuredClone(film);
   (dots.scene as unknown as Scene).treatment = "dots-v1";
-  for (const cast of (dots.scene as unknown as Scene).cast ?? []) delete cast.treatment;
+  for (const cast of (dots.scene as unknown as Scene).cast ?? []) delete (cast as { treatment?: unknown }).treatment;
   assert.deepEqual(nativeSupport(dots, "reel"), []);
   assert.equal(stageOf(emit(dots, "reel")).treatment, "dots-v1");
 

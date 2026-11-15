@@ -194,7 +194,7 @@ test("the scene's treatment spans and each cast member's resolved treatment are 
   const film = celFilm();
   const scene = film.scene as unknown as Scene;
   scene.treatment = "dots-v1";
-  for (const cast of scene.cast ?? []) delete cast.treatment;
+  for (const cast of scene.cast ?? []) delete (cast as { treatment?: unknown }).treatment;
   scene.treatments = [{ startFrame: 60, endFrame: 150, treatment: "cel-v1" }];
   assert.deepEqual(nativeSupport(film, "long"), []);
   const stage = stageOf(emit(film, "long"));
@@ -208,7 +208,7 @@ test("the scene's treatment spans and each cast member's resolved treatment are 
   const ownScene = own.scene as unknown as Scene;
   ownScene.treatment = "dots-v1";
   ownScene.cast!.find((c) => c.id === "glider")!.treatment = "cel-v1";
-  delete ownScene.cast!.find((c) => c.id === "iona")!.treatment;
+  delete (ownScene.cast!.find((c) => c.id === "iona")! as { treatment?: unknown }).treatment;
   assert.deepEqual(stageOf(emit(own, "long")).groups, [{ id: "iona", treatment: "dots-v1" }, { id: "glider", treatment: "cel-v1" }]);
 });
 
