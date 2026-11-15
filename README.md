@@ -184,13 +184,12 @@ The Aideos Studio (`editor/`) is a web application built with React 19, Tailwind
 
 | Stage | Name | Key Functionality |
 | :--- | :--- | :--- |
-| **1** | **Script** | Story-first paragraph authoring, collapsible visual notes, visible change list, per-line TTS voiceover, and terminal agent auto-prompting. |
-| **2** | **Story** | Interactive 2D spatial canvas. Drag concept nodes, connect directed edges, and preview camera framing. |
-| **3** | **Look** | Look planning inspection (`design/look.json`), theme customization (paper, blueprint, charcoal), and styleboards. |
-| **4** | **Motion** | Custom SVG movie animation studio with declarative timeline keyframing and audio retiming. |
-| **5** | **Edit** | Non-linear multi-track timeline, magnetic ripple editing, linked audio-video trimming, and movable captions. |
-| **6** | **Captions** | Word-level timestamp synchronization and karaoke highlighting preview. |
-| **7** | **Review** | Pacing analytics charts, AI critique drawer, and review readiness metrics. |
+| **1** | **Words** | Story-first paragraph authoring, collapsible visual notes, visible change list, per-line TTS voiceover, and terminal agent auto-prompting. |
+| **2** | **Look** | Look planning inspection (`design/look.json`), theme customization (paper, blueprint, charcoal), and styleboards. |
+| **3** | **Motion** | Custom SVG movie animation studio with declarative timeline keyframing and audio retiming. |
+| **4** | **Cut** | Non-linear multi-track timeline, magnetic ripple editing, linked audio-video trimming, and movable captions. |
+| **5** | **Captions** | Word-level timestamp synchronization and karaoke highlighting preview. |
+| **6** | **Check** | Pacing analytics charts, AI critique drawer, and review readiness metrics. |
 
 ---
 
