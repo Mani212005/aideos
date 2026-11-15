@@ -1,11 +1,15 @@
 /**
- * File Description: Pure helpers that edit one caption word of a film. The caption words are the subtitle clips on the Cut timeline (one clip per word), so a word is edited by selecting its clip. Text and frame range both write one caption cue per word, so every word keeps its own start and end when the track is read again.
+ * File Description: Pure helpers that edit one caption word of a film. The caption words are the subtitle clips on the Cut timeline (one clip per word), so a word is edited by selecting its clip. Every edit writes the whole caption track through one helper that packs words into cues only when the cue reads back with the exact start and end of each word, and refuses the edit when it cannot.
  * Inputs and outputs: film, caption word index, text or frame range edit -> film with the new caption track, or an error message.
  * Used by: editor/src/components/shell/InspectorPanel.tsx, editor/src/components/ClipInspector.tsx.
  */
 
 import type { Film } from "../../../../src/dl/schema";
+import type { CaptionWord } from "../../../../src/dl/KineticSubtitles";
 import { captionWordsToVtt, generateWordsFromFilm } from "../../../../src/dl/captionsParser";
+
+const MAX_WORDS_PER_CUE = 5;
+const VTT_HEADER = "WEBVTT\n\n";
 
 export interface CaptionWordEdit {
   text?: string;
@@ -19,6 +23,39 @@ export type CaptionWordEditResult = { ok: true; film: Film } | { ok: false; erro
 export function captionWordIndex(clipId: string): number | null {
   const match = /^clip-sub-(\d+)-/.exec(clipId);
   return match ? Number(match[1]) : null;
+}
+
+/** True when two caption word lists have the same text, start frame and end frame for every word. */
+function sameWords(a: CaptionWord[], b: CaptionWord[]): boolean {
+  return a.length === b.length && a.every((w, i) => w.text === b[i].text && w.startFrame === b[i].startFrame && w.endFrame === b[i].endFrame);
+}
+
+/** Reads a caption track back the way the film does, so the write is checked against the real reader. */
+function readTrack(vtt: string, fps: number): CaptionWord[] {
+  return generateWordsFromFilm({ fps, captions: vtt });
+}
+
+/** Writes words as one VTT track, or returns null when some word would not read back with its exact text, start and end. */
+function writeCaptionTrack(words: CaptionWord[], fps: number): string | null {
+  const cueOf = (from: number, size: number): string | null => {
+    const group = words.slice(from, from + size);
+    const cue = captionWordsToVtt(group, fps, size).slice(VTT_HEADER.length);
+    return sameWords(readTrack(VTT_HEADER + cue, fps), group) ? cue : null;
+  };
+  const sizeAt: number[] = new Array(words.length + 1).fill(0);
+  for (let i = words.length - 1; i >= 0; i--) {
+    for (let size = Math.min(MAX_WORDS_PER_CUE, words.length - i); size >= 1; size--) {
+      if ((i + size === words.length || sizeAt[i + size] > 0) && cueOf(i, size) !== null) {
+        sizeAt[i] = size;
+        break;
+      }
+    }
+    if (sizeAt[i] === 0) return null;
+  }
+  const cues: string[] = [];
+  for (let i = 0; i < words.length; i += sizeAt[i]) cues.push(cueOf(i, sizeAt[i]) as string);
+  const vtt = VTT_HEADER + cues.join("\n\n");
+  return sameWords(readTrack(vtt, fps), words) ? vtt : null;
 }
 
 /** Returns the film with caption word `index` edited, or an error message. An edit that changes nothing returns the same film object. */
@@ -47,5 +84,15 @@ export function editCaptionWord(film: Film, index: number, edit: CaptionWordEdit
 
   if (text === word.text && startFrame === word.startFrame && endFrame === word.endFrame) return { ok: true, film };
   const edited = words.map((w, i) => (i === index ? { text, startFrame, endFrame } : w));
-  return { ok: true, film: { ...film, captions: captionWordsToVtt(edited, film.fps || 30, 1) } };
+  const vtt = writeCaptionTrack(edited, film.fps || 30);
+  if (vtt === null) {
+    const hasNumber = edited.some((w) => /^\d+$/.test(w.text));
+    return {
+      ok: false,
+      error: hasNumber
+        ? "A number word needs a neighbour word of the same length. Change its Start or End first."
+        : "This word cannot be saved. Use another word.",
+    };
+  }
+  return { ok: true, film: { ...film, captions: vtt } };
 }
