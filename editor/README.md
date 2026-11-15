@@ -19,17 +19,16 @@ The editor chrome uses a dedicated design system, entirely decoupled from the re
 
 ---
 
-## 🧭 7-Stage Left Rail Architecture
+## 🧭 6-Stage Left Rail Architecture
 
-The editor interface is organized into 7 sequential editing stages located in `src/screens/`:
+The editor interface is organized into 6 sequential editing stages located in `src/screens/`. The rail labels are Words, Look, Motion, Cut, Captions and Check. The stage ids in the URL hash stay `script`, `look`, `motion`, `edit`, `captions` and `review`:
 
 1. **Script (`ScriptStage.tsx` / `ScriptEditor.tsx`)**: Story-first paragraph authoring with collapsible visual and on-screen notes, visible narration change list, zero-leakage spoken dialogue extraction, per-line TTS voiceover generation (Kokoro, Deepgram, Google Cloud TTS, macOS say), and Auto-Prompt agent dispatching with live queue delivery tracking. A repeated Auto-Prompt click reuses the open task; an existing task counts as open only while younger than `OPEN_AFTER_TIMEOUT_MS` (10 minutes, `backend/agentBridge/paneDelivery.ts`, measured from when the task was created or last sent) regardless of whether it is pending, claimed, or timed out with a sent pane, after which a click creates a new task.
-2. **Story (`StoryStage.tsx` / `MindMap.tsx`)**: 2D infinite spatial canvas for positioning concept nodes, wiring directed relationship edges, and inspecting camera framing targets.
-3. **Look (`LookStage.tsx` / `DesignView.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)**: Sub-views for bespoke design and look plans (`DesignView.tsx`: stage, cast, shot treatments, LOOK.md preview, captain approval via `approveLookPlan`, artwork, motion, and honest visual swaps), project theme customization (`CustomizationEditor.tsx`: paper textures, typography, accent color), and storyboard keyframe gallery (`Styleboard.tsx`).
-4. **Motion (`MotionStage.tsx`)**: Authoring studio for bespoke SVG movie animations, element-level timeline keyframing, and pre-built motion templates.
-5. **Edit (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `OnCanvasAiEditor.tsx`)**: Multi-track non-linear timeline editor with audio waveform visualizations, track controls (lock, mute, hide), captions as a direct-manipulation object in the preview (click to select, drag for the whole video), magnetic ripple editing (R), linked audio-video clip trimming, clip inspector, and model-driven AI edit panel (dry-run-then-apply EditOp program execution). Audio imported from the asset bin goes to the Music lane, creating it when needed, so it does not ripple narration on the Voiceover lane. Music lane audio plays at a reduced level in the preview and is dynamically ducked under narration in rendered output.
-6. **Captions (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)**: Word-level caption timing editor (word text and frame ranges). Caption position is set in Edit by clicking the captions in the preview and dragging them.
-7. **Review (`ReviewStage.tsx` / `CritiqueStudio.tsx` / `ExportProgressModal.tsx`)**: AI Critique Studio drawer for natural-language feedback, project health and pacing analytics charts, and headless MP4 render progress.
+2. **Look (`LookStage.tsx` / `DesignView.tsx` / `Styleboard.tsx` / `CustomizationEditor.tsx`)**: Sub-views for bespoke design and look plans (`DesignView.tsx`: stage, cast, shot treatments, LOOK.md preview, captain approval via `approveLookPlan`, artwork, motion, and honest visual swaps), project theme customization (`CustomizationEditor.tsx`: paper textures, typography, accent color), and storyboard keyframe gallery (`Styleboard.tsx`).
+3. **Motion (`MotionStage.tsx`)**: Authoring studio for bespoke SVG movie animations, element-level timeline keyframing, and pre-built motion templates.
+4. **Edit (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `OnCanvasAiEditor.tsx`)**: Multi-track non-linear timeline editor with audio waveform visualizations, track controls (lock, mute, hide), captions as a direct-manipulation object in the preview (click to select, drag for the whole video), magnetic ripple editing (R), linked audio-video clip trimming, clip inspector, and model-driven AI edit panel (dry-run-then-apply EditOp program execution). Audio imported from the asset bin goes to the Music lane, creating it when needed, so it does not ripple narration on the Voiceover lane. Music lane audio plays at a reduced level in the preview and is dynamically ducked under narration in rendered output.
+5. **Captions (`CaptionsStage.tsx` / `KineticCaptionEditor.tsx`)**: Word-level caption timing editor (word text and frame ranges). Caption position is set in Edit by clicking the captions in the preview and dragging them.
+6. **Review (`ReviewStage.tsx` / `CritiqueStudio.tsx` / `ExportProgressModal.tsx`)**: AI Critique Studio drawer for natural-language feedback, project health and pacing analytics charts, and headless MP4 render progress.
 
 ---
 

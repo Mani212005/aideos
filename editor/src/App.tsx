@@ -1,7 +1,7 @@
 /**
  * File Description: Application shell for Aideos Studio.
  * Owns the information architecture: one header, one stage rail that follows the production
- * workflow from script to review, one stage surface, and one context inspector. Holds the project
+ * workflow from words to check, one stage surface, and one context inspector. Holds the project
  * state, the shared layer-model timeline API, playback state and the global keyboard map, and
  * hands each stage exactly what it needs. No stage owns its own history: every edit is committed
  * through the project's single labelled undo stack.
@@ -13,8 +13,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PlayerRef } from "@remotion/player";
 import {
   Bot,
-  Check,
-  Compass,
   Download,
   FileText,
   Film as FilmIcon,
@@ -24,19 +22,16 @@ import {
   Plus,
   Save,
   Shapes,
-  Sparkles,
   Subtitles,
-  TriangleAlert,
 } from "lucide-react";
 import { PLACEHOLDER_FILM } from "./state/placeholderFilm";
 import { deliveryTimeline } from "../../src/dl/delivery";
 import { useFilmProject } from "./state/useFilmProject";
 import { FilmSaveContext } from "./state/FilmSaveContext";
 import { useLayeredTimeline } from "./state/useLayeredTimeline";
-import { Badge, Button, Panel, RailTab, Select, Spinner, ToastStack } from "./components/ui";
+import { Button, Panel, RailTab, Select, Spinner, ToastStack } from "./components/ui";
 import { InspectorPanel } from "./components/shell/InspectorPanel";
 import { ScriptStage } from "./screens/ScriptStage";
-import { StoryStage } from "./screens/StoryStage";
 import { LookStage } from "./screens/LookStage";
 import { MotionStage } from "./screens/MotionStage";
 import { EditStage } from "./screens/EditStage";
@@ -46,20 +41,10 @@ import { ExportProgressModal } from "./components/ExportProgressModal";
 import { useExportJob } from "./state/useExportJob";
 import type { ExportJobSnapshot } from "../../backend/exportJobTypes";
 import { NewProjectModal } from "./components/NewProjectModal";
-import { GlobalFeedbackWidget } from "./components/GlobalFeedbackWidget";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { AgentConnect } from "./components/AgentConnect";
-import { ReleaseBadge } from "./components/ReleaseBadge";
 import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
 import type { Film } from "../../src/dl/schema";
-
-/** How the header names who made the open film's design; "templates" is flagged as a fallback. */
-const DESIGN_SOURCE_LABEL = {
-  agent: "Designed by agent",
-  "server-model": "Designed by model",
-  "hand-built": "Hand-built design",
-  templates: "Template fallback",
-} as const;
 
 /**
  * The project list comes from the dev server at runtime. The editor deliberately does not import
@@ -75,21 +60,19 @@ export const FORMATS = {
 
 export type Format = keyof typeof FORMATS;
 
-type Stage = "script" | "story" | "look" | "motion" | "edit" | "captions" | "review";
+type Stage = "script" | "look" | "motion" | "edit" | "captions" | "review";
 
 const STAGES: Array<{ id: Stage; label: string; icon: typeof FileText; title: string }> = [
-  { id: "script", label: "Script", icon: FileText, title: "Write the screenplay and synthesize the voiceover" },
-  { id: "story", label: "Story", icon: Compass, title: "Lay out the spatial map the camera moves across" },
-  { id: "look", label: "Look", icon: Palette, title: "Theme, typography and per-shot styling" },
-  { id: "motion", label: "Motion", icon: Shapes, title: "Author custom SVG animations and place them on the timeline" },
-  { id: "edit", label: "Edit", icon: FilmIcon, title: "Preview, arrange lanes and cut the film" },
-  { id: "captions", label: "Captions", icon: Subtitles, title: "Tune word-level caption timing" },
-  { id: "review", label: "Review", icon: Bot, title: "Project health, pacing and AI critique" },
+  { id: "script", label: "Words", icon: FileText, title: "Edit the words. Record the voice." },
+  { id: "look", label: "Look", icon: Palette, title: "Set how the film looks." },
+  { id: "motion", label: "Motion", icon: Shapes, title: "Make SVG motion." },
+  { id: "edit", label: "Cut", icon: FilmIcon, title: "Set time and order." },
+  { id: "captions", label: "Captions", icon: Subtitles, title: "Time the captions." },
+  { id: "review", label: "Check", icon: Bot, title: "Test the film quality." },
 ];
 
 export type SelectionTarget =
   | { kind: "shot"; id: string }
-  | { kind: "node"; id: string }
   | { kind: "clip"; id: string }
   | { kind: "history" }
   | null;
@@ -116,7 +99,7 @@ export default function App() {
   const exportJob = useExportJob(
     useCallback(
       (job: ExportJobSnapshot) => {
-        if (job.status === "done") notify("success", `Export ready: ${job.filename}. Open Export to download it.`);
+        if (job.status === "done") notify("success", `Export ready: ${job.filename}`);
         else if (job.status === "failed") notify("danger", `Export failed: ${job.error ?? "unknown error"}`);
       },
       [notify],
@@ -241,7 +224,7 @@ export default function App() {
         setStage(STAGES[next].id);
         return;
       }
-      if (/^[1-7]$/.test(e.key)) {
+      if (/^[1-6]$/.test(e.key)) {
         e.preventDefault();
         setStage(STAGES[Number(e.key) - 1].id);
       }
@@ -262,11 +245,11 @@ export default function App() {
   const handleExport = useCallback(() => {
     if (!exportJob.active) {
       if (!timelineApi.hasVisibleVisuals) {
-        notify("warn", "Show a visual lane before exporting.");
+        notify("warn", "Show a visual lane.");
         return;
       }
       if (pendingBrollCount > 0) {
-        notify("warn", `${pendingBrollCount} shot(s) still need generated footage. Generate B-roll before exporting.`);
+        notify("warn", pendingBrollCount === 1 ? "1 shot needs footage." : `${pendingBrollCount} shots need footage.`);
         return;
       }
     }
@@ -283,14 +266,13 @@ export default function App() {
   const stageFlags = useMemo<Record<Stage, "none" | "warn" | "success">>(
     () => ({
       script: hasVoiceover ? "success" : "warn",
-      story: film.canvas.nodes.length > 1 ? "none" : "warn",
       look: "none",
       motion: "none",
       edit: hasVoiceover ? "none" : "warn",
       captions: film.captions ? "success" : "none",
       review: project.validation.ok ? "none" : "warn",
     }),
-    [film.canvas.nodes.length, film.captions, hasVoiceover, project.validation.ok],
+    [film.captions, hasVoiceover, project.validation.ok],
   );
 
   return (
@@ -300,17 +282,16 @@ export default function App() {
       {/* Header */}
       <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line bg-paper-2 px-3">
         <div className="flex min-w-0 items-center gap-3">
-          <ReleaseBadge />
           <div className="flex min-w-0 items-center gap-1.5">
             <label htmlFor="project-switcher" className="sr-only">
-              Active project
+              Film
             </label>
             <Select
               id="project-switcher"
               value={film.id}
               onChange={(e) => void project.selectFilm(e.target.value)}
               className="h-8 w-[clamp(140px,22vw,320px)] py-0 text-xs"
-              title="Switch project"
+              title="Film"
             >
               {project.filmIds.map((id) => (
                 <option key={id} value={id}>
@@ -325,26 +306,6 @@ export default function App() {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <Badge
-            tone={project.validation.ok ? "success" : "warn"}
-            icon={project.validation.ok ? <Check className="h-3 w-3" /> : <TriangleAlert className="h-3 w-3" />}
-            title={project.validation.message}
-            className="hidden md:inline-flex"
-          >
-            {project.validation.ok ? "Valid" : "Check"}
-          </Badge>
-
-          {project.film.design && (
-            <Badge
-              tone={project.film.design.source === "templates" ? "warn" : "select"}
-              icon={project.film.design.source === "templates" ? <TriangleAlert className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
-              title={project.film.design.brief?.concept ?? project.film.design.note ?? ""}
-              className="hidden lg:inline-flex"
-            >
-              {DESIGN_SOURCE_LABEL[project.film.design.source]}
-            </Badge>
-          )}
-
           <AgentConnect />
 
           <AgentActivityInspector />
@@ -364,8 +325,8 @@ export default function App() {
               size="sm"
               tone={exportJob.job.status === "done" ? "success" : exportJob.job.status === "failed" ? "danger" : "select"}
               onClick={exportJob.open}
-              title="Show the export dialog"
-              aria-label="Show the export dialog"
+              title="Export"
+              aria-label="Export"
             >
               {exportJob.active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
               <span className="font-mono tabular-nums">
@@ -380,7 +341,7 @@ export default function App() {
             </Button>
           ) : null}
 
-          <Button size="sm" tone="primary" onClick={handleExport} title="Open the export dialog">
+          <Button size="sm" tone="primary" onClick={handleExport} title="Export">
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export</span>
           </Button>
@@ -393,14 +354,13 @@ export default function App() {
           className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-line bg-warn/10 px-3 py-1.5"
         >
           <p className="min-w-0 font-sans text-xs font-semibold text-ink">
-            This project was changed somewhere else (an agent or another window) while you had edits. Your version is
-            still open and nothing has been overwritten.
+            Film changed elsewhere. Your edits stay open.
           </p>
           <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" onClick={project.keepMine} title="Keep what you see and replace the other version on the next save">
+            <Button size="sm" onClick={project.keepMine} title="Keep your version. It replaces the other on next save.">
               Keep mine
             </Button>
-            <Button size="sm" onClick={project.takeTheirs} title="Open the other version; your version stays in Undo">
+            <Button size="sm" onClick={project.takeTheirs} title="Open the other version. Yours stays in Undo.">
               Use theirs
             </Button>
           </div>
@@ -434,7 +394,7 @@ export default function App() {
                 setSelection(selection?.kind === "history" ? null : { kind: "history" });
                 setInspectorOpen(true);
               }}
-              title="Show the edit history"
+              title="History"
             >
               <History className="h-3.5 w-3.5" />
             </Button>
@@ -448,7 +408,7 @@ export default function App() {
               <div className="flex flex-col items-center gap-2 p-8">
                 <Loader2 className="h-6 w-6 animate-spin text-ink-soft" />
                 <p className="font-sans text-xs font-semibold text-ink-soft">
-                  Loading project
+                  Loading
                 </p>
               </div>
             </Panel>
@@ -456,14 +416,6 @@ export default function App() {
             <>
               {stage === "script" && (
                 <ScriptStage film={film} commit={commit} notify={notify} onGoToEdit={() => setStage("edit")} />
-              )}
-              {stage === "story" && (
-                <StoryStage
-                  film={film}
-                  commit={commit}
-                  selectedNodeId={selection?.kind === "node" ? selection.id : null}
-                  onSelectNode={(id) => setSelection(id ? { kind: "node", id } : null)}
-                />
               )}
               {stage === "look" && (
                 <LookStage
@@ -549,16 +501,8 @@ export default function App() {
         onProjectCreated={(newFilm) => {
           project.registerFilm(newFilm);
           setStage("script");
-          notify("success", `Created project "${newFilm.title}"`);
+          notify("success", `Film created: ${newFilm.title}`);
         }}
-      />
-
-      <GlobalFeedbackWidget
-        film={film}
-        activeMode={stage}
-        activeSelectionId={selection && selection.kind !== "history" ? selection.id : undefined}
-        isLoading={project.isLoading}
-        onUpdateFilm={(next) => commit(next, "AI assistant edit")}
       />
     </div>
     </fieldset>

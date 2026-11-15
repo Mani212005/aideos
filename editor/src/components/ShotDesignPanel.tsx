@@ -5,7 +5,7 @@
  * of Jev's runner-ups (redrawn through the same honest path, so a swap can be refused with the
  * reason) and ask the connected agent to redesign just this shot.
  * Inputs and outputs: selected shot and block configurations -> shot visual block layout and design controls.
- * Used by: editor/src/screens/StoryStage.tsx.
+ * Used by: editor/src/components/ShotInspector.tsx.
  */
 
 import { useMemo, useState } from "react";

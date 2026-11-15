@@ -174,7 +174,7 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="text-xs font-mono px-2.5 py-1 bg-paper-3 hover:bg-sunken border border-line text-ink font-semibold flex items-center gap-1.5 transition-all"
-        title="Open Unified Live Agent Trace & Telemetry Timeline"
+        title="Agent trace"
       >
         <span
           className={`w-2 h-2 rounded-full ${
@@ -188,7 +188,7 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
           }`}
         />
         <Bot size={12} />
-        <span>Agent Trace</span>
+        <span className="hidden sm:inline">Trace</span>
         {steps.length > 0 && (
           <span className="ml-0.5 px-1 py-0.2 bg-sunken text-ink text-xs border border-line font-semibold">
             {steps.length}
