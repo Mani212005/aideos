@@ -1,16 +1,21 @@
 //! File Description: The renderer's fonts and text layout. Every typeface comes from a font asset of the Render IR (a vendored file in the package), loaded through Skia's FreeType manager with no system font scan; Skia textlayout (HarfBuzz shaping, ICU line breaking) lays text out against exactly those faces with font fallback disabled, so a render never depends on the fonts installed on the host. Each face is registered under its asset id, so a text node's `font` names one exact file.
-//! Inputs and outputs: font asset ids, families, weights and file bytes -> `Fonts`; a `TextSpec` -> a laid-out Skia `Paragraph` (or its measured width).
+//! Inputs and outputs: font asset ids, families, weights and file bytes -> `Fonts`; a `TextSpec` -> a laid-out `Text` (a Skia `Paragraph` plus the way its glyphs are painted) or its measured width.
 //! Used by: crate::renderer (loading), crate::raster (overlay text, captions, rail, end card) and crate::raster::svg (SVG text).
 
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use skia_safe::font_style::{Slant, Weight, Width};
 use skia_safe::textlayout::{
-    FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextAlign, TextShadow, TextStyle,
-    TypefaceFontProvider,
+    FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextAlign, TextStyle, TypefaceFontProvider,
 };
 use skia_safe::font_arguments::{variation_position::Coordinate, VariationPosition};
-use skia_safe::{Color, FontArguments, FontMgr, FontStyle, FourByteTag, Typeface};
+use skia_safe::canvas::GlyphPositions;
+use skia_safe::{
+    Canvas, Color, FontArguments, FontHinting, FontMgr, FontStyle, FourByteTag, MaskFilter, Paint, Point,
+    Typeface,
+};
+use skia_safe::BlurStyle;
 
 use crate::svg::color::Rgba;
 
@@ -139,7 +144,7 @@ impl Fonts {
     }
 
     /// Lays a text run out to `width` pixels (use `f32::INFINITY` for a single unwrapped line).
-    pub fn paragraph(&self, spec: &TextSpec, width: f32) -> Paragraph {
+    pub fn paragraph(&self, spec: &TextSpec, width: f32) -> Text {
         let weight = self.faces.get(spec.font).map_or(400, |f| f.weight);
         let mut style = TextStyle::new();
         style.set_font_families(&[spec.font]);
@@ -156,14 +161,6 @@ impl Fonts {
             style.set_height_override(true);
             style.set_half_leading(true);
         }
-        for (c, dx, dy, blur) in &spec.shadows {
-            // A CSS shadow blur radius is twice the Gaussian standard deviation.
-            style.add_shadow(TextShadow::new(
-                to_color(*c),
-                (*dx as f32, *dy as f32),
-                blur / 2.0,
-            ));
-        }
         let mut pstyle = ParagraphStyle::new();
         pstyle.set_text_style(&style);
         pstyle.set_text_align(spec.align);
@@ -174,11 +171,139 @@ impl Fonts {
         builder.add_text(spec.text);
         let mut paragraph = builder.build();
         paragraph.layout(width);
-        paragraph
+        Text {
+            paragraph: RefCell::new(paragraph),
+            color: to_color(spec.color),
+            shadows: spec.shadows.clone(),
+            line_height_px: spec.line_height.map(|lh| lh * spec.size),
+            letter_spacing: spec.letter_spacing,
+        }
     }
 
     /// The width of a run laid out on one line.
     pub fn measure(&self, spec: &TextSpec) -> f64 {
         f64::from(self.paragraph(spec, f32::INFINITY).max_intrinsic_width())
+    }
+}
+
+/// A laid-out run of text. Skia's paragraph does the shaping and line breaking; the glyphs are painted here, because the
+/// paragraph painter draws them with FreeType's slight vertical hinting whatever the paragraph style says, while the
+/// Chrome render draws unhinted outlines (a cap height of 32 px at 45 px Geist, where slight hinting snaps it to 33).
+pub struct Text {
+    paragraph: RefCell<Paragraph>,
+    color: Color,
+    /// CSS `text-shadow` list as (colour, dx, dy, blur radius): the first shadow is the top one.
+    shadows: Vec<(Rgba, f64, f64, f64)>,
+    /// The CSS line height in pixels, or None for `line-height: normal`.
+    line_height_px: Option<f64>,
+    /// Extra advance after each glyph in pixels (CSS `letter-spacing`).
+    letter_spacing: f64,
+}
+
+/// One shaped run read back from the paragraph: its font, glyph ids and positions relative to the origin.
+struct GlyphRun {
+    /// Where the browser puts the baseline of that line, relative to the paragraph's top.
+    baseline: f64,
+    font: skia_safe::Font,
+    glyphs: Vec<u16>,
+    positions: Vec<Point>,
+    origin: Point,
+}
+
+impl Text {
+    /// The laid-out height in pixels: each line is as tall as the browser makes it (the CSS line height in 1/64 px, or
+    /// the sum of the font's rounded ascent, descent and gap for `normal`), where Skia rounds a line up to whole pixels.
+    pub fn height(&self) -> f32 {
+        let paragraph = self.paragraph.borrow();
+        let lines = paragraph.line_number().max(1) as f64;
+        let line = match self.line_height_px {
+            Some(px) => (px * 64.0).floor() / 64.0,
+            None => return paragraph.height(),
+        };
+        (lines * line) as f32
+    }
+
+    /// The width of the text on one unwrapped line.
+    pub fn max_intrinsic_width(&self) -> f32 {
+        self.paragraph.borrow().max_intrinsic_width()
+    }
+
+    /// The distance from the top of the paragraph to its first alphabetic baseline.
+    pub fn alphabetic_baseline(&self) -> f32 {
+        self.paragraph.borrow().alphabetic_baseline()
+    }
+
+    /// The first laid-out line's (baseline, height, ascent, descent), or None when nothing was laid out.
+    pub fn first_line(&self) -> Option<(f64, f64, f64, f64)> {
+        let paragraph = self.paragraph.borrow();
+        let lines = paragraph.get_line_metrics();
+        lines.first().map(|l| (l.baseline, l.height, l.ascent, l.descent))
+    }
+
+    /// Reads the shaped runs back from the paragraph, each with its font set to no hinting.
+    fn runs(&self) -> Vec<GlyphRun> {
+        let mut runs: Vec<GlyphRun> = Vec::new();
+        let line_height = self.line_height_px;
+        self.paragraph.borrow_mut().visit(|line, info| {
+            let Some(info) = info else { return };
+            let mut font = info.font().clone();
+            font.set_hinting(FontHinting::None);
+            let count = info.count();
+            // Blink rounds the font's ascent, descent and gap to whole pixels, puts half of the leading above the line
+            // (rounded down) and rounds the baseline to a whole pixel when it paints, so the glyphs sit on the pixel grid.
+            let (_, metrics) = font.metrics();
+            let (ascent, descent) = (f64::from(-metrics.ascent).round(), f64::from(metrics.descent).round());
+            let height = line_height.unwrap_or(ascent + descent + f64::from(metrics.leading).round());
+            let baseline = ascent + ((height - (ascent + descent)) / 2.0).floor() + line as f64 * height;
+            runs.push(GlyphRun {
+                baseline,
+                font,
+                glyphs: info.glyphs()[..count].to_vec(),
+                positions: info.positions()[..count].to_vec(),
+                origin: info.origin(),
+            });
+        });
+        runs
+    }
+
+    /// Paints HTML text with its top-left corner at `at`, placed as Blink places it (baseline on a whole pixel).
+    pub fn paint(&self, canvas: &Canvas, at: impl Into<Point>) {
+        self.paint_with(canvas, at.into(), true);
+    }
+
+    /// Paints SVG text with its first paragraph top at `at`, keeping Skia's own unrounded baseline.
+    pub fn paint_unsnapped(&self, canvas: &Canvas, at: impl Into<Point>) {
+        self.paint_with(canvas, at.into(), false);
+    }
+
+    /// Paints the text: the shadows from the last to the first, then the glyphs, the baseline snapped or as Skia lays it out.
+    fn paint_with(&self, canvas: &Canvas, at: Point, snap_baseline: bool) {
+        let runs = self.runs();
+        let draw = |paint: &Paint, offset: Point| {
+            for run in &runs {
+                let y = if snap_baseline { (f64::from(at.y) + run.baseline).round() as f32 } else { at.y + run.origin.y };
+                // Skia puts half of the letter spacing before each glyph and half after; CSS puts all of it after.
+                let origin = Point::new(run.origin.x + at.x + offset.x - (self.letter_spacing / 2.0) as f32, y + offset.y);
+                canvas.draw_glyphs_at(&run.glyphs, GlyphPositions::Points(&run.positions), origin, &run.font, paint);
+            }
+        };
+        for (color, dx, dy, blur) in self.shadows.iter().rev() {
+            let color = to_color(*color);
+            if color.a() == 0 {
+                continue;
+            }
+            let mut paint = Paint::default();
+            paint.set_anti_alias(true);
+            paint.set_color(color);
+            if *blur > 0.0 {
+                // A CSS shadow blur radius is twice the Gaussian standard deviation.
+                paint.set_mask_filter(MaskFilter::blur(BlurStyle::Normal, (*blur / 2.0) as f32, false));
+            }
+            draw(&paint, Point::new(*dx as f32, *dy as f32));
+        }
+        let mut paint = Paint::default();
+        paint.set_anti_alias(true);
+        paint.set_color(self.color);
+        draw(&paint, Point::new(0.0, 0.0));
     }
 }

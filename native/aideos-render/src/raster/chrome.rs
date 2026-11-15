@@ -7,8 +7,8 @@ use skia_safe::canvas::SaveLayerRec;
 use skia_safe::textlayout::TextAlign;
 use skia_safe::{
     gradient::{shaders, Colors, Gradient, Interpolation},
-    image_filters, paint, BlurStyle, Canvas, ClipOp, Color4f, MaskFilter, Paint, Path, Point,
-    RRect, Rect, TileMode,
+    image_filters, paint, BlurStyle, Canvas, ClipOp, Color4f, MaskFilter, Paint, Path, Point, RRect, Rect,
+    TileMode,
 };
 
 use crate::eval::{self, captions, Format};
@@ -17,8 +17,26 @@ use crate::svg::color::Rgba;
 use super::text::{to_color, TextSpec};
 use super::{ir_color, OverlayCtx};
 
-/// A solid anti-aliased fill paint.
+/// A solid anti-aliased fill paint. A translucent colour is painted by a one-colour shader (`super::exact_colour`), which
+/// Skia's CPU pipeline blends in floating point and rounds to the nearest level, as Chrome's compositor does; its 8-bit
+/// blend of a plain translucent colour truncates, which leaves every flat dark pixel under it one level too dark.
 fn fill(c: Rgba) -> Paint {
+    let mut p = Paint::default();
+    p.set_anti_alias(true);
+    let colour = to_color(c);
+    match super::exact_colour(colour) {
+        Some(shader) => {
+            p.set_shader(shader);
+        }
+        None => {
+            p.set_color(colour);
+        }
+    }
+    p
+}
+
+/// A plain anti-aliased colour paint, for blurred shadows (a shader under a blur mask costs a fifth more frame time than the level it gains).
+fn plain(c: Rgba) -> Paint {
     let mut p = Paint::default();
     p.set_anti_alias(true);
     p.set_color(to_color(c));
@@ -37,7 +55,7 @@ fn stroke(c: Rgba, width: f64) -> Paint {
 fn box_shadow(canvas: &Canvas, rr: &RRect, dy: f64, blur: f64, color: Rgba) {
     canvas.save();
     canvas.clip_rrect(*rr, ClipOp::Difference, true);
-    let mut p = fill(color);
+    let mut p = plain(color);
     if blur > 0.0 {
         p.set_mask_filter(MaskFilter::blur(
             BlurStyle::Normal,
@@ -296,7 +314,6 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
         .iter()
         .map(|(a, b)| boxes[*a..*b].iter().sum())
         .collect();
-    let text_w = row_widths.iter().copied().fold(0.0, f64::max);
     let base_row_h = size * CAPTION_LINE_HEIGHT + 8.0;
     let row_heights: Vec<f64> = rows
         .iter()
@@ -307,16 +324,31 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
                 .fold(base_row_h, f64::max)
         })
         .collect();
+    // A shrink-to-fit card is as wide as its words on one row, capped at 92% of the placement width: `text-wrap: balance`
+    // evens the rows out but never narrows the box, so a phrase that wraps keeps the capped width.
+    let one_row: f64 = boxes.iter().sum();
     let card_w = if card.fixed {
         card.width
     } else {
-        (text_w + 2.0 * CAPTION_PAD_X + 2.0).min(card.width * 0.92)
+        (one_row + 2.0 * CAPTION_PAD_X + 2.0).min(card.width * 0.92)
     };
     let card_h = 2.0 * CAPTION_PAD_Y + 2.0 + row_heights.iter().sum::<f64>();
     let left = span.x * w - card_w / 2.0;
     let top = span.y * h;
+    // Chrome pixel-snaps a box's edges. The card is centred in a container that `translateX(-50%)` moves by a fractional
+    // amount, so its left and right edges snap in the container's frame and stay fractional on the page; the top and
+    // bottom snap on the page.
+    let local_left = (card.width - card_w) / 2.0;
+    let (snap_l, snap_r) = (local_left.round(), (local_left + card_w).round());
+    let box_left = span.x * w - card.width / 2.0 + snap_l;
+    let (box_top, box_bottom) = (top.round(), (top + card_h).round());
     let rr = RRect::new_rect_xy(
-        Rect::from_xywh(left as f32, top as f32, card_w as f32, card_h as f32),
+        Rect::from_ltrb(
+            box_left as f32,
+            box_top as f32,
+            (box_left + snap_r - snap_l) as f32,
+            box_bottom as f32,
+        ),
         16.0,
         16.0,
     );
@@ -359,33 +391,17 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
         );
         let content_left = left + 1.0 + CAPTION_PAD_X;
         let content_w = card_w - 2.0 - 2.0 * CAPTION_PAD_X;
+        // The words are clipped to the card, not to its content box: the active word's spring scale and glow reach into the
+        // padding as they do in Chrome, but an oversized word can never leave the card (a glow that Chrome lets past the card
+        // edge is cut there, which is a few levels at most).
         canvas.save();
-        canvas.clip_rect(
-            Rect::from_xywh(
-                content_left as f32,
-                top as f32,
-                content_w as f32,
-                card_h as f32,
-            ),
-            ClipOp::Intersect,
-            false,
-        );
-        let mut row_top = top + 1.0 + CAPTION_PAD_Y;
+        canvas.clip_rrect(rr, ClipOp::Intersect, true);
+        let mut row_top = box_top + 1.0 + CAPTION_PAD_Y;
         for (r, (a, b)) in rows.iter().enumerate() {
             let mut x = content_left + (content_w - row_widths[r]) / 2.0;
             let row_h = row_heights[r];
-            let y = row_top + 4.0;
-            canvas.save();
-            canvas.clip_rect(
-                Rect::from_xywh(
-                    content_left as f32,
-                    row_top as f32,
-                    content_w as f32,
-                    row_h as f32,
-                ),
-                ClipOp::Intersect,
-                false,
-            );
+            // The text origin snaps to the pixel grid below the snapped card top (a second row sits at a fractional offset).
+            let y = box_top + (row_top - box_top + 4.0).floor();
             for i in *a..*b {
                 let wf = cf.words[i];
                 let (color, shadows) = match wf.role {
@@ -452,7 +468,6 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
                 canvas.restore();
                 x += boxes[i];
             }
-            canvas.restore();
             row_top += row_h;
         }
         canvas.restore();
@@ -609,15 +624,16 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
             1.4,
             muted,
         );
-        let chip_w = |p: &skia_safe::textlayout::Paragraph| {
+        let chip_w = |p: &crate::raster::text::Text| {
             2.0 * geo.chip.pad_x
                 + geo.chip.icon
                 + geo.chip.icon * 0.36
                 + f64::from(p.max_intrinsic_width())
         };
-        let (like_w, sub_w) = (chip_w(&like), chip_w(&sub));
+        // The outlined LIKE chip has a 2 px border on top of its padding (the chip's width is auto, its box-sizing border-box only fixes the height).
+        let (like_w, sub_w) = (chip_w(&like) + 2.0 * CHIP_BORDER, chip_w(&sub));
         let chips_w = like_w + geo.chip.gap + sub_w;
-        let pw = |p: &skia_safe::textlayout::Paragraph| f64::from(p.max_intrinsic_width());
+        let pw = |p: &crate::raster::text::Text| f64::from(p.max_intrinsic_width());
         let content_w = pw(&label)
             .max(pw(&headline))
             .max(chips_w)
@@ -630,13 +646,20 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
         if has_handle {
             content_h += geo.gap + f64::from(handle.height());
         }
-        let panel_w = (content_w + 2.0 * geo.pad_x).min(geo.card.w);
-        let panel_h = (content_h + 2.0 * geo.pad_y).min(geo.card.h);
+        // The panel's 1 px hairline border adds to its padded content (box-sizing: border-box only caps it at the card).
+        let panel_w = (content_w + 2.0 * geo.pad_x + 2.0).min(geo.card.w);
+        let panel_h = (content_h + 2.0 * geo.pad_y + 2.0).min(geo.card.h);
         let px = geo.card.x + (geo.card.w - panel_w) / 2.0;
-        let py = geo.card.y + (geo.card.h - panel_h) / 2.0 + st.panel.rise;
+        let py = geo.card.y + (geo.card.h - panel_h) / 2.0;
         let cx = px + panel_w / 2.0;
+        // Chrome pixel-snaps the panel's box in its own frame, then the entrance's `translateY` moves it by a fraction.
         let panel = RRect::new_rect_xy(
-            Rect::from_xywh(px as f32, py as f32, panel_w as f32, panel_h as f32),
+            Rect::from_ltrb(
+                px.round() as f32,
+                (py.round() + st.panel.rise) as f32,
+                (px + panel_w).round() as f32,
+                ((py + panel_h).round() + st.panel.rise) as f32,
+            ),
             geo.radius as f32,
             geo.radius as f32,
         );
@@ -655,20 +678,25 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
             canvas.draw_rrect(panel.with_inset((0.5, 0.5)), &stroke(hairline, 1.0));
             let mut y = py + (panel_h - content_h) / 2.0;
             // Each part enters on its own stagger, centred in the panel.
-            let part = |p: &skia_safe::textlayout::Paragraph, y: f64, e: eval::Entrance| {
+            let part = |p: &crate::raster::text::Text, y: f64, e: eval::Entrance| {
                 super::with_opacity(canvas, e.opacity, || {
-                    p.paint(canvas, ((cx - pw(p) / 2.0) as f32, (y + e.rise) as f32));
+                    // The text snaps to the pixel grid in its own frame; the entrance's fractional rise moves it after that.
+                    canvas.save();
+                    canvas.translate((0.0, (st.panel.rise + e.rise) as f32));
+                    p.paint(canvas, ((cx - pw(p) / 2.0) as f32, y as f32));
+                    canvas.restore();
                 });
             };
             part(&label, y, st.label);
             y += f64::from(label.height()) + geo.gap;
             part(&headline, y, st.headline);
             y += f64::from(headline.height()) + geo.gap * 1.4;
-            let chips_y = y + st.chips.rise;
+            let chips_y = y;
+            let chips_rise = st.panel.rise + st.chips.rise;
             super::with_opacity(canvas, st.chips.opacity, || {
                 let lx = cx - chips_w / 2.0;
                 draw_chip(
-                    canvas, &like, lx, chips_y, like_w, geo, THUMBS_UP, ink, None, 1.0,
+                    canvas, &like, lx, chips_y, chips_rise, like_w, geo, THUMBS_UP, ink, None, 1.0,
                 );
                 let sx = lx + like_w + geo.chip.gap;
                 let ring = Rgba {
@@ -681,6 +709,7 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
                     &sub,
                     sx,
                     chips_y,
+                    chips_rise,
                     sub_w,
                     geo,
                     BELL,
@@ -697,13 +726,17 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
     });
 }
 
+/// The border width of the outlined end card chip in CSS pixels.
+const CHIP_BORDER: f64 = 2.0;
+
 /// Draws one end card chip: an outlined chip, or a filled pill with a press ring and scale.
 #[allow(clippy::too_many_arguments)]
 fn draw_chip(
     canvas: &Canvas,
-    label: &skia_safe::textlayout::Paragraph,
+    label: &crate::raster::text::Text,
     x: f64,
     y: f64,
+    rise: f64,
     w: f64,
     geo: &aideos_render_ir::types::EndCardLayout,
     icon: &[&str],
@@ -713,9 +746,13 @@ fn draw_chip(
 ) {
     let hgt = geo.chip.height;
     let r = (hgt / 2.0) as f32;
-    let rect = Rect::from_xywh(x as f32, y as f32, w as f32, hgt as f32);
+    // Chrome pixel-snaps the chip's box and its icon in their own frame; the entrance's rise and the press scale move them after.
+    let (left, top) = (x.round(), y.round());
+    let (right, bottom) = ((x + w).round(), (y + hgt).round());
+    let rect = Rect::from_ltrb(left as f32, top as f32, right as f32, bottom as f32);
     canvas.save();
-    let (cx, cy) = ((x + w / 2.0) as f32, (y + hgt / 2.0) as f32);
+    canvas.translate((0.0, rise as f32));
+    let (cx, cy) = (((left + right) / 2.0) as f32, ((top + bottom) / 2.0) as f32);
     canvas.translate((cx, cy));
     canvas.scale((scale as f32, scale as f32));
     canvas.translate((-cx, -cy));
@@ -738,11 +775,12 @@ fn draw_chip(
             );
         }
     }
-    let icon_x = x + geo.chip.pad_x;
+    let border = if pill.is_none() { CHIP_BORDER } else { 0.0 };
+    let icon_x = x + border + geo.chip.pad_x;
     draw_icon(
         canvas,
         icon,
-        icon_x,
+        icon_x.round(),
         y + (hgt - geo.chip.icon) / 2.0,
         geo.chip.icon,
         ink,
