@@ -1,5 +1,5 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
@@ -338,7 +338,7 @@ fifth frame of the three-performer J5 film), that the world vertices posed from 
 
 `raster/stage3d/` is a small deterministic CPU z-buffer renderer, not a port of three.js: it draws exactly what the
 cel treatment uses (orthographic camera, three-band toon, flat colours, one painted face texture per character,
-inverted-hull ink outlines, the glider tip's polygon offset). `draw_frame` draws the `stage3d` node in document
+inverted-hull ink outlines, the glider tip's polygon offset); the dots-v1 treatment is drawn on the same rasterizer ([How dots-v1 is drawn](#how-dots-v1-is-drawn-p44)). `draw_frame` draws the `stage3d` node in document
 order between the SVG planes: the stage renders its own premultiplied RGBA layer under the document camera and
 Skia composites it (at the node's opacity) over what the earlier planes drew.
 
