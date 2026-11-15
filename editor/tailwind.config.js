@@ -1,6 +1,6 @@
 /**
  * File Description: Tailwind theme for the Aideos editor chrome.
- * Maps every utility the editor uses onto the Neobrutalism design tokens declared in
+ * Maps every utility the editor uses onto the design tokens declared in
  * src/styles/tokens.css so no component ever hard-codes a hex value. The editor is light end to
  * end; the single dark token is `matte`, reserved for the area directly behind the video frame.
  * This theme styles the editor UI only - the rendered video design language in src/dl is
@@ -13,6 +13,14 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
+    /* The type scale: 12 / 13 / 15 / 20 / 28 px. Nothing else is a text size. */
+    fontSize: {
+      xs: ["var(--nb-text-xs)", { lineHeight: "1.4" }],
+      sm: ["var(--nb-text-sm)", { lineHeight: "1.45" }],
+      base: ["var(--nb-text-base)", { lineHeight: "1.5" }],
+      lg: ["var(--nb-text-lg)", { lineHeight: "1.3" }],
+      xl: ["var(--nb-text-xl)", { lineHeight: "1.2" }],
+    },
     extend: {
       colors: {
         /* Chrome: app frame, panels, toolbars, modals */
@@ -26,14 +34,17 @@ export default {
         /* The one dark surface: matte directly behind the video frame */
         matte: "var(--nb-matte)",
         "matte-text": "var(--nb-matte-text)",
-        /* Near-black used for every border, hard shadow and primary text */
+        /* Near-black used for primary text */
         ink: "var(--nb-ink)",
         "ink-soft": "var(--nb-ink-soft)",
         "ink-mute": "var(--nb-ink-mute)",
-        /* Role accents */
+        /* The one border colour */
+        line: "var(--nb-line)",
+        /* The one accent, and the role colours */
         primary: "var(--nb-primary)",
         select: "var(--nb-select)",
         "select-ink": "var(--nb-select-ink)",
+        "select-tint": "var(--nb-select-tint)",
         "select-text": "var(--nb-select-text)",
         "danger-text": "var(--nb-danger-text)",
         success: "var(--nb-success)",
@@ -54,18 +65,11 @@ export default {
       },
       borderRadius: {
         none: "0",
-        DEFAULT: "0",
+        DEFAULT: "var(--nb-radius)",
       },
-      borderWidth: {
-        3: "3px",
-      },
+      /* The only shadow: one 1 px shadow under the picture. */
       boxShadow: {
-        "nb-xs": "1px 1px 0 0 var(--nb-ink)",
-        "nb-sm": "2px 2px 0 0 var(--nb-ink)",
-        nb: "4px 4px 0 0 var(--nb-ink)",
-        "nb-lg": "6px 6px 0 0 var(--nb-ink)",
-        "nb-xl": "10px 10px 0 0 var(--nb-ink)",
-        "nb-inset": "inset 0 0 0 2px var(--nb-ink)",
+        frame: "var(--nb-shadow-frame)",
         none: "none",
       },
       transitionTimingFunction: {
@@ -86,7 +90,7 @@ export default {
       },
       animation: {
         "nb-marquee": "nb-marquee 600ms linear infinite",
-        "nb-blink": "nb-blink 900ms steps(1, end) infinite",
+        "nb-blink": "nb-blink 1200ms var(--nb-ease) infinite",
       },
     },
   },

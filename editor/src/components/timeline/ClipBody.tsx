@@ -1,6 +1,6 @@
 /**
- * File Description: One clip slab on an Aideos timeline lane.
- * Draws a clip as an outlined, kind-coloured block with grabbable trim handles at both edges, a
+ * File Description: One clip block on an Aideos timeline lane.
+ * Draws a clip as a hairline-outlined, kind-coloured block with grabbable trim handles at both edges, a
  * label that degrades gracefully as the clip narrows, a real waveform for audio, and a link badge
  * for clips that belong to a video plus audio pair. Pointer gestures are reported upward; the clip
  * itself owns no state so a drag can render a ghost copy of it at any candidate position.
@@ -98,16 +98,16 @@ export function ClipBody({
       onPointerDown={ghost ? undefined : (e) => onPointerDown?.(e, clip, "move")}
       onDoubleClick={ghost ? undefined : () => onDoubleClick?.(clip)}
       className={cn(
-        "absolute top-1 select-none border-ink",
-        width < HAIRLINE_WIDTH_PX ? "border-r" : "border-2",
+        "absolute top-1 select-none border-line",
+        width < HAIRLINE_WIDTH_PX ? "border-r" : "border",
         eventMarker ? "bg-paper-2" : KIND_FILL[clip.kind],
         ghost
-          ? "pointer-events-none z-40 border-dashed opacity-90 shadow-nb"
+          ? "pointer-events-none z-40 border-dashed opacity-90"
           : locked
             ? "cursor-not-allowed"
             : "cursor-grab active:cursor-grabbing",
         dimmed && "opacity-30",
-        selected && !ghost && "z-20 shadow-nb ring-2 ring-select ring-offset-0",
+        selected && !ghost && "z-20 ring-2 ring-select ring-offset-0",
         muted && "nb-hatch",
       )}
       style={{ left: positionSec * pxPerSec, width, height: bodyHeight }}
@@ -120,17 +120,17 @@ export function ClipBody({
       ) : null}
 
       {eventMarker ? <div className="pointer-events-none absolute left-1 flex items-center gap-2" style={{ top: 2 + eventRow * 16 }}>
-        <span className="h-2 w-2 shrink-0 rotate-45 border border-ink bg-primary" />
-        <span className="max-w-40 truncate border border-ink bg-paper px-1 py-0.5 font-sans text-[10px] font-bold leading-none">{label}</span>
+        <span className="h-2 w-2 shrink-0 rotate-45 border border-line bg-primary" />
+        <span className="max-w-40 truncate border border-line bg-paper px-1 py-0.5 font-sans text-xs font-semibold leading-none">{label}</span>
       </div> : showLabel ? (
         <div className="pointer-events-none relative flex h-full items-center justify-between gap-1 px-1.5">
           <span className="flex min-w-0 items-center gap-1">
             {clip.linkedClipId ? <Link2 className="h-3 w-3 shrink-0 text-ink" /> : null}
             {locked ? <Lock className="h-3 w-3 shrink-0 text-ink" /> : null}
-            <span className="truncate font-sans text-[10px] font-bold leading-none text-ink">{label}</span>
+            <span className="truncate font-sans text-xs font-semibold leading-none text-ink">{label}</span>
           </span>
           {width >= 96 ? (
-            <span className="flex shrink-0 items-center gap-1 font-mono text-[9px] font-bold tabular-nums text-ink/80">
+            <span className="flex shrink-0 items-center gap-1 font-mono text-xs font-semibold tabular-nums text-ink/80">
               {clip.kind === "audio" ? (
                 (clip.volume ?? 1) > 0 ? (
                   <Volume2 className="h-2.5 w-2.5" />
@@ -153,7 +153,7 @@ export function ClipBody({
               onPointerDown?.(e, clip, "trim-start");
             }}
             style={{ width: handleWidth }}
-            className="absolute inset-y-0 left-0 cursor-ew-resize border-r-2 border-ink/40 bg-ink/10 hover:bg-ink/35"
+            className="absolute inset-y-0 left-0 cursor-ew-resize border-r border-line bg-ink/10 hover:bg-ink/35"
             title="Drag to trim the in point"
           />
           <div
@@ -163,7 +163,7 @@ export function ClipBody({
               onPointerDown?.(e, clip, "trim-end");
             }}
             style={{ width: handleWidth }}
-            className="absolute inset-y-0 right-0 cursor-ew-resize border-l-2 border-ink/40 bg-ink/10 hover:bg-ink/35"
+            className="absolute inset-y-0 right-0 cursor-ew-resize border-l border-line bg-ink/10 hover:bg-ink/35"
             title="Drag to trim the out point"
           />
         </>

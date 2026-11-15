@@ -251,12 +251,12 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
   return (
     <div ref={panelRef} data-ai-editor-panel className={folded ? "hidden" : "absolute bottom-4 right-4 z-40 max-w-lg w-full flex flex-col font-sans"}>
       {/* Container Box */}
-      <div className="bg-paper-2 border-2 border-ink shadow-[4px_4px_0px_#14140f] rounded-lg overflow-hidden flex flex-col">
+      <div className="bg-paper-2 border border-line rounded-lg overflow-hidden flex flex-col">
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-3 py-2 bg-sunken border-b-2 border-ink">
+        <div className="flex items-center justify-between px-3 py-2 bg-sunken border-b border-line">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-ink" style={{ color: accent || "var(--nb-select)" }} />
-            <span className="font-mono text-xs font-bold text-ink tracking-tight uppercase">
+            <span className="font-mono text-xs font-semibold text-ink tracking-tight">
               AI Video Editor
             </span>
           </div>
@@ -265,7 +265,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
             aria-label={expanded ? "Fold AI editor" : "Expand AI editor"}
             disabled={folded}
             onClick={() => setIsExpanded(!isExpanded)}
-            className="font-mono text-xs text-ink hover:underline font-bold"
+            className="font-mono text-xs text-ink hover:underline font-semibold"
           >
             {expanded ? "Minimize" : "Expand"}
           </button>
@@ -285,7 +285,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
                       void handlePlanEdits(chip);
                     }}
                     disabled={isPlanning}
-                    className="text-xs font-mono px-2 py-1 bg-paper border border-ink rounded hover:bg-sunken text-ink transition-colors disabled:opacity-50"
+                    className="text-xs font-mono px-2 py-1 bg-paper border border-line rounded hover:bg-sunken text-ink transition-colors disabled:opacity-50"
                   >
                     + {chip}
                   </button>
@@ -308,12 +308,12 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
                   onChange={(e) => setPromptInput(e.target.value)}
                   placeholder="Ask AI to edit (e.g. 'remove filler words and trim dead air')..."
                   disabled={isPlanning}
-                  className="flex-1 px-3 py-1.5 bg-paper-3 border-2 border-ink rounded font-mono text-xs text-ink placeholder:text-ink-mute focus:outline-none focus:ring-2 focus:ring-select"
+                  className="flex-1 px-3 py-1.5 bg-paper-3 border border-line rounded font-mono text-xs text-ink placeholder:text-ink-mute focus:outline-none focus:ring-2 focus:ring-select"
                 />
                 <button
                   type="submit"
                   disabled={isPlanning || !promptInput.trim()}
-                  className="px-3 py-1.5 bg-select text-paper-3 border-2 border-ink rounded font-mono text-xs font-bold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  className="px-3 py-1.5 bg-select text-paper-3 border border-line rounded font-mono text-xs font-semibold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50 transition-opacity"
                   style={{ backgroundColor: accent || "var(--nb-select)" }}
                 >
                   {isPlanning ? (
@@ -329,9 +329,9 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
 
             {/* Generated Plan Review Surface (Dry-run-then-apply) */}
             {plannedState && (
-              <div className="flex flex-col gap-2.5 p-3 bg-paper border-2 border-ink rounded">
+              <div className="flex flex-col gap-2.5 p-3 bg-paper border border-line rounded">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold uppercase text-ink flex items-center gap-1.5">
+                  <span className="font-mono text-xs font-semibold text-ink flex items-center gap-1.5">
                     <Wand2 className="w-3.5 h-3.5" /> Planned Changes ({plannedState.ops.length} ops)
                   </span>
                   <button
@@ -345,7 +345,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
                 </div>
 
                 {/* Natural language summary paragraph */}
-                <p className="text-xs text-ink font-sans leading-relaxed bg-paper-2 p-2 border border-ink rounded">
+                <p className="text-xs text-ink font-sans leading-relaxed bg-paper-2 p-2 border border-line rounded">
                   {plannedState.plan}
                 </p>
 
@@ -354,7 +354,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
                   {plannedState.ops.map((op, idx) => (
                     <div
                       key={idx}
-                      className="text-xs font-mono px-2 py-1 bg-paper-3 border border-ink/40 rounded flex items-center gap-2 text-ink"
+                      className="text-xs font-mono px-2 py-1 bg-paper-3 border border-line rounded flex items-center gap-2 text-ink"
                     >
                       <Check className="w-3 h-3 text-success shrink-0" />
                       <span className="truncate">{describeEditOp(op)}</span>
@@ -363,12 +363,12 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
                 </div>
 
                 {/* Action Controls */}
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-ink/20">
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-line">
                   <button
                     type="button"
                     onClick={handleDiscardPlan}
                     disabled={isApplying}
-                    className="px-3 py-1 bg-paper border-2 border-ink rounded font-mono text-xs font-bold text-ink hover:bg-sunken"
+                    className="px-3 py-1 bg-paper border border-line rounded font-mono text-xs font-semibold text-ink hover:bg-sunken"
                   >
                     Discard
                   </button>
@@ -376,7 +376,7 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
                     type="button"
                     onClick={() => void handleApplyPlan()}
                     disabled={isApplying}
-                    className="px-3 py-1 bg-success text-ink border-2 border-ink rounded font-mono text-xs font-bold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50"
+                    className="px-3 py-1 bg-success text-select-ink border border-line rounded font-mono text-xs font-semibold flex items-center gap-1.5 hover:opacity-90 disabled:opacity-50"
                   >
                     {isApplying ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -393,15 +393,15 @@ export const OnCanvasAiEditor: React.FC<OnCanvasAiEditorProps> = ({
             {/* Status Message Notification */}
             {statusMessage && (
               <div
-                className={`text-xs font-mono px-2.5 py-1.5 border-2 border-ink rounded flex items-center justify-between ${
-                  statusMessage.isError ? "bg-danger text-paper-3" : "bg-success text-ink"
+                className={`text-xs font-mono px-2.5 py-1.5 border border-line rounded flex items-center justify-between ${
+                  statusMessage.isError ? "bg-danger text-paper-3" : "bg-success text-select-ink"
                 }`}
               >
                 <span>{statusMessage.text}</span>
                 <button
                   type="button"
                   onClick={() => setStatusMessage(null)}
-                  className="ml-2 hover:opacity-75 font-bold"
+                  className="ml-2 hover:opacity-75 font-semibold"
                 >
                   <X className="w-3 h-3" />
                 </button>

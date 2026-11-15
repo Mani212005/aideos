@@ -1,5 +1,5 @@
 /**
- * File Description: Barrel export for the Aideos editor Neobrutalism UI primitives.
+ * File Description: Barrel export for the Aideos editor UI primitives.
  * Every editor screen imports its controls from here so the design system stays a single owned
  * surface rather than ad-hoc utility classes scattered across components.
  * Inputs and outputs: UI primitive modules -> centralized barrel export of UI components.

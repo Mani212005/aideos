@@ -298,7 +298,7 @@ export default function App() {
     <fieldset disabled={project.isLoading} className="contents">
     <div inert={project.isLoading} className="flex h-screen flex-col overflow-hidden bg-paper text-ink">
       {/* Header */}
-      <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b-2 border-ink bg-paper-2 px-3">
+      <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line bg-paper-2 px-3">
         <div className="flex min-w-0 items-center gap-3">
           <ReleaseBadge />
           <div className="flex min-w-0 items-center gap-1.5">
@@ -309,7 +309,7 @@ export default function App() {
               id="project-switcher"
               value={film.id}
               onChange={(e) => void project.selectFilm(e.target.value)}
-              className="h-8 w-[clamp(140px,22vw,320px)] py-0 text-[11px]"
+              className="h-8 w-[clamp(140px,22vw,320px)] py-0 text-xs"
               title="Switch project"
             >
               {project.filmIds.map((id) => (
@@ -390,9 +390,9 @@ export default function App() {
       {project.conflict ? (
         <div
           role="alert"
-          className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-2 border-ink bg-warn px-3 py-1.5"
+          className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-line bg-warn/10 px-3 py-1.5"
         >
-          <p className="min-w-0 font-sans text-xs font-bold text-ink">
+          <p className="min-w-0 font-sans text-xs font-semibold text-ink">
             This project was changed somewhere else (an agent or another window) while you had edits. Your version is
             still open and nothing has been overwritten.
           </p>
@@ -411,7 +411,7 @@ export default function App() {
         {/* Stage rail */}
         <nav
           aria-label="Production stages"
-          className="flex w-[68px] shrink-0 flex-col overflow-y-auto border-r-2 border-ink bg-paper"
+          className="flex w-[68px] shrink-0 flex-col overflow-y-auto border-r border-line bg-paper"
         >
           {STAGES.map((s, i) => (
             <RailTab
@@ -425,7 +425,7 @@ export default function App() {
               onClick={() => setStage(s.id)}
             />
           ))}
-          <div className="mt-auto border-t-2 border-ink p-1.5">
+          <div className="mt-auto border-t border-line p-1.5">
             <Button
               size="xs"
               block
@@ -444,10 +444,10 @@ export default function App() {
         {/* Stage surface */}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-paper">
           {project.isLoading ? (
-            <Panel tone="flat" className="m-3 flex-1 items-center justify-center border-2">
+            <Panel tone="flat" className="m-3 flex-1 items-center justify-center border">
               <div className="flex flex-col items-center gap-2 p-8">
                 <Loader2 className="h-6 w-6 animate-spin text-ink-soft" />
-                <p className="font-sans text-xs font-bold uppercase tracking-[0.1em] text-ink-soft">
+                <p className="font-sans text-xs font-semibold text-ink-soft">
                   Loading project
                 </p>
               </div>

@@ -203,7 +203,7 @@ export function NewProjectModal({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <p className="mb-1.5 font-sans text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">
+            <p className="mb-1.5 font-sans text-xs font-semibold text-ink-soft">
               Theme
             </p>
             <div className="grid grid-cols-2 gap-1.5">
@@ -216,11 +216,11 @@ export function NewProjectModal({
                   className="flex items-center gap-2 p-2"
                 >
                   <span
-                    className="h-5 w-5 shrink-0 border-2 border-ink"
+                    className="h-5 w-5 shrink-0 border border-line"
                     style={{ backgroundColor: t.accent }}
                     aria-hidden
                   />
-                  <span className="truncate font-sans text-[11px] font-extrabold">{t.name}</span>
+                  <span className="truncate font-sans text-xs font-semibold">{t.name}</span>
                 </Card>
               ))}
             </div>
@@ -236,7 +236,7 @@ export function NewProjectModal({
                 ))}
               </Select>
             </Field>
-            <div className="border-2 border-ink bg-paper-3 p-2.5">
+            <div className="border border-line bg-paper-3 p-2.5">
               <Stat label="Words" value={wordCount} />
               <Stat label="Estimated run time" value={estimatedTimeFormatted} tone="select" />
               <Stat label="Accent" value={activeTheme.accent} />

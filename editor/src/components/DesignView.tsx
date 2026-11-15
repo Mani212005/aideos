@@ -135,19 +135,19 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
                 {design ? SOURCE_LABEL[design.source] : "Template design"}
               </Badge>
               <span
-                className="inline-flex items-center gap-1 border-2 border-ink bg-paper-3 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none"
+                className="inline-flex items-center gap-1 border border-line bg-paper-3 px-1.5 py-0.5 font-mono text-xs font-semibold leading-none"
                 title="The film's accent colour"
               >
-                <span className="h-2.5 w-2.5 border border-ink" style={{ background: overview.accent }} />
+                <span className="h-2.5 w-2.5 border border-line" style={{ background: overview.accent }} />
                 {overview.accent}
               </span>
             </div>
             {design?.brief ? (
               <>
-                <p className="font-sans text-[13px] leading-snug text-ink">{design.brief.concept}</p>
+                <p className="font-sans text-sm leading-snug text-ink">{design.brief.concept}</p>
                 {design.brief.throughLine ? (
-                  <p className="font-sans text-[12px] leading-snug text-ink-soft">
-                    <span className="font-bold text-ink">Through-line: </span>
+                  <p className="font-sans text-xs leading-snug text-ink-soft">
+                    <span className="font-semibold text-ink">Through-line: </span>
                     {design.brief.throughLine}
                   </p>
                 ) : null}
@@ -162,7 +162,7 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
                 ) : null}
               </>
             ) : (
-              <p className="font-sans text-[12px] leading-snug text-ink-soft">
+              <p className="font-sans text-xs leading-snug text-ink-soft">
                 {design?.note ??
                   "This film is drawn from the shared templates: a node graph with text cards and charts, not a design of its own."}
               </p>
@@ -193,17 +193,17 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
               <Note tone="danger">Could not read look.json: {overview.lookError}</Note>
             ) : overview.look ? (
               <>
-                <div className="border-2 border-ink bg-paper-2 p-2.5">
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-soft">Stage</p>
-                  <p className="mt-1 break-words font-sans text-[12px] leading-snug text-ink">{overview.look.plan.film.stage}</p>
+                <div className="border border-line bg-paper-2 p-2.5">
+                  <p className="font-mono text-xs font-semibold text-ink-soft">Stage</p>
+                  <p className="mt-1 break-words font-sans text-xs leading-snug text-ink">{overview.look.plan.film.stage}</p>
                 </div>
                 <div>
-                  <h3 className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-soft">Cast</h3>
+                  <h3 className="mb-1.5 font-mono text-xs font-semibold text-ink-soft">Cast</h3>
                   <ul className="flex flex-col gap-1.5">
                     {overview.look.plan.film.cast.map((member) => (
-                      <li key={member.id} className="flex min-w-0 items-start gap-2 border-2 border-ink bg-paper-3 px-2 py-1.5">
+                      <li key={member.id} className="flex min-w-0 items-start gap-2 border border-line bg-paper-3 px-2 py-1.5">
                         <Badge tone="neutral">{member.id}</Badge>
-                        <span className="min-w-0 break-words font-sans text-[11px] leading-snug text-ink">{member.what}</span>
+                        <span className="min-w-0 break-words font-sans text-xs leading-snug text-ink">{member.what}</span>
                       </li>
                     ))}
                   </ul>
@@ -220,11 +220,11 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
                   {approvalError?.filmId === film.id ? <Note tone="danger">Approval failed: {approvalError.message}</Note> : null}
                 </div>
                 {overview.look.markdown ? (
-                  <details className="group border-2 border-ink bg-paper-2">
-                    <summary className="cursor-pointer px-2.5 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink hover:bg-paper-3">
+                  <details className="group border border-line bg-paper-2">
+                    <summary className="cursor-pointer px-2.5 py-2 font-mono text-xs font-semibold text-ink hover:bg-paper-3">
                       Read LOOK.md
                     </summary>
-                    <pre className="max-h-64 overflow-auto border-t-2 border-ink p-2.5 font-mono text-[10px] leading-relaxed text-ink whitespace-pre-wrap break-words">{overview.look.markdown}</pre>
+                    <pre className="max-h-64 overflow-auto border-t border-line p-2.5 font-mono text-xs leading-relaxed text-ink whitespace-pre-wrap break-words">{overview.look.markdown}</pre>
                   </details>
                 ) : (
                   <Note tone="warn">LOOK.md has not been generated yet.</Note>
@@ -248,16 +248,16 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
             {overview.artwork.length ? (
               <div className="grid grid-cols-2 gap-2">
                 {overview.artwork.map((a) => (
-                  <figure key={a.id} className="min-w-0 border-2 border-ink bg-[#0A0A0B]">
+                  <figure key={a.id} className="min-w-0 border border-line bg-[#0A0A0B]">
                     <img src={`/${a.src}`} alt={a.id} className="aspect-[3/2] w-full object-contain" loading="lazy" />
-                    <figcaption className="truncate border-t-2 border-ink bg-paper-3 px-1.5 py-1 font-mono text-[10px] text-ink">
+                    <figcaption className="truncate border-t border-line bg-paper-3 px-1.5 py-1 font-mono text-xs text-ink">
                       {a.id}
                     </figcaption>
                   </figure>
                 ))}
               </div>
             ) : (
-              <p className="font-sans text-[12px] text-ink-soft">No artwork: the template design draws its charts and cards in code.</p>
+              <p className="font-sans text-xs text-ink-soft">No artwork: the template design draws its charts and cards in code.</p>
             )}
           </PanelBody>
         </Panel>
@@ -271,7 +271,7 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
           {shots.length === 0 ? (
             <EmptyState title="No shots yet" />
           ) : (
-            <ol className="divide-y-2 divide-ink">
+            <ol className="divide-y-2 divide-line">
               {shots.map((shot) => (
                 <li key={shot.id}>
                   <button
@@ -279,15 +279,15 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
                     onClick={() => onSelectShot(shot.id)}
                     className="grid w-full grid-cols-[64px_minmax(0,1fr)] gap-3 px-3 py-2.5 text-left hover:bg-paper-3 focus-visible:bg-paper-3 focus-visible:outline-none"
                   >
-                    <div className="font-mono text-[10px] leading-tight text-ink-soft">
-                      <div className="font-bold text-ink">{shot.id}</div>
+                    <div className="font-mono text-xs leading-tight text-ink-soft">
+                      <div className="font-semibold text-ink">{shot.id}</div>
                       <div>
                         {clock(shot.startSec)}-{clock(shot.endSec)}
                       </div>
                       {shot.treatment ? <Badge tone={shot.treatment === "device" ? "warn" : "info"}>{shot.treatment}</Badge> : null}
                     </div>
                     <div className="flex min-w-0 flex-col gap-1.5">
-                      <p className="font-sans text-[12px] leading-snug text-ink">{shot.says || "(no narration)"}</p>
+                      <p className="font-sans text-xs leading-snug text-ink">{shot.says || "(no narration)"}</p>
                       <div className="flex flex-wrap items-center gap-1">
                         {shot.shown.map((c, i) => (
                           <Badge key={`${c}-${i}`} tone="neutral">
@@ -296,7 +296,7 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
                         ))}
                         {shot.choice ? <ChoiceChip choice={shot.choice} /> : null}
                         {shot.choice?.device && shot.choice.device.state !== "authored" ? (
-                          <span className="font-sans text-[10px] text-ink-mute" title={shot.choice.device.reason}>
+                          <span className="font-sans text-xs text-ink-mute" title={shot.choice.device.reason}>
                             {shot.choice.device.kind} not drawn: {shot.choice.device.reason}
                           </span>
                         ) : null}
@@ -304,7 +304,7 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
                       {shot.motion.length ? (
                         <ul className="flex flex-col gap-0.5">
                           {shot.motion.map((m) => (
-                            <li key={`${m.asset}-${m.clip}`} className="truncate font-mono text-[10px] text-ink-soft" title={m.targets.join(", ")}>
+                            <li key={`${m.asset}-${m.clip}`} className="truncate font-mono text-xs text-ink-soft" title={m.targets.join(", ")}>
                               <span className="text-ink">{clock(m.startSec)}</span> {m.asset} · {m.clip} · {m.property}
                               {m.targets.length > 1 ? ` ×${m.targets.length}` : ""}
                             </li>

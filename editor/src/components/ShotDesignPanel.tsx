@@ -75,13 +75,13 @@ export function ShotDesignPanel({ film, shot, onApply }: ShotDesignPanelProps) {
   };
 
   return (
-    <div className="flex flex-col gap-2 border-2 border-ink bg-paper-3 p-2.5 shadow-nb-sm">
-      <label className="font-mono text-[10px] font-bold uppercase tracking-wider text-ink-soft">Why this visual</label>
+    <div className="flex flex-col gap-2 border border-line bg-paper-3 p-2.5">
+      <label className="font-mono text-xs font-semibold text-ink-soft">Why this visual</label>
       <div className="flex flex-wrap items-center gap-1">
         <Badge tone="neutral">{current}</Badge>
         {choice ? <ChoiceChip choice={choice} /> : null}
       </div>
-      <p className="text-[11px] leading-snug text-ink-soft">
+      <p className="text-xs leading-snug text-ink-soft">
         {!choice
           ? "The design stage did not choose a chart for this shot (footage, a bare canvas beat, or a film made before choices were recorded)."
           : choice.source === "jev"
@@ -103,7 +103,7 @@ export function ShotDesignPanel({ film, shot, onApply }: ShotDesignPanelProps) {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-1.5 border-t-2 border-ink pt-2">
+      <div className="flex flex-col gap-1.5 border-t border-line pt-2">
         <Textarea
           rows={2}
           value={note}

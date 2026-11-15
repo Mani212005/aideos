@@ -1,9 +1,9 @@
 /**
- * File Description: Neobrutalism button primitive for the Aideos editor chrome.
- * A slab with a hard ink border and a blur-free offset shadow that visibly depresses on press
- * (the slab translates into its own shadow). Every editor action uses this component so press
- * feel, focus ring, disabled treatment and tone vocabulary stay identical across the app.
- * Inputs and outputs: button props (variant, size, onClick) -> Neobrutalism styled button element.
+ * File Description: Button primitive for the Aideos editor chrome.
+ * A rounded button with a hairline border and no shadow. The primary tone is the one solid accent; the
+ * default tone is a white button with a line border. Every editor action uses this component so hover
+ * and active feel, focus ring, disabled treatment and tone vocabulary stay identical across the app.
+ * Inputs and outputs: button props (variant, size, onClick) -> styled button element.
  * Used by: editor/src/components/ui/index.ts, editor screens and modals.
  */
 
@@ -25,21 +25,21 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const TONE_CLASSES: Record<ButtonTone, string> = {
-  default: "bg-paper-3 text-ink",
-  primary: "bg-primary text-ink",
-  select: "bg-select text-select-ink",
-  danger: "bg-danger text-ink",
-  success: "bg-success text-ink",
-  warn: "bg-warn text-ink",
-  info: "bg-info text-ink",
-  ghost: "border-transparent bg-transparent text-ink-soft shadow-none",
+  default: "border-line bg-paper-3 text-ink hover:bg-sunken",
+  primary: "border-primary bg-primary text-select-ink hover:opacity-90",
+  select: "border-select bg-select text-select-ink hover:opacity-90",
+  danger: "border-danger bg-danger text-select-ink hover:opacity-90",
+  success: "border-success bg-success text-select-ink hover:opacity-90",
+  warn: "border-warn bg-warn text-select-ink hover:opacity-90",
+  info: "border-info bg-info text-select-ink hover:opacity-90",
+  ghost: "border-transparent bg-transparent text-ink-soft hover:bg-sunken hover:text-ink",
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  xs: "h-6 px-2 text-[10px] gap-1",
-  sm: "h-8 px-2.5 text-[11px] gap-1.5",
-  md: "h-9 px-3.5 text-xs gap-2",
-  lg: "h-11 px-5 text-sm gap-2",
+  xs: "h-6 px-2 text-xs gap-1",
+  sm: "h-8 px-3 text-xs gap-1.5",
+  md: "h-9 px-3.5 text-sm gap-2",
+  lg: "h-11 px-5 text-base gap-2",
 };
 
 const ICON_SIZE_CLASSES: Record<ButtonSize, string> = {
@@ -49,7 +49,7 @@ const ICON_SIZE_CLASSES: Record<ButtonSize, string> = {
   lg: "h-11 w-11 px-0",
 };
 
-/** Chunky editor action button that depresses into its own hard shadow on press. */
+/** Editor action button: hairline border, one radius, no shadow. */
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
     tone = "default",
@@ -64,26 +64,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   },
   ref,
 ) {
-  const isGhost = tone === "ghost";
-
   return (
     <button
       ref={ref}
       type={type}
       data-tone={tone}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center whitespace-nowrap border-2 font-sans font-bold uppercase tracking-[0.06em] leading-none",
-        "transition-[transform,box-shadow,background-color,color] duration-nb ease-nb",
+        "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-lg border font-sans font-semibold leading-none",
+        "transition-[background-color,border-color,color,opacity] duration-nb ease-nb",
         "disabled:pointer-events-none disabled:opacity-40",
         SIZE_CLASSES[size],
         iconOnly && ICON_SIZE_CLASSES[size],
         block && "w-full",
         TONE_CLASSES[tone],
-        isGhost
-          ? "hover:bg-paper-3 hover:text-ink"
-          : "border-ink shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none",
-        active && !isGhost && "translate-x-0.5 translate-y-0.5 shadow-none",
-        active && isGhost && "bg-ink text-paper hover:bg-ink hover:text-paper",
+        "active:opacity-80",
+        active && "border-select bg-select-tint text-select-text hover:bg-select-tint",
         className,
       )}
       {...rest}

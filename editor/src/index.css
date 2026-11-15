@@ -1,6 +1,6 @@
 /**
  * File Description: Global stylesheet for the Aideos editor chrome.
- * Loads the Neobrutalism tokens, the Tailwind layers, and the small set of global element rules
+ * Loads the design tokens, the Tailwind layers, and the small set of global element rules
  * (document frame, focus ring, scrollbars, form reset, range sliders, hatch and stripe fills)
  * that cannot be expressed as component classes. Component appearance itself lives in
  * src/components/ui. The editor is light throughout; no rule here introduces a dark surface.
@@ -34,10 +34,10 @@
   width: 124px;
   height: 34px;
   line-height: 1.15;
-  color: var(--nb-ink);
-  background: var(--release-color);
-  border: var(--nb-border) solid var(--nb-ink);
-  box-shadow: var(--nb-offset-sm) var(--nb-offset-sm) 0 var(--nb-ink);
+  background: color-mix(in srgb, var(--release-color) 10%, var(--nb-paper-3));
+  color: var(--release-color);
+  border: var(--nb-border) solid color-mix(in srgb, var(--release-color) 40%, transparent);
+  border-radius: var(--nb-radius);
 }
 
 @layer base {
@@ -54,7 +54,7 @@
     overflow: hidden;
   }
 
-  /* Loud, always-visible keyboard focus. Pointer interaction stays quiet. */
+  /* Clear keyboard focus in the accent. Pointer interaction stays quiet. */
   :focus-visible {
     outline: var(--nb-border-thick) solid var(--nb-select);
     outline-offset: 2px;
@@ -78,94 +78,88 @@
   }
 
   ::selection {
-    background: var(--nb-primary);
+    background: var(--nb-select-tint);
     color: var(--nb-ink);
   }
 
-  /* Chunky, squared-off scrollbars that match the slab language. */
+  /* Thin, quiet scrollbars. */
   ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--nb-sunken);
-    border-left: var(--nb-border) solid var(--nb-ink);
-    border-top: var(--nb-border) solid var(--nb-ink);
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--nb-ink);
-    border: 3px solid var(--nb-sunken);
+    background: var(--nb-sunken-3);
+    border: 2px solid transparent;
+    border-radius: 99px;
+    background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--nb-select);
+    background: var(--nb-ink-soft);
+    background-clip: content-box;
   }
   ::-webkit-scrollbar-corner {
-    background: var(--nb-sunken);
+    background: transparent;
   }
 
   * {
-    scrollbar-color: var(--nb-ink) var(--nb-sunken);
+    scrollbar-color: var(--nb-sunken-3) transparent;
   }
 }
 
 @layer components {
-  /* Hard-edged range slider used by zoom, speed and numeric controls. */
+  /* Range slider used by zoom, speed and numeric controls: a hairline track and a round accent thumb. */
   .nb-range {
     -webkit-appearance: none;
     appearance: none;
-    height: 18px;
+    height: 16px;
     background: transparent;
     cursor: pointer;
   }
   .nb-range::-webkit-slider-runnable-track {
-    height: 10px;
-    background: var(--nb-paper-3);
-    border: var(--nb-border) solid var(--nb-ink);
+    height: 4px;
+    background: var(--nb-sunken-2);
+    border-radius: 99px;
   }
   .nb-range::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    height: 18px;
-    width: 12px;
-    margin-top: -6px;
+    height: 14px;
+    width: 14px;
+    margin-top: -5px;
     background: var(--nb-select);
-    border: var(--nb-border) solid var(--nb-ink);
+    border: 2px solid var(--nb-paper-3);
+    border-radius: 50%;
   }
   .nb-range:active::-webkit-slider-thumb {
-    background: var(--nb-primary);
+    background: var(--nb-ink);
   }
   .nb-range::-moz-range-track {
-    height: 10px;
-    background: var(--nb-paper-3);
-    border: var(--nb-border) solid var(--nb-ink);
+    height: 4px;
+    background: var(--nb-sunken-2);
+    border-radius: 99px;
   }
   .nb-range::-moz-range-thumb {
-    height: 18px;
-    width: 12px;
-    border-radius: 0;
+    height: 10px;
+    width: 10px;
     background: var(--nb-select);
-    border: var(--nb-border) solid var(--nb-ink);
+    border: 2px solid var(--nb-paper-3);
+    border-radius: 50%;
   }
 
-  /* Diagonal hatch for empty, locked and disabled regions. */
+  /* Flat tint for empty, locked and disabled regions. */
   .nb-hatch {
-    background-image: repeating-linear-gradient(
-      45deg,
-      transparent 0 6px,
-      color-mix(in srgb, var(--nb-ink) 10%, transparent) 6px 7px
-    );
+    background-color: var(--nb-sunken);
   }
   .nb-hatch-dense {
-    background-image: repeating-linear-gradient(
-      45deg,
-      transparent 0 3px,
-      color-mix(in srgb, var(--nb-ink) 22%, transparent) 3px 5px
-    );
+    background-color: var(--nb-sunken-3);
   }
 
-  /* Animated barber pole for in-flight long operations. */
+  /* Soft moving stripe for in-flight long operations, in the accent. */
   .nb-progress-stripes {
-    background-image: repeating-linear-gradient(-45deg, var(--nb-ink) 0 6px, transparent 6px 14px);
+    background-image: repeating-linear-gradient(-45deg, var(--nb-select) 0 6px, color-mix(in srgb, var(--nb-select) 55%, var(--nb-paper-3)) 6px 14px);
     background-size: 28px 100%;
   }
 

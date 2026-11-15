@@ -173,7 +173,7 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
       {/* Trigger Button in Top Studio Bar */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="text-[11px] font-mono px-2.5 py-1 bg-paper-3 hover:bg-sunken border-2 border-ink text-ink font-bold flex items-center gap-1.5 shadow transition-all shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+        className="text-xs font-mono px-2.5 py-1 bg-paper-3 hover:bg-sunken border border-line text-ink font-semibold flex items-center gap-1.5 transition-all"
         title="Open Unified Live Agent Trace & Telemetry Timeline"
       >
         <span
@@ -190,7 +190,7 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
         <Bot size={12} />
         <span>Agent Trace</span>
         {steps.length > 0 && (
-          <span className="ml-0.5 px-1 py-0.2 bg-sunken text-ink text-[9px] border border-ink font-bold">
+          <span className="ml-0.5 px-1 py-0.2 bg-sunken text-ink text-xs border border-line font-semibold">
             {steps.length}
           </span>
         )}
@@ -198,14 +198,14 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
 
       {/* Slide-Down Inspector Panel */}
       {isOpen && (
-        <div className="absolute right-0 top-9 w-[460px] max-h-[580px] bg-paper-3 border-2 border-ink shadow-nb z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 top-9 w-[460px] max-h-[580px] bg-paper-3 border border-line z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
           {/* Panel Header */}
-          <div className="p-3 bg-paper-2 border-b-2 border-ink flex items-center justify-between shrink-0">
+          <div className="p-3 bg-paper-2 border-b border-line flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <Bot size={14} className="text-ink" />
-              <span className="text-xs font-bold text-ink">AGENT TRACE</span>
+              <span className="text-xs font-semibold text-ink">AGENT TRACE</span>
               <span
-                className={`text-[9px] font-mono border-2 border-ink px-1.5 py-0.5 font-bold flex items-center gap-1 shadow-nb-xs ${
+                className={`text-xs font-mono border border-line px-1.5 py-0.5 font-semibold flex items-center gap-1 ${
                   connectionState === "connected"
                     ? "bg-success/25 text-ink"
                     : connectionState === "connecting"
@@ -236,7 +236,7 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
               {steps.length > 0 && (
                 <button
                   onClick={handleClear}
-                  className="text-ink-soft hover:text-ink hover:bg-sunken text-[10px] font-mono px-1.5 py-0.5 border border-ink/40 flex items-center gap-1 shadow-nb-xs"
+                  className="text-ink-soft hover:text-ink hover:bg-sunken text-xs font-mono px-1.5 py-0.5 border border-line flex items-center gap-1"
                   title="Clear trace history"
                 >
                   <Trash2 size={10} />
@@ -254,7 +254,7 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
           </div>
 
           {/* Filter Bar */}
-          <div className="px-3 py-1.5 bg-sunken border-b-2 border-ink flex items-center gap-1 text-[10px] font-mono overflow-x-auto shrink-0">
+          <div className="px-3 py-1.5 bg-sunken border-b border-line flex items-center gap-1 text-xs font-mono overflow-x-auto shrink-0">
             <span className="text-ink-soft mr-1">Filter:</span>
             {[
               { key: "all", label: "All" },
@@ -265,10 +265,10 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
               <button
                 key={tab.key}
                 onClick={() => setActiveFilter(tab.key)}
-                className={`px-2 py-0.5 border text-[10px] transition-colors ${
+                className={`px-2 py-0.5 border text-xs transition-colors ${
                   activeFilter === tab.key
-                    ? "bg-primary border-ink font-bold text-ink shadow-nb-xs"
-                    : "bg-paper-3 border-ink/40 text-ink-soft hover:text-ink"
+                    ? "bg-primary border-line font-semibold text-select-ink"
+                    : "bg-paper-3 border-line text-ink-soft hover:text-ink"
                 }`}
               >
                 {tab.label}
@@ -280,15 +280,15 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
           <div className="p-3.5 flex flex-col gap-3 overflow-y-auto font-mono text-xs max-h-[460px]">
             {filteredSteps.length === 0 ? (
               /* Honest Empty State */
-              <div className="p-6 bg-paper-2 border-2 border-ink text-center flex flex-col items-center justify-center gap-2.5 shadow-nb-sm my-2">
-                <div className="p-2.5 bg-sunken border-2 border-ink rounded-full text-ink">
+              <div className="p-6 bg-paper-2 border border-line text-center flex flex-col items-center justify-center gap-2.5 my-2">
+                <div className="p-2.5 bg-sunken border border-line rounded-full text-ink">
                   <Activity size={20} />
                 </div>
-                <div className="font-bold text-ink text-xs">No Activity Recorded Yet</div>
-                <p className="text-[11px] text-ink-soft font-sans max-w-[320px] leading-relaxed">
+                <div className="font-semibold text-ink text-xs">No Activity Recorded Yet</div>
+                <p className="text-xs text-ink-soft font-sans max-w-[320px] leading-relaxed">
                   Real-time trace telemetry from the connected coding agent, neural voiceover, AI video edits, and invariant checks will appear here automatically.
                 </p>
-                <div className="text-[10px] font-mono text-ink bg-sunken border border-ink px-2 py-1 shadow-nb-xs">
+                <div className="text-xs font-mono text-ink bg-sunken border border-line px-2 py-1">
                   Listening on /api/agent/trace
                 </div>
               </div>
@@ -298,45 +298,45 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
                 return (
                   <div
                     key={step.id}
-                    className={`bg-paper-3 border-2 border-ink p-2.5 flex flex-col gap-1.5 shadow-nb-sm transition-all ${
-                      step.status === "running" ? "border-info shadow-nb" : ""
+                    className={`bg-paper-3 border border-line p-2.5 flex flex-col gap-1.5 transition-all ${
+                      step.status === "running" ? "border-info" : ""
                     }`}
                   >
                     {/* Header line: Phase + Source + Status */}
                     <div className="flex items-center justify-between gap-1.5">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[9px] font-mono font-bold bg-sunken border border-ink px-1.5 py-0.5 text-ink flex items-center gap-1 shadow-nb-xs">
+                        <span className="text-xs font-mono font-semibold bg-sunken border border-line px-1.5 py-0.5 text-ink flex items-center gap-1">
                           {getPhaseIcon(step.phase, step.source)}
                           {step.source === "agent" ? "AGENT" : step.phase.toUpperCase()}
                         </span>
-                        <span className="font-bold text-ink text-[11px] truncate max-w-[240px]">
+                        <span className="font-semibold text-ink text-xs truncate max-w-[240px]">
                           {step.title}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
                         {step.status === "done" && (
-                          <span className="text-[9px] text-ink bg-success/25 border-2 border-ink px-1.5 py-0.5 font-bold flex items-center gap-1 shadow-nb-xs">
+                          <span className="text-xs text-ink bg-success/25 border border-line px-1.5 py-0.5 font-semibold flex items-center gap-1">
                             <Check size={9} /> DONE
                           </span>
                         )}
                         {step.status === "running" && (
-                          <span className="text-[9px] text-ink bg-info/25 border-2 border-ink px-1.5 py-0.5 font-bold flex items-center gap-1 shadow-nb-xs animate-pulse">
+                          <span className="text-xs text-ink bg-info/25 border border-line px-1.5 py-0.5 font-semibold flex items-center gap-1 animate-pulse">
                             <Loader2 size={9} className="animate-spin" /> RUNNING
                           </span>
                         )}
                         {step.status === "corrected" && (
-                          <span className="text-[9px] text-ink bg-select/25 border-2 border-ink px-1.5 py-0.5 font-bold flex items-center gap-1 shadow-nb-xs">
+                          <span className="text-xs text-ink bg-select/25 border border-line px-1.5 py-0.5 font-semibold flex items-center gap-1">
                             <Sparkles size={9} /> REPAIRED
                           </span>
                         )}
                         {step.status === "failed" && (
-                          <span className="text-[9px] text-ink bg-danger/25 border-2 border-ink px-1.5 py-0.5 font-bold flex items-center gap-1 shadow-nb-xs">
+                          <span className="text-xs text-ink bg-danger/25 border border-line px-1.5 py-0.5 font-semibold flex items-center gap-1">
                             <AlertTriangle size={9} /> FAILED
                           </span>
                         )}
                         {step.status === "pending" && (
-                          <span className="text-[9px] text-ink bg-warn/25 border-2 border-ink px-1.5 py-0.5 font-bold flex items-center gap-1 shadow-nb-xs">
+                          <span className="text-xs text-ink bg-warn/25 border border-line px-1.5 py-0.5 font-semibold flex items-center gap-1">
                             <Clock size={9} /> QUEUED
                           </span>
                         )}
@@ -345,14 +345,14 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
 
                     {/* Step Description */}
                     {step.description && (
-                      <p className="text-[10px] text-ink font-sans leading-relaxed">
+                      <p className="text-xs text-ink font-sans leading-relaxed">
                         {step.description}
                       </p>
                     )}
 
                     {/* Technical details or code calls */}
                     {step.details && step.details.length > 0 && (
-                      <div className="bg-sunken p-2 text-[9px] text-ink-soft font-mono flex flex-col gap-1 border-2 border-ink shadow-nb-xs">
+                      <div className="bg-sunken p-2 text-xs text-ink-soft font-mono flex flex-col gap-1 border border-line">
                         {step.details.map((d, i) => (
                           <div key={i} className="text-ink break-all">
                             {d}
@@ -363,13 +363,13 @@ export const AgentActivityInspector: React.FC<AgentActivityInspectorProps> = ({ 
 
                     {/* Error message display */}
                     {step.error && (
-                      <div className="bg-danger/10 border border-danger/40 p-1.5 text-[9px] text-danger-text font-mono">
+                      <div className="bg-danger/10 border border-danger/40 p-1.5 text-xs text-danger-text font-mono">
                         {step.error}
                       </div>
                     )}
 
                     {/* Timestamp & Duration Footer */}
-                    <div className="flex items-center justify-between text-[9px] text-ink-soft pt-0.5 border-t border-ink/20">
+                    <div className="flex items-center justify-between text-xs text-ink-soft pt-0.5 border-t border-line">
                       <span>{step.filmId ? `film: ${step.filmId}` : ""}</span>
                       <div className="flex items-center gap-2">
                         {duration && <span>{duration}</span>}

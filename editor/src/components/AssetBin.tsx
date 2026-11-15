@@ -179,10 +179,10 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot }) => {
                     title={`${asset.filename}\nDrag onto a lane, or use Add to timeline to drop it at the playhead.`}
                   >
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center border-2 border-ink bg-sunken">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-line bg-sunken">
                         <Icon className="h-3 w-3" />
                       </span>
-                      <span className="min-w-0 flex-1 truncate font-sans text-[11px] font-bold">
+                      <span className="min-w-0 flex-1 truncate font-sans text-xs font-semibold">
                         {asset.filename}
                       </span>
                     </div>
@@ -192,7 +192,7 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot }) => {
                           {asset.type}
                         </Badge>
                         {asset.sizeBytes ? (
-                          <span className="font-mono text-[9px] text-ink-mute">{formatSize(asset.sizeBytes)}</span>
+                          <span className="font-mono text-xs text-ink-mute">{formatSize(asset.sizeBytes)}</span>
                         ) : null}
                       </span>
                       <Button
@@ -212,7 +212,7 @@ export const AssetBin: React.FC<AssetBinProps> = ({ onInsertAssetAsShot }) => {
         )}
       </div>
 
-      <p className="shrink-0 border-t-2 border-ink bg-paper px-2 py-1.5 font-sans text-[10px] leading-snug text-ink-mute">
+      <p className="shrink-0 border-t border-line bg-paper px-2 py-1.5 font-sans text-xs leading-snug text-ink-mute">
         Drag a row onto any lane to place it at that exact time, or press Add to drop it at the playhead.
       </p>
     </div>

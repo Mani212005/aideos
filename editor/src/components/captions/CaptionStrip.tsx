@@ -73,15 +73,15 @@ export function CaptionStrip({
   return (
     <div
       data-caption-bar
-      className="flex min-h-[44px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-t-2 border-ink bg-paper-2 px-3 py-1.5"
+      className="flex min-h-[44px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-line bg-paper-2 px-3 py-1.5"
     >
       <Subtitles aria-hidden className="h-4 w-4 shrink-0 text-ink" />
       <p
         role={showingWarning ? "status" : undefined}
         title={showingWarning ? warningDetail : undefined}
-        className={`min-w-0 flex-1 font-sans text-[11px] leading-snug ${showingWarning ? "text-danger-text" : selected ? "text-ink" : "text-ink-soft"}`}
+        className={`min-w-0 flex-1 font-sans text-xs leading-snug ${showingWarning ? "text-danger-text" : selected ? "text-ink" : "text-ink-soft"}`}
       >
-        {selected ? <strong className="font-bold">{formatName} captions: </strong> : null}
+        {selected ? <strong className="font-semibold">{formatName} captions: </strong> : null}
         {message}
       </p>
       {selected ? (

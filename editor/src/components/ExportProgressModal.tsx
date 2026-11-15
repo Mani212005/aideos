@@ -181,7 +181,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
   } else {
     footer = (
       <>
-        <span className="mr-auto font-mono text-[11px] text-ink-soft">
+        <span className="mr-auto font-mono text-xs text-ink-soft">
           The cross only hides this dialog.
         </span>
         <Button size="md" tone="danger" onClick={onCancel}>
@@ -256,18 +256,18 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
                 <li
                   key={step.id}
                   className={cn(
-                    "flex items-start gap-2 border-2 border-ink px-2.5 py-1.5",
+                    "flex items-start gap-2 border border-line px-2.5 py-1.5",
                     state === "done" ? "bg-success" : state === "active" ? "bg-primary" : "bg-paper-3",
                   )}
                 >
-                  <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center border-2 border-ink bg-paper-3 font-mono text-[9px] font-bold">
+                  <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center border border-line bg-paper-3 font-mono text-xs font-semibold">
                     {state === "done" ? <Check className="h-2.5 w-2.5" /> : i + 1}
                   </span>
                   <span className="min-w-0">
-                    <span className="block font-sans text-[11px] font-extrabold uppercase tracking-[0.04em] text-ink">
+                    <span className="block font-sans text-xs font-semibold text-ink">
                       {step.title}
                     </span>
-                    <span className="block font-sans text-[10px] leading-snug text-ink-soft">{step.desc}</span>
+                    <span className="block font-sans text-xs leading-snug text-ink-soft">{step.desc}</span>
                   </span>
                 </li>
               );
@@ -275,7 +275,7 @@ export const ExportProgressModal: React.FC<ExportProgressModalProps> = ({
           </ol>
         ) : null}
 
-        <div className="border-2 border-ink bg-paper-3 p-2.5">
+        <div className="border border-line bg-paper-3 p-2.5">
           <Stat label="Output" value={facts.format === "long" ? "1920 x 1080" : "1080 x 1920"} />
           <Stat label="Frame rate" value={`${facts.fps} fps`} />
           <Stat label="Frames" value={total.toLocaleString()} />

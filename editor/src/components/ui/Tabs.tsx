@@ -1,6 +1,6 @@
 /**
  * File Description: Navigation primitives for the Aideos editor chrome.
- * SegmentedTabs is the horizontal slab switcher used for panel and sub-view modes; RailTab is the
+ * SegmentedTabs is the horizontal segmented switcher used for panel and sub-view modes; RailTab is the
  * vertical stage tab used by the single left navigation rail. Both share the same selected
  * treatment so "where am I" reads identically on either navigation surface.
  * Inputs and outputs: tab items, active key, and onChange -> tabbed navigation header.
@@ -28,7 +28,7 @@ export interface SegmentedTabsProps<T extends string> {
   ariaLabel?: string;
 }
 
-/** Horizontal slab switcher where the active segment is filled with the selection accent. */
+/** Horizontal segmented switcher where the active segment is filled with the accent. */
 export function SegmentedTabs<T extends string>({
   items,
   value,
@@ -41,7 +41,7 @@ export function SegmentedTabs<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn("inline-flex shrink-0 items-stretch border-2 border-ink bg-paper-3 shadow-nb-sm", className)}
+      className={cn("inline-flex shrink-0 items-stretch overflow-hidden rounded-lg border border-line bg-paper-3", className)}
     >
       {items.map((item, idx) => {
         const isActive = item.value === value;
@@ -54,16 +54,16 @@ export function SegmentedTabs<T extends string>({
             title={item.title ?? item.label}
             onClick={() => onChange(item.value)}
             className={cn(
-              "inline-flex items-center gap-1.5 whitespace-nowrap font-sans font-bold uppercase leading-none tracking-[0.06em]",
+              "inline-flex items-center gap-1.5 whitespace-nowrap font-sans font-semibold leading-none",
               "transition-colors duration-nb ease-nb",
-              size === "sm" ? "px-2.5 py-1.5 text-[10px]" : "px-3 py-2 text-[11px]",
-              idx > 0 && "border-l-2 border-ink",
-              isActive ? "bg-select text-select-ink" : "text-ink-soft hover:bg-primary hover:text-ink",
+              size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-xs",
+              idx > 0 && "border-l border-line",
+              isActive ? "bg-select text-select-ink" : "text-ink-soft hover:bg-sunken hover:text-ink",
             )}
           >
             {item.icon}
             <span>{item.label}</span>
-            {item.suffix ? <span className="font-mono text-[9px] opacity-80">{item.suffix}</span> : null}
+            {item.suffix ? <span className="font-mono text-xs opacity-80">{item.suffix}</span> : null}
           </button>
         );
       })}
@@ -98,16 +98,16 @@ export function RailTab({ label, icon, active, onClick, title, flag = "none", in
       title={title ?? label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex w-full flex-col items-center gap-1 border-b-2 border-ink py-2.5",
-        "font-sans text-[9px] font-extrabold uppercase leading-none tracking-[0.08em]",
+        "relative flex w-full flex-col items-center gap-1 border-b border-line py-2.5",
+        "font-sans text-xs font-semibold leading-none",
         "transition-colors duration-nb ease-nb",
-        active ? "bg-select text-select-ink" : "bg-paper-2 text-ink-soft hover:bg-primary hover:text-ink",
+        active ? "bg-select text-select-ink" : "bg-paper-2 text-ink-soft hover:bg-sunken hover:text-ink",
       )}
     >
       {typeof index === "number" ? (
         <span
           className={cn(
-            "absolute left-1 top-1 font-mono text-[8px] leading-none",
+            "absolute left-1 top-1 font-mono text-xs leading-none",
             active ? "text-select-ink/70" : "text-ink-mute",
           )}
         >
@@ -115,7 +115,7 @@ export function RailTab({ label, icon, active, onClick, title, flag = "none", in
         </span>
       ) : null}
       {flag !== "none" ? (
-        <span className={cn("absolute right-1 top-1 h-2 w-2 border border-ink", FLAG_CLASS[flag])} />
+        <span className={cn("absolute right-1 top-1 h-2 w-2 rounded-full", FLAG_CLASS[flag])} />
       ) : null}
       {icon}
       <span>{label}</span>

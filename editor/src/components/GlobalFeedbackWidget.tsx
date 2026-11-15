@@ -224,11 +224,11 @@ export function GlobalFeedbackWidget({
   return (
     <div className="fixed bottom-4 right-4 z-[95] font-sans">
       {isOpen ? (
-        <div className="mb-2 flex h-[min(560px,70vh)] w-[min(380px,92vw)] flex-col border-3 border-ink bg-paper-2 shadow-nb-xl">
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b-2 border-ink bg-primary px-3 py-2">
+        <div className="mb-2 flex h-[min(560px,70vh)] w-[min(380px,92vw)] flex-col border border-line bg-paper-2 ">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-select-tint px-3 py-2">
             <div className="flex min-w-0 items-center gap-2">
               <Bot className="h-4 w-4 shrink-0 text-ink" />
-              <span className="truncate font-sans text-[12px] font-extrabold uppercase tracking-[0.06em] text-ink">
+              <span className="truncate font-sans text-xs font-semibold text-ink">
                 AI assistant
               </span>
               <Badge tone="neutral" title="What the assistant can see right now">
@@ -254,16 +254,16 @@ export function GlobalFeedbackWidget({
                 >
                   <div
                     className={cn(
-                      "max-w-[86%] border-2 border-ink px-2.5 py-1.5 shadow-nb-xs",
+                      "max-w-[86%] border border-line px-2.5 py-1.5",
                       msg.sender === "user" ? "bg-select text-select-ink" : "bg-paper-3 text-ink",
                     )}
                   >
-                    <p className="whitespace-pre-wrap break-words font-sans text-[11px] leading-relaxed">
+                    <p className="whitespace-pre-wrap break-words font-sans text-xs leading-relaxed">
                       {msg.text}
                     </p>
                     <p
                       className={cn(
-                        "mt-1 font-mono text-[9px] tabular-nums",
+                        "mt-1 font-mono text-xs tabular-nums",
                         msg.sender === "user" ? "text-ink/75" : "text-ink-mute",
                       )}
                     >
@@ -275,7 +275,7 @@ export function GlobalFeedbackWidget({
               ))}
               {isTyping ? (
                 <li className="flex justify-start">
-                  <div className="border-2 border-ink bg-paper-3 px-2.5 py-1.5 text-ink shadow-nb-xs">
+                  <div className="border border-line bg-paper-3 px-2.5 py-1.5 text-ink">
                     <Spinner label="Thinking" />
                   </div>
                 </li>
@@ -284,7 +284,7 @@ export function GlobalFeedbackWidget({
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="shrink-0 border-t-2 border-ink bg-paper p-2">
+          <div className="shrink-0 border-t border-line bg-paper p-2">
             <div className="mb-2 flex flex-wrap gap-1">
               {QUICK_PROMPTS.map((prompt) => (
                 <Card
@@ -293,7 +293,7 @@ export function GlobalFeedbackWidget({
                   onClick={() => handleChipClick(prompt)}
                   aria-disabled={isLoading}
                   tabIndex={isLoading ? -1 : 0}
-                  className="px-1.5 py-0.5 font-sans text-[10px] font-bold"
+                  className="px-1.5 py-0.5 font-sans text-xs font-semibold"
                 >
                   {prompt}
                 </Card>
@@ -319,7 +319,7 @@ export function GlobalFeedbackWidget({
           tone={isOpen ? "default" : "select"}
           onClick={() => setIsOpen(!isOpen)}
           disabled={isLoading}
-          className="shadow-nb"
+          className=""
           aria-label={isOpen ? "Close the AI assistant" : "Open the AI assistant"}
           title={isOpen ? "Close the AI assistant" : "Open the AI assistant"}
         >

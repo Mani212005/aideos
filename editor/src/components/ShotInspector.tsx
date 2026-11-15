@@ -108,7 +108,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
 
   return (
     <div className="flex flex-col gap-3 font-sans select-none text-xs text-ink">
-      <div className="border-2 border-ink bg-paper-2 p-2 font-mono text-[10px]">
+      <div className="border border-line bg-paper-2 p-2 font-mono text-xs">
         <strong>Caption placement</strong>
         {(["long", "reel"] as const).map((format) => {
           const card = resolveCaptionPlacement(film, format, shot.id);
@@ -117,13 +117,13 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
         })}
       </div>
       {/* HEADER: Shot Identity, Number & Quick Actions */}
-      <div className="flex items-center justify-between bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
+      <div className="flex items-center justify-between bg-paper-3 p-2.5 border border-line">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-[10px] bg-select text-select-ink px-2 py-0.5 font-bold shrink-0">
+          <span className="font-mono text-xs bg-select text-select-ink px-2 py-0.5 font-semibold shrink-0">
             Shot {shotIndex + 1}
           </span>
           <span
-            className="font-mono font-bold text-ink text-xs truncate"
+            className="font-mono font-semibold text-ink text-xs truncate"
             title={shot.id}
           >
             {shot.id}
@@ -151,12 +151,12 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
       </div>
 
       {/* SEGMENTED TAB SELECTOR (Visuals / Timing / Narration) */}
-      <div className="grid grid-cols-3 bg-paper-3 p-1 border-2 border-ink shadow-nb-sm">
+      <div className="grid grid-cols-3 bg-paper-3 p-1 border border-line">
         <button
           onClick={() => setActiveTab("visuals")}
-          className={`py-1.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`py-1.5 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === "visuals"
-              ? "bg-select text-select-ink shadow"
+              ? "bg-select text-select-ink"
               : "text-ink-soft hover:text-ink"
           }`}
         >
@@ -166,9 +166,9 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
 
         <button
           onClick={() => setActiveTab("timing")}
-          className={`py-1.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`py-1.5 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === "timing"
-              ? "bg-select text-select-ink shadow"
+              ? "bg-select text-select-ink"
               : "text-ink-soft hover:text-ink"
           }`}
         >
@@ -178,9 +178,9 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
 
         <button
           onClick={() => setActiveTab("narration")}
-          className={`py-1.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`py-1.5 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
             activeTab === "narration"
-              ? "bg-select text-select-ink shadow"
+              ? "bg-select text-select-ink"
               : "text-ink-soft hover:text-ink"
           }`}
         >
@@ -195,24 +195,24 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
           <ShotDesignPanel key={shot.id} film={film} shot={shot} onApply={(update, label) => onUpdateShot(shotIndex, update, label)} />
 
           {/* Render Mode Selector Cards */}
-          <div className="flex flex-col gap-1.5 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
-            <label className="text-[10px] font-mono text-ink-soft font-bold uppercase tracking-wider">
+          <div className="flex flex-col gap-1.5 bg-paper-3 p-2.5 border border-line">
+            <label className="text-xs font-mono text-ink-soft font-semibold">
               Render Mode
             </label>
             <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => setRenderMode("standard")}
-                className={`p-2 border-2 border-ink text-left flex items-center gap-2 transition-all cursor-pointer ${
+                className={`p-2 border border-line text-left flex items-center gap-2 transition-all cursor-pointer ${
                   renderMode === "standard"
-                    ? "bg-select/20 border-select text-ink shadow-nb-sm-nb-sm"
-                    : "bg-paper-3 border-2 border-ink text-ink-soft hover:border-ink hover:text-ink"
+                    ? "bg-select/20 border-select text-ink"
+                    : "bg-paper-3 border border-line text-ink-soft hover:border-line hover:text-ink"
                 }`}
               >
                 <Type className="w-4 h-4 text-ink shrink-0" />
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-[11px]">Standard</span>
-                  <span className="text-[9px] opacity-70 truncate">
+                  <span className="font-semibold text-xs">Standard</span>
+                  <span className="text-xs opacity-70 truncate">
                     Pure Typography
                   </span>
                 </div>
@@ -221,16 +221,16 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
               <button
                 type="button"
                 onClick={() => setRenderMode("b-roll")}
-                className={`p-2 border-2 border-ink text-left flex items-center gap-2 transition-all cursor-pointer ${
+                className={`p-2 border border-line text-left flex items-center gap-2 transition-all cursor-pointer ${
                   renderMode === "b-roll"
-                    ? "bg-select/20 border-select text-ink shadow-nb-sm-nb-sm"
-                    : "bg-paper-3 border-2 border-ink text-ink-soft hover:border-ink hover:text-ink"
+                    ? "bg-select/20 border-select text-ink"
+                    : "bg-paper-3 border border-line text-ink-soft hover:border-line hover:text-ink"
                 }`}
               >
                 <FilmIcon className="w-4 h-4 text-ink shrink-0" />
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-[11px]">B-Roll</span>
-                  <span className="text-[9px] opacity-70 truncate">
+                  <span className="font-semibold text-xs">B-Roll</span>
+                  <span className="text-xs opacity-70 truncate">
                     Cinematic Footage
                   </span>
                 </div>
@@ -239,15 +239,15 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
           </div>
 
           {/* Camera Motion & Transition */}
-          <div className="flex flex-col gap-2.5 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
-            <label className="text-[10px] font-mono text-ink font-bold uppercase tracking-wider">
+          <div className="flex flex-col gap-2.5 bg-paper-3 p-2.5 border border-line">
+            <label className="text-xs font-mono text-ink font-semibold">
               Camera & Scene Dynamics
             </label>
 
             {/* Motion */}
             <div className="grid grid-cols-2 gap-1.5">
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] text-ink-soft">Motion</span>
+                <span className="text-xs text-ink-soft">Motion</span>
                 <select
                   value={shot.move || "cut"}
                   onChange={(e) =>
@@ -257,7 +257,7 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                       `Set camera motion to ${e.target.value}`,
                     )
                   }
-                  className="bg-sunken border-2 border-ink px-2 py-1 text-xs text-ink outline-none shadow-nb-sm"
+                  className="bg-sunken border border-line px-2 py-1 text-xs text-ink outline-none"
                 >
                   {MOTIONS.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -287,8 +287,8 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
             />
 
             {/* Cinematic Drift Toggle */}
-            <div className="flex items-center justify-between pt-1 border-t-2 border-ink">
-              <span className="text-[11px] text-ink">Cinematic Drift</span>
+            <div className="flex items-center justify-between pt-1 border-t border-line">
+              <span className="text-xs text-ink">Cinematic Drift</span>
               <input
                 type="checkbox"
                 checked={shot.drift ?? true}
@@ -310,12 +310,12 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
       {activeTab === "timing" && (
         <div className="flex flex-col gap-3">
           {/* Duration & Position Cards */}
-          <div className="flex flex-col gap-2.5 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
+          <div className="flex flex-col gap-2.5 bg-paper-3 p-2.5 border border-line">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-mono text-ink font-bold uppercase tracking-wider">
+              <label className="text-xs font-mono text-ink font-semibold">
                 Shot Duration
               </label>
-              <span className="font-mono text-ink font-bold text-xs bg-sunken px-2 py-0.5 ">
+              <span className="font-mono text-ink font-semibold text-xs bg-sunken px-2 py-0.5">
                 {dur.toFixed(2)}s ({Math.round(dur * fps)}f)
               </span>
             </div>
@@ -339,22 +339,22 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
             />
 
             {/* Timeline Start Position */}
-            <div className="flex items-center justify-between text-[11px] text-ink-soft pt-1 border-t-2 border-ink">
+            <div className="flex items-center justify-between text-xs text-ink-soft pt-1 border-t border-line">
               <span>Timeline Position (Start)</span>
-              <span className="font-mono text-ink font-bold">
+              <span className="font-mono text-ink font-semibold">
                 {pos.toFixed(2)}s
               </span>
             </div>
           </div>
 
           {/* Speaker Speed Control Bar */}
-          <div className="flex flex-col gap-2 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
+          <div className="flex flex-col gap-2 bg-paper-3 p-2.5 border border-line">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-mono text-ink font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <label className="text-xs font-mono text-ink font-semibold flex items-center gap-1.5">
                 <Mic className="w-3 h-3 text-ink" />
                 <span>Playback Speed</span>
               </label>
-              <span className="font-mono text-ink font-bold text-xs bg-sunken px-2 py-0.5 ">
+              <span className="font-mono text-ink font-semibold text-xs bg-sunken px-2 py-0.5">
                 {(shot.speed ?? 1.0).toFixed(2)}x
               </span>
             </div>
@@ -386,9 +386,9 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
                       `Set speed to ${preset}x`,
                     )
                   }
-                  className={`flex-1 py-1 text-[10px] font-mono transition-colors cursor-pointer ${
+                  className={`flex-1 py-1 text-xs font-mono transition-colors cursor-pointer ${
                     Math.abs((shot.speed ?? 1.0) - preset) < 0.01
-                      ? "bg-primary text-ink font-bold"
+                      ? "bg-primary text-select-ink font-semibold"
                       : "bg-paper-3 text-ink-soft hover:text-ink"
                   }`}
                 >
@@ -402,12 +402,12 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
 
       {/* TAB 3: NARRATION */}
       {activeTab === "narration" && (
-        <div className="flex flex-col gap-2.5 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
+        <div className="flex flex-col gap-2.5 bg-paper-3 p-2.5 border border-line">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] font-mono text-ink font-bold uppercase tracking-wider">
+            <label className="text-xs font-mono text-ink font-semibold">
               Screenplay Narration
             </label>
-            <span className="text-[10px] text-ink-soft font-mono">
+            <span className="text-xs text-ink-soft font-mono">
               {(shot.scriptText || "").split(/\s+/).filter(Boolean).length}{" "}
               words
             </span>
@@ -424,10 +424,10 @@ export const ShotInspector: React.FC<ShotInspectorProps> = ({
               )
             }
             placeholder="Enter spoken narration for this shot..."
-            className="w-full bg-sunken border-2 border-ink p-2.5 text-xs text-ink outline-none resize-none focus:border-2 border-ink leading-relaxed font-sans shadow-nb-sm"
+            className="w-full bg-sunken border border-line p-2.5 text-xs text-ink outline-none resize-none focus:border border-line leading-relaxed font-sans"
           />
 
-          <p className="text-[10px] text-ink-soft leading-normal flex items-center gap-1.5">
+          <p className="text-xs text-ink-soft leading-normal flex items-center gap-1.5">
             <Sparkles className="w-3 h-3 text-ink shrink-0" />
             <span>
               Words align with audio to generate phrase-locked subtitles.

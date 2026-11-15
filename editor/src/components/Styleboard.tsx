@@ -138,13 +138,13 @@ function renderBlockPreview(block: Block, accent: string) {
       return (
         <div className="py-1">
           <div
-            className={`font-bold text-ink tracking-tight ${block.size === "display" ? "text-base" : "text-sm"}`}
+            className={`font-semibold text-ink tracking-tight ${block.size === "display" ? "text-base" : "text-sm"}`}
           >
             {block.text}
           </div>
           {block.accentWord && (
             <div
-              className="text-[11px] font-mono mt-0.5"
+              className="text-xs font-mono mt-0.5"
               style={{ color: accent }}
             >
               Key Accent:{" "}
@@ -163,22 +163,22 @@ function renderBlockPreview(block: Block, accent: string) {
 
     case "Kicker":
       return (
-        <span className="text-[10px] font-mono uppercase tracking-widest text-ink-soft bg-paper-3 px-2 py-0.5 border-2 border-ink shadow-nb-sm">
+        <span className="text-xs font-mono text-ink-soft bg-paper-3 px-2 py-0.5 border border-line">
           {block.text}
         </span>
       );
 
     case "StatCounter":
       return (
-        <div className="flex items-baseline gap-2 bg-paper-3 p-2.5 border-2 border-ink shadow-nb-sm">
+        <div className="flex items-baseline gap-2 bg-paper-3 p-2.5 border border-line">
           <span
-            className="text-xl font-bold font-mono"
+            className="text-lg font-semibold font-mono"
             style={{ color: accent }}
           >
             {block.to}
             {block.suffix || ""}
           </span>
-          <span className="text-xs text-ink-soft uppercase tracking-wider">
+          <span className="text-xs text-ink-soft">
             {block.label}
           </span>
         </div>
@@ -186,11 +186,11 @@ function renderBlockPreview(block: Block, accent: string) {
 
     case "TokenStrip":
       return (
-        <div className="flex flex-wrap gap-1 bg-paper-3 p-2 border-2 border-ink shadow-nb-sm">
+        <div className="flex flex-wrap gap-1 bg-paper-3 p-2 border border-line">
           {block.tokens.slice(0, 6).map((tok, i) => (
             <span
               key={i}
-              className="text-[10px] font-mono px-1.5 py-0.5 border"
+              className="text-xs font-mono px-1.5 py-0.5 border"
               style={{
                 borderColor: i === 0 ? accent : "#333",
                 backgroundColor: i === 0 ? `${accent}20` : "#1A1A22",
@@ -201,7 +201,7 @@ function renderBlockPreview(block: Block, accent: string) {
             </span>
           ))}
           {block.tokens.length > 6 && (
-            <span className="text-[10px] text-ink-soft font-mono self-center">
+            <span className="text-xs text-ink-soft font-mono self-center">
               +{block.tokens.length - 6} more
             </span>
           )}
@@ -210,12 +210,12 @@ function renderBlockPreview(block: Block, accent: string) {
 
     case "MatrixGrid":
       return (
-        <div className="bg-paper-3 p-2 border-2 border-ink flex items-center justify-between shadow-nb-sm">
+        <div className="bg-paper-3 p-2 border border-line flex items-center justify-between">
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((cell) => (
               <div
                 key={cell}
-                className="w-4 h-4 border flex items-center justify-center text-[9px] font-mono"
+                className="w-4 h-4 border flex items-center justify-center text-xs font-mono"
                 style={{
                   borderColor: cell <= 3 ? accent : "#333",
                   backgroundColor: cell <= 3 ? `${accent}30` : "#161620",
@@ -226,7 +226,7 @@ function renderBlockPreview(block: Block, accent: string) {
               </div>
             ))}
           </div>
-          <span className="text-[10px] text-ink-soft font-mono">
+          <span className="text-xs text-ink-soft font-mono">
             KV Cache Cells
           </span>
         </div>
@@ -234,8 +234,8 @@ function renderBlockPreview(block: Block, accent: string) {
 
     case "ProgressBar":
       return (
-        <div className="w-full bg-paper-3 p-2 border-2 border-ink flex flex-col gap-1 shadow-nb-sm">
-          <div className="flex justify-between text-[10px] text-ink-soft">
+        <div className="w-full bg-paper-3 p-2 border border-line flex flex-col gap-1">
+          <div className="flex justify-between text-xs text-ink-soft">
             <span>{block.label || "Progress"}</span>
             <span className="font-mono">{Math.round(block.value * 100)}%</span>
           </div>
@@ -253,7 +253,7 @@ function renderBlockPreview(block: Block, accent: string) {
 
     default:
       return (
-        <div className="text-[11px] font-mono text-ink-soft bg-paper-3 px-2 py-1 border-2 border-ink shadow-nb-sm">
+        <div className="text-xs font-mono text-ink-soft bg-paper-3 px-2 py-1 border border-line">
           {block.c} primitive
         </div>
       );
@@ -506,10 +506,10 @@ export function Styleboard({
   return (
     <div className="w-full h-full bg-paper text-ink flex flex-col overflow-hidden font-sans">
       {/* TOP ART DIRECTION & PERSISTENCE HEADER */}
-      <div className="bg-paper-3 border-b-2 border-ink p-4 flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-nb-sm">
+      <div className="bg-paper-3 border-b border-line p-4 flex flex-wrap items-center justify-between gap-4 shrink-0">
         {/* Brand Accent Palette */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-ink-soft font-bold uppercase tracking-wider">
+          <label className="text-xs text-ink-soft font-semibold">
             Accent Token
           </label>
           <div className="flex items-center gap-2">
@@ -519,9 +519,9 @@ export function Styleboard({
                 onClick={() => {
                   onAccentChange(a.hex);
                 }}
-                className={`w-7 h-7 border-2 transition-all flex items-center justify-center ${
+                className={`w-7 h-7 border transition-all flex items-center justify-center ${
                   accent === a.hex
-                    ? "border-2 border-ink scale-110 shadow-nb-sm shadow-white/10"
+                    ? "border border-line scale-110"
                     : "border-transparent opacity-80 hover:opacity-100"
                 }`}
                 style={{ backgroundColor: a.hex }}
@@ -535,10 +535,10 @@ export function Styleboard({
 
         {/* 3D Camera Perspective Selector */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-ink-soft font-bold uppercase tracking-wider">
+          <label className="text-xs text-ink-soft font-semibold">
             Camera Perspective
           </label>
-          <div className="flex items-center gap-1.5 bg-paper-3 p-1 border-2 border-ink shadow-nb-sm">
+          <div className="flex items-center gap-1.5 bg-paper-3 p-1 border border-line">
             {CAMERA_ANGLES.map((cam) => {
               const CamIcon = cam.icon;
               return (
@@ -547,7 +547,7 @@ export function Styleboard({
                   onClick={() => handleThemeChange("cameraAngle", cam.id)}
                   className={`text-xs px-2.5 py-1 font-medium flex items-center gap-1.5 transition-all ${
                     currentCamera === cam.id
-                      ? "bg-select text-select-ink font-bold shadow"
+                      ? "bg-select text-select-ink font-semibold"
                       : "text-ink-soft hover:text-ink"
                   }`}
                   title={cam.name}
@@ -562,17 +562,17 @@ export function Styleboard({
 
         {/* Background Canvas Selector (Connected to BACKGROUND_THEMES) */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] text-ink-soft font-bold uppercase tracking-wider">
+          <label className="text-xs text-ink-soft font-semibold">
             Canvas Background
           </label>
-          <div className="flex items-center gap-1.5 bg-paper-3 p-1 border-2 border-ink shadow-nb-sm">
+          <div className="flex items-center gap-1.5 bg-paper-3 p-1 border border-line">
             {Object.values(BACKGROUND_THEMES).map((bg) => (
               <button
                 key={bg.id}
                 onClick={() => handleThemeChange("background", bg.id)}
                 className={`text-xs px-2.5 py-1 font-medium flex items-center gap-1 transition-all ${
                   currentBg === bg.id
-                    ? "bg-select text-select-ink font-bold shadow"
+                    ? "bg-select text-select-ink font-semibold"
                     : "text-ink-soft hover:text-ink"
                 }`}
                 title={bg.description}
@@ -585,12 +585,12 @@ export function Styleboard({
 
         {/* View Tabs & Save Storyboard Button */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-paper-3 p-1 border-2 border-ink shadow-nb-sm">
+          <div className="flex items-center gap-1 bg-paper-3 p-1 border border-line">
             <button
               onClick={() => setActiveTab("storyboard")}
-              className={`text-xs px-3 py-1.5 font-bold transition-all flex items-center gap-1.5 ${
+              className={`text-xs px-3 py-1.5 font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === "storyboard"
-                  ? "bg-select text-select-ink shadow"
+                  ? "bg-select text-select-ink"
                   : "text-ink-soft hover:text-ink"
               }`}
             >
@@ -598,9 +598,9 @@ export function Styleboard({
             </button>
             <button
               onClick={() => setActiveTab("primitives")}
-              className={`text-xs px-3 py-1.5 font-bold transition-all flex items-center gap-1.5 ${
+              className={`text-xs px-3 py-1.5 font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === "primitives"
-                  ? "bg-select text-select-ink shadow"
+                  ? "bg-select text-select-ink"
                   : "text-ink-soft hover:text-ink"
               }`}
             >
@@ -608,9 +608,9 @@ export function Styleboard({
             </button>
             <button
               onClick={() => setActiveTab("spatial")}
-              className={`text-xs px-3 py-1.5 font-bold transition-all flex items-center gap-1.5 ${
+              className={`text-xs px-3 py-1.5 font-semibold transition-all flex items-center gap-1.5 ${
                 activeTab === "spatial"
-                  ? "bg-select text-select-ink shadow"
+                  ? "bg-select text-select-ink"
                   : "text-ink-soft hover:text-ink"
               }`}
             >
@@ -621,10 +621,10 @@ export function Styleboard({
           <button
             onClick={handleSaveStoryboard}
             disabled={isSaving}
-            className={`px-4 py-1.5 font-bold text-xs flex items-center gap-1.5 shadow-nb-sm transition-all ${
+            className={`px-4 py-1.5 font-semibold text-xs flex items-center gap-1.5 transition-all ${
               isSaving
                 ? "bg-sunken text-ink-soft cursor-not-allowed"
-                : "bg-success hover:bg-success text-ink active:scale-95"
+                : "bg-success hover:bg-success text-select-ink active:scale-95"
             }`}
           >
             {isSaving ? (
@@ -639,7 +639,7 @@ export function Styleboard({
 
       {/* Save Toast Feedback */}
       {saveToast && (
-        <div className="mx-6 mt-4 p-3 bg-success/25 border-2 border-ink text-ink text-xs font-mono flex items-center gap-2 shadow-nb-sm animate-fade-in">
+        <div className="mx-6 mt-4 p-3 bg-success/25 border border-line text-ink text-xs font-mono flex items-center gap-2 animate-fade-in">
           <Bell size={14} /> {saveToast}
         </div>
       )}
@@ -651,7 +651,7 @@ export function Styleboard({
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-ink tracking-tight flex items-center gap-2">
+                <h3 className="text-base font-semibold text-ink tracking-tight flex items-center gap-2">
                   <FilmIcon size={16} /> Keyframe Storyboard
                 </h3>
                 <p className="text-xs text-ink-soft mt-0.5">
@@ -660,7 +660,7 @@ export function Styleboard({
               </div>
               <div className="text-xs text-ink-soft font-mono">
                 Duration:{" "}
-                <span className="text-ink font-bold">
+                <span className="text-ink font-semibold">
                   {film.shots.reduce((acc, s) => acc + s.dur, 0).toFixed(1)}s
                 </span>
               </div>
@@ -676,24 +676,24 @@ export function Styleboard({
                 return (
                   <div
                     key={shot.id}
-                    className="bg-paper-3 border-2 border-ink hover:border-select overflow-hidden shadow-nb-sm flex flex-col transition-all hover:scale-[1.01] shadow-nb-sm group"
+                    className="bg-paper-3 border border-line hover:border-select overflow-hidden flex flex-col transition-all hover:scale-[1.01] group"
                   >
                     {/* Keyframe Card Header */}
                     <div
                       onClick={() => setEditingShotIdx(idx)}
-                      className="bg-paper-3 px-4 py-2.5 border-b-2 border-ink flex items-center justify-between cursor-pointer"
+                      className="bg-paper-3 px-4 py-2.5 border-b border-line flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono font-bold bg-paper-3 text-ink px-2 py-0.5 border-2 border-ink shadow-nb-sm">
+                        <span className="text-xs font-mono font-semibold bg-paper-3 text-ink px-2 py-0.5 border border-line">
                           Shot {idx + 1}
                         </span>
-                        <span className="text-xs font-mono text-ink font-bold">
+                        <span className="text-xs font-mono text-ink font-semibold">
                           {shot.id}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono bg-paper-3 text-ink-soft px-2 py-0.5 border-2 border-ink shadow-nb-sm">
+                        <span className="text-xs font-mono bg-paper-3 text-ink-soft px-2 py-0.5 border border-line">
                           {shot.dur}s
                         </span>
                         <button
@@ -701,7 +701,7 @@ export function Styleboard({
                             e.stopPropagation();
                             setEditingShotIdx(idx);
                           }}
-                          className="text-[10px] font-mono font-bold px-2 py-0.5 bg-select hover:bg-select text-select-ink transition-colors flex items-center gap-1"
+                          className="text-xs font-mono font-semibold px-2 py-0.5 bg-select hover:bg-select text-select-ink transition-colors flex items-center gap-1"
                         >
                           <Edit3 size={10} />
                           <span>Edit</span>
@@ -711,7 +711,7 @@ export function Styleboard({
 
                     {/* Metaphor & Creative Direction Banner */}
                     <div
-                      className="px-4 py-2 flex items-center justify-between text-xs font-medium border-b-2 border-ink"
+                      className="px-4 py-2 flex items-center justify-between text-xs font-medium border-b border-line"
                       style={{
                         backgroundColor: `${metaphor.color}15`,
                         color: metaphor.color,
@@ -719,19 +719,19 @@ export function Styleboard({
                     >
                       <div className="flex items-center gap-2">
                         <metaphor.icon size={13} />
-                        <span className="font-bold">{metaphor.label}</span>
+                        <span className="font-semibold">{metaphor.label}</span>
                       </div>
 
                       {/* 1-Click Render Mode Switcher */}
-                      <div className="flex items-center gap-1 bg-sunken p-0.5 border-2 border-ink shadow-nb-sm">
+                      <div className="flex items-center gap-1 bg-sunken p-0.5 border border-line">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSetShotMode(idx, "standard");
                           }}
-                          className={`text-[10px] px-2 py-0.5 font-mono transition-all ${
+                          className={`text-xs px-2 py-0.5 font-mono transition-all ${
                             activeMode === "standard"
-                              ? "bg-paper-3 text-ink font-bold"
+                              ? "bg-paper-3 text-ink font-semibold"
                               : "text-ink-soft hover:text-ink"
                           }`}
                           title="Standard Device / Text Mode"
@@ -743,9 +743,9 @@ export function Styleboard({
                             e.stopPropagation();
                             handleSetShotMode(idx, "b-roll");
                           }}
-                          className={`text-[10px] px-2 py-0.5 font-mono transition-all flex items-center gap-1 ${
+                          className={`text-xs px-2 py-0.5 font-mono transition-all flex items-center gap-1 ${
                             activeMode === "b-roll"
-                              ? "bg-warn text-ink font-bold"
+                              ? "bg-warn text-select-ink font-semibold"
                               : "text-ink-soft hover:text-ink"
                           }`}
                           title="GPU B-Roll Scene"
@@ -757,7 +757,7 @@ export function Styleboard({
 
                     {/* B-Roll GPU Generation Live Banner */}
                     {hasBroll && (
-                      <div className="px-4 py-2 bg-paper-3 border-b-2 border-ink flex items-center justify-between text-xs">
+                      <div className="px-4 py-2 bg-paper-3 border-b border-line flex items-center justify-between text-xs">
                         {brollJobStatus[shot.id]?.state === "running" ||
                         brollJobStatus[shot.id]?.state === "queued" ? (
                           <div className="flex items-center justify-between w-full">
@@ -772,7 +772,7 @@ export function Styleboard({
                                 %
                               </span>
                             </div>
-                            <span className="text-[10px] text-ink font-mono">
+                            <span className="text-xs text-ink font-mono">
                               NVIDIA L4 · Wan2.1
                             </span>
                           </div>
@@ -800,7 +800,7 @@ export function Styleboard({
                                 handleTriggerBroll(shot.id);
                               }}
                               disabled={isTriggeringBroll[shot.id]}
-                              className="text-[10px] font-mono bg-success/20 hover:bg-success/30 text-ink px-2 py-0.5 transition-colors cursor-pointer flex items-center gap-1"
+                              className="text-xs font-mono bg-success/20 hover:bg-success/30 text-ink px-2 py-0.5 transition-colors cursor-pointer flex items-center gap-1"
                               title="Re-render footage with Wan2.1 on GPU"
                             >
                               <RotateCw size={10} /> Regenerate
@@ -817,7 +817,7 @@ export function Styleboard({
                                 handleTriggerBroll(shot.id);
                               }}
                               disabled={isTriggeringBroll[shot.id]}
-                              className="text-[10px] font-mono font-bold bg-warn hover:bg-warn text-ink px-2.5 py-0.5 transition-all shadow cursor-pointer"
+                              className="text-xs font-mono font-semibold bg-warn hover:bg-warn text-select-ink px-2.5 py-0.5 transition-all cursor-pointer"
                               title="Generate photoreal diffusion video with Wan2.1 on remote GPU"
                             >
                               {isTriggeringBroll[shot.id]
@@ -854,14 +854,14 @@ export function Styleboard({
 
                       {/* Script Narration Text Excerpt */}
                       {shot.scriptText && (
-                        <div className="mt-auto pt-2 border-t-2 border-ink text-[11px] italic text-ink-soft line-clamp-2">
+                        <div className="mt-auto pt-2 border-t border-line text-xs italic text-ink-soft line-clamp-2">
                           "{shot.scriptText}"
                         </div>
                       )}
                     </div>
 
                     {/* Card Footer: Camera & Spatial Anchoring */}
-                    <div className="bg-paper-3 px-4 py-2 border-t-2 border-ink flex items-center justify-between text-[11px] text-ink-soft">
+                    <div className="bg-paper-3 px-4 py-2 border-t border-line flex items-center justify-between text-xs text-ink-soft">
                       <div className="flex items-center gap-1.5">
                         <span>Look:</span>
                         <span className="font-mono text-ink">
@@ -888,7 +888,7 @@ export function Styleboard({
         {activeTab === "primitives" && (
           <div className="flex flex-col gap-6">
             <div>
-              <h3 className="text-base font-bold text-ink tracking-tight flex items-center gap-2">
+              <h3 className="text-base font-semibold text-ink tracking-tight flex items-center gap-2">
                 <Layers size={16} /> Primitives Specimen
               </h3>
               <p className="text-xs text-ink-soft mt-0.5">
@@ -898,17 +898,17 @@ export function Styleboard({
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Primitive 1: TextReveal */}
-              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
-                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
-                  <span className="text-xs font-mono font-bold text-ink">
+              <div className="bg-paper-3 border border-line p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-xs font-mono font-semibold text-ink">
                     01 · TextReveal
                   </span>
-                  <span className="text-[10px] text-ink-soft font-mono">
+                  <span className="text-xs text-ink-soft font-mono">
                     Display & Subhead
                   </span>
                 </div>
-                <div className="p-3 bg-paper border-2 border-ink shadow-nb-sm">
-                  <h4 className="text-base font-bold text-ink leading-snug">
+                <div className="p-3 bg-paper border border-line">
+                  <h4 className="text-base font-semibold text-ink leading-snug">
                     A model never re-reads your{" "}
                     <span
                       style={{ color: accent }}
@@ -926,25 +926,25 @@ export function Styleboard({
               </div>
 
               {/* Primitive 2: StatCounter */}
-              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
-                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
-                  <span className="text-xs font-mono font-bold text-ink">
+              <div className="bg-paper-3 border border-line p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-xs font-mono font-semibold text-ink">
                     02 · StatCounter
                   </span>
-                  <span className="text-[10px] text-ink-soft font-mono">
+                  <span className="text-xs text-ink-soft font-mono">
                     Animated Numbers
                   </span>
                 </div>
-                <div className="p-3 bg-paper border-2 border-ink flex items-center gap-3 shadow-nb-sm">
+                <div className="p-3 bg-paper border border-line flex items-center gap-3">
                   <span
-                    className="text-3xl font-mono font-extrabold"
+                    className="text-xl font-mono font-semibold"
                     style={{ color: accent }}
                   >
                     10x
                   </span>
                   <div className="text-xs">
-                    <div className="text-ink font-bold">Throughput Gain</div>
-                    <div className="text-[10px] text-ink-soft">
+                    <div className="text-ink font-semibold">Throughput Gain</div>
+                    <div className="text-xs text-ink-soft">
                       High-impact metric card
                     </div>
                   </div>
@@ -952,21 +952,21 @@ export function Styleboard({
               </div>
 
               {/* Primitive 3: MatrixGrid */}
-              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
-                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
-                  <span className="text-xs font-mono font-bold text-ink">
+              <div className="bg-paper-3 border border-line p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-xs font-mono font-semibold text-ink">
                     03 · MatrixGrid
                   </span>
-                  <span className="text-[10px] text-ink-soft font-mono">
+                  <span className="text-xs text-ink-soft font-mono">
                     Memory Allocation
                   </span>
                 </div>
-                <div className="p-3 bg-paper border-2 border-ink flex flex-col gap-2 shadow-nb-sm">
+                <div className="p-3 bg-paper border border-line flex flex-col gap-2">
                   <div className="grid grid-cols-4 gap-1.5">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((c) => (
                       <div
                         key={c}
-                        className="h-6 border flex items-center justify-center text-[10px] font-mono"
+                        className="h-6 border flex items-center justify-center text-xs font-mono"
                         style={{
                           borderColor: c <= 4 ? accent : "#333",
                           backgroundColor: c <= 4 ? `${accent}25` : "#14141C",
@@ -981,16 +981,16 @@ export function Styleboard({
               </div>
 
               {/* Primitive 4: TokenStrip */}
-              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
-                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
-                  <span className="text-xs font-mono font-bold text-ink">
+              <div className="bg-paper-3 border border-line p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-xs font-mono font-semibold text-ink">
                     04 · TokenStrip
                   </span>
-                  <span className="text-[10px] text-ink-soft font-mono">
+                  <span className="text-xs text-ink-soft font-mono">
                     Sequence IDs
                   </span>
                 </div>
-                <div className="p-3 bg-paper border-2 border-ink flex flex-wrap gap-1.5 shadow-nb-sm">
+                <div className="p-3 bg-paper border border-line flex flex-wrap gap-1.5">
                   {["Write", "a", "prompt", "about", "caching"].map(
                     (t, idx) => (
                       <span
@@ -1011,16 +1011,16 @@ export function Styleboard({
               </div>
 
               {/* Primitive 5: ProgressBar */}
-              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
-                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
-                  <span className="text-xs font-mono font-bold text-ink">
+              <div className="bg-paper-3 border border-line p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-xs font-mono font-semibold text-ink">
                     05 · ProgressBar
                   </span>
-                  <span className="text-[10px] text-ink-soft font-mono">
+                  <span className="text-xs text-ink-soft font-mono">
                     Chapter Timeline
                   </span>
                 </div>
-                <div className="p-3 bg-paper border-2 border-ink flex flex-col gap-2 shadow-nb-sm">
+                <div className="p-3 bg-paper border border-line flex flex-col gap-2">
                   <div className="flex justify-between text-xs text-ink-soft">
                     <span>Chapter 2: Decode Phase</span>
                     <span className="font-mono text-ink">65%</span>
@@ -1035,16 +1035,16 @@ export function Styleboard({
               </div>
 
               {/* Primitive 6: CodeBlock */}
-              <div className="bg-paper-3 border-2 border-ink p-5 flex flex-col gap-3 shadow-nb-sm">
-                <div className="flex items-center justify-between border-b-2 border-ink pb-2">
-                  <span className="text-xs font-mono font-bold text-ink">
+              <div className="bg-paper-3 border border-line p-5 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-line pb-2">
+                  <span className="text-xs font-mono font-semibold text-ink">
                     06 · CodeBlock
                   </span>
-                  <span className="text-[10px] text-ink-soft font-mono">
+                  <span className="text-xs text-ink-soft font-mono">
                     JetBrains Mono
                   </span>
                 </div>
-                <div className="p-3 bg-paper border-2 border-ink font-mono text-[11px] leading-relaxed text-ink shadow-nb-sm">
+                <div className="p-3 bg-paper border border-line font-mono text-xs leading-relaxed text-ink">
                   <div>
                     <span className="text-ink">const</span> kvCache ={" "}
                     <span className="text-ink">new</span> Map();
@@ -1063,7 +1063,7 @@ export function Styleboard({
         {activeTab === "spatial" && (
           <div className="flex flex-col gap-4">
             <div>
-              <h3 className="text-base font-bold text-ink tracking-tight flex items-center gap-2">
+              <h3 className="text-base font-semibold text-ink tracking-tight flex items-center gap-2">
                 <Compass size={16} /> Spatial Canvas Topology
               </h3>
               <p className="text-xs text-ink-soft mt-0.5">
@@ -1071,7 +1071,7 @@ export function Styleboard({
               </p>
             </div>
 
-            <div className="relative aspect-video max-h-[500px] bg-paper border-2 border-ink overflow-hidden flex items-center justify-center shadow-nb-sm">
+            <div className="relative aspect-video max-h-[500px] bg-paper border border-line overflow-hidden flex items-center justify-center">
               <svg
                 className="w-full h-full p-4"
                 viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`}

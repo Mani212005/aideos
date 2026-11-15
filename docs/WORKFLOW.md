@@ -125,7 +125,7 @@ Run `aideos audio fetch` once before the first design build, because the default
 
 ## 4. Interactive Web Studio Workflow (`editor/`)
 
-The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http://localhost:3002` for stable (launched with `npm run editor` or the channel launchers; see [Local releases](RELEASES.md)), presenting a 7-stage Neobrutalism editing interface:
+The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http://localhost:3002` for stable (launched with `npm run editor` or the channel launchers; see [Local releases](RELEASES.md)), presenting a 7-stage editing interface:
 
 1. **Stage 1: Script (`ScriptStage.tsx`)**: Write the story as plain paragraphs (the tagged form stays internal, and Aideos converts plain text itself, never an agent), with the agent's visual and on-screen notes as collapsible notes beside each paragraph, a visible narration change list, automatic Remotion sub-shot compilation and per-line multi-provider TTS voiceover generation that re-records only changed lines (Kokoro, Deepgram, Google Cloud TTS, macOS say).
 2. **Stage 2: Story (`StoryStage.tsx`)**: Drag and drop nodes across the 2D infinite spatial canvas, edit card labels, route directed edges, and solve camera zoom anchors, automatically streaming canvas actions to connected coding agents.

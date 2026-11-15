@@ -85,7 +85,7 @@ function CopyBlock({ text, label }: { text: string; label: string }) {
   };
   return (
     <div className="flex items-stretch gap-1.5">
-      <code className="min-w-0 flex-1 overflow-x-auto whitespace-pre border-2 border-ink bg-sunken px-2.5 py-2 font-mono text-[11px] text-ink">{text}</code>
+      <code className="min-w-0 flex-1 overflow-x-auto whitespace-pre border border-line bg-sunken px-2.5 py-2 font-mono text-xs text-ink">{text}</code>
       <Button size="sm" iconOnly onClick={() => void copy()} title={`Copy ${label}`} aria-label={`Copy ${label}`}>
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>
@@ -198,7 +198,7 @@ export function AgentConnect() {
         icon={<Bot className="h-4 w-4" />}
         width="max-w-xl"
       >
-        <div className="flex flex-col gap-3 font-sans text-[13px] text-ink">
+        <div className="flex flex-col gap-3 font-sans text-sm text-ink">
           {linked && !pairing ? (
             <>
               <Note tone={phase === "online" ? "success" : "warn"}>
@@ -218,10 +218,10 @@ export function AgentConnect() {
                   </>
                 )}
               </Note>
-              <p className="text-[11px] leading-snug text-ink-mute">The link stays on until you disconnect here or close the studio tab. A reload or a short network drop does not end it.</p>
+              <p className="text-xs leading-snug text-ink-mute">The link stays on until you disconnect here or close the studio tab. A reload or a short network drop does not end it.</p>
               {status?.activity?.length ? (
-                <div className="border-2 border-ink bg-paper-3 p-2 font-mono text-[11px]">
-                  <div className="font-bold">What the agent is doing</div>
+                <div className="border border-line bg-paper-3 p-2 font-mono text-xs">
+                  <div className="font-semibold">What the agent is doing</div>
                   <ul className="mt-1 flex flex-col gap-0.5 text-ink-soft">
                     {status.activity.map((a) => (
                       <li key={a.seq}>
@@ -232,8 +232,8 @@ export function AgentConnect() {
                 </div>
               ) : null}
               {status?.lastResult ? (
-                <div className="border-2 border-ink bg-paper-3 p-2 font-mono text-[11px]">
-                  <div className="font-bold">
+                <div className="border border-line bg-paper-3 p-2 font-mono text-xs">
+                  <div className="font-semibold">
                     Last task {status.lastResult.ok ? "finished" : "failed"} {ago(status.lastResult.at)}
                   </div>
                   <pre className="mt-1 whitespace-pre-wrap text-ink-soft">{status.lastResult.summary}</pre>
@@ -248,7 +248,7 @@ export function AgentConnect() {
           ) : (
             <>
               <div>
-                <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-ink-soft">Agent</div>
+                <div className="mb-1 font-mono text-xs text-ink-soft">Agent</div>
                 <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Agent">
                   {AGENTS.map((a) => (
                     <button
@@ -260,10 +260,10 @@ export function AgentConnect() {
                         setAgent(a.id);
                         setPairing(null);
                       }}
-                      className={`border-2 border-ink px-2.5 py-2 text-left transition-colors ${agent === a.id ? "bg-select text-select-ink shadow-nb-sm" : "bg-paper-3 hover:bg-paper"}`}
+                      className={`border border-line px-2.5 py-2 text-left transition-colors ${agent === a.id ? "bg-select text-select-ink" : "bg-paper-3 hover:bg-paper"}`}
                     >
-                      <div className="text-[13px] font-bold">{a.label}</div>
-                      <div className="font-mono text-[10px] opacity-80">{a.runs}</div>
+                      <div className="text-sm font-semibold">{a.label}</div>
+                      <div className="font-mono text-xs opacity-80">{a.runs}</div>
                     </button>
                   ))}
                 </div>
@@ -285,10 +285,10 @@ export function AgentConnect() {
                       setWay(w.id);
                       setPairing(null);
                     }}
-                    className={`border-2 border-ink px-2.5 py-2 text-left transition-colors ${way === w.id ? "bg-select text-select-ink shadow-nb-sm" : "bg-paper-3 hover:bg-paper"}`}
+                    className={`border border-line px-2.5 py-2 text-left transition-colors ${way === w.id ? "bg-select text-select-ink" : "bg-paper-3 hover:bg-paper"}`}
                   >
-                    <div className="text-[13px] font-bold">{w.title}</div>
-                    <div className="text-[11px] opacity-80">{w.note}</div>
+                    <div className="text-sm font-semibold">{w.title}</div>
+                    <div className="text-xs opacity-80">{w.note}</div>
                   </button>
                 ))}
               </div>
@@ -318,12 +318,12 @@ export function AgentConnect() {
                 </Button>
               )}
               {pairing ? (
-                <div className="flex items-center gap-2 font-mono text-[11px] text-ink-soft">
+                <div className="flex items-center gap-2 font-mono text-xs text-ink-soft">
                   <Spinner /> {pairing.way === "agent" ? "Waiting for your agent to call the studio..." : "Waiting for your terminal..."}
                 </div>
               ) : null}
               {error ? <Note tone="danger">{error}</Note> : null}
-              <p className="text-[11px] leading-snug text-ink-mute">
+              <p className="text-xs leading-snug text-ink-mute">
                 The agent works only through the aideos tools for these tasks, and only this browser can send it work. Once linked it stays linked until you disconnect or close the studio tab.
               </p>
             </>

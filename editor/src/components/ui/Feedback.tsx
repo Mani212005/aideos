@@ -28,24 +28,24 @@ export function EmptyState({ icon, title, description, action, steps, className 
   return (
     <div
       className={cn(
-        "nb-hatch flex h-full w-full flex-col items-center justify-center gap-3 bg-sunken p-8 text-center text-ink",
+        "flex h-full w-full flex-col items-center justify-center gap-3 bg-sunken p-8 text-center text-ink",
         className,
       )}
     >
       {icon ? (
-        <div className="flex h-14 w-14 items-center justify-center border-2 border-ink bg-primary text-ink shadow-nb-sm">
+        <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-select text-select-ink">
           {icon}
         </div>
       ) : null}
-      <h3 className="max-w-md font-sans text-sm font-extrabold uppercase tracking-[0.04em]">{title}</h3>
+      <h3 className="max-w-md font-sans text-sm font-semibold">{title}</h3>
       {description ? (
         <p className="max-w-md font-sans text-xs leading-relaxed text-ink-soft">{description}</p>
       ) : null}
       {steps && steps.length > 0 ? (
-        <ol className="mt-1 flex max-w-md flex-col gap-1.5 border-2 border-ink bg-paper-2 p-3 text-left">
+        <ol className="mt-1 flex max-w-md flex-col gap-1.5 rounded-lg border border-line bg-paper-2 p-3 text-left">
           {steps.map((step, i) => (
-            <li key={i} className="flex items-start gap-2 font-sans text-[11px] leading-snug text-ink">
-              <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center border-2 border-ink bg-primary font-mono text-[9px] font-bold">
+            <li key={i} className="flex items-start gap-2 font-sans text-xs leading-snug text-ink">
+              <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-select font-mono text-xs font-semibold text-select-ink">
                 {i + 1}
               </span>
               <span>{step}</span>
@@ -61,11 +61,11 @@ export function EmptyState({ icon, title, description, action, steps, className 
 export type NoteTone = "info" | "success" | "danger" | "warn" | "quiet";
 
 const NOTE_TONE: Record<NoteTone, string> = {
-  info: "bg-info text-ink",
-  success: "bg-success text-ink",
-  danger: "bg-danger text-ink",
-  warn: "bg-warn text-ink",
-  quiet: "bg-paper-3 text-ink",
+  info: "border-info/40 bg-info/10 text-ink",
+  success: "border-success/40 bg-success/10 text-ink",
+  danger: "border-danger/40 bg-danger/10 text-ink",
+  warn: "border-warn/40 bg-warn/10 text-ink",
+  quiet: "border-line bg-paper-3 text-ink",
 };
 
 export interface NoteProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -73,12 +73,12 @@ export interface NoteProps extends React.HTMLAttributes<HTMLDivElement> {
   icon?: React.ReactNode;
 }
 
-/** Inline outlined message strip for operation results and validation output. */
+/** Inline tinted message strip for operation results and validation output. */
 export function Note({ tone = "info", icon, className, children, ...rest }: NoteProps) {
   return (
     <div
       className={cn(
-        "flex items-start gap-2 border-2 border-ink px-2.5 py-1.5 font-mono text-[11px] leading-snug",
+        "flex items-start gap-2 rounded-lg border px-2.5 py-1.5 font-mono text-xs leading-snug",
         NOTE_TONE[tone],
         className,
       )}
@@ -91,7 +91,7 @@ export function Note({ tone = "info", icon, className, children, ...rest }: Note
 }
 
 export interface ProgressBarProps {
-  /** Completion from 0 to 100. Omit for an indeterminate barber pole. */
+  /** Completion from 0 to 100. Omit for an indeterminate moving stripe. */
   value?: number;
   label?: React.ReactNode;
   className?: string;
@@ -99,7 +99,7 @@ export interface ProgressBarProps {
   size?: "sm" | "md";
 }
 
-/** Hard-edged determinate or indeterminate progress track for long operations. */
+/** Determinate or indeterminate progress track for long operations. */
 export function ProgressBar({ value, label, className, size = "md" }: ProgressBarProps) {
   const isDeterminate = typeof value === "number" && Number.isFinite(value);
   const pct = isDeterminate ? Math.max(0, Math.min(100, value as number)) : 100;
@@ -107,7 +107,7 @@ export function ProgressBar({ value, label, className, size = "md" }: ProgressBa
   return (
     <div className={cn("flex w-full flex-col gap-1", className)}>
       {label ? (
-        <div className="flex items-baseline justify-between font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink-soft">
+        <div className="flex items-baseline justify-between font-mono text-xs font-semibold text-ink-soft">
           <span className="truncate">{label}</span>
           {isDeterminate ? <span className="tabular-nums">{Math.round(pct)}%</span> : null}
         </div>
@@ -117,12 +117,12 @@ export function ProgressBar({ value, label, className, size = "md" }: ProgressBa
         aria-valuenow={isDeterminate ? Math.round(pct) : undefined}
         aria-valuemin={0}
         aria-valuemax={100}
-        className={cn("w-full border-2 border-ink bg-paper-3", size === "sm" ? "h-2.5" : "h-4")}
+        className={cn("w-full overflow-hidden rounded-full border border-line bg-paper-3", size === "sm" ? "h-2.5" : "h-4")}
       >
         <div
           className={cn(
             "h-full transition-[width] duration-nb ease-nb",
-            isDeterminate ? "bg-select" : "nb-progress-stripes animate-nb-marquee bg-primary",
+            isDeterminate ? "bg-select" : "nb-progress-stripes animate-nb-marquee",
           )}
           style={{ width: `${pct}%` }}
         />
@@ -141,7 +141,7 @@ export function Spinner({ className, label }: SpinnerProps) {
   return (
     <span className="inline-flex items-center gap-1.5" role="status" aria-live="polite">
       <Loader2 className={cn("h-3.5 w-3.5 animate-spin", className)} />
-      {label ? <span className="font-mono text-[10px] uppercase tracking-[0.06em]">{label}</span> : null}
+      {label ? <span className="font-mono text-xs">{label}</span> : null}
     </span>
   );
 }
@@ -161,14 +161,14 @@ export interface IconToggleProps {
 }
 
 const TOGGLE_TONE = {
-  primary: "bg-primary text-ink",
-  danger: "bg-danger text-ink",
-  warn: "bg-warn text-ink",
-  info: "bg-info text-ink",
-  select: "bg-select text-select-ink",
+  primary: "border-primary bg-primary text-select-ink",
+  danger: "border-danger bg-danger text-select-ink",
+  warn: "border-warn bg-warn text-select-ink",
+  info: "border-info bg-info text-select-ink",
+  select: "border-select bg-select text-select-ink",
 } as const;
 
-/** Square on/off control used for lane visibility, lock and mute. */
+/** Small on/off control used for lane visibility, lock and mute. */
 export function IconToggle({
   on,
   onChange,
@@ -191,7 +191,7 @@ export function IconToggle({
         onChange(!on);
       }}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center border-2 border-ink transition-colors duration-nb ease-nb",
+        "inline-flex shrink-0 items-center justify-center rounded border border-line transition-colors duration-nb ease-nb",
         size === "xs" ? "h-[18px] w-[18px]" : "h-5 w-5",
         on ? TOGGLE_TONE[tone] : "bg-paper-3 text-ink-mute hover:bg-sunken hover:text-ink",
         className,
@@ -238,7 +238,7 @@ interface ToastProps {
   onDismiss: (id: number) => void;
 }
 
-/** One auto-expiring status slab inside the toast stack. */
+/** One auto-expiring status message inside the toast stack. */
 function Toast({ toast, onDismiss }: ToastProps) {
   useEffect(() => {
     if (toast.sticky) return;
@@ -249,14 +249,14 @@ function Toast({ toast, onDismiss }: ToastProps) {
   return (
     <div
       className={cn(
-        "pointer-events-auto flex items-start gap-2 border-2 border-ink px-3 py-2 shadow-nb",
+        "pointer-events-auto flex items-start gap-2 rounded-lg border bg-paper-2 px-3 py-2",
         NOTE_TONE[toast.tone],
       )}
     >
       <div className="min-w-0 flex-1">
-        <p className="whitespace-pre-wrap break-words font-mono text-[11px] font-bold leading-snug">{toast.text}</p>
+        <p className="whitespace-pre-wrap break-words font-mono text-xs font-semibold leading-snug">{toast.text}</p>
         {typeof toast.progress === "number" ? (
-          <div className="mt-1.5 h-2 w-full border-2 border-ink bg-paper-3">
+          <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full border border-line bg-paper-3">
             <div
               className="h-full bg-ink transition-[width] duration-nb ease-nb"
               style={{ width: `${Math.max(0, Math.min(100, toast.progress))}%` }}
@@ -268,7 +268,7 @@ function Toast({ toast, onDismiss }: ToastProps) {
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Dismiss message"
-        className="shrink-0 border-2 border-ink bg-paper-3 p-0.5 text-ink hover:bg-primary"
+        className="shrink-0 rounded border border-line bg-paper-3 p-0.5 text-ink hover:bg-select-tint"
       >
         <X className="h-3 w-3" />
       </button>

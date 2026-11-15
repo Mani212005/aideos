@@ -82,7 +82,7 @@ const FONTS: Array<{
     name: "Space Grotesk",
     category: "Expressive Modernist",
     preview: "Scale compute linearly across distributed clusters.",
-    style: "font-sans font-extrabold tracking-[-0.02em]",
+    style: "font-sans font-semibold",
   },
   {
     id: "inter",
@@ -351,9 +351,9 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
   return (
     <div className="w-full h-full bg-paper text-ink overflow-y-auto p-6 space-y-8 relative">
       {/* Sticky Header with Save Button */}
-      <div className="sticky top-0 z-30 bg-paper/95 border-b-2 border-ink pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div className="sticky top-0 z-30 bg-paper/95 border-b border-line pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold flex items-center gap-2 text-ink">
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-ink">
             <Palette className="w-5 h-5 text-select-text" /> Customization Studio
           </h2>
           <p className="text-xs text-ink-soft mt-1">
@@ -363,7 +363,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
 
         <div className="flex items-center gap-3">
           {/* Current Theme Summary Pill */}
-          <div className="hidden lg:flex items-center gap-2 bg-paper-3 border-2 border-ink px-3 py-1.5 text-xs font-mono text-ink shadow-nb-sm">
+          <div className="hidden lg:flex items-center gap-2 bg-paper-3 border border-line px-3 py-1.5 text-xs font-mono text-ink">
             <span
               className="w-2.5 h-2.5 "
               style={{ backgroundColor: accent }}
@@ -379,7 +379,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
           <button
             onClick={handleSaveTheme}
             disabled={isSaving}
-            className={`px-4 py-2 font-bold text-xs flex items-center gap-1.5 shadow-nb-sm transition-all ${
+            className={`px-4 py-2 font-semibold text-xs flex items-center gap-1.5 transition-all ${
               isSaving
                 ? "bg-sunken text-ink-soft cursor-not-allowed"
                 : "bg-paper-3 hover:bg-paper-3 text-ink hover:scale-105"
@@ -397,7 +397,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
 
       {/* Save Toast Feedback */}
       {saveToast && (
-        <div className="p-3 bg-success/25 border-2 border-ink text-ink text-xs font-mono flex items-center gap-2 shadow-nb-sm animate-fade-in">
+        <div className="p-3 bg-success/25 border border-line text-ink text-xs font-mono flex items-center gap-2 animate-fade-in">
           <Bell className="w-3.5 h-3.5 text-ink" /> {saveToast}
         </div>
       )}
@@ -405,11 +405,11 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       {/* 1. PAPER BACKGROUND & TEXTURE LIBRARY */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
             <ScrollText className="w-3.5 h-3.5 text-ink-soft" /> 1. Paper
             Library & Background
           </label>
-          <span className="text-[11px] text-ink-soft font-mono">
+          <span className="text-xs text-ink-soft font-mono">
             6 Textures
           </span>
         </div>
@@ -421,7 +421,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               <button
                 key={theme.id}
                 onClick={() => updateTheme({ background: theme.id })}
-                className={`flex h-32 flex-col overflow-hidden border-2 border-ink bg-paper-3 text-left shadow-nb-sm transition-[transform,box-shadow] duration-nb ease-nb hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${
+                className={`flex h-32 flex-col overflow-hidden border border-line bg-paper-3 text-left transition-colors duration-nb ease-nb ${
                   isSelected ? "outline outline-3 outline-offset-0 outline-select" : ""
                 }`}
                 title={`${theme.name}: ${theme.description}`}
@@ -429,21 +429,21 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                 {/* The swatch is painted in the video theme's own colours so the user sees what
                     they are choosing; the description below is editor copy in editor ink. */}
                 <div
-                  className="flex h-14 shrink-0 items-start justify-between border-b-2 border-ink p-2"
+                  className="flex h-14 shrink-0 items-start justify-between border-b border-line p-2"
                   style={{ backgroundColor: theme.canvas }}
                 >
                   <span
-                    className="border px-1.5 py-0.5 font-mono text-[10px] font-bold"
+                    className="border px-1.5 py-0.5 font-mono text-xs font-semibold"
                     style={{ color: theme.ink, borderColor: theme.hairline, backgroundColor: theme.surface }}
                   >
                     {theme.id}
                   </span>
-                  {isSelected ? <span className="h-3 w-3 border-2 border-ink bg-select" /> : null}
+                  {isSelected ? <span className="h-3 w-3 border border-line bg-select" /> : null}
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col gap-0.5 p-2">
-                  <h4 className="truncate font-sans text-[11px] font-extrabold text-ink">{theme.name}</h4>
-                  <p className="nb-clamp-2 font-sans text-[10px] leading-snug text-ink-soft">{theme.description}</p>
+                  <h4 className="truncate font-sans text-xs font-semibold text-ink">{theme.name}</h4>
+                  <p className="nb-clamp-2 font-sans text-xs leading-snug text-ink-soft">{theme.description}</p>
                 </div>
               </button>
             );
@@ -454,10 +454,10 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       {/* 2. TYPOGRAPHY & FONT SELECTION */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
             <Type className="w-3.5 h-3.5 text-ink-soft" /> 2. Typography & Font
           </label>
-          <span className="text-[11px] text-ink-soft font-mono">
+          <span className="text-xs text-ink-soft font-mono">
             Google Fonts
           </span>
         </div>
@@ -469,21 +469,21 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               <button
                 key={f.id}
                 onClick={() => updateTheme({ fontFamily: f.id })}
-                className={`p-3.5 border-2 border-ink text-left transition-all flex flex-col justify-between h-28 bg-paper-3 ${
+                className={`p-3.5 border border-line text-left transition-all flex flex-col justify-between h-28 bg-paper-3 ${
                   isSelected
-                    ? "border-select ring-2 ring-select/30 shadow-nb-sm bg-paper-3"
-                    : "border-2 border-ink hover:border-ink"
+                    ? "border-select ring-2 ring-select/30 bg-paper-3"
+                    : "border border-line hover:border-line"
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
                   <div>
-                    <h4 className="text-xs font-bold text-ink">{f.name}</h4>
-                    <span className="text-[10px] text-ink-soft">
+                    <h4 className="text-xs font-semibold text-ink">{f.name}</h4>
+                    <span className="text-xs text-ink-soft">
                       {f.category}
                     </span>
                   </div>
                   {isSelected && (
-                    <span className="text-[11px] font-mono text-select-text font-bold">
+                    <span className="text-xs font-mono text-select-text font-semibold">
                       Active
                     </span>
                   )}
@@ -501,11 +501,11 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       {/* 3. STORYTELLING / VIDEO EDITING STYLE */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
             <FilmIcon className="w-3.5 h-3.5 text-ink-soft" /> 3. Storytelling
             Style
           </label>
-          <span className="text-[11px] text-ink-soft font-mono">
+          <span className="text-xs text-ink-soft font-mono">
             Visual Engine
           </span>
         </div>
@@ -517,19 +517,19 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               <button
                 key={style.id}
                 onClick={() => updateTheme({ storyStyle: style.id })}
-                className={`p-4 border-2 border-ink text-left transition-all flex flex-col justify-between space-y-3 bg-paper-3 ${
+                className={`p-4 border border-line text-left transition-all flex flex-col justify-between space-y-3 bg-paper-3 ${
                   isSelected
-                    ? "border-select ring-2 ring-select/30 shadow-nb-sm bg-paper-3"
-                    : "border-2 border-ink hover:border-ink"
+                    ? "border-select ring-2 ring-select/30 bg-paper-3"
+                    : "border border-line hover:border-line"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <style.icon className="w-4 h-4 text-select-text" />
-                    <h4 className="text-sm font-bold text-ink">{style.name}</h4>
+                    <h4 className="text-sm font-semibold text-ink">{style.name}</h4>
                   </div>
                   {isSelected && (
-                    <span className="text-xs font-mono text-select-text font-bold">
+                    <span className="text-xs font-mono text-select-text font-semibold">
                       Selected
                     </span>
                   )}
@@ -539,7 +539,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                   {style.desc}
                 </p>
 
-                <div className="px-2.5 py-1.5 bg-sunken border-2 border-ink text-[11px] font-mono text-ink flex items-center gap-2 shadow-nb-sm">
+                <div className="px-2.5 py-1.5 bg-sunken border border-line text-xs font-mono text-ink flex items-center gap-2">
                   <Check className="w-3 h-3 text-ink shrink-0" /> {style.sample}
                 </div>
               </button>
@@ -549,10 +549,10 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       </div>
 
       {/* 4. SCRIPT METAPHOR DIRECTOR */}
-      <div className="space-y-4 bg-paper-3 p-5 border-2 border-ink shadow-nb-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b-2 border-ink pb-3">
+      <div className="space-y-4 bg-paper-3 p-5 border border-line">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-line pb-3">
           <div>
-            <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-ink flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-select-text" /> Script Metaphor
               Director
             </h3>
@@ -560,7 +560,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               Configure visual metaphors and direction for each script line.
             </p>
           </div>
-          <span className="text-[11px] font-mono text-ink bg-primary/25 border-2 border-ink/30 px-2 py-0.5  shadow-nb-sm">
+          <span className="text-xs font-mono text-ink bg-primary/25 border border-line px-2 py-0.5">
             {film.shots.filter((s) => s.metaphor).length} Metaphors Assigned
           </span>
         </div>
@@ -576,12 +576,12 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
             return (
               <div
                 key={shot.id}
-                className="p-3.5 bg-paper-3 border-2 border-ink hover:border-ink transition-all flex flex-col md:flex-row gap-4 items-start md:items-center justify-between shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                className="p-3.5 bg-paper-3 border border-line hover:border-line transition-all flex flex-col md:flex-row gap-4 items-start md:items-center justify-between"
               >
                 {/* Left: Script Sentence */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-sunken text-ink-soft border-2 border-ink shadow-nb-sm">
+                    <span className="text-xs font-mono font-semibold px-1.5 py-0.5 bg-sunken text-ink-soft border border-line">
                       Line {idx + 1} · {shot.dur}s
                     </span>
                     <span className="text-xs font-mono text-ink-soft truncate">
@@ -606,7 +606,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                             | "none",
                         )
                       }
-                      className="bg-sunken border-2 border-ink hover:border-select px-2.5 py-1.5 text-xs text-ink font-mono focus:outline-none focus:ring-1 focus:ring-select shadow-nb-sm hover:-translate-x-px hover:-translate-y-px hover:shadow-nb active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                      className="bg-sunken border border-line hover:border-select px-2.5 py-1.5 text-xs text-ink font-mono focus:outline-none focus:ring-1 focus:ring-select"
                     >
                       {METAPHOR_OPTIONS.map((opt) => (
                         <option key={opt.id} value={opt.id}>
@@ -622,7 +622,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                       onChange={(e) =>
                         handleUpdateShotVisualDirection(idx, e.target.value)
                       }
-                      className="bg-sunken border-2 border-ink focus:border-2 border-ink px-2.5 py-1.5 text-xs text-ink placeholder-ink w-full sm:w-80 font-mono focus:outline-none shadow-nb-sm"
+                      className="bg-sunken border border-line focus:border border-line px-2.5 py-1.5 text-xs text-ink placeholder-ink w-full sm:w-80 font-mono focus:outline-none"
                       title="Provide custom visual direction for this line"
                     />
                   </div>
@@ -635,7 +635,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
                           "Make a computer or character that reads the script once while sleeping, opens its eyes, and throws it out of the window.",
                         )
                       }
-                      className="text-[11px] text-left text-ink hover:text-ink flex items-center gap-1 font-mono transition-colors"
+                      className="text-xs text-left text-ink hover:text-ink flex items-center gap-1 font-mono transition-colors"
                     >
                       <Lightbulb className="w-3 h-3 text-ink shrink-0" />
                       <span>
@@ -654,11 +654,11 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       {/* 5. DYNAMIC 3D CAMERA ANGLES & PERSPECTIVES */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
             <Video className="w-3.5 h-3.5 text-ink-soft" /> 5. Camera Angles &
             Perspectives
           </label>
-          <span className="text-[11px] text-ink-soft font-mono">
+          <span className="text-xs text-ink-soft font-mono">
             Spatial Framing
           </span>
         </div>
@@ -670,24 +670,24 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               <button
                 key={ca.id}
                 onClick={() => updateTheme({ cameraAngle: ca.id })}
-                className={`p-3.5 border-2 border-ink text-left transition-all flex flex-col justify-between h-28 bg-paper-3 ${
+                className={`p-3.5 border border-line text-left transition-all flex flex-col justify-between h-28 bg-paper-3 ${
                   isSelected
-                    ? "border-select ring-2 ring-select/30 shadow-nb-sm bg-paper-3"
-                    : "border-2 border-ink hover:border-ink"
+                    ? "border-select ring-2 ring-select/30 bg-paper-3"
+                    : "border border-line hover:border-line"
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-2">
                     <ca.icon className="w-4 h-4 text-select-text" />
-                    <h4 className="text-xs font-bold text-ink">{ca.name}</h4>
+                    <h4 className="text-xs font-semibold text-ink">{ca.name}</h4>
                   </div>
                   {isSelected && (
-                    <span className="text-[10px] font-mono text-select-text font-bold">
+                    <span className="text-xs font-mono text-select-text font-semibold">
                       Active
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-ink-soft leading-snug mt-1">
+                <p className="text-xs text-ink-soft leading-snug mt-1">
                   {ca.desc}
                 </p>
               </button>
@@ -699,10 +699,10 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
       {/* 6. VIDEO TYPE & INTENT */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
             <Target className="w-3.5 h-3.5 text-ink-soft" /> 6. Video Category
           </label>
-          <span className="text-[11px] text-ink-soft font-mono">
+          <span className="text-xs text-ink-soft font-mono">
             Pacing Optimizer
           </span>
         </div>
@@ -714,17 +714,17 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               <button
                 key={vt.id}
                 onClick={() => updateTheme({ videoType: vt.id })}
-                className={`p-3 border-2 border-ink text-left transition-all flex flex-col justify-between h-28 bg-paper-3 ${
+                className={`p-3 border border-line text-left transition-all flex flex-col justify-between h-28 bg-paper-3 ${
                   isSelected
                     ? "border-select ring-2 ring-select/30 bg-paper-3"
-                    : "border-2 border-ink hover:border-ink"
+                    : "border border-line hover:border-line"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <vt.icon className="w-4 h-4 text-select-text" />
-                  <h4 className="text-xs font-bold text-ink">{vt.name}</h4>
+                  <h4 className="text-xs font-semibold text-ink">{vt.name}</h4>
                 </div>
-                <p className="text-[10px] text-ink-soft leading-tight mt-1">
+                <p className="text-xs text-ink-soft leading-tight mt-1">
                   {vt.desc}
                 </p>
               </button>
@@ -735,7 +735,7 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
 
       {/* 7. ACCENT COLOR PALETTE */}
       <div className="space-y-3">
-        <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+        <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
           <Palette className="w-3.5 h-3.5 text-ink-soft" /> 7. Accent Color
         </label>
         <div className="flex flex-wrap gap-3">
@@ -747,8 +747,8 @@ export const CustomizationEditor: React.FC<CustomizationEditorProps> = ({
               }}
               className={`flex items-center gap-2 px-3 py-1.5 border text-xs font-medium transition-all ${
                 accent === a.hex
-                  ? "border-2 border-ink bg-paper-3 text-ink ring-2 ring-select"
-                  : "border-2 border-ink bg-paper-3 text-ink-soft hover:text-ink"
+                  ? "border border-line bg-paper-3 text-ink ring-2 ring-select"
+                  : "border border-line bg-paper-3 text-ink-soft hover:text-ink"
               }`}
             >
               <span

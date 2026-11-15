@@ -267,21 +267,21 @@ export function EditStage({
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {binOpen ? (
-          <div className="w-56 shrink-0 overflow-y-auto border-r-2 border-ink bg-paper-2">
+          <div className="w-56 shrink-0 overflow-y-auto border-r border-line bg-paper-2">
             <AssetBin onInsertAssetAsShot={insertAsset} />
           </div>
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* The one dark surface in the product: the matte behind the video frame. */}
-          <div data-preview-host ref={setPreviewHost} className="relative flex min-h-0 flex-1 items-center justify-center bg-matte">
+          <div data-preview-host ref={setPreviewHost} className="relative flex min-h-0 flex-1 items-center justify-center bg-matte shadow-frame">
             {!api.hasVisibleVisuals ? (
               <div className="flex max-w-sm flex-col items-center gap-2 p-6 text-center">
                 <EyeOff className="h-6 w-6 text-matte-text" />
-                <p className="font-sans text-xs font-bold uppercase tracking-[0.08em] text-matte-text">
+                <p className="font-sans text-xs font-semibold text-matte-text">
                   Every visual lane is hidden
                 </p>
-                <p className="font-sans text-[11px] leading-relaxed text-matte-text/70">
+                <p className="font-sans text-xs leading-relaxed text-matte-text/70">
                   Turn a lane back on with the eye control in the lane header to see the film again.
                 </p>
               </div>
@@ -318,8 +318,8 @@ export function EditStage({
             aria-label="Resize the timeline"
             onPointerDown={() => setIsResizing(true)}
             className={cn(
-              "flex h-3 shrink-0 cursor-row-resize items-center justify-center border-y-2 border-ink bg-paper",
-              isResizing ? "bg-select" : "hover:bg-primary",
+              "flex h-3 shrink-0 cursor-row-resize items-center justify-center border-y border-line bg-paper",
+              isResizing ? "bg-select" : "hover:bg-select",
             )}
           >
             <GripHorizontal className="h-3 w-3 text-ink" />

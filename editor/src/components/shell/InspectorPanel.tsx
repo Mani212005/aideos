@@ -43,7 +43,7 @@ export function InspectorPanel({
 }: InspectorPanelProps) {
   if (!open) {
     return (
-      <div className="flex w-8 shrink-0 flex-col items-center border-l-2 border-ink bg-paper py-2">
+      <div className="flex w-8 shrink-0 flex-col items-center border-l border-line bg-paper py-2">
         <Button tone="ghost" size="xs" iconOnly onClick={onToggle} title="Show the inspector">
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -54,11 +54,11 @@ export function InspectorPanel({
   const fps = film.fps || 30;
 
   return (
-    <aside className="flex w-[300px] shrink-0 flex-col overflow-hidden border-l-2 border-ink bg-paper">
+    <aside className="flex w-[300px] shrink-0 flex-col overflow-hidden border-l border-line bg-paper">
       <PanelHeader
         title={titleFor(selection)}
         icon={iconFor(selection)}
-        className="border-b-2"
+        className="border-b"
         actions={
           <Button tone="ghost" size="xs" iconOnly onClick={onToggle} title="Hide the inspector">
             <ChevronRight className="h-4 w-4" />
@@ -158,7 +158,7 @@ interface HistoryListProps {
 function HistoryList({ project }: HistoryListProps) {
   return (
     <div className="flex flex-col gap-1.5 p-2">
-      <p className="font-sans text-[10px] leading-snug text-ink-mute">
+      <p className="font-sans text-xs leading-snug text-ink-mute">
         Every edit is one step. Click any step to jump the project back or forward to it.
       </p>
       {[...project.history].map((entry, idx) => {
@@ -172,8 +172,8 @@ function HistoryList({ project }: HistoryListProps) {
             onClick={() => project.jumpTo(idx)}
             className={cn("flex items-center justify-between gap-2 px-2 py-1.5", isFuture && "opacity-50")}
           >
-            <span className="min-w-0 truncate font-sans text-[11px] font-bold">{entry.label}</span>
-            <span className="shrink-0 font-mono text-[9px] tabular-nums opacity-75">
+            <span className="min-w-0 truncate font-sans text-xs font-semibold">{entry.label}</span>
+            <span className="shrink-0 font-mono text-xs tabular-nums opacity-75">
               {new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </span>
           </Card>
@@ -201,7 +201,7 @@ function ProjectOverview({ film, project, api, onSelectShot, onSeekFrame }: Proj
 
   return (
     <div className="flex flex-col gap-3 p-2">
-      <Panel tone="flat" className="border-2">
+      <Panel tone="flat" className="border">
         <PanelHeader title="Numbers" />
         <PanelBody scroll={false} className="p-2">
           <Stat label="Duration" value={`${project.durationSec.toFixed(1)}s`} />
@@ -219,7 +219,7 @@ function ProjectOverview({ film, project, api, onSelectShot, onSeekFrame }: Proj
         </PanelBody>
       </Panel>
 
-      <Panel tone="flat" className="border-2">
+      <Panel tone="flat" className="border">
         <PanelHeader
           title="Shots"
           actions={<Badge tone="quiet">{film.shots.length}</Badge>}
@@ -237,10 +237,10 @@ function ProjectOverview({ film, project, api, onSelectShot, onSeekFrame }: Proj
                 }}
                 className="flex items-center justify-between gap-2 px-2 py-1.5"
               >
-                <span className="min-w-0 truncate font-sans text-[11px] font-bold">
+                <span className="min-w-0 truncate font-sans text-xs font-semibold">
                   {idx + 1}. {shot.id}
                 </span>
-                <span className="shrink-0 font-mono text-[9px] tabular-nums text-ink-mute">
+                <span className="shrink-0 font-mono text-xs tabular-nums text-ink-mute">
                   {(shot.dur ?? 0).toFixed(1)}s
                 </span>
               </Card>

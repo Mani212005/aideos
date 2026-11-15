@@ -122,7 +122,7 @@ export function StoryStage({ film, commit, selectedNodeId, onSelectNode }: Story
           <Badge tone="quiet">{film.canvas.edges.length} edges</Badge>
           <Badge tone="quiet">{film.shots.length} shots</Badge>
         </ToolbarGroup>
-        <span className="ml-auto font-sans text-[10px] text-ink-mute">
+        <span className="ml-auto font-sans text-xs text-ink-mute">
           Drag a node to reposition it. Click a node to inspect it in the panel on the right.
         </span>
       </Toolbar>
