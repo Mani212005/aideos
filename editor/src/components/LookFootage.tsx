@@ -38,6 +38,13 @@ function holdsAnyClip(blocks: Block[]): boolean {
   return blocks.some((b) => b.c === "AnalogyInset" && Boolean((b as { src?: string }).src));
 }
 
+// True when the shot at this index needs a clip, has none, and its previous shot does not hold one. The film schema rejects two clip blocks in a row, so a shot after a clip stays unwired.
+function awaitsClip(shots: Shot[], index: number): boolean {
+  const s = shots[index];
+  if (!s.needsFootage || holdsAnyClip(s.blocks)) return false;
+  return index === 0 || !holdsAnyClip(shots[index - 1].blocks);
+}
+
 // Puts the clip block first in the shot and drops any older one.
 function withClip(shot: Shot, src: string): Shot {
   const inset = {
@@ -58,7 +65,7 @@ export function LookFootage(props: LookFootageProps) {
 function LookFootageForFilm({ film, shotId, commit }: LookFootageProps) {
   const shot = film.shots.find((s) => s.id === shotId);
   const needsFootage = Boolean(shot?.needsFootage);
-  const anyUnwired = film.shots.some((s) => s.needsFootage && !holdsAnyClip(s.blocks));
+  const anyUnwired = film.shots.some((_, i) => awaitsClip(film.shots, i));
   const [status, setStatus] = useState<BrollStatus | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,15 +95,20 @@ function LookFootageForFilm({ film, shotId, commit }: LookFootageProps) {
     return () => window.clearInterval(timer);
   }, [polling, running, refresh]);
 
-  // Wire every clip that is on disk into its shot, all in one commit.
+  // Wire every clip that is on disk into its shot, all in one commit. A shot right after a clip shot stays unwired, because the film schema forbids two clips in a row.
   useEffect(() => {
     if (!current) return;
     let changed = false;
-    const shots = film.shots.map((s) => {
+    const shots: Shot[] = [];
+    film.shots.forEach((s, i) => {
       const src = current.existingFootage[s.id];
-      if (!s.needsFootage || !src || holdsClip(s.blocks, src)) return s;
+      const prev = i > 0 ? shots[i - 1] : null;
+      if (!s.needsFootage || !src || holdsClip(s.blocks, src) || (prev && holdsAnyClip(prev.blocks))) {
+        shots.push(s);
+        return;
+      }
       changed = true;
-      return withClip(s, src);
+      shots.push(withClip(s, src));
     });
     if (changed) commit({ ...film, shots }, "Add footage");
   }, [current, film, commit]);
