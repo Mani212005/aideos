@@ -1,12 +1,12 @@
 /**
- * File Description: The footage action of the Look lens. For a chosen shot that needs footage it shows the state of the generated clip and one button that starts the GPU job. It replaces the Styleboard B-Roll switch and the shot modal, and it is the only way to make the footage that export asks for. A clip that is on disk but not yet in the shot is wired in as one undo step.
- * Inputs and outputs: film, chosen shot -> footage state, a start request to /api/broll/generate, a film commit when a clip must be wired in.
+ * File Description: The footage action of the Look lens. For the chosen shot that needs footage it shows the state of the generated clip and one button that starts the GPU job. It replaces only the Generate Video button and the clip wiring of the old Styleboard and shot modal. It does not replace the B-Roll on/off switch (ShotInspector has it until P6, and the pipeline design stage sets needsFootage), narration (Words lens), duration (Cut) or visual direction (Ask). While the lens is mounted, a clip that is on disk is wired into every shot that needs footage, in one undo step per poll result, so the export gate never waits on a clip that finished for another shot.
+ * Inputs and outputs: film, chosen shot -> footage state, a start request to /api/broll/generate, a film commit when clips must be wired in.
  * Used by: editor/src/screens/LookStage.tsx.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { Film as FilmIcon } from "lucide-react";
-import type { Block, Film } from "../../../src/dl/schema";
+import type { Block, Film, Shot } from "../../../src/dl/schema";
 import { Badge, Button, Note, Spinner } from "./ui";
 
 interface BrollJob {
@@ -17,6 +17,7 @@ interface BrollJob {
 }
 
 interface BrollStatus {
+  filmId: string;
   jobs: BrollJob[];
   existingFootage: Record<string, string>;
 }
@@ -32,16 +33,39 @@ function holdsClip(blocks: Block[], src: string): boolean {
   return blocks.some((b) => b.c === "AnalogyInset" && (b as { src?: string }).src === src);
 }
 
-/** The footage state of the chosen shot, with one button to make the clip. Renders nothing for a shot that needs none. */
-export function LookFootage({ film, shotId, commit }: LookFootageProps) {
+// True when the shot holds a clip block with any source.
+function holdsAnyClip(blocks: Block[]): boolean {
+  return blocks.some((b) => b.c === "AnalogyInset" && Boolean((b as { src?: string }).src));
+}
+
+// Puts the clip block first in the shot and drops any older one.
+function withClip(shot: Shot, src: string): Shot {
+  const inset = {
+    c: "AnalogyInset",
+    caption: (shot.visualDirection || shot.scriptText || "Footage").slice(0, 60),
+    src,
+    fullScreenHero: true,
+  } as Block;
+  return { ...shot, blocks: [inset, ...shot.blocks.filter((b) => b.c !== "AnalogyInset")] };
+}
+
+/** The footage state of the chosen shot, with one button to make the clip. A new film starts with fresh state. */
+export function LookFootage(props: LookFootageProps) {
+  return <LookFootageForFilm key={props.film.id} {...props} />;
+}
+
+// The footage state of one film. It is remounted when the film changes, and it ignores a status that names another film.
+function LookFootageForFilm({ film, shotId, commit }: LookFootageProps) {
   const shot = film.shots.find((s) => s.id === shotId);
   const needsFootage = Boolean(shot?.needsFootage);
+  const anyUnwired = film.shots.some((s) => s.needsFootage && !holdsAnyClip(s.blocks));
   const [status, setStatus] = useState<BrollStatus | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const job = status?.jobs.find((j) => j.shotId === shotId);
+  const current = status?.filmId === film.id ? status : null;
+  const job = current?.jobs.find((j) => j.shotId === shotId);
   const running = job?.state === "queued" || job?.state === "running";
-  const clip = status?.existingFootage[shotId];
+  const clip = current?.existingFootage[shotId];
 
   // Reads the job and the clips on disk. A failed read keeps the last state.
   const refresh = useCallback(async () => {
@@ -49,32 +73,33 @@ export function LookFootage({ film, shotId, commit }: LookFootageProps) {
       const res = await fetch(`/api/broll/status?filmId=${encodeURIComponent(film.id)}`);
       if (!res.ok) return;
       const body = (await res.json()) as Partial<BrollStatus>;
-      setStatus({ jobs: Array.isArray(body.jobs) ? body.jobs : [], existingFootage: body.existingFootage ?? {} });
+      setStatus({ filmId: film.id, jobs: Array.isArray(body.jobs) ? body.jobs : [], existingFootage: body.existingFootage ?? {} });
     } catch {
       // The state is a convenience. A failed read keeps the last one.
     }
   }, [film.id]);
 
-  // Poll while the shot needs footage, faster while a job runs.
+  // Poll while the chosen shot needs footage or any shot waits for its clip, faster while a job runs.
+  const polling = needsFootage || anyUnwired;
   useEffect(() => {
-    if (!needsFootage) return;
+    if (!polling) return;
     void refresh();
     const timer = window.setInterval(() => void refresh(), running ? 4000 : 15000);
     return () => window.clearInterval(timer);
-  }, [needsFootage, running, refresh]);
+  }, [polling, running, refresh]);
 
-  // Wire a clip that is on disk into the shot when the shot does not hold it yet.
+  // Wire every clip that is on disk into its shot, all in one commit.
   useEffect(() => {
-    if (!shot || !needsFootage || !clip || holdsClip(shot.blocks, clip)) return;
-    const inset = {
-      c: "AnalogyInset",
-      caption: (shot.visualDirection || shot.scriptText || "Footage").slice(0, 60),
-      src: clip,
-      fullScreenHero: true,
-    } as Block;
-    const blocks = [inset, ...shot.blocks.filter((b) => b.c !== "AnalogyInset")];
-    commit({ ...film, shots: film.shots.map((s) => (s.id === shot.id ? { ...s, blocks } : s)) }, "Add footage");
-  }, [shot, needsFootage, clip, film, commit]);
+    if (!current) return;
+    let changed = false;
+    const shots = film.shots.map((s) => {
+      const src = current.existingFootage[s.id];
+      if (!s.needsFootage || !src || holdsClip(s.blocks, src)) return s;
+      changed = true;
+      return withClip(s, src);
+    });
+    if (changed) commit({ ...film, shots }, "Add footage");
+  }, [current, film, commit]);
 
   // Starts the GPU job for this shot.
   const start = async () => {

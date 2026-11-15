@@ -230,7 +230,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `boundTheme(film)`: Returns the binding `{ background, accent }` only when the film carries `theme.accentChosen: true` (set when the New project dialog or `/api/projects/new` received a chosen theme or accent) and a valid hex `theme.accent`, else `null`. Legacy projects and accents a look plan picked are never bound.
 * `filmAccent(film)`: Returns the film's effective drawing accent (`boundTheme(film)?.accent ?? film.accent ?? DEFAULT_PROJECT_ACCENT`).
 * `sameColour(a, b)`: Case-insensitive comparison of two hex color strings (`#rrggbb`).
-* `savedAccent(film, accent)`: Resolves the accent to persist on save (the active accent if the film already had one, else undefined).
+* `ACCENT_CHOICES`: The named accent colours (`{ name, hex }`) the Look lens offers, one click each.
 
 ### Editor Chrome Design System, direction "Strip" (`editor/src/styles/tokens.css`)
 * `--nb-paper`: `#F3F4F6` (Light grey application ground). `--nb-paper-2` and `--nb-paper-3`: `#FFFFFF` (Panel, card, modal and input surfaces)

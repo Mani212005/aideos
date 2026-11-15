@@ -40,13 +40,13 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 │ 1. SCRIPT  │ │ 2. STORY   │ │ 3. LOOK    │ │ 4. MOTION  │ │ 5. EDIT    │ │ 6. CAPTIONS│ │ 7. REVIEW  │
 │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │
 ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤
-│ • Markdown │ │ • 2D Spatial│ │ • Styleboard│ │ • Custom SVG│ │ • Layered  │ │ • Word Sync│ │ • Critique │
-│   Screenplay│ │   Mind Map │ │   Gallery  │ │   Animation│ │   Timeline │ │ • Kinetic   │ │   Studio   │
-│ • Claude   │ │ • Node Drag│ │ • Accent    │ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • Health & │
+│ • Markdown │ │ • 2D Spatial│ │ • Accent    │ │ • Custom SVG│ │ • Layered  │ │ • Word Sync│ │ • Critique │
+│   Screenplay│ │   Mind Map │ │   Color    │ │   Animation│ │   Timeline │ │ • Kinetic   │ │   Studio   │
+│ • Claude   │ │ • Node Drag│ │ • Background│ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • Health & │
 │   Intake   │ │ • Directed │ │   Color    │ │   Timeline │ │ • Drag     │ │ • Phrase   │ │   Pacing   │
-│ • Spoken VO│ │   Edges    │ │ • Theme    │ │ • Motion   │ │   Machine  │ │   Locks    │ │ • Headless │
-│   Extract  │ │ • Camera   │ │   Customizer│ │   Templates│ │ • Inspector│ │ • Subtitle │ │   MP4 Export│
-│ • TTS Synth│ │   Anchors  │ │ • Typography│ │ • Frame-Sync│ │ • Asset Bin │ │   Timing   │ │   Progress │
+│ • Spoken VO│ │   Edges    │ │ • Shot     │ │ • Motion   │ │   Machine  │ │   Locks    │ │ • Headless │
+│   Extract  │ │ • Camera   │ │   Pictures │ │   Templates│ │ • Inspector│ │ • Subtitle │ │   MP4 Export│
+│ • TTS Synth│ │   Anchors  │ │ • Ask box  │ │ • Frame-Sync│ │ • Asset Bin │ │   Timing   │ │   Progress │
 └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘
       │              │              │              │              │              │              │
       └──────────────┴──────────────┴───────┬──────┴──────────────┴──────────────┴──────────────┘
