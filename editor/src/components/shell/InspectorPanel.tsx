@@ -1,10 +1,10 @@
 /**
  * File Description: Context inspector for Aideos Studio.
  * The single right-hand column that always answers "what am I looking at and what can I change".
- * It switches on the current selection: a timeline clip, a shot, a canvas node, the edit history,
+ * It switches on the current selection: a timeline clip, a shot, the edit history,
  * or, with nothing selected, a project overview with the shot list. Collapsing it gives the stage
  * its full width without hiding anything the user cannot get back.
- * Inputs and outputs: current selection (shot, node, clip, project) -> context-sensitive right sidebar inspector.
+ * Inputs and outputs: current selection (shot, clip, history, project) -> context-sensitive right sidebar inspector.
  * Used by: editor/src/App.tsx.
  */
 
@@ -17,7 +17,6 @@ import type { SelectionTarget } from "../../App";
 import { Badge, Button, Card, Panel, PanelBody, PanelHeader, Stat, cn } from "../ui";
 import { ClipInspector } from "../ClipInspector";
 import { ShotInspector } from "../ShotInspector";
-import { NodeEditor } from "../NodeEditor";
 
 export interface InspectorPanelProps {
   open: boolean;
@@ -101,19 +100,6 @@ export function InspectorPanel({
           </div>
         ) : null}
 
-        {selection?.kind === "node" ? (
-          <div className="p-2">
-            <NodeEditor
-              film={film}
-              nodeId={selection.id}
-              onChange={(next) => project.commit(next, "Edit canvas node")}
-              onSelectShot={(id) => onSelectionChange({ kind: "shot", id })}
-              onNodeIdChange={(id) => onSelectionChange({ kind: "node", id })}
-              onClearSelection={() => onSelectionChange(null)}
-            />
-          </div>
-        ) : null}
-
         {selection?.kind === "history" ? (
           <HistoryList project={project} />
         ) : null}
@@ -136,7 +122,6 @@ export function InspectorPanel({
 function titleFor(selection: SelectionTarget): string {
   if (selection?.kind === "clip") return "Clip";
   if (selection?.kind === "shot") return "Shot";
-  if (selection?.kind === "node") return "Canvas node";
   if (selection?.kind === "history") return "Edit history";
   return "Project";
 }
@@ -145,7 +130,6 @@ function titleFor(selection: SelectionTarget): string {
 function iconFor(selection: SelectionTarget): React.ReactNode {
   if (selection?.kind === "clip") return <Layers className="h-3.5 w-3.5" />;
   if (selection?.kind === "shot") return <Clapperboard className="h-3.5 w-3.5" />;
-  if (selection?.kind === "node") return <ListTree className="h-3.5 w-3.5" />;
   if (selection?.kind === "history") return <History className="h-3.5 w-3.5" />;
   return <ListTree className="h-3.5 w-3.5" />;
 }
@@ -210,7 +194,6 @@ function ProjectOverview({ film, project, api, onSelectShot, onSeekFrame }: Proj
           <Stat label="Shots" value={film.shots.length} />
           <Stat label="Lanes" value={api.lanes.length} />
           <Stat label="Clips" value={api.layered.clips.length} />
-          <Stat label="Canvas nodes" value={film.canvas.nodes.length} />
           <Stat
             label="Voiceover"
             value={film.voiceover?.src ? `${(film.voiceover.durationSec ?? 0).toFixed(1)}s` : "none"}

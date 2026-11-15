@@ -20,7 +20,6 @@ import {
   Film as FilmIcon,
   Play,
   Pause,
-  Clapperboard,
   Plus,
   Trash2,
   Bot,
@@ -1289,30 +1288,6 @@ export function ScriptEditor({
                 ))}
               </ul>
             )}
-          </div>
-
-          {/* How it works */}
-          <div className="bg-paper-3 border border-line p-4 flex flex-col gap-3 text-xs text-ink-soft">
-            <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
-              <Clapperboard size={15} className="text-select-text" /> How the script works
-            </h3>
-            <ul className="space-y-2 list-disc list-inside text-xs">
-              <li>
-                <strong>Your words stay yours:</strong> write the story as paragraphs. Nothing reformats
-                it; your agent only fills in the notes beside each paragraph.
-              </li>
-              <li>
-                <strong>Agent edits are tracked:</strong> if your agent changes or writes narration, every change
-                shows in the list above.
-              </li>
-              <li>
-                <strong>Auto-Build:</strong> constructs video shots and canvas nodes from the story.
-              </li>
-              <li>
-                <strong>Generate Voiceover:</strong> records each narration line once; later runs re-record
-                only the lines that changed.
-              </li>
-            </ul>
           </div>
         </div>
       </div>

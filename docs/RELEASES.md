@@ -39,8 +39,8 @@ as before. `backend/aideosLauncherMenuFirst.test.ts` holds this order in a real 
   `NO_COLOR=1` removes the color and preserves the words.
 - `aideos version` (or `--version`) prints the channel, release tag and commit. `aideos which`
   prints its channel and absolute checkout path. The same commands work with `aideos-dev`.
-- Studio has a persistent colored badge and 3-pixel top strip, a matching favicon, and a tab title
-  beginning `[STABLE v0.5.0]` or `[DEV]`. Hover the badge to see the commit and checkout.
+- Studio shows no channel badge, top strip or channel tab title. To see which checkout runs, use
+  `aideos which` or `aideos version`.
 - Editor ports default to 3002 for stable and 3001 for dev. Remotion Studio defaults to 3102 and
   3101 respectively. Busy ports fail instead of silently switching channels. `aideos exit` stops
   only its channel's editor, after checking the server's working directory.
@@ -48,7 +48,7 @@ as before. `backend/aideosLauncherMenuFirst.test.ts` holds this order in a real 
 Identity is derived from Git. Only a clean checkout on branch `stable` whose HEAD is exactly a
 `vX.Y.Z` tag is STABLE. A detached tag, dirty stable checkout, ordinary branch or untagged commit
 is DEV. There is no environment flag to claim STABLE. Restart an editor after a branch change;
-the badge refreshes Git identity while open, but a running server keeps its original port.
+a running server keeps its original port.
 
 ## Promote a release
 
