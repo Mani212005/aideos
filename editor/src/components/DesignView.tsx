@@ -8,10 +8,10 @@
  * Used by: editor/src/screens/LookStage.tsx, editor/src/components/ShotDesignPanel.tsx.
  */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Bot, Check, FileText, Image as ImageIcon, RefreshCw, Sparkles } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
-import { Badge, Button, EmptyState, Note, Panel, PanelBody, PanelHeader, Spinner } from "./ui";
+import { Badge, Button, EmptyState, Note, Panel, PanelBody, PanelHeader, Spinner, cn } from "./ui";
 import { postDesignAction, useDesignOverview, type DesignOverview } from "../state/useDesignOverview";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -46,10 +46,14 @@ export function ChoiceChip({ choice }: { choice: NonNullable<DesignOverview["sho
 export interface DesignViewProps {
   film: Film;
   onSelectShot: (id: string) => void;
+  /** The shot the Look stage's Ask applies to, marked in the shot list. */
+  selectedShotId?: string;
+  /** Shown at the top of the left column (the Look stage puts the picture and Ask here). */
+  topPanel?: ReactNode;
 }
 
 /** The film's design: idea, artwork, and motion and visual choice per shot. */
-export function DesignView({ film, onSelectShot }: DesignViewProps) {
+export function DesignView({ film, onSelectShot, selectedShotId, topPanel }: DesignViewProps) {
   // What is said and shown comes from the film being edited, so a swap shows at once; the
   // overview adds what only the server knows (choices, artwork, motion, build status).
   const { overview, error, refresh } = useDesignOverview(film.id, film.design?.source ?? null);
@@ -117,8 +121,9 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
   };
 
   return (
-    <div className="grid h-full min-h-0 auto-rows-max grid-cols-1 gap-3 overflow-y-auto p-3 lg:auto-rows-auto lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:overflow-hidden">
-      <div className="flex min-h-0 min-w-0 flex-col gap-3 lg:overflow-y-auto">
+    <div className="grid h-full min-h-0 auto-rows-max grid-cols-1 gap-3 overflow-y-auto p-3 lg:auto-rows-auto lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-col gap-3 lg:overflow-y-auto [&>*]:shrink-0">
+        {topPanel}
         <Panel>
           <PanelHeader
             title="Idea"
@@ -277,7 +282,11 @@ export function DesignView({ film, onSelectShot }: DesignViewProps) {
                   <button
                     type="button"
                     onClick={() => onSelectShot(shot.id)}
-                    className="grid w-full grid-cols-[64px_minmax(0,1fr)] gap-3 px-3 py-2.5 text-left hover:bg-paper-3 focus-visible:bg-paper-3 focus-visible:outline-none"
+                    aria-current={shot.id === selectedShotId ? "true" : undefined}
+                    className={cn(
+                      "grid w-full grid-cols-[64px_minmax(0,1fr)] gap-3 px-3 py-2.5 text-left hover:bg-paper-3 focus-visible:bg-paper-3 focus-visible:outline-none",
+                      shot.id === selectedShotId && "bg-select-tint",
+                    )}
                   >
                     <div className="font-mono text-xs leading-tight text-ink-soft">
                       <div className="font-semibold text-ink">{shot.id}</div>

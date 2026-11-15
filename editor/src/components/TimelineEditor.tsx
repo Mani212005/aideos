@@ -158,7 +158,7 @@ function waveformSourceFor(clip: Clip): string | undefined {
   return src.startsWith("http") || src.startsWith("/") ? src : `/${src}`;
 }
 
-/** Subtitle cues are derived from the caption track, so the timeline shows them read-only. */
+/** Subtitle cues are derived from the caption track, so the timeline never moves, trims or splits them. A click still selects one. */
 function isDraggable(clip: Clip): boolean {
   return clip.kind !== "subtitle";
 }
@@ -318,7 +318,14 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   /** Open a gesture on a clip: move it, or trim either of its edges. */
   const handleClipPointerDown = useCallback(
     (e: React.PointerEvent, clip: Clip, mode: ClipPointerMode) => {
-      if (!isDraggable(clip)) return;
+      if (!isDraggable(clip)) {
+        // A caption word cannot be dragged, but a click selects it and moves the playhead to it, so its text can be edited in the inspector.
+        e.preventDefault();
+        e.stopPropagation();
+        onSelectionChange([clip.id]);
+        onSeekFrame(Math.round(clip.position * fps));
+        return;
+      }
       const lane = api.layered.layers.find((l) => l.id === clip.layerId);
       if (lane?.locked) {
         onReject(
@@ -399,7 +406,9 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     [
       api,
       clipById,
+      fps,
       onReject,
+      onSeekFrame,
       onSelectionChange,
       runAutoScroll,
       selectedClipIds,

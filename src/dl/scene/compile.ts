@@ -3,7 +3,7 @@
  * Compiles background and prop assets, environment sub-rotation (D1), custom
  * element-level SVG animation timelines, per-frame derived layering (D5), and camera tracks into dense execution data. Character rigs are not supported.
  * Inputs and outputs: raw Scene data and animation tracks -> compiled dense per-frame animation state.
- * Used by: src/dl/scene/SceneClip.tsx, backend/scene/compile.test.ts, editor/src/screens/MotionStage.tsx.
+ * Used by: src/dl/scene/SceneClip.tsx, backend/scene/compile.test.ts.
  */
 
 import type { Scene, EnvironmentAsset, SchemaVersion } from "./types";

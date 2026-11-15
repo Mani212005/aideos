@@ -17,6 +17,7 @@ import type { SelectionTarget } from "../../App";
 import { Badge, Button, Card, Panel, PanelBody, PanelHeader, Stat, cn } from "../ui";
 import { ClipInspector } from "../ClipInspector";
 import { ShotInspector } from "../ShotInspector";
+import { editCaptionWord } from "../captions/captionWordEdit";
 
 export interface InspectorPanelProps {
   open: boolean;
@@ -73,6 +74,12 @@ export function InspectorPanel({
             fps={fps}
             onSeekFrame={onSeekFrame}
             onClose={() => onSelectionChange(null)}
+            onEditCaptionWord={(index, edit) => {
+              const result = editCaptionWord(film, index, edit);
+              if (!result.ok) return result.error;
+              if (result.film !== film) project.commit(result.film, edit.text === undefined ? "Edit caption timing" : "Edit caption word");
+              return null;
+            }}
           />
         ) : null}
 

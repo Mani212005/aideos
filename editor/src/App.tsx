@@ -21,8 +21,6 @@ import {
   Palette,
   Plus,
   Save,
-  Shapes,
-  Subtitles,
 } from "lucide-react";
 import { PLACEHOLDER_FILM } from "./state/placeholderFilm";
 import { deliveryTimeline } from "../../src/dl/delivery";
@@ -33,9 +31,7 @@ import { Button, Panel, RailTab, Select, Spinner, ToastStack } from "./component
 import { InspectorPanel } from "./components/shell/InspectorPanel";
 import { ScriptStage } from "./screens/ScriptStage";
 import { LookStage } from "./screens/LookStage";
-import { MotionStage } from "./screens/MotionStage";
 import { EditStage } from "./screens/EditStage";
-import { CaptionsStage } from "./screens/CaptionsStage";
 import { ReviewStage } from "./screens/ReviewStage";
 import { ExportProgressModal } from "./components/ExportProgressModal";
 import { useExportJob } from "./state/useExportJob";
@@ -60,16 +56,17 @@ export const FORMATS = {
 
 export type Format = keyof typeof FORMATS;
 
-type Stage = "script" | "look" | "motion" | "edit" | "captions" | "review";
+type Stage = "script" | "look" | "edit" | "review";
 
 const STAGES: Array<{ id: Stage; label: string; icon: typeof FileText; title: string }> = [
   { id: "script", label: "Words", icon: FileText, title: "Edit the words. Record the voice." },
-  { id: "look", label: "Look", icon: Palette, title: "Set how the film looks." },
-  { id: "motion", label: "Motion", icon: Shapes, title: "Make SVG motion." },
-  { id: "edit", label: "Cut", icon: FilmIcon, title: "Set time and order." },
-  { id: "captions", label: "Captions", icon: Subtitles, title: "Time the captions." },
+  { id: "look", label: "Look", icon: Palette, title: "Set how the film looks. Ask the agent for a change." },
+  { id: "edit", label: "Cut", icon: FilmIcon, title: "Set time and order. Edit caption words." },
   { id: "review", label: "Check", icon: Bot, title: "Test the film quality." },
 ];
+
+/** Old stage links that now open the stage that took over their work. */
+const LEGACY_STAGE_HASH: Record<string, Stage> = { motion: "look", captions: "edit" };
 
 export type SelectionTarget =
   | { kind: "shot"; id: string }
@@ -86,7 +83,9 @@ export default function App() {
   // build adds artwork) keeps the user where they were, and a stage can be linked to directly.
   const [stage, setStageState] = useState<Stage>(() => {
     const fromHash = window.location.hash.replace(/^#/, "");
-    return (STAGES.some((s) => s.id === fromHash) ? fromHash : "script") as Stage;
+    // The Motion and Captions stages are gone: their work moved into Look (Ask) and Cut (caption words).
+    const linked = LEGACY_STAGE_HASH[fromHash] ?? fromHash;
+    return (STAGES.some((s) => s.id === linked) ? linked : "script") as Stage;
   });
   const setStage = useCallback((next: Stage) => {
     setStageState(next);
@@ -224,7 +223,7 @@ export default function App() {
         setStage(STAGES[next].id);
         return;
       }
-      if (/^[1-6]$/.test(e.key)) {
+      if (/^[1-4]$/.test(e.key)) {
         e.preventDefault();
         setStage(STAGES[Number(e.key) - 1].id);
       }
@@ -267,12 +266,10 @@ export default function App() {
     () => ({
       script: hasVoiceover ? "success" : "warn",
       look: "none",
-      motion: "none",
       edit: hasVoiceover ? "none" : "warn",
-      captions: film.captions ? "success" : "none",
       review: project.validation.ok ? "none" : "warn",
     }),
-    [film.captions, hasVoiceover, project.validation.ok],
+    [hasVoiceover, project.validation.ok],
   );
 
   return (
@@ -424,9 +421,9 @@ export default function App() {
                   accent={accent}
                   onAccentChange={setAccent}
                   onSelectShot={(id) => setSelection({ kind: "shot", id })}
+                  notify={notify}
                 />
               )}
-              {stage === "motion" && <MotionStage film={film} commit={commit} notify={notify} />}
               {stage === "edit" && (
                 <EditStage
                   film={film}
@@ -449,9 +446,6 @@ export default function App() {
                   onReject={handleReject}
                   onGoToScript={() => setStage("script")}
                 />
-              )}
-              {stage === "captions" && (
-                <CaptionsStage film={film} commit={commit} onSeekFrame={seekFrame} />
               )}
               {stage === "review" && (
                 <ReviewStage

@@ -241,7 +241,7 @@ export function EditStage({
             active={captionsSelected}
             aria-pressed={captionsSelected}
             onClick={() => { playerRef.current?.pause(); changeCaptionSelection(!captionsSelected); }}
-            title="Select the captions in the preview, then drag them to move them. You can also click the captions directly."
+            title="Drag captions to move them."
           >
             <Subtitles className="h-3.5 w-3.5" />
             Captions

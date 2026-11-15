@@ -3,11 +3,13 @@
  * Shows exactly what a selected clip is and lets the user set its numbers precisely rather than by
  * dragging: timeline position, source in and out points, derived duration, volume, and the lane it
  * lives on. Every change goes through the same layer-engine operations the drag gestures use, so
- * typing a number and dragging a handle produce identical, equally undoable results.
- * Inputs and outputs: selected clip and layer information -> clip inspector form and properties controls.
+ * typing a number and dragging a handle produce identical, equally undoable results. A caption word
+ * (a subtitle clip) shows its text and frame range controls instead: the caption words are edited here, in Cut.
+ * Inputs and outputs: selected clip, layer information and a caption word edit callback -> clip inspector form and properties controls.
  * Used by: editor/src/components/shell/InspectorPanel.tsx.
  */
 
+import { useState, type KeyboardEvent } from "react";
 import { Link2, Scissors, Trash2, Unlink } from "lucide-react";
 import type { Clip } from "../../../src/dl/layeredSchema";
 import type {
@@ -22,11 +24,13 @@ import {
   clipEndSec,
 } from "../../../backend/timeline/layer_engine";
 import type { LayeredTimelineApi } from "../state/useLayeredTimeline";
+import { captionWordIndex, type CaptionWordEdit } from "./captions/captionWordEdit";
 import {
   Badge,
   Button,
   EmptyState,
   Field,
+  Input,
   NumberStepper,
   Panel,
   PanelBody,
@@ -51,6 +55,8 @@ export interface ClipInspectorProps {
   fps: number;
   onSeekFrame: (frame: number) => void;
   onClose: () => void;
+  /** Edits caption word `index`. Returns an error message, or null when the edit is saved. */
+  onEditCaptionWord: (index: number, edit: CaptionWordEdit) => string | null;
 }
 
 /** Human summary of what a clip actually contains. */
@@ -74,6 +80,107 @@ function describeClip(clip: Clip): string {
   }
 }
 
+export interface CaptionWordEditorProps {
+  text: string;
+  startFrame: number;
+  endFrame: number;
+  fps: number;
+  /** True when the lane is locked: the word shows but does not change. */
+  disabled: boolean;
+  /** Saves an edit. Returns an error message, or null when it is saved. */
+  onCommit: (edit: CaptionWordEdit) => string | null;
+}
+
+/** Text and frame controls for one caption word. Enter or leaving a field saves it. Escape puts the old value back. */
+function CaptionWordEditor({ text, startFrame, endFrame, fps, disabled, onCommit }: CaptionWordEditorProps) {
+  const [draft, setDraft] = useState(text);
+  const [startDraft, setStartDraft] = useState(String(startFrame));
+  const [endDraft, setEndDraft] = useState(String(endFrame));
+  const [error, setError] = useState<string | null>(null);
+
+  /** Sends an edit. A refused edit shows its error and puts the old values back. */
+  const save = (edit: CaptionWordEdit) => {
+    const message = onCommit(edit);
+    setError(message);
+    if (message) {
+      setDraft(text);
+      setStartDraft(String(startFrame));
+      setEndDraft(String(endFrame));
+    }
+  };
+
+  /** Saves the word text when it changed. */
+  const commitText = () => {
+    const next = draft.trim();
+    if (next === text) setDraft(text);
+    else save({ text: next });
+  };
+
+  /** Saves one frame field when it changed. */
+  const commitFrame = (key: "startFrame" | "endFrame", raw: string) => {
+    const current = key === "startFrame" ? startFrame : endFrame;
+    const value = raw.trim() === "" ? Number.NaN : Number(raw);
+    if (value === current) return;
+    save({ [key]: value });
+  };
+
+  /** Builds the key handler of one field: Enter saves, Escape restores. */
+  const keys = (restore: () => void) => (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") e.currentTarget.blur();
+    else if (e.key === "Escape") restore();
+  };
+
+  return (
+    <Panel tone="flat" className="border">
+      <PanelHeader title="Caption word" actions={<Badge tone="primary">{((endFrame - startFrame) / fps).toFixed(2)}s</Badge>} />
+      <PanelBody scroll={false} className="flex flex-col gap-2 p-2">
+        <Field label="Word" htmlFor="caption-word" hint={disabled ? "The lane is locked. Unlock it to edit." : undefined}>
+          <Input
+            id="caption-word"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitText}
+            onKeyDown={keys(() => setDraft(text))}
+            spellCheck={false}
+            autoComplete="off"
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Start" htmlFor="caption-word-start" aside="frames">
+          <Input
+            id="caption-word-start"
+            type="number"
+            step={1}
+            value={startDraft}
+            onChange={(e) => setStartDraft(e.target.value)}
+            onBlur={() => commitFrame("startFrame", startDraft)}
+            onKeyDown={keys(() => setStartDraft(String(startFrame)))}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="End" htmlFor="caption-word-end" aside="frames">
+          <Input
+            id="caption-word-end"
+            type="number"
+            step={1}
+            value={endDraft}
+            onChange={(e) => setEndDraft(e.target.value)}
+            onBlur={() => commitFrame("endFrame", endDraft)}
+            onKeyDown={keys(() => setEndDraft(String(endFrame)))}
+            disabled={disabled}
+          />
+        </Field>
+        {error ? (
+          <p role="alert" className="font-sans text-xs leading-snug text-ink-soft">
+            {error}
+          </p>
+        ) : null}
+        <Stat label="Seconds" value={`${(startFrame / fps).toFixed(2)} to ${(endFrame / fps).toFixed(2)}`} />
+      </PanelBody>
+    </Panel>
+  );
+}
+
 /** Precise numeric editor for one timeline clip. */
 export function ClipInspector({
   api,
@@ -81,8 +188,14 @@ export function ClipInspector({
   fps,
   onSeekFrame,
   onClose,
+  onEditCaptionWord,
 }: ClipInspectorProps) {
-  const clip = api.layered.clips.find((c) => c.id === clipId);
+  // A caption word clip id carries the word text, so it changes when the word is edited. The
+  // word index in the id does not, so the inspector follows the same word through an edit.
+  const wordIndex = captionWordIndex(clipId);
+  const clip =
+    api.layered.clips.find((c) => c.id === clipId) ??
+    (wordIndex === null ? undefined : api.layered.clips.find((c) => c.kind === "subtitle" && captionWordIndex(c.id) === wordIndex));
 
   if (!clip) {
     return (
@@ -107,6 +220,29 @@ export function ClipInspector({
   const locked = Boolean(lane?.locked);
   const isSubtitle = clip.kind === "subtitle";
   const readOnly = locked || isSubtitle;
+  const captionIndex = isSubtitle ? captionWordIndex(clip.id) : null;
+
+  if (captionIndex !== null) {
+    const word = clip.payload as SubtitlePayload;
+    const startFrame = word.startFrame ?? Math.round(clip.position * fps);
+    const endFrame = word.endFrame ?? Math.round(clipEndSec(clip) * fps);
+    return (
+      <div className="flex flex-col gap-3 p-2">
+        <CaptionWordEditor
+          key={`${clip.id}-${word.text}-${startFrame}-${endFrame}`}
+          text={word.text}
+          startFrame={startFrame}
+          endFrame={endFrame}
+          fps={fps}
+          disabled={locked}
+          onCommit={(edit) => onEditCaptionWord(captionIndex, edit)}
+        />
+        <Button size="sm" block onClick={() => onSeekFrame(Math.round(clip.position * fps))}>
+          Go to word
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 p-2">
@@ -142,8 +278,8 @@ export function ClipInspector({
           {readOnly ? (
             <p className="border border-line bg-sunken px-2 py-1 font-sans text-xs leading-snug text-ink-soft">
               {locked
-                ? `Lane "${lane?.label}" is locked. Unlock it in the timeline to edit this clip.`
-                : "Subtitle cues are generated from the caption track. Edit their timing in the Captions stage."}
+                ? `Lane "${lane?.label}" is locked. Unlock it to edit this clip.`
+                : "This caption is a clip in the film. It is read-only."}
             </p>
           ) : null}
         </PanelBody>

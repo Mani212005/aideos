@@ -1,5 +1,5 @@
 /**
- * File Description: Motion you describe - the Motion stage's requests.
+ * File Description: Ask - the Look stage's requests to the agent for one shot (they started as Motion you describe).
  * The owner says what should move in a shot; the request goes to their connected coding agent as a
  * shot-focused design task (or, with no agent, to the server model), which edits the film's
  * design.json and artwork and builds until the design check passes. Every request is recorded in

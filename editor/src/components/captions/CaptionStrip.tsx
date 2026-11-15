@@ -57,19 +57,19 @@ export function CaptionStrip({
   const art = artWarnings[0];
   // One status line keeps the strip a fixed height, so the preview above it never resizes while a caption is dragged.
   const warning = unfittable
-    ? `\u201C${unfittable}\u201D cannot fit within two rows at this card width.`
+    ? `\u201C${unfittable}\u201D does not fit in 2 rows at this width.`
     : art?.text;
   const warningDetail = unfittable ? undefined : art?.detail;
   const showingWarning = !(shotException && selected) && !(selected && limitHint) && !!warning;
   const message = shotException && selected
-    ? "This shot has its own caption position, so moving captions here would not change it."
+    ? "This shot has its own caption position. A move here does not change it."
     : selected && limitHint
       ? limitHint
       : warning
         ? warning
         : selected
-          ? `Applies to the whole video (${shotCount} ${shotCount === 1 ? "shot" : "shots"}). ${otherFormatName} keeps its own position.`
-          : "Click the captions in the preview to select them, then drag to move. The position applies to the whole video.";
+          ? `Position applies to ${shotCount} ${shotCount === 1 ? "shot" : "shots"}. ${otherFormatName} keeps its own.`
+          : "Drag captions to move them.";
   return (
     <div
       data-caption-bar
