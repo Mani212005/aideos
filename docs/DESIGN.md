@@ -37,16 +37,16 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
     ┌──────────────┬──────────────┬────────────┼─────────────┬──────────────┬──────────────┐
     ▼              ▼              ▼            ▼             ▼              ▼              ▼
 ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
-│ 1. SCRIPT  │ │ 2. STORY   │ │ 3. LOOK    │ │ 4. MOTION  │ │ 5. EDIT    │ │ 6. CAPTIONS│ │ 7. REVIEW  │
+│ 1. SCRIPT  │ │ 2. STORY   │ │ 3. LOOK    │ │ 4. MOTION  │ │ 5. EDIT    │ │ 6. CAPTIONS│ │ 7. CHECK   │
 │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │
 ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤
-│ • Markdown │ │ • 2D Spatial│ │ • Accent    │ │ • Custom SVG│ │ • Layered  │ │ • Word Sync│ │ • Critique │
-│   Screenplay│ │   Mind Map │ │   Color    │ │   Animation│ │   Timeline │ │ • Kinetic   │ │   Studio   │
-│ • Claude   │ │ • Node Drag│ │ • Background│ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • Health & │
-│   Intake   │ │ • Directed │ │   Color    │ │   Timeline │ │ • Drag     │ │ • Phrase   │ │   Pacing   │
-│ • Spoken VO│ │   Edges    │ │ • Shot     │ │ • Motion   │ │   Machine  │ │   Locks    │ │ • Headless │
-│   Extract  │ │ • Camera   │ │   Pictures │ │   Templates│ │ • Inspector│ │ • Subtitle │ │   MP4 Export│
-│ • TTS Synth│ │   Anchors  │ │ • Ask box  │ │ • Frame-Sync│ │ • Asset Bin │ │   Timing   │ │   Progress │
+│ • Markdown │ │ • 2D Spatial│ │ • Accent    │ │ • Custom SVG│ │ • Layered  │ │ • Word Sync│ │ • State    │
+│   Screenplay│ │   Mind Map │ │   Color    │ │   Animation│ │   Timeline │ │ • Kinetic   │ │ • 6 Gates  │
+│ • Claude   │ │ • Node Drag│ │ • Background│ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • 9.0 Bar  │
+│   Intake   │ │ • Directed │ │   Color    │ │   Timeline │ │ • Drag     │ │ • Phrase   │ │ • Fix List │
+│ • Spoken VO│ │   Edges    │ │ • Shot     │ │ • Motion   │ │   Machine  │ │   Locks    │ │ • Export   │
+│   Extract  │ │ • Camera   │ │   Pictures │ │   Templates│ │ • Inspector│ │ • Subtitle │ │   Start    │
+│ • TTS Synth│ │   Anchors  │ │ • Ask box  │ │ • Frame-Sync│ │ • Asset Bin │ │   Timing   │ │   Download │
 └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘
       │              │              │              │              │              │              │
       └──────────────┴──────────────┴───────┬──────┴──────────────┴──────────────┴──────────────┘
@@ -95,7 +95,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 ### 4. Check lens (`CheckStage.tsx` / `CheckExport.tsx`)
 - **Purpose**: One answer to whether the film can go out: its state, the 6 hard gates and the 9.0 bar, a fix list, and video export.
 - **Features**:
-  - **Verdict and gates**: The state word (Draft, Fail, Pass, Old, OK), the 6 hard gates and the reviewer score against the 9.0 bar, read from `acceptance.json` for the exact film on screen (`backend/filmAcceptance/checkView.ts`). A film that changed since its check reads Old and shows no gate result.
+  - **Verdict and gates**: The state word (Draft, Fail, Pass, Old, OK), the 6 hard gates and the reviewer score against the 9.0 bar, read from `acceptance.json` for the exact film on screen (`backend/filmAcceptance/checkView.ts`). A film that changed since its check reads Old and shows no gate result. When the reviewer itself failed a hard gate, the state reads Fail and the six rows show no result, because the reviewer does not name the gate.
   - **Fix list**: What refuses an export (shots that need footage, a hidden visual lane, missing music, sound effects or end card from `backend/deliveryGate.ts`) and what a director can still fix (no voice, failed gates). The first blocking item disables Export and shows its reason beside the button.
   - **Export**: See the [Studio workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for the Export, Start, Cancel and Download behavior.
 
