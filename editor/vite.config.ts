@@ -643,6 +643,10 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
 function setupApiMiddlewares(server: { middlewares: any }): void {
   startFilmWatcher();
   server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    if (req.url === '/api/release-channel') {
+      sendJson(res, 200, releaseChannel(path.resolve(__dirname, '..')));
+      return;
+    }
     const url = (req.url ?? '').split('?')[0];
 
     // Ensure permissive CORS headers for all incoming API and asset requests
