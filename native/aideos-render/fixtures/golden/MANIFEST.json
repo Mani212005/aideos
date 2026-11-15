@@ -15,7 +15,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 10680
+      "bytes": 11064
     },
     {
       "name": "frames/hello-scene/long-150.png",
@@ -24,7 +24,7 @@
       "frame": 150,
       "width": 480,
       "height": 270,
-      "bytes": 16750
+      "bytes": 17104
     },
     {
       "name": "frames/hello-scene/long-270.png",
@@ -33,7 +33,7 @@
       "frame": 270,
       "width": 480,
       "height": 270,
-      "bytes": 13857
+      "bytes": 14042
     },
     {
       "name": "frames/hello-scene/reel-150.png",
@@ -42,7 +42,7 @@
       "frame": 150,
       "width": 270,
       "height": 480,
-      "bytes": 15052
+      "bytes": 15262
     },
     {
       "name": "frames/still-talking/long-924.png",
@@ -51,7 +51,7 @@
       "frame": 924,
       "width": 480,
       "height": 270,
-      "bytes": 45823
+      "bytes": 46275
     },
     {
       "name": "frames/still-talking/long-2773.png",
@@ -60,7 +60,7 @@
       "frame": 2773,
       "width": 480,
       "height": 270,
-      "bytes": 16351
+      "bytes": 16332
     },
     {
       "name": "frames/still-talking/reel-1848.png",
@@ -69,7 +69,7 @@
       "frame": 1848,
       "width": 270,
       "height": 480,
-      "bytes": 23666
+      "bytes": 23769
     },
     {
       "name": "frames/iona-receive/long-30.png",
@@ -78,7 +78,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 13952
+      "bytes": 14040
     },
     {
       "name": "frames/iona-receive/long-111.png",
@@ -87,7 +87,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 14942
+      "bytes": 14974
     },
     {
       "name": "frames/iona-receive/long-180.png",
@@ -96,7 +96,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 14544
+      "bytes": 14657
     },
     {
       "name": "frames/iona-receive/long-285.png",
@@ -105,7 +105,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 15703
+      "bytes": 15830
     },
     {
       "name": "frames/iona-receive/reel-111.png",
@@ -114,7 +114,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 15452
+      "bytes": 15512
     },
     {
       "name": "frames/iona-receive/reel-240.png",
@@ -123,7 +123,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 14696
+      "bytes": 14801
     },
     {
       "name": "frames/pixels-stage-pip/long-30.png",
@@ -132,7 +132,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 13235
+      "bytes": 13327
     },
     {
       "name": "frames/pixels-stage-pip/long-111.png",
@@ -141,7 +141,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 14128
+      "bytes": 14145
     },
     {
       "name": "frames/pixels-stage-pip/long-180.png",
@@ -150,7 +150,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 13431
+      "bytes": 13546
     },
     {
       "name": "frames/pixels-stage-pip/long-285.png",
@@ -159,7 +159,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 14546
+      "bytes": 14672
     },
     {
       "name": "frames/pixels-stage-pip/reel-111.png",
@@ -168,7 +168,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 14608
+      "bytes": 14666
     },
     {
       "name": "frames/pixels-stage-pip/reel-240.png",
@@ -177,7 +177,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 13567
+      "bytes": 13678
     },
     {
       "name": "frames/pixels-stage-marlo/long-30.png",
@@ -186,7 +186,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 12539
+      "bytes": 12619
     },
     {
       "name": "frames/pixels-stage-marlo/long-111.png",
@@ -195,7 +195,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 13482
+      "bytes": 13505
     },
     {
       "name": "frames/pixels-stage-marlo/long-180.png",
@@ -204,7 +204,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 13138
+      "bytes": 13254
     },
     {
       "name": "frames/pixels-stage-marlo/long-285.png",
@@ -213,7 +213,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 14277
+      "bytes": 14411
     },
     {
       "name": "frames/pixels-stage-marlo/reel-111.png",
@@ -222,7 +222,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 14011
+      "bytes": 14063
     },
     {
       "name": "frames/pixels-stage-marlo/reel-240.png",
@@ -231,7 +231,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 13395
+      "bytes": 13486
     },
     {
       "name": "frames/journey-three-characters/long-30.png",
@@ -240,7 +240,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 11610
+      "bytes": 11699
     },
     {
       "name": "frames/journey-three-characters/long-111.png",
@@ -249,7 +249,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 12269
+      "bytes": 12305
     },
     {
       "name": "frames/journey-three-characters/long-180.png",
@@ -258,7 +258,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 12144
+      "bytes": 12256
     },
     {
       "name": "frames/journey-three-characters/long-285.png",
@@ -267,7 +267,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 13211
+      "bytes": 13352
     },
     {
       "name": "frames/journey-three-characters/reel-111.png",
@@ -276,7 +276,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 12782
+      "bytes": 12852
     },
     {
       "name": "frames/journey-three-characters/reel-240.png",
@@ -285,7 +285,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 12388
+      "bytes": 12489
     },
     {
       "name": "frames/journey-j3-j4-dots/long-30.png",
@@ -294,7 +294,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 20884
+      "bytes": 20970
     },
     {
       "name": "frames/journey-j3-j4-dots/long-111.png",
@@ -303,7 +303,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 21673
+      "bytes": 21699
     },
     {
       "name": "frames/journey-j3-j4-dots/long-180.png",
@@ -312,7 +312,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 20401
+      "bytes": 20524
     },
     {
       "name": "frames/journey-j3-j4-dots/long-285.png",
@@ -321,7 +321,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 21737
+      "bytes": 21867
     },
     {
       "name": "frames/journey-j3-j4-dots/reel-111.png",
@@ -330,7 +330,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 22007
+      "bytes": 22064
     },
     {
       "name": "frames/journey-j3-j4-dots/reel-240.png",
@@ -339,7 +339,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 20618
+      "bytes": 20708
     }
   ]
 }
