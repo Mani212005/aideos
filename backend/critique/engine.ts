@@ -3,7 +3,7 @@
  * Routes natural language feedback to Scene PatchOps or Film PatchOps with strict validation gating,
  * deep-diff locality, atomic rollback, and explicit out-of-vocabulary rejection.
  * Inputs and outputs: natural language feedback and film -> applied patch operations or rejection.
- * Used by: editor/src/components/CritiqueStudio.tsx, backend/critique/critique.test.ts.
+ * Used by: backend/critique/critique.test.ts, backend/agentBridge/canvasLoop.test.ts (no studio caller remains: the Critique studio and /api/critique are gone).
  */
 
 import type { Scene } from "../../src/dl/scene/types";

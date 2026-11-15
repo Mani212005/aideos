@@ -10,6 +10,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { checkView, type CheckView } from "./checkView";
 import {
   classifyFilmEdit,
   drawsDisagree,
@@ -116,4 +117,15 @@ export function acceptanceSummary(pkgDir: string, format: AcceptanceFormat, curr
 // Summarizes the exact serialized film supplied by the export client, independent of film.json on disk.
 export function acceptanceSummaryForFilm(pkgDir: string, format: AcceptanceFormat, film: unknown): AcceptanceSummary {
   return acceptanceSummary(pkgDir, format, hashBytes(JSON.stringify(film, null, 2)));
+}
+
+// The Check lens view (state, six gates, score against the bar) of the film that would be exported in one format.
+export function acceptanceCheck(pkgDir: string, format: AcceptanceFormat, currentFilmHash: string | null): CheckView {
+  const file = readAcceptance(pkgDir);
+  return checkView(file.formats[format] ?? null, currentFilmHash);
+}
+
+// The Check lens view of the exact serialized film supplied by the Check lens, independent of film.json on disk.
+export function acceptanceCheckForFilm(pkgDir: string, format: AcceptanceFormat, film: unknown): CheckView {
+  return acceptanceCheck(pkgDir, format, hashBytes(JSON.stringify(film, null, 2)));
 }

@@ -92,12 +92,12 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
   - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management. A selected caption word clip shows one text control (`ClipInspector.tsx`, `captions/captionWordEdit.ts`): Enter saves the word into the film's caption track as one undo step.
   - **Model-Driven AI Editor Panel (`OnCanvasAiEditor.tsx`)**: Interprets natural-language editing instructions into discrete, validated `EditOp` sequences with dry-run preview, atomic rollback, and automatic dispatch across Agent Bridge channels.
 
-### 4. Review Stage (`ReviewStage.tsx` / `CritiqueStudio.tsx` / `ExportProgressModal.tsx`)
-- **Purpose**: Final quality assurance, pacing inspection, AI critique drawer, and video export.
+### 4. Check lens (`CheckStage.tsx` / `CheckExport.tsx`)
+- **Purpose**: One answer to whether the film can go out: its state, the 6 hard gates and the 9.0 bar, a fix list, and video export.
 - **Features**:
-  - **Data Visualizations (`src/components/ui/Charts.tsx`)**: Renders script-to-timeline coverage maps, shot duration distribution, narration vs silence density, and pacing health metrics in pure SVG.
-  - **AI Critique Drawer**: Interactive assistant for applying natural-language feedback and generating atomic film patches via `/api/critique`, with full task dispatch to connected coding agents.
-  - **Export Modal**: See the [Studio workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for the Export dialog behavior.
+  - **Verdict and gates**: The state word (Draft, Fail, Pass, Old, OK), the 6 hard gates and the reviewer score against the 9.0 bar, read from `acceptance.json` for the exact film on screen (`backend/filmAcceptance/checkView.ts`). A film that changed since its check reads Old and shows no gate result.
+  - **Fix list**: What refuses an export (shots that need footage, a hidden visual lane, missing music, sound effects or end card from `backend/deliveryGate.ts`) and what a director can still fix (no voice, failed gates). The first blocking item disables Export and shows its reason beside the button.
+  - **Export**: See the [Studio workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for the Export, Start, Cancel and Download behavior.
 
 ---
 

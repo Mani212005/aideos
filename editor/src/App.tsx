@@ -1,7 +1,7 @@
 /**
  * File Description: Application shell for Aideos Studio.
  * Owns the information architecture: one header, one stage rail that follows the production
- * workflow from words to check, one stage surface, and one context inspector. Holds the project
+ * workflow from words to check (Check holds the verdict and Export), one stage surface, and one context inspector. Holds the project
  * state, the shared layer-model timeline API, playback state and the global keyboard map, and
  * hands each stage exactly what it needs. No stage owns its own history: every edit is committed
  * through the project's single labelled undo stack.
@@ -32,15 +32,13 @@ import { InspectorPanel } from "./components/shell/InspectorPanel";
 import { ScriptStage } from "./screens/ScriptStage";
 import { LookStage } from "./screens/LookStage";
 import { EditStage } from "./screens/EditStage";
-import { ReviewStage } from "./screens/ReviewStage";
-import { ExportProgressModal } from "./components/ExportProgressModal";
+import { CheckStage } from "./screens/CheckStage";
 import { useExportJob } from "./state/useExportJob";
 import type { ExportJobSnapshot } from "../../backend/exportJobTypes";
 import { NewProjectModal } from "./components/NewProjectModal";
 import { AgentActivityInspector } from "./components/AgentActivityInspector";
 import { AgentConnect } from "./components/AgentConnect";
 import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
-import type { Film } from "../../src/dl/schema";
 
 /**
  * The project list comes from the dev server at runtime. The editor deliberately does not import
@@ -99,7 +97,7 @@ export default function App() {
     useCallback(
       (job: ExportJobSnapshot) => {
         if (job.status === "done") notify("success", `Export ready: ${job.filename}`);
-        else if (job.status === "failed") notify("danger", `Export failed: ${job.error ?? "unknown error"}`);
+        else if (job.status === "failed") notify("danger", "Export failed. Open Check.");
       },
       [notify],
     ),
@@ -232,33 +230,8 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [project, stage, setStage]);
 
-  const pendingBrollCount = useMemo(
-    () =>
-      film.shots.filter(
-        (s) => s.needsFootage && !s.blocks.some((b) => b.c === "AnalogyInset" && Boolean((b as { src?: string }).src)),
-      ).length,
-    [film.shots],
-  );
-
-  /** Opens the export dialog on its Start screen. Nothing renders until the user presses Start there. */
-  const handleExport = useCallback(() => {
-    if (!exportJob.active) {
-      if (!timelineApi.hasVisibleVisuals) {
-        notify("warn", "Show a visual lane.");
-        return;
-      }
-      if (pendingBrollCount > 0) {
-        notify("warn", pendingBrollCount === 1 ? "1 shot needs footage." : `${pendingBrollCount} shots need footage.`);
-        return;
-      }
-    }
-    exportJob.open();
-  }, [exportJob, notify, pendingBrollCount, timelineApi.hasVisibleVisuals]);
-
-  /** Starts the render from the dialog's Start button, exporting the same film the preview plays. */
-  const startExport = useCallback((exportFilm: Film) => {
-    void exportJob.start(exportFilm, format);
-  }, [exportJob, format]);
+  /** Opens the Check lens, where Export, Start, Cancel and Download live. Nothing renders until the user presses Start there. */
+  const handleExport = useCallback(() => setStage("review"), [setStage]);
 
   const hasVoiceover = Boolean(film.voiceover?.src);
 
@@ -317,11 +290,11 @@ export default function App() {
             <span className="hidden sm:inline">{project.saving ? "Saving" : project.isDirty ? "Save" : "Saved"}</span>
           </Button>
 
-          {exportJob.job && !exportJob.dialogOpen ? (
+          {exportJob.job && stage !== "review" ? (
             <Button
               size="sm"
               tone={exportJob.job.status === "done" ? "success" : exportJob.job.status === "failed" ? "danger" : "select"}
-              onClick={exportJob.open}
+              onClick={handleExport}
               title="Export"
               aria-label="Export"
             >
@@ -448,12 +421,15 @@ export default function App() {
                 />
               )}
               {stage === "review" && (
-                <ReviewStage
+                <CheckStage
                   film={film}
-                  project={project}
-                  api={timelineApi}
-                  onSelectShot={(id) => setSelection({ kind: "shot", id })}
-                  onSeekFrame={seekFrame}
+                  renderFilm={timelineApi.renderFilm}
+                  format={format}
+                  durationInFrames={deliveredFrames}
+                  validation={project.validation}
+                  hasVisibleVisuals={timelineApi.hasVisibleVisuals}
+                  exportJob={exportJob}
+                  onGoTo={setStage}
                 />
               )}
             </>
@@ -474,20 +450,6 @@ export default function App() {
       </div>
 
       <ToastStack toasts={project.toasts} onDismiss={project.dismissToast} />
-
-      <ExportProgressModal
-        isOpen={exportJob.dialogOpen}
-        film={timelineApi.renderFilm}
-        format={format}
-        durationInFrames={deliveredFrames}
-        job={exportJob.job}
-        error={exportJob.error}
-        starting={exportJob.starting}
-        onStart={startExport}
-        onCancel={() => void exportJob.cancel()}
-        onClose={exportJob.close}
-        onReset={exportJob.reset}
-      />
 
       <NewProjectModal
         isOpen={isNewProjectOpen}

@@ -2,7 +2,7 @@
  * File Description: The shape of a studio export job as the dev server reports it and the editor shows it.
  * Kept free of Node imports so the browser bundle can share it with backend/exportJobs.ts.
  * Inputs and outputs: none (types only) -> ExportStatus and ExportJobSnapshot.
- * Used by: backend/exportJobs.ts, editor/src/state/useExportJob.ts, editor/src/components/ExportProgressModal.tsx.
+ * Used by: backend/exportJobs.ts, editor/src/state/useExportJob.ts, editor/src/components/CheckExport.tsx.
  */
 
 /** Where a job is in its life. Only `done` has a video; `cancelled` and `failed` leave none behind. */
