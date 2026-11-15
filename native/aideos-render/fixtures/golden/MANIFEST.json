@@ -15,7 +15,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 11064
+      "bytes": 11101
     },
     {
       "name": "frames/hello-scene/long-150.png",
@@ -24,7 +24,7 @@
       "frame": 150,
       "width": 480,
       "height": 270,
-      "bytes": 17104
+      "bytes": 17132
     },
     {
       "name": "frames/hello-scene/long-270.png",
@@ -33,7 +33,7 @@
       "frame": 270,
       "width": 480,
       "height": 270,
-      "bytes": 14042
+      "bytes": 14080
     },
     {
       "name": "frames/hello-scene/reel-150.png",
@@ -42,7 +42,7 @@
       "frame": 150,
       "width": 270,
       "height": 480,
-      "bytes": 15262
+      "bytes": 15266
     },
     {
       "name": "frames/still-talking/long-924.png",

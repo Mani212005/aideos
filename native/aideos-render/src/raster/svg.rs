@@ -377,7 +377,7 @@ fn draw_text(
         TextAnchor::Middle => x - width / 2.0,
         TextAnchor::End => x - width,
     };
-    paragraph.paint(
+    paragraph.paint_unsnapped(
         canvas,
         Point::new(
             left as f32,

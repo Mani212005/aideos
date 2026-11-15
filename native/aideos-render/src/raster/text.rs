@@ -266,14 +266,24 @@ impl Text {
         runs
     }
 
-    /// Paints the text with its top-left corner at `at`: the shadows from the last to the first, then the glyphs.
+    /// Paints HTML text with its top-left corner at `at`, placed as Blink places it (baseline on a whole pixel).
     pub fn paint(&self, canvas: &Canvas, at: impl Into<Point>) {
-        let at: Point = at.into();
+        self.paint_with(canvas, at.into(), true);
+    }
+
+    /// Paints SVG text with its first paragraph top at `at`, keeping Skia's own unrounded baseline.
+    pub fn paint_unsnapped(&self, canvas: &Canvas, at: impl Into<Point>) {
+        self.paint_with(canvas, at.into(), false);
+    }
+
+    /// Paints the text: the shadows from the last to the first, then the glyphs, the baseline snapped or as Skia lays it out.
+    fn paint_with(&self, canvas: &Canvas, at: Point, snap_baseline: bool) {
         let runs = self.runs();
         let draw = |paint: &Paint, offset: Point| {
             for run in &runs {
+                let y = if snap_baseline { (f64::from(at.y) + run.baseline).round() as f32 } else { at.y + run.origin.y };
                 // Skia puts half of the letter spacing before each glyph and half after; CSS puts all of it after.
-                let origin = Point::new(run.origin.x + at.x + offset.x - (self.letter_spacing / 2.0) as f32, (f64::from(at.y) + run.baseline).round() as f32 + offset.y);
+                let origin = Point::new(run.origin.x + at.x + offset.x - (self.letter_spacing / 2.0) as f32, y + offset.y);
                 canvas.draw_glyphs_at(&run.glyphs, GlyphPositions::Points(&run.positions), origin, &run.font, paint);
             }
         };

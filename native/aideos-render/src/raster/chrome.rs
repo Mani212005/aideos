@@ -35,85 +35,6 @@ fn fill(c: Rgba) -> Paint {
     p
 }
 
-/// The paint for the end card's full-frame dim. Skia's 8-bit blend of a translucent colour truncates, so the dim over a flat
-/// background lands a level below what Chrome's rounding blend gives (0.005 SSIM on a dark frame), and a shader that blends
-/// in floating point costs about 5 ms a frame at 1080p. This nudges the alpha and each colour channel by up to two levels
-/// instead, to the values whose 8-bit blend over `over` (probed on one pixel surfaces) is nearest the rounded exact blend,
-/// and paints them plainly: the stage is mostly that flat background, and the cost is nothing.
-fn dim_paint(dim: Rgba, over: Rgba) -> Paint {
-    let (d, o) = (to_color(dim), to_color(over));
-    if d.a() == 0 {
-        // Nothing to blend (the dim's first frame): any nudged alpha would tint the whole frame.
-        return plain(Rgba { a: 0.0, ..dim });
-    }
-    let key = (u32::from_be_bytes([d.a(), d.r(), d.g(), d.b()]), u32::from_be_bytes([o.a(), o.r(), o.g(), o.b()]));
-    let tuned = DIM_TUNED.with(|cache| {
-        if let Some(t) = cache.borrow().get(&key) {
-            return *t;
-        }
-        let t = tune_dim(d, o);
-        cache.borrow_mut().insert(key, t);
-        t
-    });
-    let mut p = Paint::default();
-    p.set_anti_alias(true);
-    p.set_color(skia_safe::Color::from_argb(tuned[3], tuned[0], tuned[1], tuned[2]));
-    p
-}
-
-thread_local! {
-    /// Tuned dim colours (r, g, b, a) by (dim colour, background colour).
-    static DIM_TUNED: std::cell::RefCell<std::collections::HashMap<(u32, u32), [u8; 4]>> = std::cell::RefCell::new(std::collections::HashMap::new());
-}
-
-/// The 8-bit blend of `(r, g, b, a)` over the opaque `over` on Skia's CPU raster, read from a one pixel surface.
-fn probe_blend(over: skia_safe::Color, colour: [u8; 4]) -> Option<[u8; 3]> {
-    let mut surface = skia_safe::surfaces::raster_n32_premul((1, 1))?;
-    surface.canvas().clear(skia_safe::Color::from_argb(255, over.r(), over.g(), over.b()));
-    let mut paint = Paint::default();
-    paint.set_color(skia_safe::Color::from_argb(colour[3], colour[0], colour[1], colour[2]));
-    surface.canvas().draw_rect(Rect::from_xywh(0.0, 0.0, 1.0, 1.0), &paint);
-    let mut px = [0u8; 4];
-    let info = skia_safe::ImageInfo::new((1, 1), skia_safe::ColorType::RGBA8888, skia_safe::AlphaType::Premul, None);
-    surface.read_pixels(&info, &mut px, 4, (0, 0)).then_some([px[0], px[1], px[2]])
-}
-
-/// The dim colour and alpha, each within two levels of `dim`, whose 8-bit blend over `over` is nearest the exactly rounded blend.
-fn tune_dim(dim: skia_safe::Color, over: skia_safe::Color) -> [u8; 4] {
-    let plain_dim = [dim.r(), dim.g(), dim.b(), dim.a()];
-    let alpha = f32::from(dim.a());
-    let exact = |channel_dim: u8, channel_over: u8| -> i32 {
-        (f32::from(channel_over) + (f32::from(channel_dim) - f32::from(channel_over)) * alpha / 255.0).round() as i32
-    };
-    let target = [exact(dim.r(), over.r()), exact(dim.g(), over.g()), exact(dim.b(), over.b())];
-    let channels = [dim.r(), dim.g(), dim.b()];
-    let mut best_total = i32::MAX;
-    let mut best = plain_dim;
-    for da in [0i32, 1, -1, 2, -2] {
-        let a = (i32::from(dim.a()) + da).clamp(1, 255) as u8;
-        // Per channel, the offset of that channel's value with the smallest error at this alpha.
-        let mut picked = [dim.r(), dim.g(), dim.b()];
-        let mut errors = [i32::MAX; 3];
-        for dc in [0i32, 1, -1, 2, -2] {
-            let trial = [0, 1, 2].map(|i| (i32::from(channels[i]) + dc).clamp(0, 255) as u8);
-            let Some(px) = probe_blend(over, [trial[0], trial[1], trial[2], a]) else { return plain_dim };
-            for i in 0..3 {
-                let e = (i32::from(px[i]) - target[i]).abs();
-                if e < errors[i] {
-                    errors[i] = e;
-                    picked[i] = trial[i];
-                }
-            }
-        }
-        let total: i32 = errors.iter().sum();
-        if total < best_total {
-            best_total = total;
-            best = [picked[0], picked[1], picked[2], a];
-        }
-    }
-    best
-}
-
 /// A plain anti-aliased colour paint, for blurred shadows (a shader under a blur mask costs a fifth more frame time than the level it gains).
 fn plain(c: Rgba) -> Paint {
     let mut p = Paint::default();
@@ -647,7 +568,7 @@ pub fn draw_end_card(canvas: &Canvas, ctx: &OverlayCtx, node: &EndCardNode) {
     super::with_opacity(canvas, node.opacity.unwrap_or(1.0), || {
         canvas.draw_rect(
             Rect::from_xywh(0.0, 0.0, w as f32, h as f32),
-            &dim_paint(dim.with_alpha_scaled(st.dim), ir_color(&ctx.l.ir.background)),
+            &fill(dim.with_alpha_scaled(st.dim)),
         );
         let text = |t: String, font: &str, size: f64, spacing_em: f64, line: f64, color: Rgba| {
             let spec = TextSpec {
