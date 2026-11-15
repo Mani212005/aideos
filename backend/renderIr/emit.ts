@@ -109,8 +109,8 @@ const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter"]);
  * Lists every reason this film cannot be drawn natively in this format; empty means supported.
  * Phase 1 covers SVG scene films: the stage, the camera, `frame` text cards (TextReveal, StatCounter),
  * the chapter rail, the burned-in kinetic captions, the end card and the narration. Phase 4 adds the Three stage
- * (P4.1 carries it in the IR, P4.2 and P4.3 draw it in the cel treatment with any number of performers); the
- * dots-v1 treatment (P4.4) is still refused. Everything else stays with Remotion for now.
+ * (P4.1 carries it in the IR, P4.2 and P4.3 draw it in the cel treatment with any number of performers, P4.4 draws
+ * the dots-v1 treatment too). Everything else stays with Remotion for now.
  */
 export function nativeSupport(film: Film, format: NativeFormat): string[] {
   const reasons: string[] = [];

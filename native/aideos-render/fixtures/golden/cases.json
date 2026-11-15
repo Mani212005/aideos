@@ -113,5 +113,25 @@
       111,
       240
     ]
+  },
+  {
+    "film": "journey-j3-j4-dots",
+    "format": "long",
+    "ir": "journey-j3-j4-dots/render.long.json",
+    "frames": [
+      30,
+      111,
+      180,
+      285
+    ]
+  },
+  {
+    "film": "journey-j3-j4-dots",
+    "format": "reel",
+    "ir": "journey-j3-j4-dots/render.reel.json",
+    "frames": [
+      111,
+      240
+    ]
   }
 ]

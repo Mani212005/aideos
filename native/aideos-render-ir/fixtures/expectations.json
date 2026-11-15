@@ -5,6 +5,7 @@
     "valid/integral-floats.json",
     "valid/minimal-reel.json",
     "valid/mirrored-element.json",
+    "valid/stage3d-dots.json",
     "valid/stage3d-minimal.json",
     "valid/tiny-scene.json"
   ],
@@ -224,6 +225,51 @@
         {
           "code": "invalid_span",
           "path": "/audio/0"
+        }
+      ]
+    },
+    "invalid/stage3d-dots.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "part_kind_mismatch",
+          "path": "/assets/0/parts/4/indices"
+        },
+        {
+          "code": "part_kind_mismatch",
+          "path": "/assets/0/parts/5/vertices"
+        },
+        {
+          "code": "duplicate_stage3d_id",
+          "path": "/stage/1/groups/1/id"
+        },
+        {
+          "code": "invalid_span",
+          "path": "/stage/1/spans/0/endFrame"
+        },
+        {
+          "code": "invalid_span",
+          "path": "/stage/1/spans/1/endFrame"
+        },
+        {
+          "code": "unknown_group",
+          "path": "/stage/1/drawables/0/group"
+        },
+        {
+          "code": "dots_incomplete",
+          "path": "/stage/1/drawables/1/order"
+        },
+        {
+          "code": "dots_incomplete",
+          "path": "/stage/1/drawables/2/group"
+        },
+        {
+          "code": "part_kind_mismatch",
+          "path": "/stage/1/drawables/2/dots/samples/part"
+        },
+        {
+          "code": "unknown_part",
+          "path": "/stage/1/drawables/2/dots/edges/part"
         }
       ]
     },

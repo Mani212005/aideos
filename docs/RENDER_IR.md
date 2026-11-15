@@ -34,10 +34,10 @@ Remotion until their phase; the steps are in [NATIVE_RENDERER.md](NATIVE_RENDERE
 | JSON Schema generator | `backend/renderIr/jsonSchema.ts`, `scripts/render_ir_schema.ts` |
 | Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json` |
 | Rust workspace and loader crate | `native/Cargo.toml`, `native/aideos-render-ir/` |
-| Mesh file codec | `backend/renderIr/mesh.ts` (write and read), `native/aideos-render-ir/src/mesh.rs` (read) |
+| Mesh file codec (triangle, points and lines parts) | `backend/renderIr/mesh.ts` (write and read), `native/aideos-render-ir/src/mesh.rs` (read) |
 | Stage3d emitter and reference pose | `backend/renderIr/emitStage3d.ts`, `backend/renderIr/stage3d.ts` |
 | Shared fixtures and their expected verdicts | `native/aideos-render-ir/fixtures/` (`valid/`, `invalid/`, `expectations.json`, `mesh/`) |
-| TypeScript tests | `backend/renderIr/renderIr.test.ts`, `mesh.test.ts`, `stage3d.test.ts` |
+| TypeScript tests | `backend/renderIr/renderIr.test.ts`, `mesh.test.ts`, `stage3d.test.ts`, `dots.test.ts` (dots-v1, P4.4) |
 | Rust tests | `native/aideos-render-ir/tests/fixtures.rs`, `tests/mesh.rs` |
 
 `native/` is the home of every native renderer crate. R2 added the renderer crate to
@@ -150,7 +150,9 @@ generation, retargeting, limits, contact solving, Euler conversion or the painte
 stage3d                       a stage node, only at the top of the stage, at most one per document
   id, visible?, opacity?      as every node
   mesh                        id of the mesh asset holding every drawable's part
-  treatment                   "cel-v1" (dots-v1 is P4.4; the IR cannot carry its dot fields yet)
+  treatment                   the scene's default treatment: "cel-v1" or "dots-v1" (P4.4)
+  groups[]?, spans[]?         dots-v1 only (P4.4): { id, treatment } per cast member whose drawables carry dots, and
+                              the scene's treatment spans { startFrame, endFrame, treatment }
   projection                  { cameraZ, near, far }: orthographic camera at z = cameraZ looking down -z;
                               its frustum comes from the document camera and the format
   lighting                    { directional: { position, target, color, intensity }, ambient: { color, intensity } }
@@ -159,15 +161,38 @@ stage3d                       a stage node, only at the top of the stage, at mos
   sampleFrames                n: every channel and face texture holds n samples
   nodes[]                     { id, parent?, position[3], quaternion[4] (x y z w), scale }, parents listed first
   channels[]                  { node, position?[3n], quaternion?[4n], scale?[n] }: dense per-frame local values
-  drawables[]                 { id, node, part, material }, in draw order
+  drawables[]                 { id, node, part, material, group?, order?, dots? }, in draw order
   faceTextures[]              { id, size, flipY, filter: "linear", mipmaps, colorSpace: "srgb", programs[n] }
   facePrograms[]              { ops[] }: distinct recorded Canvas 2D programs, shared by textures and frames
-mesh asset                    { kind: "mesh", id, path, sha256?, parts: [{ id, vertices, indices, uv }] }
+mesh asset                    { kind: "mesh", id, path, sha256?, parts: [{ id, kind?, vertices, indices, uv }] }
 ```
 
-**Treatment spans.** P4.1 carries `cel-v1` only: the emitter refuses a film whose scene, spans or cast use
-`dots-v1`, so a carried film has nothing else to describe. The `/2` schema is additive, and per-span treatment
-data arrives with P4.4 (dots-v1).
+**The dots-v1 treatment (P4.4).** The extension is additive: a document without dots-v1 has none of the new fields
+(`groups`, `spans`, `group`, `order`, `dots`, part `kind`), so a cel film's document is the same bytes as before P4.4.
+The emitter runs the real `buildDots` for every performer whose scene uses dots anywhere (the same condition and the
+same calls as `ThreeStage`) and reads the result back from three's own objects, so no decision is copied to Rust:
+
+- `treatment` is the scene's default; `groups[]` has one `{ id, treatment }` per cast member (actor or prop) whose
+  drawables carry `dots`, the treatment being the cast member's own, else the scene's; `spans[]` are the scene's
+  `treatments` (`{ startFrame, endFrame, treatment }`, half open). The treatment of a drawable's group at frame `f`
+  is `stageTreatmentAt`: the first span holding `s`, else the group's treatment, where `s = min(f, sampleFrames - 1)`
+  (the stage holds its last sample through the end card, treatments included).
+- A drawable with a `dots` look has a `group`. `dots` is `{ material, order, samples?, edges? }`:
+  - `material` is what the drawable is drawn as while dots: `basic { color, side }` (the flat paper: `0x0a0a0b`, or
+    white for a light fill such as the nose; no polygon offset), `faceLuma { texture, color, side }` (the face
+    texture times `color`, then `vec3(smoothstep(0.06, 0.4, luma))` with the Rec. 709 luma of the linear colour:
+    grey, no chroma) or `ink { color, width, side }` (the hull in white, or black behind a light fill).
+  - `order` is the sort key of the paper material and `edges.order` the key of the edge line material. Every
+    drawable of a document that uses dots-v1 also carries `order`, the key of its cel material. Opaque draws are
+    sorted by the key of the look in use, ascending (three sorts opaque objects by material creation id; the keys
+    are the ranks of those ids among all the keys of the document, so the bytes do not depend on the process).
+  - `samples { part, tone }` is the frozen Poisson sample field of the drawable's mesh (a `points` part) and the
+    dots shader's `tone` uniform (`1 - lightness` of the original material's linear colour); absent for the head and
+    for light fills, which carry no dots. `edges { part, color, order }` is the prop's `EdgesGeometry` line
+    segments (a `lines` part, white).
+- The renderer draws the opaque pass, then the dots as three's transparent pass: point sprites sorted far first
+  (clip depth of the sample field's bounding box centre at its node). How a sprite, its alpha, its depth test and
+  its blend are drawn is `docs/NATIVE_RENDERER.md` "How dots-v1 is drawn".
 
 **Stage order.** The emitter writes a Three film's stage as `SceneStage` draws it: a `ground-plane` group, the
 `stage3d` node, then a `foreground-plane` group when the scene has foreground props. Groups and the stage3d node
@@ -204,9 +229,13 @@ exactly, not quantized. A program starts from the canvas default state on a tran
 ### The mesh file
 
 Little-endian. The signature `AIDMESH` and the format byte `0x01`; a `u32` part count; per part a header of
-`u32 vertices`, `u32 indices`, `u32 flags` (bit 0: the part has uvs; other bits must be 0); then, per part in
+`u32 vertices`, `u32 indices`, `u32 flags` (bit 0: the part has uvs, bits 4 and 5: the part kind, below; other bits must be 0); then, per part in
 order, `f32 positions[3 x vertices]`, `f32 normals[3 x vertices]`, `f32 uvs[2 x vertices]` when flagged and
-`u32 indices[indices]`. Unindexed three geometry is written with sequential indices (the same triangles). The
+`u32 indices[indices]`. Unindexed three geometry is written with sequential indices (the same triangles). Flag
+bits 4 and 5 (P4.4; a reader before P4.4 refuses them as unknown flags) name two other kinds of part, and an unflagged part is a triangle part as before: bit 4 is a
+`points` part (a dot sample field: `f32 positions[3 x vertices]`, `f32 normals[3 x vertices]`, `f32 ranks[vertices]`,
+no indices), bit 5 a `lines` part (`f32 positions[3 x vertices]`, an even vertex count of whole segments, no
+indices); neither carries uvs, and the asset's `parts[].kind` (`triangles` when absent) must agree with the flags. The
 readers check the signature, that the counts and flags match the asset's `parts`, the exact length, that every
 float is finite and that every index is inside its part. The IR loaders never open the file (as for every
 asset); the renderer does. The shared fixture `fixtures/mesh/two-parts.{json,mesh}` holds both languages to
@@ -233,12 +262,14 @@ cross-reference rules, identical in both languages:
 | `chapters_unordered`, `words_unordered`, `spans_unordered`, `stops_unordered` | rail chapters, caption words, placement spans or gradient stop offsets out of order |
 | `missing_format_entry`, `undeclared_format` | a per-format object that does not match the declared formats |
 | `node_not_allowed` | an `svg` node in the overlay, an overlay node in the stage, a `stage3d` node anywhere but the top of the stage, or a second one |
-| `duplicate_part_id`, `indices_not_triangles` | a mesh part id used twice, or an index count that is not a multiple of 3 |
-| `duplicate_stage3d_id` | a stage3d node, drawable or face texture id used twice in its own list |
+| `duplicate_part_id`, `indices_not_triangles` | a mesh part id used twice, or an index count that is not a multiple of 3 (or a triangles part with none) |
+| `part_kind_mismatch` | a points or lines part that has indices or uvs, a lines part with an odd vertex count, or a drawable, sample field or edge set naming a part of the wrong kind |
+| `duplicate_stage3d_id` | a stage3d node, drawable, face texture or treatment group id used twice in its own list |
+| `unknown_group`, `dots_incomplete` | a drawable naming a treatment group the stage lacks; a drawable with a dots look and no group, or a document with a dots look whose drawable has no `order` |
 | `unknown_node`, `unknown_part`, `unknown_texture`, `unknown_program` | a parent not listed before its child, or a channel or drawable naming a missing node; a drawable naming a part its mesh lacks; a face material naming a missing texture; a texture naming a missing program |
 | `sample_count_mismatch` | a channel or a texture's `programs` that is not `sampleFrames` samples long |
 
-`duplicate_track` also covers two channels for one stage3d node; `value_out_of_range` a channel scale not above
+`invalid_span` also covers a treatment span; `duplicate_track` also covers two channels for one stage3d node; `value_out_of_range` a channel scale not above
 0 and a far plane not beyond the near one; `frame_out_of_range` a `sampleFrames` past the film.
 
 ## Use

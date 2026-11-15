@@ -293,6 +293,16 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Checks that a part exists in the mesh asset and is of the wanted kind.
+    fn need_part(&mut self, mesh: Option<&MeshAsset>, parts: &HashMap<&str, MeshPartKind>, path: String, id: &str, want: MeshPartKind) {
+        let Some(m) = mesh else { return };
+        match parts.get(id) {
+            None => self.add("unknown_part", path, format!("mesh {} has no part {id}", m.id)),
+            Some(kind) if *kind != want => self.add("part_kind_mismatch", path, format!("part {id} is a {kind:?} part, a {want:?} part is needed here")),
+            Some(_) => {}
+        }
+    }
+
     /// Checks one stage3d node: its graph (unique ids, parents listed first), channels (one per node, every channel `sampleFrames` samples long, scale above zero), drawables (known node, part and texture) and face textures (programs that exist, one per sample frame).
     fn check_stage3d(&mut self, p: &str, n: &Stage3dNode, mesh: Option<&MeshAsset>) {
         let samples = n.sample_frames.0 as usize;
@@ -336,7 +346,23 @@ impl<'a> Checker<'a> {
             }
         }
         let textures: HashSet<&str> = n.face_textures.iter().map(|t| t.id.as_str()).collect();
-        let parts: HashSet<&str> = mesh.map(|m| m.parts.iter().map(|part| part.id.as_str()).collect()).unwrap_or_default();
+        let parts: HashMap<&str, MeshPartKind> = mesh.map(|m| m.parts.iter().map(|part| (part.id.as_str(), part.kind())).collect()).unwrap_or_default();
+        let mut group_ids: HashSet<&str> = HashSet::new();
+        for (i, g) in n.groups.iter().flatten().enumerate() {
+            if !group_ids.insert(g.id.as_str()) {
+                self.add("duplicate_stage3d_id", at(p, &[&"groups", &i, &"id"]), format!("stage3d groups id {} is already used", g.id));
+            }
+        }
+        for (i, span) in n.spans.iter().flatten().enumerate() {
+            let sp = at(p, &[&"spans", &i, &"endFrame"]);
+            if span.end_frame.0 <= span.start_frame.0 {
+                self.add("invalid_span", sp, "a span must end after it starts".into());
+            } else if span.end_frame.0 > self.duration {
+                let d = self.duration;
+                self.add("invalid_span", sp, format!("a span may not run past the film's {d} frames"));
+            }
+        }
+        let uses_dots = n.drawables.iter().any(|d| d.dots.is_some());
         let mut drawable_ids: HashSet<&str> = HashSet::new();
         for (i, d) in n.drawables.iter().enumerate() {
             let dp = at(p, &[&"drawables", &i]);
@@ -346,14 +372,34 @@ impl<'a> Checker<'a> {
             if !node_ids.contains(d.node.as_str()) {
                 self.add("unknown_node", at(&dp, &[&"node"]), format!("no stage3d node {}", d.node));
             }
-            if let Some(m) = mesh {
-                if !parts.contains(d.part.as_str()) {
-                    self.add("unknown_part", at(&dp, &[&"part"]), format!("mesh {} has no part {}", m.id, d.part));
-                }
-            }
+            self.need_part(mesh, &parts, at(&dp, &[&"part"]), &d.part, MeshPartKind::Triangles);
             if let StageMaterial::Face(f) = &d.material {
                 if !textures.contains(f.texture.as_str()) {
                     self.add("unknown_texture", at(&dp, &[&"material", &"texture"]), format!("no face texture {}", f.texture));
+                }
+            }
+            if let Some(g) = &d.group {
+                if !group_ids.contains(g.as_str()) {
+                    self.add("unknown_group", at(&dp, &[&"group"]), format!("no treatment group {g}"));
+                }
+            }
+            if uses_dots && d.order.is_none() {
+                self.add("dots_incomplete", at(&dp, &[&"order"]), "every drawable of a document that uses dots-v1 carries its draw order".into());
+            }
+            if let Some(look) = &d.dots {
+                if d.group.is_none() {
+                    self.add("dots_incomplete", at(&dp, &[&"group"]), "a drawable with a dots-v1 look belongs to a treatment group".into());
+                }
+                if let DotsMaterial::FaceLuma(f) = &look.material {
+                    if !textures.contains(f.texture.as_str()) {
+                        self.add("unknown_texture", at(&dp, &[&"dots", &"material", &"texture"]), format!("no face texture {}", f.texture));
+                    }
+                }
+                if let Some(samples) = &look.samples {
+                    self.need_part(mesh, &parts, at(&dp, &[&"dots", &"samples", &"part"]), &samples.part, MeshPartKind::Points);
+                }
+                if let Some(edges) = &look.edges {
+                    self.need_part(mesh, &parts, at(&dp, &[&"dots", &"edges", &"part"]), &edges.part, MeshPartKind::Lines);
                 }
             }
         }
@@ -443,6 +489,22 @@ pub fn check(ir: &RenderIr) -> Vec<Issue> {
                 }
                 if part.indices.0 % 3 != 0 {
                     c.add("indices_not_triangles", at(&p, &[&"parts", &j, &"indices"]), format!("{} indices are not a whole number of triangles", part.indices.0));
+                }
+                let kind = part.kind();
+                if kind == MeshPartKind::Triangles && part.indices.0 == 0 {
+                    c.add("indices_not_triangles", at(&p, &[&"parts", &j, &"indices"]), "a triangles part holds at least one triangle".into());
+                }
+                if kind != MeshPartKind::Triangles {
+                    let name = if kind == MeshPartKind::Points { "points" } else { "lines" };
+                    if part.indices.0 != 0 {
+                        c.add("part_kind_mismatch", at(&p, &[&"parts", &j, &"indices"]), format!("a {name} part has no indices"));
+                    }
+                    if part.uv {
+                        c.add("part_kind_mismatch", at(&p, &[&"parts", &j, &"uv"]), format!("a {name} part has no uvs"));
+                    }
+                    if kind == MeshPartKind::Lines && part.vertices.0 % 2 != 0 {
+                        c.add("part_kind_mismatch", at(&p, &[&"parts", &j, &"vertices"]), "a lines part holds whole segments (an even number of end points)".into());
+                    }
                 }
             }
         }

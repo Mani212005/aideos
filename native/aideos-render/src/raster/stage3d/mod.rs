@@ -1,7 +1,8 @@
-//! File Description: The native rasterizer of the Render IR's `stage3d` node (the Three stage, cel-v1): a deterministic CPU z-buffer renderer for the orthographic, lit cel scene three.js draws in Remotion. It loads the node's graph, channels, drawables, materials and lights plus the binary mesh once, poses the graph for a frame with three's f64 arithmetic (`pose`), projects every drawable through the camera, sets triangles up in 1/16-pixel fixed point (`setup`) and draws them tile by tile with a z-buffer and the SwiftShader sample rules (`tiles`): 4x MSAA with the GL sample pattern, top-left fill, shading once per pixel at its centre, LEQUAL depth, polygon offset, sRGB encode per shaded pixel and an 8-bit box resolve. Face textures are painted by Skia from the recorded Canvas 2D programs (`face`) on first use and cached per program. Draw order is the IR's drawable order, work is split into tiles that never read each other, and nothing depends on a clock, a thread or the machine, so the same frame is byte-identical on every run and at every thread count.
+//! File Description: The native rasterizer of the Render IR's `stage3d` node (the Three stage, cel-v1 and dots-v1): a deterministic CPU z-buffer renderer for the orthographic, lit cel scene three.js draws in Remotion, and for its dots-v1 stipple (point sprites with the shader's density and alpha, depth bias and no depth write, prop edge lines, treatment spans, three's opaque then far-first transparent order: see `dots`). It loads the node's graph, channels, drawables, materials and lights plus the binary mesh once, poses the graph for a frame with three's f64 arithmetic (`pose`), projects every drawable through the camera, sets triangles up in 1/16-pixel fixed point (`setup`) and draws them tile by tile with a z-buffer and the SwiftShader sample rules (`tiles`): 4x MSAA with the GL sample pattern, top-left fill, shading once per pixel at its centre, LEQUAL depth, polygon offset, sRGB encode per shaded pixel and an 8-bit box resolve. Face textures are painted by Skia from the recorded Canvas 2D programs (`face`) on first use and cached per program. Draw order is the IR's drawable order, work is split into tiles that never read each other, and nothing depends on a clock, a thread or the machine, so the same frame is byte-identical on every run and at every thread count.
 //! Inputs and outputs: a `Stage3dNode`, its decoded mesh parts, a frame number, the camera pose and the frame size -> a premultiplied RGBA8 `Layer` covering the pixels the stage touches (or None when it draws nothing).
 //! Used by: crate::raster (composes the layer between the SVG planes in document order) and crate::renderer (loads the scene).
 
+mod dots;
 mod face;
 pub mod pose;
 mod setup;
@@ -10,7 +11,9 @@ mod tiles;
 use std::sync::{Arc, OnceLock};
 
 use aideos_render_ir::mesh::MeshPartData;
-use aideos_render_ir::types::{FaceProgram, Side, Stage3dNode, StageMaterial, Treatment};
+use aideos_render_ir::types::{
+    DotsMaterial, FaceProgram, MeshPartKind, Side, Stage3dNode, StageMaterial, Treatment,
+};
 
 use self::face::{paint_face, Texture};
 use self::pose::{compose, multiply, sample_index, Local, Matrix};
@@ -50,6 +53,8 @@ pub(crate) struct Part {
     pub positions: Vec<f32>,
     pub normals: Vec<f32>,
     pub uvs: Option<Vec<f32>>,
+    /// One rank per sample, for a dot sample field.
+    pub ranks: Option<Vec<f32>>,
     pub indices: Vec<u32>,
 }
 
@@ -61,6 +66,34 @@ pub(crate) enum Shading {
     Flat { rgba: u32 },
     /// The face texture times a linear colour, unlit.
     Face { texture: usize, color: [f32; 3] },
+    /// The dots face paper: the face texture times a linear colour, then `vec3(smoothstep(0.06, 0.4, luma))`.
+    FaceLuma { texture: usize, color: [f32; 3] },
+}
+
+/// A drawable's dot sample field: its points part, the tone uniform and the bounding box centre of the samples (three's bounding sphere centre, used to sort the transparent objects).
+pub(crate) struct SampleSet {
+    pub part: usize,
+    pub tone: f32,
+    pub center: [f64; 3],
+}
+
+/// A drawable's edge lines: its lines part, the flat colour and the opaque sort key.
+pub(crate) struct EdgeSet {
+    pub part: usize,
+    /// The line colour, packed RGBA8 opaque.
+    pub rgba: u32,
+    pub order: u32,
+}
+
+/// What a drawable is drawn as while its treatment is dots-v1.
+pub(crate) struct DotsDrawable {
+    pub shading: Shading,
+    /// The ink hull's push along the normals, as in the cel look.
+    pub ink_width: Option<f32>,
+    /// three's creation id of the paper material: the opaque draw order key.
+    pub order: u32,
+    pub samples: Option<SampleSet>,
+    pub edges: Option<EdgeSet>,
 }
 
 /// One mesh part drawn with one material at one node.
@@ -73,6 +106,12 @@ pub(crate) struct Drawable {
     pub offset: Option<(f64, f64)>,
     /// The ink outline's push along the vertex normals, in object units.
     pub ink_width: Option<f32>,
+    /// The treatment group (cast member) the drawable belongs to.
+    pub group: Option<usize>,
+    /// three's creation id of the cel material: the opaque draw order key (the drawable's position when the document carries none).
+    pub order: u32,
+    /// The dots-v1 look, when the drawable has one.
+    pub dots: Option<DotsDrawable>,
 }
 
 /// A face texture: its size, sampling and the program painted at each sample frame, with a cache of painted programs.
@@ -94,6 +133,12 @@ pub struct Stage3dScene {
     pub(crate) light_dir: [f32; 3],
     pub(crate) samples: &'static [(i64, i64)],
     sample_frames: u32,
+    /// The scene's default treatment, each group's own and the scene spans (`stageTreatmentAt`).
+    default_treatment: Treatment,
+    /// Whether depth is evaluated at the x mirrored sample position (SwiftShader's rule), set for documents that use dots-v1 so the cel documents' pictures stay as they were.
+    pub(crate) mirror_depth: bool,
+    groups: Vec<Treatment>,
+    spans: Vec<(u32, u32, Treatment)>,
     graph: Vec<GraphNode>,
     pub(crate) parts: Vec<Part>,
     pub(crate) drawables: Vec<Drawable>,
@@ -124,6 +169,26 @@ pub(crate) fn pack_linear(rgb: [f32; 3]) -> u32 {
         | 0xff00_0000
 }
 
+/// The centre of the axis aligned box around a position list (three's `Box3.getCenter`, in f64), or the origin for an empty list.
+fn bbox_center(positions: &[f32]) -> [f64; 3] {
+    if positions.is_empty() {
+        return [0.0; 3];
+    }
+    let mut lo = [f64::INFINITY; 3];
+    let mut hi = [f64::NEG_INFINITY; 3];
+    for p in positions.chunks_exact(3) {
+        for k in 0..3 {
+            lo[k] = lo[k].min(f64::from(p[k]));
+            hi[k] = hi[k].max(f64::from(p[k]));
+        }
+    }
+    [
+        (lo[0] + hi[0]) * 0.5,
+        (lo[1] + hi[1]) * 0.5,
+        (lo[2] + hi[2]) * 0.5,
+    ]
+}
+
 /// Converts a colour triple of f64 to f32.
 fn rgb32(c: [f64; 3]) -> [f32; 3] {
     [c[0] as f32, c[1] as f32, c[2] as f32]
@@ -134,9 +199,8 @@ impl Stage3dScene {
     pub fn load(node: &Stage3dNode, mesh: Vec<MeshPartData>) -> Result<Stage3dScene, String> {
         let id = &node.id;
         let part_ids: Vec<String> = mesh.iter().map(|p| p.id.clone()).collect();
-        if node.treatment != Treatment::CelV1 {
-            return Err(format!("stage3d {id}: only the cel-v1 treatment is drawn"));
-        }
+        let part_kinds: Vec<MeshPartKind> = mesh.iter().map(|p| p.kind).collect();
+        let part_centers: Vec<[f64; 3]> = mesh.iter().map(|p| bbox_center(&p.positions)).collect();
         if (node.output.dpr - 1.0).abs() > f64::EPSILON {
             return Err(format!(
                 "stage3d {id}: a device pixel ratio of {} is not drawn (dpr is 1)",
@@ -273,8 +337,27 @@ impl Stage3dScene {
                 positions: p.positions,
                 normals: p.normals,
                 uvs: p.uvs,
+                ranks: p.ranks,
                 indices: p.indices,
             })
+            .collect();
+        let part_index = |what: &str, name: &str, want: MeshPartKind| -> Result<usize, String> {
+            let at = part_ids.iter().position(|p| p == name).ok_or_else(|| {
+                format!("stage3d {id}: {what} names the unknown mesh part {name}")
+            })?;
+            if part_kinds[at] != want {
+                return Err(format!(
+                    "stage3d {id}: {what} names the part {name}, which is not a {want:?} part"
+                ));
+            }
+            Ok(at)
+        };
+        let group_index: std::collections::BTreeMap<&str, usize> = node
+            .groups
+            .iter()
+            .flatten()
+            .enumerate()
+            .map(|(i, g)| (g.id.as_str(), i))
             .collect();
         // Drawables in draw order, with each material's colours precomputed.
         let mut drawables = Vec::with_capacity(node.drawables.len());
@@ -351,6 +434,87 @@ impl Stage3dScene {
                     Some(m.width as f32),
                 ),
             };
+            let part_checked = part_index(
+                &format!("drawable {}", dr.id),
+                &dr.part,
+                MeshPartKind::Triangles,
+            )?;
+            debug_assert_eq!(part_checked, part);
+            let group = match &dr.group {
+                None => None,
+                Some(g) => Some(*group_index.get(g.as_str()).ok_or_else(|| {
+                    format!(
+                        "stage3d {id}: drawable {} names the unknown treatment group {g}",
+                        dr.id
+                    )
+                })?),
+            };
+            let dots = match &dr.dots {
+                None => None,
+                Some(look) => {
+                    let what = format!("drawable {}", dr.id);
+                    let (dshading, dink) = match &look.material {
+                        DotsMaterial::Basic(m) => (
+                            Shading::Flat {
+                                rgba: pack_linear(rgb32(m.color)),
+                            },
+                            None,
+                        ),
+                        DotsMaterial::FaceLuma(m) => {
+                            let texture = node
+                                .face_textures
+                                .iter()
+                                .position(|t| t.id == m.texture)
+                                .ok_or_else(|| {
+                                    format!(
+                                        "stage3d {id}: {what} names the unknown face texture {}",
+                                        m.texture
+                                    )
+                                })?;
+                            (
+                                Shading::FaceLuma {
+                                    texture,
+                                    color: rgb32(m.color),
+                                },
+                                None,
+                            )
+                        }
+                        DotsMaterial::Ink(m) => (
+                            Shading::Flat {
+                                rgba: pack_linear(rgb32(m.color)),
+                            },
+                            Some(m.width as f32),
+                        ),
+                    };
+                    let samples = match &look.samples {
+                        None => None,
+                        Some(sm) => {
+                            let part = part_index(&what, &sm.part, MeshPartKind::Points)?;
+                            Some(SampleSet {
+                                part,
+                                tone: sm.tone as f32,
+                                center: part_centers[part],
+                            })
+                        }
+                    };
+                    let edges = match &look.edges {
+                        None => None,
+                        Some(e) => Some(EdgeSet {
+                            part: part_index(&what, &e.part, MeshPartKind::Lines)?,
+                            rgba: pack_linear(rgb32(e.color)),
+                            order: e.order,
+                        }),
+                    };
+                    Some(DotsDrawable {
+                        shading: dshading,
+                        ink_width: dink,
+                        order: look.order,
+                        samples,
+                        edges,
+                    })
+                }
+            };
+            let order = dr.order.unwrap_or(drawables.len() as u32);
             drawables.push(Drawable {
                 node: node_ix,
                 part,
@@ -358,6 +522,9 @@ impl Stage3dScene {
                 side,
                 offset,
                 ink_width,
+                group,
+                order,
+                dots,
             });
         }
         Ok(Stage3dScene {
@@ -367,12 +534,33 @@ impl Stage3dScene {
             light_dir,
             samples,
             sample_frames: node.sample_frames.0,
+            default_treatment: node.treatment,
+            mirror_depth: node.drawables.iter().any(|d| d.dots.is_some()),
+            groups: node.groups.iter().flatten().map(|g| g.treatment).collect(),
+            spans: node
+                .spans
+                .iter()
+                .flatten()
+                .map(|s| (s.start_frame.0, s.end_frame.0, s.treatment))
+                .collect(),
             graph,
             parts,
             drawables,
             textures,
             programs: node.face_programs.clone(),
         })
+    }
+
+    /// The treatment a drawable's group is drawn in at a film frame: the first scene span holding the frame, else the group's own, else the scene's (`stageTreatmentAt`, at the sample the frame holds).
+    pub(crate) fn treatment_of(&self, group: Option<usize>, frame: u32) -> Treatment {
+        let f = sample_index(self.sample_frames, frame) as u32;
+        if let Some(span) = self.spans.iter().find(|s| f >= s.0 && f < s.1) {
+            return span.2;
+        }
+        match group {
+            Some(g) => self.groups[g],
+            None => self.default_treatment,
+        }
     }
 
     /// World matrices of every graph node at a film frame: a root's world is its local matrix, a child's is its parent's world times its local one.

@@ -641,9 +641,28 @@ pub struct Camera {
 #[serde(deny_unknown_fields)]
 pub struct MeshPart {
     pub id: String,
+    /// Absent means triangles.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<MeshPartKind>,
     pub vertices: Whole,
     pub indices: Whole,
     pub uv: bool,
+}
+
+/// What a mesh part holds: indexed triangles, a dot sample field (dots-v1 point sprites) or line segment end points (dots-v1 prop edges).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MeshPartKind {
+    Triangles,
+    Points,
+    Lines,
+}
+
+impl MeshPart {
+    /// The part's kind, triangles when the document names none.
+    pub fn kind(&self) -> MeshPartKind {
+        self.kind.unwrap_or(MeshPartKind::Triangles)
+    }
 }
 
 /// A binary mesh file holding every part's positions, normals, uvs and indices (see crate::mesh).
@@ -742,6 +761,74 @@ pub struct StageChannel {
     pub scale: Option<Vec<f64>>,
 }
 
+/// What a drawable is drawn as while its treatment is dots-v1: the paper material three swaps in.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum DotsMaterial {
+    /// The flat paper: black paper, or white for a light fill.
+    Basic(DotsPaper),
+    /// The face texture times a colour, then the luma ramp (grey, no chroma).
+    FaceLuma(DotsFacePaper),
+    /// The ink hull with the dots ink colour.
+    Ink(DotsInk),
+}
+
+/// A flat paper: linear colour and sidedness.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DotsPaper {
+    pub color: [f64; 3],
+    pub side: Side,
+}
+
+/// The face paper.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DotsFacePaper {
+    pub texture: String,
+    pub color: [f64; 3],
+    pub side: Side,
+}
+
+/// The ink hull in the dots ink colour.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DotsInk {
+    pub color: [f64; 3],
+    pub width: f64,
+    pub side: Side,
+}
+
+/// A drawable's dot sample field: a points part and the dots shader's tone uniform.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DotsSamples {
+    pub part: String,
+    pub tone: f64,
+}
+
+/// A drawable's edge lines: a lines part, their colour and their opaque sort key.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DotsEdges {
+    pub part: String,
+    pub color: [f64; 3],
+    pub order: u32,
+}
+
+/// The dots-v1 look of one drawable: its paper, its sort key, its stipple and its edge lines.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DotsLook {
+    pub material: DotsMaterial,
+    /// three's creation id of the paper material (the dots opaque draw order key).
+    pub order: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub samples: Option<DotsSamples>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edges: Option<DotsEdges>,
+}
+
 /// One mesh part drawn with one material at one node, in draw order.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -750,6 +837,32 @@ pub struct StageDrawable {
     pub node: String,
     pub part: String,
     pub material: StageMaterial,
+    /// The treatment group (a cast member) of the drawable; present with `dots`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    /// three's creation id of `material` (the cel opaque draw order key); present on every drawable of a document that uses dots-v1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub order: Option<u32>,
+    /// The dots-v1 look; absent on a drawable that is always cel.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dots: Option<DotsLook>,
+}
+
+/// The treatment of one cast member before the scene's spans.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TreatmentGroup {
+    pub id: String,
+    pub treatment: Treatment,
+}
+
+/// A scene treatment span: frames `start_frame` up to (not including) `end_frame` draw every group in `treatment`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct TreatmentSpan {
+    pub start_frame: Whole,
+    pub end_frame: Whole,
+    pub treatment: Treatment,
 }
 
 /// One stop of a face gradient.
@@ -850,6 +963,8 @@ pub enum ToneMapping {
 pub enum Treatment {
     #[serde(rename = "cel-v1")]
     CelV1,
+    #[serde(rename = "dots-v1")]
+    DotsV1,
 }
 
 /// A painted face texture: canvas size, sampling and the program index at each sample frame.
@@ -921,7 +1036,14 @@ pub struct Stage3dNode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opacity: Option<f64>,
     pub mesh: String,
+    /// The scene's default treatment.
     pub treatment: Treatment,
+    /// One entry per cast member whose drawables carry `dots`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<TreatmentGroup>>,
+    /// The scene's treatment spans.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spans: Option<Vec<TreatmentSpan>>,
     pub projection: Projection,
     pub lighting: Lighting,
     pub ramp: Vec<Whole>,
