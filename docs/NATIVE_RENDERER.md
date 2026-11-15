@@ -485,25 +485,28 @@ none changed a threshold, a Chrome golden or the film design language:
 | end card panel and chips: LIKE chip 4 px narrow, panel 2 px narrow, fractional box edges | `raster/chrome.rs` | borders add to auto widths, boxes pixel-snap, the entrance's fractional rise moves them after |
 
 Whole-frame SSIM against Remotion, all frames (bar 0.995, before this change > after it). Evidence:
-`/home/mani/aideos-linux-home/data/aideos-native-2d-text-parity/` (`runB/parity/<film>-<format>/`, `deliver/`).
+`/home/mani/aideos-linux-home/data/aideos-native-2d-text-parity/` (`runF/parity/<film>-<format>/`, `deliver/`).
 
 | Film, format | Story SSIM min | End card SSIM min | Frames under 0.995 |
 | --- | --- | --- | --- |
-| iona-receive, long / reel | 0.99458 > 0.99857 / 0.98923 > 0.99903 | 0.97965 > 0.99886 / 0.98056 > 0.99877 | 174 > 0 of 480 / 285 > 0 of 390 |
-| journey-three-characters, long / reel | 0.99457 > 0.99857 / 0.98923 > 0.99901 | 0.97977 > 0.99885 / 0.98061 > 0.99885 | 174 > 0 / 285 > 0 |
-| pixels-stage-pip, long / reel | 0.99453 > 0.99849 / 0.98914 > 0.99895 | 0.97986 > 0.99897 / 0.98071 > 0.99900 | 174 > 0 / 285 > 0 |
-| pixels-stage-marlo, long / reel | 0.99459 > 0.99857 / 0.98925 > 0.99905 | 0.97986 > 0.99896 / 0.98069 > 0.99894 | 174 > 0 / 285 > 0 |
-| journey-j3-j4-dots, long / reel | 0.99465 > 0.99865 / 0.98931 > 0.99912 | 0.97856 > 0.99779 / 0.97986 > 0.99750 | 174 > 0 / 287 > 0 |
-| hello-scene, long / reel | 0.98740 > 0.99794 / 0.98495 > 0.99851 | 0.97945 > 0.99906 / 0.98033 > 0.99910 | 476 > 0 of 480 / 320 > 0 of 390 |
-| still-talking (story frames 0-299 and the end card), long / reel | 0.98145 > 0.99416 / 0.98623 > 0.99617 | 0.97959 > 0.99370 / 0.98007 > 0.99591 | 480 > 50 of 480 / 389 > 0 of 390 |
+| iona-receive, long / reel | 0.99458 > 0.99827 / 0.98923 > 0.99875 | 0.97965 > 0.99876 / 0.98056 > 0.99869 | 174 > 0 / 285 > 0 |
+| journey-three-characters, long / reel | 0.99457 > 0.99828 / 0.98923 > 0.99875 | 0.97977 > 0.99875 / 0.98061 > 0.99877 | 174 > 0 / 285 > 0 |
+| pixels-stage-pip, long / reel | 0.99453 > 0.99819 / 0.98914 > 0.99868 | 0.97986 > 0.99887 / 0.98071 > 0.99892 | 174 > 0 / 285 > 0 |
+| pixels-stage-marlo, long / reel | 0.99459 > 0.99827 / 0.98925 > 0.99876 | 0.97986 > 0.99887 / 0.98069 > 0.99887 | 174 > 0 / 285 > 0 |
+| journey-j3-j4-dots, long / reel | 0.99465 > 0.99835 / 0.98931 > 0.99883 | 0.97856 > 0.99778 / 0.97986 > 0.99747 | 174 > 0 / 287 > 0 |
+| hello-scene, long / reel | 0.98740 > 0.99769 / 0.98495 > 0.99827 | 0.97945 > 0.99868 / 0.98033 > 0.99877 | 476 > 0 / 320 > 0 |
+| still-talking (story frames 0-299 and the end card), long / reel | 0.98145 > 0.99325 / 0.98623 > 0.99540 | 0.97959 > 0.99238 / 0.98007 > 0.99462 | 480 > 72 / 389 > 2 |
 
-The 0.995 bar is met on every frame of every film and format except one: still-talking long, where 50 frames are
-under it (frames 4 to 21, 266 to 299 and 4621 to 4625, minimum 0.99370). On the story frames of that film 74% to 82% of
-the SSIM loss is the scene's own artwork (gradient banding and the anti-aliasing of the star discs), not text; on frame
-4621 the loss is the text card, whose words sit about 0.9 px left of Chrome's and whose stems are lighter (a text
-gamma of 1.2 with no extra contrast reproduces Chrome's total ink on that frame to 0.1% where Skia's default is 4%
-heavier, but it moves no SSIM figure by more than 0.0002, so it is not applied). The text card row layout in
-`emit.ts` is measured with Skia widths against Chrome's DOM widths, which is the likely source of the 0.9 px.
+The 0.995 bar is met on every frame of every film and format except still-talking: its long cut has 72 of 480 frames
+under it (frames 0 to 25, 262 to 299 and 4621 to 4633, minimum 0.99238) and its reel 2 of 390 (frames 4629 and 4633,
+minimum 0.99462). Those frames carry the film's own artwork (soft gradients and star discs, blended through translucent
+SVG gradients and group opacity layers, where a half-float surface recovered most of the gap) and moving text cards;
+on its story frames 74% to 82% of the SSIM loss is outside the text, and the text cards' words sit about 0.9 px left of
+Chrome's with lighter stems (a text gamma of 1.2 with no extra contrast reproduces Chrome's total ink on frame 4621 to
+0.1% where Skia's default is 4% heavier, but it moves no SSIM figure by more than 0.0002, so it is not applied). The
+text card row layout in `emit.ts` is measured with Skia widths against Chrome's DOM widths, the likely source of the
+0.9 px. A half-float frame surface closed most of the artwork gap (still-talking long 50 frames under the bar, reel 0)
+but cost a quarter more CPU time, so it was not kept.
 
 ## The renderer flag
 
