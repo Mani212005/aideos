@@ -92,7 +92,7 @@ test("MotionRequests: with no agent it uses the server model, or says it was not
   try {
     const none = await requestMotion(film, "beat-02", "pulse it", { dispatch: nobody, llmCaller: null });
     assert.equal(none.state, "undelivered");
-    assert.match(none.message ?? "", /Connect agent/);
+    assert.match(none.message ?? "", /Agent button in the header/);
 
     let told = "";
     const r = await requestMotion(film, "beat-02", "pulse it", {

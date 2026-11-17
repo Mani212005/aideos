@@ -13,7 +13,7 @@ export interface StartBoxProps {
   /** The ids of the films that exist, so the new film gets an id of its own. */
   filmIds: readonly string[];
   /** Called with the new film once the server has made it. */
-  onStarted: (film: Film) => void;
+  onStarted: (film: Film) => Promise<boolean>;
 }
 
 /** The story field with its Start button. */
@@ -27,8 +27,7 @@ export function StartBox({ filmIds, onStarted }: StartBoxProps) {
     setBusy(true);
     setError(null);
     try {
-      onStarted(await startFilm(story, filmIds));
-      setStory("");
+      if (await onStarted(await startFilm(story, filmIds))) setStory("");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

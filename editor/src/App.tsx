@@ -239,7 +239,7 @@ export default function App() {
   /** Opens a film from the Films home in Words. */
   const openFilm = useCallback(
     async (id: string) => {
-      if (id !== film.id) await project.selectFilm(id);
+      if (id !== film.id && !(await project.selectFilm(id))) return;
       setStage("script");
     },
     [film.id, project, setStage],
@@ -390,10 +390,11 @@ export default function App() {
                 filmIds={project.filmIds}
                 openId={film.id}
                 onOpen={(id) => void openFilm(id)}
-                onStarted={(newFilm) => {
-                  project.registerFilm(newFilm);
+                onStarted={async (newFilm) => {
+                  if (!(await project.registerFilm(newFilm))) return false;
                   setStage("script");
                   notify("success", `Film started: ${newFilm.id}`);
+                  return true;
                 }}
               />
             )}

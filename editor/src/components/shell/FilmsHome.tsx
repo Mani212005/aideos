@@ -14,7 +14,7 @@ export interface FilmsHomeProps {
   filmIds: readonly string[];
   openId: string;
   onOpen: (id: string) => void;
-  onStarted: (film: Film) => void;
+  onStarted: (film: Film) => Promise<boolean>;
 }
 
 /** The home screen: Start box on top, the films below. */

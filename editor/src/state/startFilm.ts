@@ -9,6 +9,9 @@ import type { Film } from "../../../src/dl/schema";
 /** The most words the name of a film takes from the story. */
 const TITLE_WORDS = 6;
 
+/** The most ids tried when the server says an id is taken. */
+const MAX_ATTEMPTS = 20;
+
 /** The most characters in a name: the film schema limits a canvas node label to 28. */
 const TITLE_CHARS = 28;
 
@@ -51,18 +54,26 @@ export async function startFilm(story: string, taken: readonly string[]): Promis
   const text = story.trim();
   if (!text) throw new Error("Add a story.");
   const title = storyTitle(text) || "Film";
-  const id = uniqueFilmId(title, taken);
-  let res: Response;
-  try {
-    res = await fetch("/api/projects/new", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, id, script: text, autoCompile: true }),
-    });
-  } catch {
-    throw new Error("No answer from the server.");
+  const used = [...taken];
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const id = uniqueFilmId(title, used);
+    let res: Response;
+    try {
+      res = await fetch("/api/projects/new", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, id, script: text, autoCompile: true }),
+      });
+    } catch {
+      throw new Error("No answer from the server.");
+    }
+    if (res.status === 409) {
+      used.push(id);
+      continue;
+    }
+    const data = (await res.json().catch(() => null)) as { film?: Film; error?: string } | null;
+    if (!res.ok || !data?.film) throw new Error(data?.error ?? `Start failed (${res.status}).`);
+    return data.film;
   }
-  const data = (await res.json().catch(() => null)) as { film?: Film; error?: string } | null;
-  if (!res.ok || !data?.film) throw new Error(data?.error ?? `Start failed (${res.status}).`);
-  return data.film;
+  throw new Error("Start failed: every film name is taken.");
 }

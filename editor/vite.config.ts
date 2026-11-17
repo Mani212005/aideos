@@ -2124,7 +2124,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             // markers) is converted here by Aideos itself, deterministically and with no agent, so nobody
             // downstream reformats what the user wrote. A tagged script and an empty project stay as they are.
             const newPkgDir = path.join(videosDir, cleanId);
-            if (!fs.existsSync(newPkgDir)) fs.mkdirSync(newPkgDir, { recursive: true });
+            if (fs.existsSync(path.join(newPkgDir, 'film.json')) || fs.existsSync(path.join(newPkgDir, 'script.md'))) {
+              sendJson(res, 409, { error: `A film named "${cleanId}" exists.` });
+              return;
+            }
+            fs.mkdirSync(newPkgDir, { recursive: true });
             const storyScript = plainTextToTaggedScript(script, { speed: Number(voiceSpeed) > 0 ? Number(voiceSpeed) : DEFAULT_KOKORO_SPEED });
             fs.writeFileSync(path.join(newPkgDir, 'script.md'), storyScript, 'utf8');
             syncNarrationLog(newPkgDir, 'user');
@@ -2155,66 +2159,31 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }
 
             if (!newFilm) {
+              // A story too short to compile gets a film of one title shot: no invented shots, numbers or text.
               newFilm = {
                 id: cleanId,
                 title: title.trim(),
                 fps: 30,
                 accent,
                 theme: filmTheme,
-                chapters: ["Introduction", "Core Mechanism", "Architecture", "Payoff"],
+                chapters: [title.trim()],
                 canvas: {
                   nodes: [
                     { id: "intro", label: title.trim(), x: -200, y: -100, w: 230, h: 70 },
-                    { id: "mechanism", label: "Core Concept", x: 160, y: -100, w: 230, h: 70 },
-                    { id: "system", label: "System Flow", x: 160, y: 150, w: 230, h: 70 },
-                    { id: "result", label: "Key Payoff", x: -200, y: 150, w: 230, h: 70 }
+                    { id: "end", label: "End", x: 160, y: -100, w: 230, h: 70 }
                   ],
-                  edges: [
-                    { from: "intro", to: "mechanism", dashed: false },
-                    { from: "mechanism", to: "system", dashed: false },
-                    { from: "system", to: "result", dashed: true }
-                  ]
+                  edges: [{ from: "intro", to: "end", dashed: false }]
                 },
                 shots: [
                   {
                     id: "shot-1",
-                    dur: 6,
+                    dur: 10,
                     look: "intro",
                     move: "cut",
                     stage: "frame",
                     drift: false,
                     zoom: 1,
                     blocks: [{ c: "TextReveal", text: title.trim(), size: "headline" }]
-                  },
-                  {
-                    id: "shot-2",
-                    dur: 7,
-                    look: "mechanism",
-                    move: "pan",
-                    stage: "frame",
-                    drift: false,
-                    zoom: 1,
-                    blocks: [{ c: "Body", text: "Visualizing the fundamental idea and mechanics." }]
-                  },
-                  {
-                    id: "shot-3",
-                    dur: 8,
-                    look: "system",
-                    move: "pan",
-                    stage: "frame",
-                    drift: false,
-                    zoom: 1,
-                    blocks: [{ c: "StatCounter", to: 10, label: "Performance Gain", format: "plain", suffix: "x" }]
-                  },
-                  {
-                    id: "shot-4",
-                    dur: 6,
-                    look: "result",
-                    move: "pan",
-                    stage: "frame",
-                    drift: false,
-                    zoom: 1,
-                    blocks: [{ c: "Body", text: "Summary and key takeaways." }]
                   }
                 ]
               };
