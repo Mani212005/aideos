@@ -1,6 +1,6 @@
 /**
  * File Description: The themes a new project can choose and the rule that the chosen theme is binding.
- * The New project dialog offers these themes; the project stores the choice on `film.theme` (its
+ * A request to `/api/projects/new` can name these themes; the project stores the choice on `film.theme` (its
  * background preset and accent) and marks it with `theme.accentChosen: true`. Only a marked film is
  * bound: an accent written any other way (an old project's default, a look plan's own pick) is not a
  * choice. Every later stage reads that choice back from here: the agent task prompt, the agent briefs
@@ -17,7 +17,7 @@
 
 import type { BackgroundPreset, ThemeConfig } from "./dl/schema";
 
-/** One theme in the New project dialog. */
+/** One theme a new project can name. */
 export interface ProjectThemeOption {
   id: string;
   name: string;
@@ -28,7 +28,7 @@ export interface ProjectThemeOption {
 /** The accent of the default theme, and the one every stage falls back to when a film names no accent; never purple, which appears only when the user chose it. */
 export const DEFAULT_PROJECT_ACCENT = "#FF6B00";
 
-/** The themes the New project dialog offers; `id` is a `film.theme.background` preset (the schema rejects any other value). */
+/** The themes a request to `/api/projects/new` can name; `id` is a `film.theme.background` preset (the schema rejects any other value). */
 export const PROJECT_THEMES: readonly ProjectThemeOption[] = [
   { id: "smooth-dark", name: "Smooth Dark", accent: DEFAULT_PROJECT_ACCENT, swatch: "#0A0A0B" },
   { id: "paper-white", name: "Paper White", accent: "#635BFF", swatch: "#F5F5F5" },
