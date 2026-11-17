@@ -2,7 +2,7 @@
  * File Description: Persistence of the film acceptance machine. Reads and writes videos/<slug>/acceptance.json
  * (one record per format plus the ledger of films the tools themselves wrote), hashes film manifests and mp4
  * files, and answers "is film.json something a tool wrote or a hand edit" and "is this film the reviewed one".
- * Inputs and outputs: a package directory, a format and events -> the saved acceptance file and summaries.
+ * Inputs and outputs: a package directory, a format and events -> the saved acceptance file and the Check view.
  * Used by: backend/allCheck/round.ts, backend/allCheck/finish.ts, backend/pipeline/filmStore.ts,
  * backend/designSpec/build.ts, editor/vite.config.ts.
  */

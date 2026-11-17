@@ -1,10 +1,9 @@
 /**
  * File Description: The film acceptance state machine (audit machine M4). One acceptance record per film and
  * format, keyed by the content hashes of the film manifest and the rendered mp4: approval belongs to those exact
- * bytes, never to a name. The module is pure (no filesystem, no clock, no renderer) and owns every state, every
- * transition and the wording of what a state means; callers only feed it events and read the result.
+ * bytes, never to a name. The module is pure (no filesystem, no clock, no renderer) and owns every state and every
+ * transition; callers only feed it events and read the result.
  * Inputs and outputs: an AcceptanceRecord plus an AcceptanceEvent -> the next record, or an ImpossibleTransitionError.
- * It imports only the pure score formatter of the verdict policy (backend/geminiReview/verdictPolicy.ts).
  * Used by: backend/filmAcceptance/store.ts, backend/allCheck/round.ts, backend/allCheck/finish.ts,
  * backend/designSpec/build.ts, editor/vite.config.ts.
  */
