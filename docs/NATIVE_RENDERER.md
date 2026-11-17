@@ -176,7 +176,7 @@ the package directory (including through a symlink).
 
 `native/aideos-render/tests/golden.rs` holds the CPU raster's own reference frames, separate from the Chrome
 goldens in `backend/journeys/goldens/` (those still guard the default Remotion render and are untouched). The set
-covers the native-supported fixture films, `hello-scene`, `still-talking` and the Three-stage character films `iona-receive`, `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters` (the J5 film: Iona, Pip and Marlo, each with a glider), in long and reel, at the same frames
+covers the native-supported fixture films, `hello-scene`, `still-talking` and the Three-stage character films `iona-receive`, `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters` (the J5 film: Iona, Pip and Marlo, each with a glider) and `journey-j3-j4-dots` (the dots-v1 film), in long and reel, at the same frames
 and the same quarter scale as the Chrome goldens (`fixtures/golden/frames/<film>/<format>-<frame>.png`, 480 x 270
 or 270 x 480, a 4 x 4 box average of the 1920 x 1080 CPU frame). `fixtures/golden/<film>/render.<format>.json` are
 the emitter's IR for those films with the audio clips dropped (the frame raster never opens audio), with the
@@ -195,6 +195,8 @@ The set is separate because the Chrome goldens record Remotion's pixels and the 
 raster, so one reference cannot serve both. It was re-baselined on the native CPU reference after parity was shown
 on the Phase 1 proof film (below), with the same strict tolerance and never a looser one. No Chrome golden,
 tolerance or workflow is changed.
+
+The cargo test draws the committed IR. `backend/journeys/native_character_goldens.journey.ts` (P4.5) reaches the same frames the way a user does: it builds each character film of the set (iona-receive, Pip, Marlo, the J5 film and the dots film) from its package, emits the IR with the production emitter, draws it with the release binary, box-averages 4 x 4 as the golden test does and compares with the committed frames at the strict tolerance, so an emitter change that moves a picture fails there even though the committed IR still renders.
 
 ### Phase 1 parity on claude-dreaming
 
@@ -315,7 +317,7 @@ Remotion stays the default and the kill switch for everything not yet native. Th
 | P4.2 | the CPU rasterizer of the stage3d node and the first film (iona-receive, cel, one performer), native goldens and the parity report ([P4.2 parity on iona-receive](#p42-parity-on-iona-receive)) | done: `nativeSupport` accepts cel-v1 with one performer |
 | P4.3 | several performers (the J5 film, Iona, Pip and Marlo each with a glider), Pip and Marlo as the performer: data and emitter work on the P4.2 rasterizer, native goldens for `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters`, and the parity report ([P4.3 parity on Pip, Marlo and J5](#p43-parity-on-pip-marlo-and-j5)) | done: `nativeSupport` accepts cel-v1 with any number of performers |
 | P4.4 | the `dots-v1` treatment: the IR carries it (additive), the CPU rasterizer draws point sprites, edge lines and treatment spans, native goldens for the J3 and J4 film, and the parity report ([P4.4 parity on the dots film](#p44-parity-on-the-dots-film)) | done: `nativeSupport` accepts dots-v1 |
-| P4.5 | journeys and goldens per the captain's decision | |
+| P4.5 | journeys and goldens per the captain's decisions: what each engine-comparing journey compares once export is native ([P4.5 journeys](#p45-journeys-and-goldens)), and the native goldens of Pip, Marlo and the dots film reached through the emitter | done |
 
 Since P4.2, `nativeSupport` accepts a Three-stage film in the cel treatment with one performer, and since P4.3 with
 any number of performers, and since P4.4 the dots-v1 treatment too. Every other reason
@@ -511,6 +513,29 @@ widths, the likely source of the 0.9 px. A half-float frame surface closed most 
 50 frames under the bar, reel 0) but cost a quarter more CPU time, so it was not kept. Cost of the float-shader dim:
 about 5 ms a frame on end card frames only (end card frames about 10% slower, story frames unchanged).
 
+### P4.5 journeys and goldens
+
+The journeys that compared one engine with another were decided one by one, following the captain's answers (the strict
+golden tolerance stays and is native against native, never loosened; a Remotion export stays the oracle of the J3
+Player-versus-export journeys until a WASM preview exists; a new baseline on the native CPU reference is approved and
+is not a looser tolerance). No existing assertion, tolerance, timeout or golden changed. Remotion is still the engine
+of every film the native renderer does not draw and the kill switch (`AIDEOS_RENDERER=remotion`), so the Remotion
+checks stay and the native ones are added beside them.
+
+| Journey | Compared before (Remotion) | After P4.5 |
+| --- | --- | --- |
+| J1 "J3 determinism" (`j1_pipeline.journey.ts`) | a concurrent, out-of-order Remotion image sequence against each frame rendered cold by Remotion | unchanged, and a new native journey beside it: the real export job (`createNativeRenderer`) over the contact window at one raster thread and at three gives the same decoded frames (difference 0), and each is within 38 dB PSNR (the bar of `tests/video.rs`; measured 44.99 dB or more) of the same frame drawn cold and lossless by `aideos-render --frame`, with scrambled order and a repeated frame byte-identical |
+| `character_pixels` Pip and Marlo stage stills | the Remotion stage at contact against the committed Remotion stills in both formats | unchanged (it checks the Remotion stage), and `native_character_goldens.journey.ts` holds the native raster of the same contact frames to the native goldens |
+| J3 and J3/J4 Player against export (`j3_j5_stage`, `j3_j4_dots`) | the Player against a Remotion export | unchanged: the Remotion export stays the oracle until a WASM preview exists; their production renders are native and are checked for size, frames, motion and crops only |
+| Native goldens (new, `native_character_goldens.journey.ts`) | not covered through the emitter | iona-receive, Pip, Marlo, the J5 film and the dots film, long and reel, every golden frame: built from the package, emitted, drawn by the binary and compared at the strict tolerance; the contact frame must be among the goldens |
+
+The native goldens for Pip, Marlo, the J5 film and the dots film were added with P4.3 and P4.4 to the native golden set
+(no new baseline is needed here: the frames did not change). Evidence for the PR is the per-frame whole-frame SSIM
+against Remotion at every one of those golden frames (lowest 0.99833, bar 0.995) taken from the full-film runs of the
+[2D text parity](#2d-text-parity-with-chrome-aideos-native-2d-text-parity) measurement on the merged renderer. The
+native journeys need the release binary: they skip when it is not built, and fail when `CI=true` or
+`AIDEOS_NATIVE_TESTS_REQUIRED=1`.
+
 ## The renderer flag
 
 Every render job chooses its renderer through `createSelectedRenderer` (`backend/rendererSelection.ts`): the
@@ -547,7 +572,7 @@ Three-stage character film, since P4.3 the cel films with several performers (Pi
 the dots-v1 films (the J3 and J4 film). Node-graph films and the other
 refusals listed in [The emitter](#the-emitter-r4) stay on Remotion. A journey's render job takes the native path when
 the release binary is built (the CI journeys job builds it); the Player-versus-export journeys keep a Remotion export
-as their oracle until a WASM preview exists.
+as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-goldens)).
 
 ## Not yet native
 

@@ -1,5 +1,5 @@
 /**
- * File Description: Browser pixel tests: spec-built Iona equals the frozen legacy art, every character draws in both crops, Pip and Marlo match committed stage stills, and the sheet command works end to end.
+ * File Description: Browser pixel tests: spec-built Iona equals the frozen legacy art, every character draws in both crops, Pip and Marlo match committed stage stills (drawn by the Remotion stage, which is the kill-switch engine and no longer the default export; the native raster of the same contact frames is held to the native goldens by native_character_goldens.journey.ts), and the sheet command works end to end.
  * Inputs and outputs: committed specs, legacy stage performances and PNG evidence -> headless Chrome (software GL) pixel comparisons and sheet files.
  * Used by: npm run test:journeys and the CI journeys job. Skips when no Chrome is installed unless AIDEOS_BROWSER_TESTS_REQUIRED=1.
  */
@@ -62,7 +62,7 @@ function packageWithCharacter(character: "pip" | "marlo"): string {
   return slug;
 }
 
-// Renders each compiled character performance at contact through the production Remotion stage.
+// Renders each compiled character performance at contact through the Remotion stage (the engine the committed stage stills were made with).
 async function productionCharacterStills(outDir: string): Promise<Array<PixelRequest["cast"][number]>> {
   const results: Array<PixelRequest["cast"][number]> = [];
   for (const character of ["pip", "marlo"] as const) {

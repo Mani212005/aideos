@@ -1,5 +1,5 @@
 /**
- * File Description: Enforces J5 three-character production, J3 real Player/export parity and J8 unavailable-WebGL refusal on one short shared stage production.
+ * File Description: Enforces J5 three-character production, J3 real Player/export parity and J8 unavailable-WebGL refusal on one short shared stage production. The export side of J3 is a Remotion export (`openFilm`), not the native production render: the Player stays on three.js, so a native export would compare two engines, and the captain decided (P4.5) that a Remotion export stays the oracle until a WASM preview exists. The native frames of this film family are checked against the native goldens by native_character_goldens.journey.ts.
  * Inputs and outputs: Iona, Pip and Marlo specs plus the receive fixture -> both-format clips, independent contact ownership, matching Player pixels and named graphics errors.
  * Used by: npm run test:journeys and npm run ci journeys; concurrency 2 and short frame ranges only.
  */

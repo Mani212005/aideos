@@ -28,7 +28,7 @@ Character integration (part 1): `prepareStageFacts` builds each performer from i
 
 Character follow-up: the deferred Pip and Marlo stage stills now live in
 `test_fixtures/characters/stage-stills/` and are compared by `backend/journeys/character_pixels.journey.ts`.
-The test renders each compiled decisive pose through the production Remotion stage in both formats
+The test renders each compiled decisive pose through the Remotion stage (the kill-switch engine; the default export draws natively since P4.2) in both formats
 before comparing it with those references.
 `backend/journeys/j4_character_crops.journey.ts` runs the receive through the real design compiler
 for Iona, Pip and Marlo, checks each evaluated actor and prop silhouette through recovery in both

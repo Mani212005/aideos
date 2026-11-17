@@ -1,5 +1,5 @@
 /**
- * File Description: Journeys J1, J3 (seek order), J4 and J12 on one real production of the Iona receive fixture: script to rendered wide and reel mp4s through runProduction (tone narration, null engine, software GL), then checks that every frame is a pure function of its frame number, that the character and prop stay inside the frame and above the caption band, the contact frame has the glider attached, the rendered frames are drawn rather than blank, and no temp or disk is left behind.
+ * File Description: Journeys J1, J3 (seek order), J4 and J12 on one real production of the Iona receive fixture: script to rendered wide and reel mp4s through runProduction (tone narration, null engine, software GL; the render job is native since P4.2), then checks that every frame is a pure function of its frame number (twice: the Remotion render, which draws every film the native renderer does not and is the kill switch, and the native export, P4.5), that the character and prop stay inside the frame and above the caption band, the contact frame has the glider attached, the rendered frames are drawn rather than blank, and no temp or disk is left behind.
  * Inputs and outputs: the committed iona-receive look and design -> assertions about stages, outputs, projected geometry and temp hygiene; failing frames are saved under .ci-artifacts/.
  * Used by: npm run test:journeys (the CI journeys job).
  */
@@ -10,7 +10,11 @@ import path from "node:path";
 import { journey, decodeFrame, extractFramePng, frameDiff, frameStats, probeVideo, sizeOf, tempEntries } from "./harness";
 import { produceIona, type IonaProduction } from "./ionaFilm";
 import { openFilm } from "./remotionFrames";
+import { nativeJourneyProblem, nativeJourneysRequired, psnrDb, renderNativeFrame, stageNativePackage } from "./nativeFrames";
 import { readFilm } from "../pipeline/filmStore";
+import { reelForRender } from "../reelCut/store";
+import { createRenderJob } from "../renderJob";
+import { createNativeRenderer } from "../nativeRenderer";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import { SUBTITLE_BAND_TOP_RATIO } from "../../src/dl/fullScreenHeroLayout";
 import type { Scene } from "../../src/dl/scene/types";
@@ -132,5 +136,49 @@ journey("J3 a frame is a pure function of its frame number: a concurrent out-of-
     }
   } finally {
     await film.close();
+  }
+});
+
+const nativeProblem = nativeJourneyProblem();
+
+/** The bar a native video frame must clear against the same frame drawn cold and lossless: the one `native/aideos-render/tests/video.rs` uses for an exported frame against its reference still. */
+const EXPORT_PSNR_DB = 38;
+
+journey("J3 native: the native export is a pure function of the frame number: one and three raster threads give the same frames, and each is the frame drawn cold", async (ctx) => {
+  if (nativeProblem && !nativeJourneysRequired()) return;
+  assert.equal(nativeProblem, null, "the native binary must be built for this journey (CI builds it first)");
+  const { run } = await produced();
+  const around: [number, number] = [run.contactFrame - 3, run.contactFrame + 3];
+  for (const format of ["long", "reel"] as const) {
+    const film = format === "reel" ? reelForRender(SLUG) : readFilm(SLUG)!;
+    // The real export job at one raster thread and at three: the workers finish frames in whatever order they like and the encoder sees them in order.
+    const exported = new Map<number, string>();
+    for (const threads of [1, 3]) {
+      const out = path.join(ctx.workDir, `${format}-native-${threads}-threads.mp4`);
+      const job = createRenderJob({ film, format, outPath: out, profile: "final", frames: around }, createNativeRenderer({ threads }));
+      assert.equal((await job.run()).output.format, format);
+      exported.set(threads, out);
+      ctx.keep(out);
+    }
+    assert.ok(frameDiff(decodeFrame(exported.get(1)!, { frame: 0 }), decodeFrame(exported.get(1)!, { frame: 6 }), 0).changedShare > 0, `${format}: frames ${around[0]} and ${around[1]} are identical, so the equality below would prove nothing`);
+    for (let index = 0; index <= 6; index++) {
+      const diff = frameDiff(decodeFrame(exported.get(1)!, { frame: index }), decodeFrame(exported.get(3)!, { frame: index }), 0);
+      assert.equal(diff.changedShare, 0, `${format} frame ${around[0] + index}: the one-thread and three-thread exports differ in ${(diff.changedShare * 100).toFixed(4)}% of pixels`);
+      assert.equal(diff.meanAbs, 0, `${format} frame ${around[0] + index}: the one-thread and three-thread exports differ`);
+    }
+    // Cold frames, each in its own process, in a deliberately scrambled order with one frame drawn twice.
+    const staged = stageNativePackage(film, format, path.join(ctx.workDir, `${format}-cold-package`));
+    const cold = new Map<number, string>();
+    let lowestDb = Number.POSITIVE_INFINITY;
+    for (const frame of [around[0] + 3, around[1], around[0], around[0] + 3, around[0] + 1]) {
+      const png = path.join(ctx.workDir, `${format}-cold-${frame}-${cold.has(frame) ? "again" : "first"}.png`);
+      renderNativeFrame(staged, format, frame, png);
+      if (!cold.has(frame)) cold.set(frame, png);
+      else assert.ok(fs.readFileSync(png).equals(fs.readFileSync(cold.get(frame)!)), `${format} frame ${frame}: drawn cold twice, the two PNG files differ`);
+      const db = psnrDb(exported.get(3)!, frame - around[0], png);
+      lowestDb = Math.min(lowestDb, db);
+      assert.ok(db > EXPORT_PSNR_DB, `${format} frame ${frame}: the export is ${db.toFixed(2)} dB from the frame drawn cold (bar ${EXPORT_PSNR_DB} dB)`);
+    }
+    console.log(`native ${format} export against the cold frame, lowest PSNR ${lowestDb.toFixed(2)} dB (bar ${EXPORT_PSNR_DB} dB)`);
   }
 });
