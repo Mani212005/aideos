@@ -2128,13 +2128,14 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               sendJson(res, 409, { error: `A film named "${cleanId}" exists.` });
               return;
             }
-            fs.mkdirSync(newPkgDir, { recursive: true });
             const storyScript = plainTextToTaggedScript(script, { speed: Number(voiceSpeed) > 0 ? Number(voiceSpeed) : DEFAULT_KOKORO_SPEED });
-            fs.writeFileSync(path.join(newPkgDir, 'script.md'), storyScript, 'utf8');
-            syncNarrationLog(newPkgDir, 'user');
 
             // The first film: compiled from the story, or one title shot when the story is under 10 s (backend/newProjectFilm.ts).
             const newFilm: Film = buildNewProjectFilm({ id: cleanId, title: title.trim(), accent, theme: filmTheme, storyScript, autoCompile: Boolean(autoCompile) });
+
+            fs.mkdirSync(newPkgDir, { recursive: true });
+            fs.writeFileSync(path.join(newPkgDir, 'script.md'), storyScript, 'utf8');
+            syncNarrationLog(newPkgDir, 'user');
 
             // 2. Create src/dl/films/<id>.ts (for Remotion's CLI render/activeFilm bundle)
             // and videos/<id>/film.json (authoritative, read by the editor Player)
