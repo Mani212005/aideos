@@ -1,5 +1,5 @@
 /**
- * File Description: J3 dots preview/export equality and J4 caption-safe reel crop through the real production and Player paths.
+ * File Description: J3 dots preview/export equality and J4 caption-safe reel crop through the real production and Player paths. The export side of the preview/export comparison is a Remotion export (`openFilm`), not the native production render: the Player stays on three.js, so a native export would compare two engines, and the captain decided (P4.5) that a Remotion export stays the oracle until a WASM preview exists. The native dots frames are checked against the native goldens by native_character_goldens.journey.ts.
  * Inputs and outputs: unchanged Iona receive with dots selected in look/design -> short concurrency-2 exports and exact-frame comparisons.
  * Used by: npm run test:journeys and npm run ci; no full-film exports or live model calls.
  */
