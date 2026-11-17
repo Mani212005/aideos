@@ -176,7 +176,7 @@ the package directory (including through a symlink).
 
 `native/aideos-render/tests/golden.rs` holds the CPU raster's own reference frames, separate from the Chrome
 goldens in `backend/journeys/goldens/` (those still guard the default Remotion render and are untouched). The set
-covers the native-supported fixture films, `hello-scene`, `still-talking` and the Three-stage character films `iona-receive`, `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters` (the J5 film: Iona, Pip and Marlo, each with a glider), in long and reel, at the same frames
+covers the native-supported fixture films, `hello-scene`, `still-talking` and the Three-stage character films `iona-receive`, `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters` (the J5 film: Iona, Pip and Marlo, each with a glider) and `journey-j3-j4-dots` (the dots-v1 film), in long and reel, at the same frames
 and the same quarter scale as the Chrome goldens (`fixtures/golden/frames/<film>/<format>-<frame>.png`, 480 x 270
 or 270 x 480, a 4 x 4 box average of the 1920 x 1080 CPU frame). `fixtures/golden/<film>/render.<format>.json` are
 the emitter's IR for those films with the audio clips dropped (the frame raster never opens audio), with the

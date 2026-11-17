@@ -70,7 +70,7 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
 * **Weights**: `JOURNEY_WEIGHTS_SECONDS` is the median seconds of each file over 8 CI journeys jobs. A
   journey that has no entry still runs (it is costed at `DEFAULT_WEIGHT_SECONDS`), so a new journey is never
   skipped; the table only improves balance. When a journey's cost changes a lot, update its entry from a CI log.
-  The planned split is 515, 510 and 511 s (spread under 1%).
+  The planned split is 538, 537 and 541 s (spread under 1%).
 * **Guarantees** (`scripts/ciJourneyShards.test.ts`): over the real journey list every file runs in one
   shard and no other, for 1 to 6 shards; the smoke step runs once; the shards plan within 10% of each other;
   a bad `--shard` value fails loudly; an empty shard is skipped and never falls back to a bare `node --test`
