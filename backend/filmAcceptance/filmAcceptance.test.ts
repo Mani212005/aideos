@@ -1,6 +1,6 @@
 /**
  * File Description: Behavioural tests of the film acceptance machine (audit machine M4): the pure state transitions
- * (including impossible ones), the persisted record, the all-check rounds that feed it, the Export summary, and the
+ * (including impossible ones), the persisted record, the all-check rounds that feed it, and the
  * design-build guard that refuses to silently drop a hand-edited film.json. Uses tiny synthetic packages and stub
  * renders only: no model, no render and no network.
  * Inputs and outputs: events, stub round dependencies and fixture packages -> assertions on states, files and errors.
@@ -28,13 +28,12 @@ import {
   filmDifferences,
   ImpossibleTransitionError,
   initialRecord,
-  summarize,
   transition,
   type AcceptanceEvent,
   type AcceptanceRecord,
   type JudgeDraw,
 } from "./machine";
-import { acceptancePath, acceptanceSummary, acceptanceSummaryForFilm, applyEvents, filmEditState, hashBytes, hashFileOrNull, noteFilmWrite, readAcceptance, readRecord } from "./store";
+import { acceptancePath, applyEvents, filmEditState, hashFileOrNull, noteFilmWrite, readAcceptance, readRecord } from "./store";
 
 const AT = "2026-11-13T00:00:00.000Z";
 const FILM = "film-hash-1";
@@ -101,10 +100,6 @@ test("machine: a re-review of unchanged bytes is a recorded second draw, and rep
   assert.equal(record.state, "revise", "the newest draw of these bytes decides (today's rule, kept in one place)");
   assert.equal(record.drawsDisagree, true);
   assert.equal(record.approved, false, "new evidence withdraws an earlier approval");
-  const summary = summarize(record, FILM);
-  assert.equal(summary.state, "revise", "the current verdict rule remains the newest draw");
-  assert.equal(summary.drawsDisagree, true);
-  assert.match(summary.message, /2 reviews of these exact bytes disagree: ACCEPT 9\.3, REVISE 8\.6/);
   const replayed = transition(record, { type: "judged", draw: draw("round-2", false) });
   assert.equal(currentDraws(replayed).length, 2);
 });
@@ -137,20 +132,6 @@ test("machine: a changed film makes reviewed bytes stale, and restoring the revi
   assert.equal(effectiveState(accepted, null), "stale", "a missing film is not the reviewed film");
   assert.equal(effectiveState(accepted, FILM), "accepted");
   assert.equal(effectiveState(initialRecord("long"), "anything"), "unreviewed");
-});
-
-test("machine: the summary tells the captain whether the exported film is the reviewed one", () => {
-  const accepted = run([RENDERED, MEASURED_OK, { type: "judged", draw: draw("round-1", true) }, { type: "approved", mp4Hash: MP4, at: AT }]);
-  assert.deepEqual([summarize(accepted, FILM).state, summarize(accepted, FILM).reviewed], ["accepted", true]);
-  assert.match(summarize(accepted, FILM).message, /Reviewed and accepted.*9\.3/);
-  assert.match(summarize(accepted, "edited").message, /Changed since review/);
-  assert.equal(summarize(accepted, "edited").reviewed, false);
-  assert.match(summarize(null, FILM).message, /has not been reviewed/);
-  const revise = run([RENDERED, MEASURED_OK, { type: "judged", draw: draw("round-1", false) }]);
-  assert.match(summarize(revise, FILM).message, /asked for revisions \(reviewer score 8\.6\)/);
-  const failed = run([RENDERED, { type: "measured", mp4Hash: MP4, passed: false, gateFailures: ["captions", "overlap"], at: AT }]);
-  assert.match(summarize(failed, FILM).message, /measured checks failed: captions, overlap/);
-  assert.match(summarize(run([RENDERED]), FILM).message, /review did not finish/);
 });
 
 test("machine: hand edits are told apart from tool writes, and an unknown history is never called an edit", () => {
@@ -268,20 +249,13 @@ test("all-check: a passing round is accepted only after the frame check, and a f
     const [long] = await runRound({ slug, format: "long" }, stubRound());
     const filmHash = hashFileOrNull(path.join(dir, "film.json"));
     assert.equal(readRecord(dir, "long").state, "judged", "measured and reviewed, but the frame check is still pending");
-    assert.equal(summarize(readRecord(dir, "long"), filmHash).reviewed, false);
 
     recordFrameCheck({ slug, round: long.round, format: "long", issues: [] });
     const accepted = readRecord(dir, "long");
     assert.equal(accepted.state, "accepted");
     assert.equal(accepted.filmHash, filmHash, "the approval is keyed to the exact film bytes");
     assert.equal(accepted.mp4Hash, hashFileOrNull(long.videoPath));
-    assert.equal(acceptanceSummary(dir, "long", filmHash).reviewed, true);
 
-    // A fix made by hand after approval: the verdict no longer applies to the film on disk.
-    fs.writeFileSync(path.join(dir, "film.json"), fs.readFileSync(path.join(dir, "film.json"), "utf8").replace(`"title":"${slug}"`, '"title":"edited"'));
-    const edited = hashFileOrNull(path.join(dir, "film.json"));
-    assert.equal(acceptanceSummary(dir, "long", edited).state, "stale");
-    assert.match(acceptanceSummary(dir, "long", edited).message, /Changed since review/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
@@ -299,7 +273,7 @@ function twoDrawReport(first: number, second: number, verdict: "ACCEPT" | "REVIS
   } as unknown as GeminiReviewReport;
 }
 
-test("all-check: a two-draw review appends both draws to the same acceptance record and the Export read says so in words", async () => {
+test("all-check: a two-draw review appends both draws to the same acceptance record", async () => {
   const slug = "acc-two-draws";
   const dir = makeRunPackage(slug);
   try {
@@ -315,9 +289,6 @@ test("all-check: a two-draw review appends both draws to the same acceptance rec
     assert.equal(draws[1].passed, true);
     assert.equal(record.state, "accepted");
     assert.equal(record.drawsDisagree, false, "the two draws of one review are settled by the policy, not a disagreement");
-    const message = summarize(record, record.filmHash).message;
-    assert.match(message, /reviewer score 9\.00/);
-    assert.match(message, /asked 2 times about these exact bytes \(scores 9\.2 and 8\.81\) because the first was within 0\.5 of the 9\.0 bar; their mean, 9\.00, decided/);
     // Replaying the same round never counts a draw twice.
     const after = readRecord(dir, "long").judged.length;
     const { recordRoundAcceptance } = await import("../allCheck/round");
@@ -340,7 +311,6 @@ test("all-check: a two-draw review whose combined score misses the bar is a revi
     const record = readRecord(dir, "long");
     assert.equal(currentDraws(record).length, 2);
     assert.equal(record.state, "revise");
-    assert.match(summarize(record, record.filmHash).message, /asked for revisions \(reviewer score 8\.9\)\. Fix the findings and run aideos all-check again\. The reviewer was asked 2 times/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
@@ -377,7 +347,6 @@ test("all-check: a criteria mean a float hair under 9.0 passes the round exactly
     const record = readRecord(dir, "long");
     assert.equal(record.state, "accepted", "the round agrees with the ACCEPT verdict");
     assert.ok(currentDraws(record).every((d) => d.passed && d.verdict === "ACCEPT"));
-    assert.match(summarize(record, record.filmHash).message, /accepted.*reviewer score 9\.0\)/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
@@ -417,59 +386,9 @@ test("all-check: a criteria mean of 8.97 shows as 8.97, never 9.0, and fails the
     assert.doesNotMatch(failing, /score 9\.0/);
     const record = readRecord(dir, "long");
     assert.equal(record.state, "revise");
-    const message = summarize(record, record.filmHash).message;
-    assert.match(message, /asked for revisions \(reviewer score 8\.97\)/);
-    assert.doesNotMatch(message, /score 9\.0/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(allCheckDir(slug), { recursive: true, force: true });
-  }
-});
-
-test("export acceptance: status follows the posted film when it differs from film.json", () => {
-  const slug = "acc-posted-film";
-  const dir = makeRunPackage(slug);
-  try {
-    const posted = { ...JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")), title: "editor render film" };
-    const postedHash = hashBytes(JSON.stringify(posted, null, 2));
-    applyEvents(dir, "long", [
-      { type: "rendered", filmHash: postedHash, mp4Hash: MP4, at: AT },
-      { type: "measured", mp4Hash: MP4, passed: true, gateFailures: [], at: AT },
-      { type: "judged", draw: draw("posted", true) },
-      { type: "approved", mp4Hash: MP4, at: AT },
-    ]);
-    const beforeFilm = fs.readFileSync(path.join(dir, "film.json"), "utf8");
-    const beforeAcceptance = fs.readFileSync(acceptancePath(dir), "utf8");
-    assert.equal(acceptanceSummaryForFilm(dir, "long", posted).reviewed, true);
-    assert.equal(acceptanceSummary(dir, "long", hashFileOrNull(path.join(dir, "film.json"))).reviewed, false);
-    assert.equal(fs.readFileSync(path.join(dir, "film.json"), "utf8"), beforeFilm);
-    assert.equal(fs.readFileSync(acceptancePath(dir), "utf8"), beforeAcceptance);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test("export acceptance: derived reel status hashes the exact manifest bytes", () => {
-  const slug = "acc-reel-bytes";
-  const dir = makeRunPackage(slug);
-  try {
-    const reelFile = path.join(dir, "reel", "film.json");
-    fs.mkdirSync(path.dirname(reelFile), { recursive: true });
-    const reelText = `${JSON.stringify(JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")), null, 2)}\n`;
-    fs.writeFileSync(reelFile, reelText);
-    const reelHash = hashBytes(reelText);
-    applyEvents(dir, "reel", [
-      { type: "rendered", filmHash: reelHash, mp4Hash: MP4, at: AT },
-      { type: "measured", mp4Hash: MP4, passed: true, gateFailures: [], at: AT },
-      { type: "judged", draw: draw("reel", true) },
-      { type: "approved", mp4Hash: MP4, at: AT },
-    ]);
-
-    const parsedReel = JSON.parse(fs.readFileSync(reelFile, "utf8"));
-    assert.equal(acceptanceSummary(dir, "reel", hashFileOrNull(reelFile)).reviewed, true);
-    assert.equal(acceptanceSummaryForFilm(dir, "reel", parsedReel).reviewed, false, "reserialization drops the manifest newline used in the recorded hash");
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 

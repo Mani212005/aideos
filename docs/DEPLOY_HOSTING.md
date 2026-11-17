@@ -26,7 +26,7 @@ Aideos runs as a decoupled two-service architecture:
 |                  Render (Backend & Compiler)                |
 |  - Docker Container running Node.js 20 on Debian Bookworm   |
 |  - Pre-installed Chromium, FFmpeg, and Asian/Emoji fonts    |
-|  - Google GenAI Agent Compiler, Script Intake & Critique   |
+|  - Google GenAI Agent Compiler & Script Intake              |
 |  - Remotion video rendering and waveform extraction engine  |
 |  - Health check endpoint: /api/health                       |
 +-------------------------------------------------------------+
@@ -41,7 +41,7 @@ Before deploying, ensure you have:
 1. **Render Account**: Access to [render.com](https://render.com).
 2. **Vercel Account**: Access to [vercel.com](https://vercel.com).
 3. **Required API Keys**:
-   - `GEMINI_API_KEY` (or `GOOGLE_API_KEY`): Required for AI agent compiler, script intake, director prose transform, critique engine, and Jev semantic primitive compilation.
+   - `GEMINI_API_KEY` (or `GOOGLE_API_KEY`): Required for AI agent compiler, script intake, director prose transform, and Jev semantic primitive compilation.
 4. **Optional API Keys, Secrets & GPU Settings**:
    - `AIDEOS_LINK_SECRET`: Secret key used to sign agent-link tokens so pairings persist across server restarts (automatically generated via Blueprint `render.yaml`, or derived from `GEMINI_API_KEY`).
    - `AIDEOS_PUBLIC_API_URL`: Public address of the backend dialed by `aideos connect` (e.g. `https://aideos-backend.onrender.com`).
@@ -115,7 +115,7 @@ Before deploying, ensure you have:
    - Open `https://<your-vercel-app>.vercel.app`.
    - The Studio Editor should load cleanly with the 2D infinite spatial canvas and playback controls.
    - Switch stages (Words, Look, Cut, Check) to confirm live UI functionality.
-   - Test screenplay generation and natural-language critique to verify Gemini API integration.
+   - Test screenplay generation to verify Gemini API integration.
 
 ---
 
@@ -123,9 +123,9 @@ Before deploying, ensure you have:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation and critique |
+| `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation |
 | `GOOGLE_API_KEY` | Alternative / No | - | Fallback Google GenAI and Cloud TTS API key |
-| `AIDEOS_GEMINI_MODEL` | No | `gemini-2.0-flash` | Gemini model name for screenplay intake and critique |
+| `AIDEOS_GEMINI_MODEL` | No | `gemini-2.0-flash` | Gemini model name for screenplay intake |
 | `AIDEOS_GEMINI_REVIEW_MODEL` | No | `videoModels.reviewer.model` in `aideos.config.json` | agy CLI model catalog ID for video quality review loop; see [review model policy](REVIEW.md#5-video-model-policy) |
 | `AIDEOS_PUBLIC_API_URL` | No | `https://aideos-backend.onrender.com` | Public backend URL shown in agent link connect commands |
 | `AIDEOS_LINK_SECRET` | No | Derived / generated | HMAC secret key signing agent link tokens across restarts |
@@ -147,7 +147,7 @@ When hosting on Render's free tier, keep the following considerations in mind:
    - Free instances on Render spin down after 15 minutes of inactivity. The first request after dormancy takes ~50 seconds to wake the container.
 2. **Memory and CPU Limits**:
    - Free tier provides 512 MB RAM and 0.1 CPU.
-   - **Interactive Studio, Script Intake, Critique, Audio Sync & Canvas**: Fully functional and responsive.
+   - **Interactive Studio, Script Intake, Audio Sync & Canvas**: Fully functional and responsive.
    - **Full Remotion MP4 Rendering**: Remotion rendering spins up headless Chromium and FFmpeg. On 512 MB RAM, rendering full-length 1080p videos may run slowly or encounter memory constraints. For heavy video rendering workloads, upgrading the Render instance to Starter (512MB-1GB) or Standard (2GB+) is recommended.
 3. **Speech Synthesis**:
    - Local Kokoro TTS requires ~400 MB of ONNX model runtime memory, so on hosts with under 1.5 GB RAM (such as the Render 512 MB free tier), the studio voiceover synthesis route (`/api/generate-voiceover` via `backend/voiceSynthesis.ts`) automatically skips local Kokoro to prevent out-of-memory container crashes. It seamlessly falls back to cloud TTS (`DEEPGRAM_API_KEY` or `GOOGLE_API_KEY`). On memory-constrained hosts without cloud API keys, synthesis returns an HTTP 503 with per-provider failure reasons rather than an opaque 502/500 crash.

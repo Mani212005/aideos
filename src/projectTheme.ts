@@ -11,7 +11,7 @@
  * backend/designCheck/designCheck.ts, backend/pipeline/design.ts, backend/designSpec/build.ts,
  * editor/src/components/LookChoices.tsx, and (for
  * DEFAULT_PROJECT_ACCENT, the fallback when a film names no accent) backend/designSpec/shotTools.ts,
- * backend/editPlanner/validator.ts, backend/critique/engine.ts, backend/sceneKit/svg.ts, src/dl/convertFilm.ts,
+ * backend/editPlanner/validator.ts, backend/sceneKit/svg.ts, src/dl/convertFilm.ts,
  * editor/src/App.tsx, editor/src/components/LookAsk.tsx, editor/src/state/placeholderFilm.ts.
  */
 

@@ -2,7 +2,7 @@
  * File Description: Persistence of the film acceptance machine. Reads and writes videos/<slug>/acceptance.json
  * (one record per format plus the ledger of films the tools themselves wrote), hashes film manifests and mp4
  * files, and answers "is film.json something a tool wrote or a hand edit" and "is this film the reviewed one".
- * Inputs and outputs: a package directory, a format and events -> the saved acceptance file and summaries.
+ * Inputs and outputs: a package directory, a format and events -> the saved acceptance file and the Check view.
  * Used by: backend/allCheck/round.ts, backend/allCheck/finish.ts, backend/pipeline/filmStore.ts,
  * backend/designSpec/build.ts, editor/vite.config.ts.
  */
@@ -15,13 +15,11 @@ import {
   classifyFilmEdit,
   drawsDisagree,
   initialRecord,
-  summarize,
   transition,
   withToolWrite,
   type AcceptanceEvent,
   type AcceptanceFormat,
   type AcceptanceRecord,
-  type AcceptanceSummary,
   type FilmEditState,
 } from "./machine";
 
@@ -106,17 +104,6 @@ export function noteFilmWrite(pkgDir: string, contents: string): void {
 // How a package's film.json stands against the films the tools wrote: clean, hand-edited, or untracked (no ledger yet).
 export function filmEditState(pkgDir: string): FilmEditState {
   return classifyFilmEdit(readAcceptance(pkgDir).toolWrites, hashFileOrNull(path.join(pkgDir, "film.json")));
-}
-
-// The plain-language state of the film that would be exported in one format.
-export function acceptanceSummary(pkgDir: string, format: AcceptanceFormat, currentFilmHash: string | null): AcceptanceSummary {
-  const file = readAcceptance(pkgDir);
-  return summarize(file.formats[format] ?? null, currentFilmHash);
-}
-
-// Summarizes the exact serialized film supplied by the export client, independent of film.json on disk.
-export function acceptanceSummaryForFilm(pkgDir: string, format: AcceptanceFormat, film: unknown): AcceptanceSummary {
-  return acceptanceSummary(pkgDir, format, hashBytes(JSON.stringify(film, null, 2)));
 }
 
 // The Check lens view (state, six gates, score against the bar) of the film that would be exported in one format.
