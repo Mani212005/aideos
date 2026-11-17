@@ -13,6 +13,7 @@ import { deliverReel } from '../backend/reelCut/writer.ts';
 import { loadReelContext, readReelCut, reelPackageDir } from '../backend/reelCut/brief.ts';
 import { checkReelCut } from '../backend/reelCut/check.ts';
 import { formatInputs, reelBudgetFor, reelSourceFingerprint } from '../backend/reelCut/store.ts';
+import { buildNewProjectFilm } from '../backend/newProjectFilm.ts';
 import { acceptanceCheck, acceptanceCheckForFilm, hashFileOrNull, noteFilmWrite } from '../backend/filmAcceptance/store.ts';
 import { REEL_MAX_SEC, reelCutSchema } from '../backend/reelCut/schema.ts';
 import { deliveryTimeline, DELIVERY_CONFIG } from '../src/dl/delivery.ts';
@@ -51,7 +52,6 @@ import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
   ScriptIntakeError,
   buildFilmPartsFromScript,
-  hasScreenplayTags,
   plainTextToTaggedScript,
   generateAgentPrompt,
   generateDirectorTaskDocument,
@@ -2133,61 +2133,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             fs.writeFileSync(path.join(newPkgDir, 'script.md'), storyScript, 'utf8');
             syncNarrationLog(newPkgDir, 'user');
 
-            let newFilm: Film | null = null;
-
-            if (autoCompile && hasScreenplayTags(storyScript)) {
-              const parts = buildFilmPartsFromScript(storyScript);
-              // The film schema asks for at least two canvas nodes. A story with one section (one pasted paragraph)
-              // compiles to one node, so an end node follows it and the film parses.
-              const canvasNodes = parts.nodes.length >= 2 ? parts.nodes : [...parts.nodes, { id: 'end', label: 'End', x: 60, y: -100, w: 230, h: 68 }];
-              const canvasEdges = parts.nodes.length >= 2 ? parts.edges : [...parts.edges, { from: canvasNodes[0].id, to: 'end', dashed: false }];
-              const compiled = {
-                id: cleanId,
-                title: title.trim(),
-                fps: 30,
-                accent,
-                theme: filmTheme,
-                chapters: canvasNodes.map(n => n.label),
-                canvas: {
-                  nodes: canvasNodes,
-                  edges: canvasEdges,
-                },
-                shots: parts.shots as any,
-              } as Film;
-              // A story too short to be a film (the schema asks for 10 s) keeps the placeholder film below; its words stay in script.md.
-              if (filmSchema.safeParse(compiled).success) newFilm = compiled;
-            }
-
-            if (!newFilm) {
-              // A story too short to compile gets a film of one title shot: no invented shots, numbers or text.
-              newFilm = {
-                id: cleanId,
-                title: title.trim(),
-                fps: 30,
-                accent,
-                theme: filmTheme,
-                chapters: [title.trim()],
-                canvas: {
-                  nodes: [
-                    { id: "intro", label: title.trim(), x: -200, y: -100, w: 230, h: 70 },
-                    { id: "end", label: "End", x: 160, y: -100, w: 230, h: 70 }
-                  ],
-                  edges: [{ from: "intro", to: "end", dashed: false }]
-                },
-                shots: [
-                  {
-                    id: "shot-1",
-                    dur: 10,
-                    look: "intro",
-                    move: "cut",
-                    stage: "frame",
-                    drift: false,
-                    zoom: 1,
-                    blocks: [{ c: "TextReveal", text: title.trim(), size: "headline" }]
-                  }
-                ]
-              };
-            }
+            // The first film: compiled from the story, or one title shot when the story is under 10 s (backend/newProjectFilm.ts).
+            const newFilm: Film = buildNewProjectFilm({ id: cleanId, title: title.trim(), accent, theme: filmTheme, storyScript, autoCompile: Boolean(autoCompile) });
 
             // 2. Create src/dl/films/<id>.ts (for Remotion's CLI render/activeFilm bundle)
             // and videos/<id>/film.json (authoritative, read by the editor Player)
