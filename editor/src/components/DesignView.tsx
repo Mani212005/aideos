@@ -1,35 +1,19 @@
 /**
  * File Description: The body of the Look lens: the film's look plan (stage, cast, approval) and the shots, each with the pictures it is drawn from. Cast and shots show the film's own artwork. A film still on the template design gets one action instead: send it to the connected agent. The Ask box and the accent and background choices are passed in as slots, so this file holds no edit controls of its own.
  * Inputs and outputs: active film, the design overview from the server, the chosen shot -> look plan panel, shot list with pictures and the slot panels.
- * Used by: editor/src/screens/LookStage.tsx, editor/src/components/ShotDesignPanel.tsx (ChoiceChip).
+ * Used by: editor/src/screens/LookStage.tsx.
  */
 
 import { useState, type ReactNode } from "react";
 import { Bot, Check, FileText } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { Badge, Button, EmptyState, Note, Panel, PanelBody, PanelHeader, Spinner, cn } from "./ui";
-import { postDesignAction, useDesignOverview, type DesignOverview } from "../state/useDesignOverview";
+import { postDesignAction, useDesignOverview } from "../state/useDesignOverview";
 
 // Formats seconds as m:ss.
 function clock(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
-
-/** Jev's pick for a shot, as a compact chip. */
-export function ChoiceChip({ choice }: { choice: NonNullable<DesignOverview["shots"][number]["choice"]> }) {
-  const pct = choice.confidence !== undefined ? ` ${Math.round(choice.confidence * 100)}%` : "";
-  const tone = choice.source === "jev" ? "info" : "quiet";
-  const title =
-    choice.source === "jev"
-      ? `Jev picked ${choice.visual}${pct}`
-      : `${choice.visual} by rule (${choice.fallbackReason ?? choice.source})`;
-  return (
-    <Badge tone={tone} title={title}>
-      {choice.source === "jev" ? "Jev" : "Rule"} · {choice.visual}
-      {pct}
-    </Badge>
-  );
 }
 
 // A small picture of one piece of the film's artwork.

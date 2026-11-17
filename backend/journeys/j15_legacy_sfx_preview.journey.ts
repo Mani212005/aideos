@@ -54,7 +54,7 @@ journey("legacy sfx with durationSec: the studio preview plays past more effects
     page = await StudioPage.open(chrome);
     await page.goto(server.url);
     await page.eval(`localStorage.setItem('aideos_active_film_id', ${JSON.stringify(SLUG)})`);
-    await page.goto(`${server.url}#edit`);
+    await page.goto(`${server.url}#cut`);
     await page.reload();
     await page.waitFor(`document.querySelector('button[title="Play (Space)"]')`, "Edit stage play button");
     // A real pointer press gives the page the user activation Chrome requires before audio may play.

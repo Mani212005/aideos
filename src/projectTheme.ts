@@ -6,7 +6,7 @@
  * choice. Every later stage reads that choice back from here: the agent task prompt, the agent briefs
  * and the design check, so no stage falls back to a colour of its own.
  * Inputs and outputs: theme ids, accents and films -> theme options, accent choices, resolved theme, a new project's film theme, bound theme.
- * Used by: editor/src/components/NewProjectModal.tsx, editor/vite.config.ts,
+ * Used by: editor/vite.config.ts,
  * backend/agentBridge/contextBuilder.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
  * backend/designCheck/designCheck.ts, backend/pipeline/design.ts, backend/designSpec/build.ts,
  * editor/src/components/LookChoices.tsx, and (for

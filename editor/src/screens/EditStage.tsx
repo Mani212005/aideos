@@ -1,9 +1,10 @@
 /**
- * File Description: Edit stage for Aideos Studio.
+ * File Description: Cut lens for Aideos Studio.
  * The non-linear editing surface: a preview player sitting in the one dark matte the product
  * allows (so footage exposure reads true), a resizable split, and the layer-model timeline below
  * it. Also owns the format switcher, the media bin that feeds drag and drop into the timeline, and
  * the guidance shown before a voiceover exists to lock the timeline to.
+ * A selected clip opens its numbers in a panel on the right (the clip inspector), where a caption word is edited.
  * Inputs and outputs: film project, layered timeline, media assets -> multi-track video editing stage.
  * Used by: editor/src/App.tsx.
  */
@@ -25,6 +26,8 @@ import { SoundtrackPanel } from "../components/SoundtrackPanel";
 import { ReelPanel } from "../components/ReelPanel";
 import { CaptionObject, type CaptionTargetRect } from "../components/captions/CaptionObject";
 import { OnCanvasAiEditor } from "../components/OnCanvasAiEditor";
+import { ClipInspector } from "../components/ClipInspector";
+import { editCaptionWord, type CaptionWordEdit } from "../components/captions/captionWordEdit";
 import { FORMATS, type Format } from "../App";
 
 /** Bounds for the draggable split between the preview and the timeline. */
@@ -184,23 +187,27 @@ export function EditStage({
     [api, currentFrame, film.fps, film.layers],
   );
 
+  /** Edits one caption word of the film as one undo step; returns an error message, or null when it is saved. */
+  const editClipCaptionWord = (index: number, edit: CaptionWordEdit): string | null => {
+    const result = editCaptionWord(film, index, edit);
+    if (!result.ok) return result.error;
+    if (result.film !== film) project.commit(result.film, edit.text === undefined ? "Edit caption timing" : "Edit caption word");
+    return null;
+  };
+
   if (!film.voiceover?.src) {
     return (
       <div className="relative flex min-h-0 flex-1 flex-col xl:flex-row">
         <EmptyState
           icon={<Mic className="h-6 w-6" />}
-          title="This film has no voiceover yet"
-          description="The timeline locks to the narration track, so Aideos needs a voiceover before it can lay shots out in time."
-          steps={[
-            "Open the Script stage and write or paste your screenplay.",
-            "Pick a voice and generate the voiceover (.wav).",
-            "Come back here to arrange lanes, trim clips and export.",
-          ]}
+          title="No voiceover yet"
+          description="Cut needs the voice to set the time."
+          steps={["Open Words.", "Record the voice.", "Return here."]}
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button tone="primary" size="md" onClick={onGoToScript}>
                 <FileText className="h-4 w-4" />
-                Go to Script
+                Open Words
               </Button>
               <Button size="md" active={reelOpen} onClick={() => setReelOpen((open) => !open)}>
                 <Clapperboard className="h-4 w-4" />Reel controls
@@ -279,10 +286,10 @@ export function EditStage({
               <div className="flex max-w-sm flex-col items-center gap-2 p-6 text-center">
                 <EyeOff className="h-6 w-6 text-matte-text" />
                 <p className="font-sans text-xs font-semibold text-matte-text">
-                  Every visual lane is hidden
+                  All visual lanes are hidden
                 </p>
                 <p className="font-sans text-xs leading-relaxed text-matte-text/70">
-                  Turn a lane back on with the eye control in the lane header to see the film again.
+                  Show a lane with its eye icon.
                 </p>
               </div>
             ) : previewTimeline ? (
@@ -305,7 +312,7 @@ export function EditStage({
               </>
             ) : (
               <p className="p-6 text-center font-mono text-xs text-matte-text">
-                The timeline could not be built from this film. Check the Review stage for the validation error.
+                The cut did not build. Open Check.
               </p>
             )}
           </div>
@@ -346,6 +353,18 @@ export function EditStage({
             />
           </div>
         </div>
+        {selectedClipIds.length > 0 && !mixOpen && !reelOpen ? (
+          <aside className="w-[300px] shrink-0 overflow-y-auto border-l border-line bg-paper" aria-label="Clip">
+            <ClipInspector
+              api={api}
+              clipId={selectedClipIds[0]}
+              fps={film.fps || 30}
+              onSeekFrame={onSeekFrame}
+              onClose={() => onSelectionChange([])}
+              onEditCaptionWord={editClipCaptionWord}
+            />
+          </aside>
+        ) : null}
         {mixOpen ? <SoundtrackPanel key={film.id} film={film} selectedSection={mixSection} onCommit={project.commit} onClose={() => setMixOpen(false)} onPreview={() => playerRef.current?.pause()} /> : null}
         {reelOpen ? <ReelPanel key={film.id} filmId={film.id} onClose={() => setReelOpen(false)} onPreviewStart={() => playerRef.current?.pause()} /> : null}
       </div>

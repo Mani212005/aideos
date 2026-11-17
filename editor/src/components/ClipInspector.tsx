@@ -6,7 +6,7 @@
  * typing a number and dragging a handle produce identical, equally undoable results. A caption word
  * (a subtitle clip) shows its text and frame range controls instead: the caption words are edited here, in Cut.
  * Inputs and outputs: selected clip, layer information and a caption word edit callback -> clip inspector form and properties controls.
- * Used by: editor/src/components/shell/InspectorPanel.tsx.
+ * Used by: editor/src/screens/EditStage.tsx.
  */
 
 import { useState, type KeyboardEvent } from "react";

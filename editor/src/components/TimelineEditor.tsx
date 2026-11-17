@@ -1342,7 +1342,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-line bg-paper px-2.5 py-1.5">
+      <div data-testid="cut-footer" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-line bg-paper px-2.5 py-1.5">
         <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-ink-soft">
           <span>
             <span className="font-semibold text-ink">

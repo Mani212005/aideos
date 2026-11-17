@@ -5,18 +5,18 @@
  */
 
 import { useMemo } from "react";
-import { Check } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { deliveryGaps } from "../../../backend/deliveryGate";
-import type { CheckResult, CheckState, CheckView } from "../../../backend/filmAcceptance/checkView";
+import type { CheckResult, CheckView } from "../../../backend/filmAcceptance/checkView";
 import type { ProjectValidation } from "../state/useFilmProject";
 import { useAcceptanceCheck } from "../state/useAcceptanceCheck";
 import type { ExportJobApi } from "../state/useExportJob";
 import { CheckExport } from "../components/CheckExport";
-import { Badge, Button, Note, Panel, PanelBody, PanelHeader, cn, type BadgeTone } from "../components/ui";
+import { StateChip } from "../components/StateChip";
+import { Button, Note, Panel, PanelBody, PanelHeader, cn } from "../components/ui";
 
 /** The lens a fix item opens. */
-export type CheckTarget = "script" | "look" | "edit";
+export type CheckTarget = "script" | "look" | "cut";
 
 export interface CheckStageProps {
   /** The open film, as the shots and the voice are read from it. */
@@ -40,20 +40,6 @@ interface FixItem {
   go?: { target: CheckTarget; label: string };
 }
 
-const STATE_TEXT: Record<CheckState, string> = {
-  draft: "Draft",
-  fail: "Fail",
-  pass: "Pass",
-  old: "Old",
-  ok: "OK",
-};
-const STATE_TONE: Record<CheckState, BadgeTone> = {
-  draft: "quiet",
-  fail: "danger",
-  pass: "success",
-  old: "warn",
-  ok: "success",
-};
 const RESULT_TEXT: Record<CheckResult, string> = {
   pass: "Pass",
   fail: "Fail",
@@ -152,7 +138,7 @@ export function CheckStage({ film, renderFilm, format, durationInFrames, validat
         id: "lane",
         text: "Show a visual lane.",
         blocks: true,
-        go: { target: "edit", label: "Cut" },
+        go: { target: "cut", label: "Cut" },
       });
     list.push(...deliveryItems(renderFilm, format));
     if (!film.voiceover?.src)
@@ -183,9 +169,7 @@ export function CheckStage({ film, renderFilm, format, durationInFrames, validat
         <div className="flex flex-wrap items-center gap-2" data-testid="check-verdict">
           {view ? (
             <>
-              <Badge tone={STATE_TONE[view.state]} icon={view.state === "ok" ? <Check className="h-3 w-3" aria-hidden /> : undefined}>
-                {STATE_TEXT[view.state]}
-              </Badge>
+              <StateChip state={view.state} />
               <span className="font-sans text-sm text-ink">{verdictHint(view)}</span>
             </>
           ) : load.status === "unavailable" ? (

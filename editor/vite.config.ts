@@ -2129,24 +2129,32 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             fs.writeFileSync(path.join(newPkgDir, 'script.md'), storyScript, 'utf8');
             syncNarrationLog(newPkgDir, 'user');
 
-            let newFilm: Film;
+            let newFilm: Film | null = null;
 
             if (autoCompile && hasScreenplayTags(storyScript)) {
               const parts = buildFilmPartsFromScript(storyScript);
-              newFilm = {
+              // The film schema asks for at least two canvas nodes. A story with one section (one pasted paragraph)
+              // compiles to one node, so an end node follows it and the film parses.
+              const canvasNodes = parts.nodes.length >= 2 ? parts.nodes : [...parts.nodes, { id: 'end', label: 'End', x: 60, y: -100, w: 230, h: 68 }];
+              const canvasEdges = parts.nodes.length >= 2 ? parts.edges : [...parts.edges, { from: canvasNodes[0].id, to: 'end', dashed: false }];
+              const compiled = {
                 id: cleanId,
                 title: title.trim(),
                 fps: 30,
                 accent,
                 theme: filmTheme,
-                chapters: parts.nodes.map(n => n.label),
+                chapters: canvasNodes.map(n => n.label),
                 canvas: {
-                  nodes: parts.nodes,
-                  edges: parts.edges,
+                  nodes: canvasNodes,
+                  edges: canvasEdges,
                 },
                 shots: parts.shots as any,
-              };
-            } else {
+              } as Film;
+              // A story too short to be a film (the schema asks for 10 s) keeps the placeholder film below; its words stay in script.md.
+              if (filmSchema.safeParse(compiled).success) newFilm = compiled;
+            }
+
+            if (!newFilm) {
               newFilm = {
                 id: cleanId,
                 title: title.trim(),

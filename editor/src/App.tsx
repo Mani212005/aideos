@@ -1,11 +1,11 @@
 /**
  * File Description: Application shell for Aideos Studio.
- * Owns the information architecture: one header, one stage rail that follows the production
- * workflow from words to check (Check holds the verdict and Export), one stage surface, and one context inspector. Holds the project
+ * Owns the information architecture: one header (Films, Undo, Redo, Agent, Save, Export), one lens bar that follows the production
+ * workflow from Words to Check (Check holds the verdict and Export), and one surface: the Films home or the open lens. Holds the project
  * state, the shared layer-model timeline API, playback state and the global keyboard map, and
- * hands each stage exactly what it needs. No stage owns its own history: every edit is committed
+ * hands each lens exactly what it needs. No lens owns its own history: every edit is committed
  * through the project's single labelled undo stack.
- * Inputs and outputs: application props and state -> rendered single-page studio application with navigation and inspectors.
+ * Inputs and outputs: application props and state -> rendered single-page studio application with navigation.
  * Used by: editor/src/main.tsx.
  */
 
@@ -16,28 +16,27 @@ import {
   Download,
   FileText,
   Film as FilmIcon,
-  History,
   Loader2,
   Palette,
-  Plus,
+  Redo2,
   Save,
+  Undo2,
 } from "lucide-react";
 import { PLACEHOLDER_FILM } from "./state/placeholderFilm";
 import { deliveryTimeline } from "../../src/dl/delivery";
 import { useFilmProject } from "./state/useFilmProject";
 import { FilmSaveContext } from "./state/FilmSaveContext";
 import { useLayeredTimeline } from "./state/useLayeredTimeline";
-import { Button, Panel, RailTab, Select, Spinner, ToastStack } from "./components/ui";
-import { InspectorPanel } from "./components/shell/InspectorPanel";
+import { Button, Panel, Spinner, ToastStack } from "./components/ui";
+import { LensBar } from "./components/shell/LensBar";
+import { FilmsHome } from "./components/shell/FilmsHome";
+import { AgentSheet } from "./components/shell/AgentSheet";
 import { ScriptStage } from "./screens/ScriptStage";
 import { LookStage } from "./screens/LookStage";
 import { EditStage } from "./screens/EditStage";
 import { CheckStage } from "./screens/CheckStage";
 import { useExportJob } from "./state/useExportJob";
 import type { ExportJobSnapshot } from "../../backend/exportJobTypes";
-import { NewProjectModal } from "./components/NewProjectModal";
-import { AgentActivityInspector } from "./components/AgentActivityInspector";
-import { AgentConnect } from "./components/AgentConnect";
 import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
 
 /**
@@ -54,44 +53,40 @@ export const FORMATS = {
 
 export type Format = keyof typeof FORMATS;
 
-type Stage = "script" | "look" | "edit" | "review";
+type Stage = "script" | "look" | "cut" | "review";
+
+/** What the surface shows: one lens, or the Films home. */
+type View = Stage | "films";
 
 const STAGES: Array<{ id: Stage; label: string; icon: typeof FileText; title: string }> = [
   { id: "script", label: "Words", icon: FileText, title: "Edit the words. Record the voice." },
   { id: "look", label: "Look", icon: Palette, title: "Set how the film looks. Ask the agent for a change." },
-  { id: "edit", label: "Cut", icon: FilmIcon, title: "Set time and order. Edit caption words." },
+  { id: "cut", label: "Cut", icon: FilmIcon, title: "Set time and order. Edit caption words." },
   { id: "review", label: "Check", icon: Bot, title: "Test the film quality." },
 ];
 
-/** Old stage links that now open the stage that took over their work. */
-const LEGACY_STAGE_HASH: Record<string, Stage> = { motion: "look", captions: "edit" };
+/** Old links that now open the lens that took over their work: Edit became Cut. */
+const LEGACY_STAGE_HASH: Record<string, Stage> = { motion: "look", captions: "cut", edit: "cut" };
 
-export type SelectionTarget =
-  | { kind: "shot"; id: string }
-  | { kind: "clip"; id: string }
-  | { kind: "history" }
-  | null;
-
-/** Root application shell: header, stage rail, active stage and the context inspector. */
+/** Root application shell: header, lens bar and the Films home or the open lens. */
 export default function App() {
   const project = useFilmProject(PLACEHOLDER_FILM, bundledFilmIds);
   const { film, commit, notify } = project;
 
-  // The stage lives in the URL hash, so a reload (Vite hot-reloads the page when an agent's design
-  // build adds artwork) keeps the user where they were, and a stage can be linked to directly.
-  const [stage, setStageState] = useState<Stage>(() => {
+  // The view lives in the URL hash, so a reload (Vite hot-reloads the page when an agent's design
+  // build adds artwork) keeps the user where they were, and a lens can be linked to directly.
+  const [stage, setStageState] = useState<View>(() => {
     const fromHash = window.location.hash.replace(/^#/, "");
-    // The Motion and Captions stages are gone: their work moved into Look (Ask) and Cut (caption words).
+    if (fromHash === "films") return "films";
+    // The Motion, Captions and Edit names are gone: their work moved into Look (Ask) and Cut.
     const linked = LEGACY_STAGE_HASH[fromHash] ?? fromHash;
-    return (STAGES.some((s) => s.id === linked) ? linked : "script") as Stage;
+    return (STAGES.some((s) => s.id === linked) ? linked : "script") as View;
   });
-  const setStage = useCallback((next: Stage) => {
+  const setStage = useCallback((next: View) => {
     setStageState(next);
     window.history.replaceState(null, "", `#${next}`);
   }, []);
-  const [selection, setSelection] = useState<SelectionTarget>(null);
   const [format, setFormat] = useState<Format>("long");
-  const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   // A finished render is announced, never downloaded: the user presses Download in the export dialog.
   const exportJob = useExportJob(
     useCallback(
@@ -105,9 +100,6 @@ export default function App() {
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  // On a narrow window the inspector starts collapsed so the stage keeps a usable width. The user
-  // can open it at any time and that choice is then respected for the rest of the session.
-  const [inspectorOpen, setInspectorOpen] = useState(() => window.innerWidth >= 1180);
   const playerRef = useRef<PlayerRef>(null);
   const [mountedPlayer, setMountedPlayer] = useState<PlayerRef | null>(null);
   // Lets a newly mounted Player start where the timeline already is, instead of at frame 0.
@@ -218,7 +210,7 @@ export default function App() {
         e.preventDefault();
         const idx = STAGES.findIndex((s) => s.id === stage);
         const next = e.key === "]" ? Math.min(STAGES.length - 1, idx + 1) : Math.max(0, idx - 1);
-        setStage(STAGES[next].id);
+        setStage(STAGES[Math.max(0, next)].id);
         return;
       }
       if (/^[1-4]$/.test(e.key)) {
@@ -235,14 +227,22 @@ export default function App() {
 
   const hasVoiceover = Boolean(film.voiceover?.src);
 
-  const stageFlags = useMemo<Record<Stage, "none" | "warn" | "success">>(
+  const stageFlags = useMemo<Partial<Record<Stage, "warn" | "success">>>(
     () => ({
       script: hasVoiceover ? "success" : "warn",
-      look: "none",
-      edit: hasVoiceover ? "none" : "warn",
-      review: project.validation.ok ? "none" : "warn",
+      ...(hasVoiceover ? {} : { cut: "warn" as const }),
+      ...(project.validation.ok ? {} : { review: "warn" as const }),
     }),
     [hasVoiceover, project.validation.ok],
+  );
+
+  /** Opens a film from the Films home in Words. */
+  const openFilm = useCallback(
+    async (id: string) => {
+      if (id !== film.id) await project.selectFilm(id);
+      setStage("script");
+    },
+    [film.id, project, setStage],
   );
 
   return (
@@ -251,34 +251,30 @@ export default function App() {
     <div inert={project.isLoading} className="flex h-screen flex-col overflow-hidden bg-paper text-ink">
       {/* Header */}
       <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line bg-paper-2 px-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <label htmlFor="project-switcher" className="sr-only">
-              Film
-            </label>
-            <Select
-              id="project-switcher"
-              value={film.id}
-              onChange={(e) => void project.selectFilm(e.target.value)}
-              className="h-8 w-[clamp(140px,22vw,320px)] py-0 text-xs"
-              title="Film"
-            >
-              {project.filmIds.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-            </Select>
-            <Button size="sm" iconOnly onClick={() => setIsNewProjectOpen(true)} title="Create a new project">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            size="sm"
+            tone={stage === "films" ? "select" : "default"}
+            onClick={() => setStage("films")}
+            title="Films"
+            aria-pressed={stage === "films"}
+          >
+            Films
+          </Button>
+          <span className="min-w-0 truncate font-mono text-xs text-ink-soft" title={film.title}>
+            {film.id}
+          </span>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <AgentConnect />
+          <Button size="sm" iconOnly onClick={project.undo} disabled={!project.canUndo} title={project.undoLabel ? `Undo ${project.undoLabel}` : "Undo"} aria-label="Undo">
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" iconOnly onClick={project.redo} disabled={!project.canRedo} title={project.redoLabel ? `Redo ${project.redoLabel}` : "Redo"} aria-label="Redo">
+            <Redo2 className="h-3.5 w-3.5" />
+          </Button>
 
-          <AgentActivityInspector />
+          <AgentSheet />
 
           <Button
             size="sm"
@@ -318,6 +314,13 @@ export default function App() {
         </div>
       </header>
 
+      <LensBar
+        lenses={STAGES.map((s) => ({ id: s.id, label: s.label, icon: <s.icon className="h-4 w-4" />, title: s.title }))}
+        active={stage === "films" ? null : stage}
+        flags={stageFlags}
+        onSelect={setStage}
+      />
+
       {project.conflict ? (
         <div
           role="alert"
@@ -337,129 +340,80 @@ export default function App() {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* Stage rail */}
-        <nav
-          aria-label="Production stages"
-          className="flex w-[68px] shrink-0 flex-col overflow-y-auto border-r border-line bg-paper"
-        >
-          {STAGES.map((s, i) => (
-            <RailTab
-              key={s.id}
-              label={s.label}
-              title={`${s.title} (${i + 1})`}
-              index={i + 1}
-              icon={<s.icon className="h-4 w-4" />}
-              active={stage === s.id}
-              flag={stageFlags[s.id]}
-              onClick={() => setStage(s.id)}
-            />
-          ))}
-          <div className="mt-auto border-t border-line p-1.5">
-            <Button
-              size="xs"
-              block
-              tone={selection?.kind === "history" ? "select" : "default"}
-              onClick={() => {
-                setSelection(selection?.kind === "history" ? null : { kind: "history" });
-                setInspectorOpen(true);
-              }}
-              title="History"
-            >
-              <History className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </nav>
-
-        {/* Stage surface */}
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-paper">
-          {project.isLoading ? (
-            <Panel tone="flat" className="m-3 flex-1 items-center justify-center border">
-              <div className="flex flex-col items-center gap-2 p-8">
-                <Loader2 className="h-6 w-6 animate-spin text-ink-soft" />
-                <p className="font-sans text-xs font-semibold text-ink-soft">
-                  Loading
-                </p>
-              </div>
-            </Panel>
-          ) : (
-            <>
-              {stage === "script" && (
-                <ScriptStage film={film} commit={commit} notify={notify} onGoToEdit={() => setStage("edit")} />
-              )}
-              {stage === "look" && (
-                <LookStage
-                  film={film}
-                  commit={commit}
-                  accent={accent}
-                  onAccentChange={setAccent}
-                  onSelectShot={(id) => setSelection({ kind: "shot", id })}
-                  notify={notify}
-                />
-              )}
-              {stage === "edit" && (
-                <EditStage
-                  film={film}
-                  project={project}
-                  api={timelineApi}
-                  accent={accent}
-                  format={format}
-                  onFormatChange={setFormat}
-                  playerRef={playerRef}
-                  onPlayerMount={attachPlayer}
-                  currentFrame={currentFrame}
-                  isPlaying={isPlaying}
-                  onSeekFrame={seekFrame}
-                  onTogglePlay={togglePlay}
-                  selectedClipIds={selectedClipIds}
-                  onSelectionChange={(ids) => {
-                    setSelectedClipIds(ids);
-                    setSelection(ids.length > 0 ? { kind: "clip", id: ids[0] } : null);
-                  }}
-                  onReject={handleReject}
-                  onGoToScript={() => setStage("script")}
-                />
-              )}
-              {stage === "review" && (
-                <CheckStage
-                  film={film}
-                  renderFilm={timelineApi.renderFilm}
-                  format={format}
-                  durationInFrames={deliveredFrames}
-                  validation={project.validation}
-                  hasVisibleVisuals={timelineApi.hasVisibleVisuals}
-                  exportJob={exportJob}
-                  onGoTo={setStage}
-                />
-              )}
-            </>
-          )}
-        </main>
-
-        {/* Context inspector */}
-        <InspectorPanel
-          open={inspectorOpen}
-          onToggle={() => setInspectorOpen((prev) => !prev)}
-          film={film}
-          project={project}
-          api={timelineApi}
-          selection={selection}
-          onSelectionChange={setSelection}
-          onSeekFrame={seekFrame}
-        />
-      </div>
+      {/* Surface */}
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-paper">
+        {project.isLoading ? (
+          <Panel tone="flat" className="m-3 flex-1 items-center justify-center border">
+            <div className="flex flex-col items-center gap-2 p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-ink-soft" />
+              <p className="font-sans text-xs font-semibold text-ink-soft">
+                Loading
+              </p>
+            </div>
+          </Panel>
+        ) : (
+          <>
+            {stage === "script" && (
+              <ScriptStage film={film} commit={commit} notify={notify} onGoToCut={() => setStage("cut")} />
+            )}
+            {stage === "look" && (
+              <LookStage
+                film={film}
+                commit={commit}
+                accent={accent}
+                onAccentChange={setAccent}
+                notify={notify}
+              />
+            )}
+            {stage === "cut" && (
+              <EditStage
+                film={film}
+                project={project}
+                api={timelineApi}
+                accent={accent}
+                format={format}
+                onFormatChange={setFormat}
+                playerRef={playerRef}
+                onPlayerMount={attachPlayer}
+                currentFrame={currentFrame}
+                isPlaying={isPlaying}
+                onSeekFrame={seekFrame}
+                onTogglePlay={togglePlay}
+                selectedClipIds={selectedClipIds}
+                onSelectionChange={setSelectedClipIds}
+                onReject={handleReject}
+                onGoToScript={() => setStage("script")}
+              />
+            )}
+            {stage === "films" && (
+              <FilmsHome
+                filmIds={project.filmIds}
+                openId={film.id}
+                onOpen={(id) => void openFilm(id)}
+                onStarted={(newFilm) => {
+                  project.registerFilm(newFilm);
+                  setStage("script");
+                  notify("success", `Film started: ${newFilm.id}`);
+                }}
+              />
+            )}
+            {stage === "review" && (
+              <CheckStage
+                film={film}
+                renderFilm={timelineApi.renderFilm}
+                format={format}
+                durationInFrames={deliveredFrames}
+                validation={project.validation}
+                hasVisibleVisuals={timelineApi.hasVisibleVisuals}
+                exportJob={exportJob}
+                onGoTo={setStage}
+              />
+            )}
+          </>
+        )}
+      </main>
 
       <ToastStack toasts={project.toasts} onDismiss={project.dismissToast} />
-
-      <NewProjectModal
-        isOpen={isNewProjectOpen}
-        onClose={() => setIsNewProjectOpen(false)}
-        onProjectCreated={(newFilm) => {
-          project.registerFilm(newFilm);
-          setStage("script");
-          notify("success", `Film created: ${newFilm.title}`);
-        }}
-      />
     </div>
     </fieldset>
     </FilmSaveContext.Provider>

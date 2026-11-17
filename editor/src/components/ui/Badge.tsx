@@ -65,7 +65,6 @@ const STAT_VALUE_TONE: Record<NonNullable<StatProps["tone"]>, string> = {
 export function Stat({ label, value, tone = "ink", className }: StatProps) {
   return (
     <div className={cn("flex items-baseline justify-between gap-3 py-0.5", className)}>
-      {/* Upper case on purpose: scripts/smoke_studio.ts reads the "CLIPS" count from the page text. */}
       <span className="font-sans text-xs font-semibold uppercase text-ink-soft">{label}</span>
       <span className={cn("font-mono text-xs font-semibold tabular-nums", STAT_VALUE_TONE[tone])}>{value}</span>
     </div>

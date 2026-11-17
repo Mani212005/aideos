@@ -220,14 +220,14 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `smooth-dark`: Studio deep matte dark presentation (`#0A0A0B`).
 
 ### Project Theme Binding (`src/projectTheme.ts`)
-* `PROJECT_THEMES`: The themes offered in the New project dialog (`smooth-dark` with `#FF6B00`, `paper-white` with `#635BFF`, `blueprint` with `#00E5FF`, `dot-grid` with `#10B981`); each declares an `id` matching a `film.theme.background` preset, `name`, default `accent`, and preview `swatch`.
+* `PROJECT_THEMES`: The themes a request to `/api/projects/new` can name (`smooth-dark` with `#FF6B00`, `paper-white` with `#635BFF`, `blueprint` with `#00E5FF`, `dot-grid` with `#10B981`); each declares an `id` matching a `film.theme.background` preset, `name`, default `accent`, and preview `swatch`.
 * `DEFAULT_PROJECT_THEME_ID`: `"smooth-dark"`.
 * `DEFAULT_PROJECT_ACCENT`: `"#FF6B00"`, the default theme's accent and the one fallback every stage (compile, briefs, design view, edit validator, critique, scene kit, editor preview) uses when a film names no accent; purple appears only when the user chose it.
 * `projectThemeById(id)`: Looks up a dialog theme option by id, falling back to the default theme.
 * `boundThemeName(background)`: The name the prompt and briefs give a bound theme: the dialog theme's name, or the background preset id when it is not a dialog theme.
 * `resolveProjectTheme(themeId, accent)`: Resolves the binding background preset and accent for a new project from creator choices, falling back to the theme's preset accent.
 * `newProjectFilmTheme(themeId, accent)`: Builds the `film.theme` every `/api/projects/new` branch writes (background, `geist`, `script-metaphor`, `isometric`, accent), with `accentChosen: true` exactly when the request carried a theme or accent.
-* `boundTheme(film)`: Returns the binding `{ background, accent }` only when the film carries `theme.accentChosen: true` (set when the New project dialog or `/api/projects/new` received a chosen theme or accent) and a valid hex `theme.accent`, else `null`. Legacy projects and accents a look plan picked are never bound.
+* `boundTheme(film)`: Returns the binding `{ background, accent }` only when the film carries `theme.accentChosen: true` (set when `/api/projects/new` received a chosen theme or accent; the Start box sends none) and a valid hex `theme.accent`, else `null`. Legacy projects and accents a look plan picked are never bound.
 * `filmAccent(film)`: Returns the film's effective drawing accent (`boundTheme(film)?.accent ?? film.accent ?? DEFAULT_PROJECT_ACCENT`).
 * `sameColour(a, b)`: Case-insensitive comparison of two hex color strings (`#rrggbb`).
 * `ACCENT_CHOICES`: The named accent colours (`{ name, hex }`) the Look lens offers, one click each.
@@ -629,7 +629,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 ### 4 Sequential Editing Stages (`editor/src/screens/`)
 * **`ScriptStage.tsx` (`ScriptEditor.tsx`)**: Story-first script editor (plain paragraphs with collapsible visual and on-screen notes beside each, tags kept internal), a visible narration change list, per-line Kokoro ONNX TTS voiceover synthesis, and direct Auto-Prompt agent dispatching with single-flight click protection, idempotent task reuse on repeated clicks, and live queue delivery status (`autoPromptBadge`).
 * **`LookStage.tsx` (`DesignView.tsx`, `LookAsk.tsx`, `LookChoices.tsx`, `LookFootage.tsx`)**: The one Look lens: Ask (the chosen shot as a picture plus one box that sends a change to the agent), the look plan (stage, cast, captain approval), the shots with their artwork, the film's accent and background, and the footage action for a shot that needs footage.
-* **`EditStage.tsx` (`TimelineEditor.tsx`, `captions/CaptionObject.tsx`, `InspectorPanel.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, captions as a direct object in the preview (click to select, drag for the whole video, side handles, snap guides while dragging, `captions/CaptionObject.tsx`, `captions/CaptionStrip.tsx`, pure snap math in `captions/captionGuides.ts`), sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip/shot inspector (a selected caption word clip shows one text control for that word, `captions/captionWordEdit.ts`), and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
+* **`EditStage.tsx` (`TimelineEditor.tsx`, `captions/CaptionObject.tsx`, `ClipInspector.tsx`, `AssetBin.tsx`, `OnCanvasAiEditor.tsx`)**: Non-linear multi-track timeline with clip dragging, captions as a direct object in the preview (click to select, drag for the whole video, side handles, snap guides while dragging, `captions/CaptionObject.tsx`, `captions/CaptionStrip.tsx`, pure snap math in `captions/captionGuides.ts`), sticky snapping, magnetic ripple editing (R), linked audio-video trimming, waveform preview, track mute/hide/lock, clip panel (a selected caption word clip shows one text control for that word, `captions/captionWordEdit.ts`), and model-driven AI edit panel (`OnCanvasAiEditor.tsx`) dispatching validated edit programs to Agent Bridge with live trace telemetry.
 * **`CheckStage.tsx` (`CheckExport.tsx`, `state/useAcceptanceCheck.ts`)**: The one Check lens: state word, the 6 hard gates and the reviewer score against the 9.0 bar from `acceptance.json` (`backend/filmAcceptance/checkView.ts`), a fix list (footage, visual lane, delivery gaps from `backend/deliveryGate.ts`, voice, failed gates) and Export in the same lens.
 
 ### State & Integration Layer (`editor/src/state/`)
@@ -640,11 +640,11 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * **`usePaneDelivery` (`editor/src/state/paneDelivery.ts`)**: Follows live Auto-Prompt terminal delivery status (queued, sending, sent, failed, duplicate) by polling `/api/prompt-agent/queue?id=<id>` until completion.
 * **`autoPromptState.ts` (`editor/src/state/autoPromptState.ts`)**: Pure state rules for the Auto-Prompt button: single-flight execution guard dropping concurrent duplicate clicks (`createSingleFlight`) and delivery badge resolution (`autoPromptBadge`).
 
-### Studio Inspector & Telemetry Components (`editor/src/components/`)
+### Studio Shell Components (`editor/src/components/`)
 * **`CheckExport.tsx`**: The Export controls of the Check lens (the header Export button and progress chip open that lens). Shows Export, then Start (facts fixed from the job), real frame-by-frame renderer progress, a Cancel button that kills the render and deletes the partial video, and an explicit Download button on completion without auto-downloading.
-* **`AgentActivityInspector.tsx`**: Live real-time agent telemetry timeline subscribing to SSE stream (`/api/agent/trace`) with filterable execution steps, live status pills (LIVE / CONNECTING / OFFLINE), and empty state.
-* **`AgentConnect.tsx`**: Header badge and dialog modal supporting two linking modes (running agent session via MCP and downloadable connector), presence heartbeating, reconnecting state recovery across restarts, and live activity feeds.
-* **`NewProjectModal.tsx`**: Modal dialog for creating a new project (paste script or start empty) with title, binding theme and accent selection, and voiceover voice.
+* **`shell/AgentSheet.tsx`**: The header Agent button and the Agent sheet: two linking modes (running agent session via MCP and downloadable connector), presence heartbeating, reconnecting state recovery across restarts, the last task, and the live work list from the SSE stream (`/api/agent/trace`) while the sheet is open.
+* **`shell/FilmsHome.tsx`, `shell/StartBox.tsx`**: The Films home (every film with its Check state chip, read by `state/useFilmStates.ts`) and the Start box (one story field; `state/startFilm.ts` names the film from the first words and posts `/api/projects/new`).
+* **`shell/LensBar.tsx`**: The lens bar (Words, Look, Cut, Check).
 
 ### Handcrafted UI Primitives (`editor/src/components/ui/`)
 * **`Badge.tsx`**: Status indicators and token chips.

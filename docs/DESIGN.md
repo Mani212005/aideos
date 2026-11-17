@@ -79,7 +79,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
   - **Footage (`LookFootage.tsx`)**: For a chosen shot that needs footage: the state of the clip and one button that starts the GPU job (`POST /api/broll/generate`, `GET /api/broll/status`). While the lens is open, a clip on disk is wired into every shot that needs footage and does not hold it yet, as one undo step per poll result ("Add footage"). A shot right after a clip shot stays unwired, because the film schema forbids two clips in a row.
   - **Ask (`LookAsk.tsx`)**: The one agent box of the stage. The chosen shot loops as a picture, and the text under it goes to the connected agent as a design task for that shot (`POST /api/design/:id/shots/:shot/motion`, server model fallback). The last Ask shows its state and Undo.
 
-### 3. Edit Stage (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `InspectorPanel.tsx` / `AssetBin.tsx`)
+### 3. Cut lens (`EditStage.tsx` / `TimelineEditor.tsx` / `captions/CaptionObject.tsx` / `ClipInspector.tsx` / `AssetBin.tsx`)
 - **Purpose**: Non-linear multi-track timeline editor with direct manipulation, track controls, and clip inspection.
 - **Features**:
   - **Movable Caption Object (`captions/CaptionObject.tsx`)**: Direct-manipulation caption card in the preview (click to select without playback, drag for the whole video, edge resize handles, drag snap guides, format copying, and default position restoration).
@@ -89,7 +89,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
   - **Track Controls**: Independent layer locking, muting, hiding, reordering, and track addition.
   - **Magnetic Snapping (`backend/timeline/snap.ts`)**: Snaps clip boundaries to playhead, markers, and other clips with self-ignore and zoom-adaptive thresholds.
   - **Audio Waveforms (`src/components/timeline/useAudioPeaks.ts`)**: Server pre-computed peak fetching (`/api/audio/peaks`) with Web Audio API fallback rendered directly on clip bodies.
-  - **Inspector Panel**: Unified sidebar for shot editing, transition selection (`TransitionEditor.tsx`), clip adjustments, and asset bin management. A selected caption word clip shows one text control (`ClipInspector.tsx`, `captions/captionWordEdit.ts`): Enter saves the word into the film's caption track as one undo step.
+  - **Clip panel**: A selected clip opens its numbers in a panel on the right of the Cut lens (`ClipInspector.tsx`). A selected caption word clip shows one text control (`captions/captionWordEdit.ts`): Enter saves the word into the film's caption track as one undo step. The timeline footer shows the clip and lane count (`data-testid="cut-footer"`).
   - **Model-Driven AI Editor Panel (`OnCanvasAiEditor.tsx`)**: Interprets natural-language editing instructions into discrete, validated `EditOp` sequences with dry-run preview, atomic rollback, and automatic dispatch across Agent Bridge channels.
 
 ### 4. Check lens (`CheckStage.tsx` / `CheckExport.tsx`)
@@ -123,7 +123,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
   caption preview). Everything else is paper, sunken paper or ink.
 - Tailwind's JIT caches generated classes: after editing `tailwind.config.js` or adding a token,
   restart the Vite dev server or new utility classes silently resolve to their defaults.
-- Screens live in `editor/src/screens/` (one per stage in the left rail) and compose the components
+- Screens live in `editor/src/screens/` (one per lens in the lens bar) and compose the components
 
 ### Imported video and standalone overlay clips
 
