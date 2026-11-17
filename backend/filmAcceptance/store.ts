@@ -15,13 +15,11 @@ import {
   classifyFilmEdit,
   drawsDisagree,
   initialRecord,
-  summarize,
   transition,
   withToolWrite,
   type AcceptanceEvent,
   type AcceptanceFormat,
   type AcceptanceRecord,
-  type AcceptanceSummary,
   type FilmEditState,
 } from "./machine";
 
@@ -106,17 +104,6 @@ export function noteFilmWrite(pkgDir: string, contents: string): void {
 // How a package's film.json stands against the films the tools wrote: clean, hand-edited, or untracked (no ledger yet).
 export function filmEditState(pkgDir: string): FilmEditState {
   return classifyFilmEdit(readAcceptance(pkgDir).toolWrites, hashFileOrNull(path.join(pkgDir, "film.json")));
-}
-
-// The plain-language state of the film that would be exported in one format.
-export function acceptanceSummary(pkgDir: string, format: AcceptanceFormat, currentFilmHash: string | null): AcceptanceSummary {
-  const file = readAcceptance(pkgDir);
-  return summarize(file.formats[format] ?? null, currentFilmHash);
-}
-
-// Summarizes the exact serialized film supplied by the export client, independent of film.json on disk.
-export function acceptanceSummaryForFilm(pkgDir: string, format: AcceptanceFormat, film: unknown): AcceptanceSummary {
-  return acceptanceSummary(pkgDir, format, hashBytes(JSON.stringify(film, null, 2)));
 }
 
 // The Check lens view (state, six gates, score against the bar) of the film that would be exported in one format.

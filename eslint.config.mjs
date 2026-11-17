@@ -25,7 +25,6 @@ const LEGACY_ANY = [
   "backend/live/audio.live.ts",
   "backend/agentBridge/{contextBuilder,dispatcher,taskQueue,traceBus,types}.ts",
   "backend/cli.ts",
-  "backend/critique/engine.ts",
   "backend/editPlanner/{interpreter,validator}.ts",
   "backend/geminiReview/{geminiReview,types}.ts",
   "backend/goodVideoRubric.ts",

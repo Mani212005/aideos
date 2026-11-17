@@ -9,7 +9,6 @@
  * backend/designSpec/build.ts, editor/vite.config.ts.
  */
 
-import { formatScore } from "../geminiReview/verdictPolicy";
 
 /** The two deliverables of a film. */
 export type AcceptanceFormat = "long" | "reel";
@@ -119,19 +118,6 @@ export function drawsDisagree(draws: readonly JudgeDraw[]): boolean {
   return new Set(decidingDraws(draws).map((draw) => draw.verdict)).size > 1;
 }
 
-// A draw's score as shown to a person: the combined score of a two-draw review, else the draw's own score, never rounded up to the bar.
-function shownScore(draw: JudgeDraw): string {
-  return formatScore(draw.combinedScore ?? draw.score);
-}
-
-// Adds the current byte set's disagreement summary without changing its state or verdict.
-function withDisagreement(summary: AcceptanceSummary, draws: JudgeDraw[]): AcceptanceSummary {
-  const disagree = drawsDisagree(draws);
-  if (!disagree) return { ...summary, drawsDisagree: false };
-  const evidence = `${decidingDraws(draws).length} reviews of these exact bytes disagree: ${decidingDraws(draws).map((item) => `${item.verdict} ${shownScore(item)}`).join(", ")}. `;
-  return { ...summary, drawsDisagree: true, message: `${evidence}${summary.message}` };
-}
-
 /**
  * The judged verdict rule over recorded draws: the newest draw of the current bytes decides. When a review ran two
  * draws (the first within 0.5 of the 9.0 bar), both are recorded together and the second carries the combined
@@ -208,50 +194,6 @@ export function isReviewedFilm(reviewedHash: string | null, currentHash: string 
 export function effectiveState(record: AcceptanceRecord, currentFilmHash: string | null): EffectiveState {
   if (record.state === "unreviewed") return "unreviewed";
   return currentFilmHash !== null && currentFilmHash === record.filmHash ? record.state : "stale";
-}
-
-/** What a person is told about the thing they are about to export. */
-export interface AcceptanceSummary {
-  state: EffectiveState;
-  /** True only when these exact bytes passed every check. */
-  reviewed: boolean;
-  /** True when recorded reviews of the current mp4 bytes have conflicting verdicts. */
-  drawsDisagree: boolean;
-  /** One plain sentence for the Export dialog and the terminal. */
-  message: string;
-}
-
-// Says in plain words whether the film that would be exported is the film that was reviewed.
-export function summarize(record: AcceptanceRecord | null, currentFilmHash: string | null): AcceptanceSummary {
-  if (!record || record.state === "unreviewed") {
-    return { state: "unreviewed", reviewed: false, drawsDisagree: false, message: "This film has not been reviewed. Run aideos all-check to measure and review it." };
-  }
-  const state = effectiveState(record, currentFilmHash);
-  const draws = currentDraws(record);
-  const last = draws.slice(-1)[0];
-  const scoreText = last === undefined ? "" : ` (reviewer score ${shownScore(last)})`;
-  const review = last?.reviewKey === undefined ? [] : draws.filter((draw) => draw.reviewKey === last.reviewKey);
-  // A review of two draws says so in words: how many times the reviewer was asked, why, and which number decided.
-  const twoDraws = review.length > 1 && last?.combinedScore !== undefined
-    ? ` The reviewer was asked ${review.length} times about these exact bytes (scores ${review.map((draw) => formatScore(draw.score)).join(" and ")}) because the first was within 0.5 of the 9.0 bar; their mean, ${formatScore(last.combinedScore)}, decided.`
-    : "";
-  const result = (reviewed: boolean, message: string): AcceptanceSummary => withDisagreement({
-    state, reviewed, drawsDisagree: false, message: `${message}${twoDraws}`,
-  }, draws);
-  switch (state) {
-    case "accepted":
-      return result(true, `Reviewed and accepted: the film being exported is the one that passed the measured checks and the reviewer${scoreText}.`);
-    case "stale":
-      return result(false, "Changed since review: film.json is no longer the film that was reviewed, so the earlier verdict does not apply. Run aideos all-check again.");
-    case "revise":
-      return result(false, `Reviewed, and the reviewer asked for revisions${scoreText}. Fix the findings and run aideos all-check again.`);
-    case "measured-failed":
-      return result(false, `The measured checks failed${record.measured?.gateFailures.length ? `: ${record.measured.gateFailures.join(", ")}` : ""}. Fix them and run aideos all-check again.`);
-    case "judged":
-      return result(false, "Reviewed, but the run was not finished: the frame check or another check still has to pass.");
-    default:
-      return result(false, "Rendered, but the review did not finish for this film. Run aideos all-check to complete it.");
-  }
 }
 
 /** How film.json stands against the films the tools themselves wrote. */

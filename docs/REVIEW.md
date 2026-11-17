@@ -245,7 +245,7 @@ changed film is reported as stale and an earlier verdict does not apply. Measure
 latest judge draw for the same MP4 determines the judge result, and each new draw is retained. A review whose
 first draw was within 0.5 of the 9.0 bar appends its second draw to the same record (keys `round-N` and
 `round-N-draw-2`); the second carries the combined score and the decision over both (section 2, verdict
-decision), and the Export summary says in words that the reviewer was asked twice and which number decided.
+decision).
 Draws of separate reviews that disagree are still reported as a disagreement, without changing that verdict rule. Export status is summarized
 against the film supplied by Studio, and may change if export preparation changes the film. See the [Studio
 workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor) for what the Export dialog displays.
