@@ -1,5 +1,5 @@
 /**
- * File Description: J3 studio edit journeys in a real headless Chrome: (1) the AI edit Apply gesture, (2) new project, script save and reload, (3) the story inputs staying unavailable until the stored script has loaded. Before this, Apply Edits rolled back in the browser on a Node-only import (`path.resolve` externalized by Vite) while every Node test passed, and the script-save path had no browser coverage at all.
+ * File Description: J3 studio edit journeys in a real headless Chrome: (1) the AI edit Apply gesture, (2) start a film from the Start box, script save and reload, (3) the story inputs staying unavailable until the stored script has loaded. Before this, Apply Edits rolled back in the browser on a Node-only import (`path.resolve` externalized by Vite) while every Node test passed, and the script-save path had no browser coverage at all.
  * The journey makes the model-backed `/api/ai-edit` endpoint deterministic by answering it from the test (a valid `set_accent` plan) and leaves every other request real: the click on Apply Edits runs the real interpreter in the page, and the save, the edit log and the reload hit the real dev server and disk.
  * Inputs and outputs: a throwaway videos folder with a film made by the real pipeline (tone narration, template design, no model or key) -> asserts the edit is applied, written to film.json, logged, and still there after a reload; a new project's script is on disk and in the editor after a reload.
  * Used by: npm run test:journeys and npm run ci journeys (needs Chrome; AIDEOS_SMOKE_REQUIRED=1 turns a missing Chrome into a failure).
@@ -87,7 +87,7 @@ journey("J3 studio: Apply Edits on an AI edit plan applies, saves and survives a
       return { json: { ok: true, dryRun: true, plan: "Set the accent colour to orange.", ops: [{ op: "set_accent", hex: NEW_ACCENT }], warnings: [], attempts: 1 } };
     });
 
-    await openProject(page, url, AI_SLUG, "edit");
+    await openProject(page, url, AI_SLUG, "cut");
     await page.waitFor(`document.querySelector('.__remotion-player')`, "the preview player");
 
     // The user asks, reviews the plan, and clicks Apply Edits.
@@ -144,26 +144,23 @@ journey("J3 studio: Apply Edits on an AI edit plan applies, saves and survives a
 
 journey("J3 studio: a new project's script saves to disk and is still there after a reload", async () => {
   await withStudio([AI_SLUG, NEW_SLUG], async ({ page, url, videosDir, serverLog }) => {
-    await openProject(page, url, AI_SLUG, "edit");
+    await openProject(page, url, AI_SLUG, "cut");
     await page.waitFor(`document.querySelector('.__remotion-player')`, "the preview player");
 
-    // Create an empty project from the dialog, the way the header button does.
-    await page.clickButton("Create a new project");
-    await page.waitFor(`document.querySelector('#np-title')`, "the new project dialog");
-    await page.focus("#np-title");
+    // Start a film from the one Start box on the Films home. The film is named from the first words of the story.
+    await page.clickButton("Films", { exact: true });
+    await page.waitFor(`document.querySelector('#start-story')`, "the Start box");
+    await page.focus("#start-story");
     await page.typeText("Journey new project");
-    assert.equal(await page.eval<string>(`document.querySelector('#np-slug').value`), NEW_SLUG, "the identifier follows the title");
-    await page.clickButton("Empty project");
-    await page.clickButton("Create project", { exact: true });
-    await page.waitFor(`document.querySelector('[data-testid="story-empty"]')`, "the story-first script stage of the new project");
+    await page.clickButton("Start", { exact: true });
+    await page.waitFor(`document.querySelector('textarea[aria-label="Narration paragraph"]')`, "the story of the new project in Words");
     assert.ok(fs.existsSync(path.join(videosDir, NEW_SLUG, "script.md")), "creating the project did not write script.md");
 
-    // Write the story as plain paragraphs and save it with the Save Script button.
+    // Write the story over the first paragraph and save it with the Save Script button.
     const written = "A cache keeps recent answers close so that repeated questions skip the slow database.";
-    await page.focus('textarea[aria-label="Paste your story"]');
+    await page.focus('textarea[aria-label="Narration paragraph"]');
+    await page.eval(`document.querySelector('textarea[aria-label="Narration paragraph"]').select()`);
     await page.typeText(written);
-    await page.clickButton("Add to story", { exact: true });
-    await page.waitFor(`document.querySelector('textarea[aria-label="Narration paragraph"]')`, "the story paragraph");
     await page.clickButton("Save Script", { exact: true });
     const scriptFile = path.join(videosDir, NEW_SLUG, "script.md");
     const deadline = Date.now() + 10000;

@@ -196,15 +196,18 @@ journey(
       await page.eval(
         `localStorage.setItem('aideos_active_film_id', 'journey-caption-empty')`,
       );
-      await page.goto(`${server.url}#edit`);
+      await page.goto(`${server.url}#cut`);
       await page.reload();
       await page.waitFor(
         `/no voiceover yet/i.test(document.body.innerText)`,
         "empty Edit stage",
       );
-      await page.eval(
-        `(() => { const select = document.querySelector('select'); select.value = '${SLUG}'; select.dispatchEvent(new Event('change', { bubbles: true })); })()`,
-      );
+      // Open the film with a voice from the Films home, then go to Cut.
+      await page.clickButton("Films", { exact: true });
+      await page.waitFor(`document.querySelector('[data-testid="films-home"]')`, "the Films home");
+      await page.eval(`document.querySelector('[aria-label="${SLUG}"]').click()`);
+      await page.waitFor(`document.querySelector('[data-testid="story-editor"]')`, "the film opened in Words");
+      await page.clickButton("Cut", { exact: true });
       await page.waitFor(
         `document.querySelector('.__remotion-player')`,
         "late mounted player",

@@ -17,23 +17,17 @@ export interface LookStageProps {
   commit: (next: Film, label: string) => void;
   accent: string;
   onAccentChange: (color: string) => void;
-  onSelectShot: (id: string) => void;
   notify: (tone: NoteTone, text: string) => number;
 }
 
 /** The Look lens: picture, Ask, look plan, accent, background and the shots. */
-export function LookStage({ film, commit, accent, onAccentChange, onSelectShot, notify }: LookStageProps) {
+export function LookStage({ film, commit, accent, onAccentChange, notify }: LookStageProps) {
   // The shot that Ask applies to. It follows the shot list and the Shot select.
   const [shotId, setShotId] = useState(film.shots[0]?.id ?? "");
   // Keep the chosen shot valid when the film changes under it.
   useEffect(() => {
     if (!film.shots.some((s) => s.id === shotId)) setShotId(film.shots[0]?.id ?? "");
   }, [film.shots, shotId]);
-  // Choose a shot for Ask and tell the shell.
-  const chooseShot = (id: string) => {
-    setShotId(id);
-    onSelectShot(id);
-  };
   // Sets the film background as one undo step.
   const setBackground = (background: BackgroundPreset) => {
     commit({ ...film, theme: { ...(film.theme ?? {}), background } }, "Change background");
@@ -43,11 +37,11 @@ export function LookStage({ film, commit, accent, onAccentChange, onSelectShot, 
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <DesignView
         film={film}
-        onSelectShot={chooseShot}
+        onSelectShot={setShotId}
         selectedShotId={shotId}
         topPanel={
           <>
-            <LookAsk film={film} shotId={shotId} onShotChange={chooseShot} notify={notify} />
+            <LookAsk film={film} shotId={shotId} onShotChange={setShotId} notify={notify} />
             <LookFootage film={film} shotId={shotId} commit={commit} />
           </>
         }

@@ -15,17 +15,17 @@ export interface ScriptStageProps {
   film: Film;
   commit: (next: Film, label: string) => void;
   notify: (tone: NoteTone, text: string) => number;
-  onGoToEdit: () => void;
+  onGoToCut: () => void;
 }
 
 /** Screenplay authoring and voiceover synthesis. */
-export function ScriptStage({ film, commit, onGoToEdit }: ScriptStageProps) {
+export function ScriptStage({ film, commit, onGoToCut }: ScriptStageProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <ScriptEditor
         film={film}
         onUpdateFilm={(next) => commit(next, "Update script")}
-        onNavigateToVideo={onGoToEdit}
+        onNavigateToVideo={onGoToCut}
       />
     </div>
   );

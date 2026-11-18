@@ -187,7 +187,7 @@ export async function requestMotion(film: Film, shotId: string, prompt: string, 
   const caller = options.llmCaller;
   if (!caller) {
     request.state = "undelivered";
-    request.message = "no coding agent is connected and no server model is configured: use Connect agent in the header";
+    request.message = "no coding agent is connected and no server model is configured: use the Agent button in the header";
     writeLog(film.id, [request, ...readLog(film.id)]);
     return request;
   }

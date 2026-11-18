@@ -83,8 +83,8 @@ export interface FilmProject {
   redo: () => void;
   jumpTo: (index: number) => void;
   save: () => Promise<void>;
-  selectFilm: (id: string) => Promise<void>;
-  registerFilm: (film: Film) => void;
+  selectFilm: (id: string) => Promise<boolean>;
+  registerFilm: (film: Film) => Promise<boolean>;
   /** Conflict resolution: keep the studio's film and let the next save replace the disk version. */
   keepMine: () => void;
   /** Conflict resolution: take the film from disk as a new undoable step. */
@@ -452,8 +452,8 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
 
   /** Load another project, replacing the open film and its history; unsaved edits are saved first, never dropped. */
   const selectFilm = useCallback(
-    async (id: string) => {
-      if (!(await settleBeforeLeaving())) return;
+    async (id: string): Promise<boolean> => {
+      if (!(await settleBeforeLeaving())) return false;
       localStorage.setItem("aideos_active_film_id", id);
       try {
         await fetch("/api/active-film", {
@@ -464,25 +464,26 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
       } catch {
         // The active-project pointer is a convenience; failing to set it must not block the load.
       }
-      if (await loadFilm(id, null)) notify("info", `Opened ${id}`);
+      if (!(await loadFilm(id, null))) return false;
+      notify("info", `Opened ${id}`);
+      return true;
     },
     [loadFilm, notify, settleBeforeLeaving],
   );
 
   /** Add a newly created project to the switcher and open it. */
   const registerFilm = useCallback(
-    (next: Film) => {
+    async (next: Film): Promise<boolean> => {
       setFilmIds((prev) => Array.from(new Set([next.id, ...prev])));
-      void (async () => {
-        if (!(await settleBeforeLeaving())) return;
-        await loadFilm(next.id, next);
-        localStorage.setItem("aideos_active_film_id", next.id);
-        await fetch("/api/active-film", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: next.id }),
-        }).catch(() => undefined);
-      })();
+      if (!(await settleBeforeLeaving())) return false;
+      if (!(await loadFilm(next.id, next))) return false;
+      localStorage.setItem("aideos_active_film_id", next.id);
+      await fetch("/api/active-film", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: next.id }),
+      }).catch(() => undefined);
+      return true;
     },
     [loadFilm, settleBeforeLeaving],
   );

@@ -1,7 +1,7 @@
 /**
  * File Description: Pure helpers that edit one caption word of a film. The caption words are the subtitle clips on the Cut timeline (one clip per word), so a word is edited by selecting its clip. Every edit writes the whole caption track through one helper that packs words into cues only when the cue reads back with the exact start and end of each word, and refuses the edit when it cannot.
  * Inputs and outputs: film, caption word index, text or frame range edit -> film with the new caption track, or an error message.
- * Used by: editor/src/components/shell/InspectorPanel.tsx, editor/src/components/ClipInspector.tsx.
+ * Used by: editor/src/screens/EditStage.tsx, editor/src/components/ClipInspector.tsx.
  */
 
 import type { Film } from "../../../../src/dl/schema";

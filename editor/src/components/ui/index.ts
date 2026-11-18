@@ -36,7 +36,7 @@ export {
 } from "./Field";
 export { Badge, Stat, KeyHint, type BadgeProps, type BadgeTone, type StatProps, type KeyHintProps } from "./Badge";
 export { Modal, type ModalProps } from "./Modal";
-export { SegmentedTabs, RailTab, type SegmentedTabItem, type SegmentedTabsProps, type RailTabProps } from "./Tabs";
+export { SegmentedTabs, type SegmentedTabItem, type SegmentedTabsProps } from "./Tabs";
 export {
   EmptyState,
   Note,

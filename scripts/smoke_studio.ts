@@ -1,6 +1,6 @@
 /**
  * File Description: Browser smoke check and scrub-save-reload journey (J3) for the Aideos Studio.
- * Starts the editor dev server on a throwaway videos folder holding a film made by the real pipeline, loads the studio in headless Chrome and fails when the page does not render or throws. Then does what a user does in the Edit stage: jump to the end, step and scrub backwards and forwards with the keyboard (the frame readout must move by exactly the frames pressed), return to a frame and require the identical preview picture, split a clip, wait for the autosave, reload the page and require the edit to have survived.
+ * Starts the editor dev server on a throwaway videos folder holding a film made by the real pipeline, loads the studio in headless Chrome and fails when the page does not render or throws. Then does what a user does in the Cut lens: jump to the end, step and scrub backwards and forwards with the keyboard (the frame readout must move by exactly the frames pressed), return to a frame and require the identical preview picture, split a clip, wait for the autosave, reload the page and require the edit to have survived.
  * Unit tests run in Node and cannot see a crash that only happens in the browser bundle (for example a Node-only import leaking into client code, which blanked the studio after #43), so this loads the real page the way a user does.
  * Inputs and outputs: none -> launches dev server and headless Chrome, returns exit code 0 on success.
  * Used by: npm run smoke:studio, npm run ci (journeys job).
@@ -39,11 +39,11 @@ async function readFrames(page: StudioPage, fps: number): Promise<{ at: number; 
   return { at: frames(stamps[0]), total: frames(stamps[1]) };
 }
 
-/** How many clips the inspector says the film has. */
+/** How many clips the Cut footer says the film has. */
 async function clipCount(page: StudioPage): Promise<number> {
-  const text = await page.eval<string>("document.body.innerText");
-  const m = /CLIPS\s+(\d+)/.exec(text);
-  if (!m) throw new Error("the inspector does not show a clip count");
+  const text = await page.eval<string>(`document.querySelector('[data-testid="cut-footer"]')?.innerText ?? ""`);
+  const m = /(\d+)\s+clips/i.exec(text);
+  if (!m) throw new Error("the Cut footer does not show a clip count");
   return Number(m[1]);
 }
 
@@ -83,13 +83,13 @@ async function expectFrame(page: StudioPage, fps: number, frame: number, why: st
   throw new Error(`${why}: expected the playhead on frame ${frame}, it is on ${seen}`);
 }
 
-/** The scrub, return, edit, autosave, reload journey in the Edit stage; returns what went wrong. */
+/** The scrub, return, edit, autosave, reload journey in the Cut lens; returns what went wrong. */
 async function scrubSaveReload(page: StudioPage, url: string, filmFile: string): Promise<string[]> {
   const problems: string[] = [];
   const fps = 30;
   await page.goto(url);
   await page.eval(`localStorage.setItem('aideos_active_film_id', ${JSON.stringify(SLUG)})`);
-  await page.goto(`${url}#edit`);
+  await page.goto(`${url}#cut`);
   await page.reload();
   await page.waitFor(`document.querySelector('.__remotion-player')`, "the preview player");
   await page.waitFor(`document.body.innerText.includes(${JSON.stringify(SLUG)}) || document.querySelector('select, [role=combobox]')`, "the project switcher");
@@ -122,7 +122,7 @@ async function scrubSaveReload(page: StudioPage, url: string, filmFile: string):
   const before = await clipCount(page);
   const savedBefore = fs.statSync(filmFile).mtimeMs;
   await page.key("s");
-  await page.waitFor(`document.body.innerText.includes('CLIPS')`, "the inspector");
+  await page.waitFor(`document.querySelector('[data-testid="cut-footer"]')`, "the Cut footer");
   const after = await clipCount(page);
   if (after <= before) problems.push(`splitting at the playhead did not add a clip (${before} before, ${after} after)`);
   await page.waitFor(`[...document.querySelectorAll('button')].some((b) => (b.getAttribute('title') || '').startsWith('Save the project') && /saved/i.test(b.textContent))`, "the autosave to finish", 15000);
@@ -131,7 +131,7 @@ async function scrubSaveReload(page: StudioPage, url: string, filmFile: string):
   await page.reload();
   await page.waitFor(`document.querySelector('.__remotion-player')`, "the preview player after reload");
   await expectFrame(page, fps, 0, "a reloaded studio starts at frame 0");
-  await page.waitFor(`document.body.innerText.includes('CLIPS')`, "the inspector after reload");
+  await page.waitFor(`document.querySelector('[data-testid="cut-footer"]')`, "the Cut footer after reload");
   const reloaded = await clipCount(page);
   if (reloaded !== after) problems.push(`the split did not survive a reload (${after} clips before, ${reloaded} after)`);
   await page.clickButton("Go to end");
