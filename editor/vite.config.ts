@@ -40,7 +40,7 @@ import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
-import { resolveVoiceCloneSettings } from '../backend/aideosConfig.ts'
+import { AideosConfigError, resolveVoiceCloneSettings } from '../backend/aideosConfig.ts'
 import {
   VCD_DEFAULT_VOICE_KEY,
   VCD_HINDI_VOICE_KEY,
@@ -2012,7 +2012,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
             let generated = false;
             let synthesisError: VoiceSynthesisError | undefined;
-            let vcdError: VcdUnavailableError | undefined;
+            let vcdError: Error | undefined;
 
             let deepgramKey = process.env.DEEPGRAM_API_KEY || '';
             if (!deepgramKey) {
@@ -2163,9 +2163,9 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               generated = true;
               console.log(`[TTS] voiceover: ${lineSummary.recorded} line(s) recorded, ${lineSummary.reused} reused (${cleanText.length} chars)`);
             } catch (err) {
-              if (err instanceof VcdUnavailableError) vcdError = err;
+              if (err instanceof VcdUnavailableError || err instanceof AideosConfigError) vcdError = err;
               else if (err instanceof VoiceSynthesisError) synthesisError = err;
-              console.warn('[TTS] synthesis failed:', err instanceof VcdUnavailableError ? err.message : err);
+              console.warn('[TTS] synthesis failed:', err instanceof VcdUnavailableError || err instanceof AideosConfigError ? err.message : err);
             }
 
             if (generated) {
@@ -2281,7 +2281,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             } else if (vcdError) {
               sendJson(res, 503, {
                 error: vcdError.message,
-                code: vcdError.code,
+                ...(vcdError instanceof VcdUnavailableError ? { code: vcdError.code } : {}),
                 attempts: [{ provider: 'vcd', reason: vcdError.message }],
               });
             } else {

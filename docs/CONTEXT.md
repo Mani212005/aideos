@@ -312,8 +312,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `backend/tts.ts`
 * `DEFAULT_KOKORO_SPEED`: Kokoro default pace multiplier (0.75) chosen to keep explainer narration within the review pacing limit.
-* `createTtsBackend(options)`: Instantiates pluggable TTS engine (`kokoro` via worker process, `google`, `say`, `tone`).
-* `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (default).
+* `createTtsBackend(options)`: Instantiates pluggable TTS engine (`vcd` My voice by default, failing plainly when unreachable; explicit `kokoro` via worker process, `google`, `say`, `tone`).
+* `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (explicit option, not the default).
 
 ### `backend/voiceSynthesis.ts`
 * `synthesizeVoiceover(req, deps, env)`: Executes the multi-provider voiceover synthesis chain (local Kokoro -> Deepgram Aura -> Google Cloud TTS -> macOS `say`) for `/api/generate-voiceover` and returns WAV audio with the winning provider, throwing `VoiceSynthesisError` with diagnostic reasons for all skipped or failed providers on total failure.
