@@ -237,10 +237,14 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         brollMaxClips: z.number().int().min(0).max(12).optional().describe("Cap on generated b-roll clips. Defaults to 4."),
         brollSeconds: z.number().min(3).max(12).optional().describe("Length of each b-roll clip in seconds. Defaults to 8."),
         ttsBackend: z
-          .enum(["kokoro", "google", "say", "tone"])
+          .enum(["vcd", "kokoro", "google", "say", "tone"])
           .optional()
-          .describe("Pin the speech synthesizer. Defaults to Kokoro running locally with no API key."),
-        voice: z.string().optional().describe("Voice id for the chosen synthesizer, for example af_heart."),
+          .describe("Pin the speech synthesizer. Defaults to vcd (My voice, local cloned voice)."),
+        voice: z.string().optional().describe("Voice id for the chosen synthesizer (for example an enrolled vcd voice_... id or Kokoro af_heart)."),
+        language: z
+          .enum(["auto", "en", "hi"])
+          .optional()
+          .describe("Narration language for My voice (auto detects Devanagari Hindi and defaults to en; pass hi for Romanized Hinglish)."),
         speed: z.number().min(0.5).max(2).optional().describe("Narration pace multiplier. Below 1 slows delivery, which reads better for explainer copy. Defaults to 1."),
         music: z.string().optional().describe("Background music filename inside public/. Ducked under narration automatically."),
         outDir: z.string().optional().describe("Directory the finished mp4s land in. Defaults to the video package's renders/ directory (videos/<slug>/renders/)."),

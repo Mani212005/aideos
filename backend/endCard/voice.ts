@@ -22,7 +22,7 @@ import { readFilm, writeFilm } from "../pipeline/filmStore";
 /** Folder inside a package holding the spoken line. */
 export const END_CARD_DIR = "endcard";
 const RECORD_FILE = "line.json";
-const TTS_BACKENDS: TtsBackendName[] = ["kokoro", "google", "say", "tone"];
+const TTS_BACKENDS: TtsBackendName[] = ["vcd", "kokoro", "google", "say", "tone"];
 
 /** The voice a film was narrated with, enough to synthesize another line that matches it. */
 export interface NarrationVoice {

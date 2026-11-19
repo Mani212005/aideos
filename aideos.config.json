@@ -18,5 +18,10 @@
   "reel": {
     "maxSec": 179.0,
     "targetSec": 170.0
+  },
+  "voiceClone": {
+    "url": "http://127.0.0.1:8740",
+    "voiceId": "",
+    "language": "auto"
   }
 }
