@@ -306,7 +306,8 @@ the lengths land exactly on that shot's narrated start, the same millisecond its
 timed on.
 
 Backends live in `backend/tts.ts`. The default is `vcd` (My voice): the owner's cloned voice served by the
-local `vcd` service on loopback (`backend/vcdClient.ts`, `voiceClone` in `aideos.config.json`). When it is not
+local `vcd` service on loopback (`backend/vcdClient.ts`, `voiceClone` in `aideos.config.json`; `AIDEOS_VCD_URL`,
+`AIDEOS_VCD_VOICE_ID` and `AIDEOS_VCD_LANGUAGE` override it, `--language auto|en|hi` per run). When it is not
 reachable the run fails plainly and never swaps to another voice. Kokoro-82M runs locally through ONNX with no
 API key and is an explicit option, configured with a default pace multiplier of 0.75 (`DEFAULT_KOKORO_SPEED`)
 to keep explainer narration within the measured review pacing limit (`AIDEOS_TTS_SPEED` or `--speed` overrides);
