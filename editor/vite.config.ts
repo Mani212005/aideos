@@ -2029,9 +2029,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             let resolvedVcdLanguage: VcdLanguagePreference | undefined;
             let cacheVoiceKey = voice;
             let assembledShotDurations: number[] | undefined;
+            const isClonedVoice = isVcdStudioVoice(voice);
 
             try {
-              if (isVcdStudioVoice(voice)) {
+              if (isClonedVoice) {
                 const settings = resolveVoiceCloneSettings();
                 const resolved = await resolveVcdVoiceId({ url: settings.url, voiceId: settings.voiceId });
                 resolvedVcdUrl = resolved.url;
@@ -2081,81 +2082,90 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               lineSummary = { total: lineResult.lines.length, recorded: lineResult.recorded, reused: lineResult.reused };
 
               const rate = lineResult.lines[0].audio.sampleRate;
-              const segmentChunks = lineResult.lines.map((line) =>
-                line.audio.chunks.map((chunk) => ({
-                  text: chunk.text,
-                  samples: resampleLinear(chunk.samples, line.audio.sampleRate, rate),
-                })),
-              );
-              const assembled = assembleSegments(segmentChunks, {
-                ...DEFAULT_ASSEMBLE_OPTIONS,
-                sampleRate: rate,
-              });
-              const normalized = normalizePeak(assembled.samples);
-              fs.writeFileSync(publicPath, encodeWav(normalized, rate));
-
-              // Write word timings, WebVTT captions, and narration metadata so the master clock,
-              // captions, and end card stay in sync with Studio-recorded audio.
-              const shotDurations = deriveShotDurations(assembled.segments, assembled.totalSec);
-              assembledShotDurations = shotDurations;
-              const absoluteWords: Array<{ word: string; punctuated_word: string; start: number; end: number }> = [];
-              const segments = assembled.segments.map((seg) => {
-                const relativeWords = distributeWordTimings(seg.text, seg.durationSec);
-                relativeWords.forEach((w) => {
-                  absoluteWords.push({
-                    word: w.word,
-                    punctuated_word: w.punctuated_word,
-                    start: Number((seg.startSec + w.start).toFixed(3)),
-                    end: Number((seg.startSec + w.end).toFixed(3)),
-                  });
+              if (!isClonedVoice) {
+                const gap = new Float32Array(Math.round((rate * DEFAULT_ASSEMBLE_OPTIONS.segmentGapMs) / 1000));
+                const pieces: Float32Array[] = [];
+                lineResult.lines.forEach((line, index) => {
+                  if (index > 0) pieces.push(gap);
+                  for (const chunk of line.audio.chunks) pieces.push(resampleLinear(chunk.samples, line.audio.sampleRate, rate));
                 });
-                return {
-                  text: seg.text,
-                  duration: seg.durationSec,
-                  startOffset: seg.startSec,
-                  words: relativeWords,
-                  utterances: [{ start: 0, end: seg.durationSec, transcript: seg.text }],
-                };
-              });
-              const vttContent = buildCaptionsVtt(absoluteWords);
-              fs.writeFileSync(path.join(pkgDir, 'captions.vtt'), vttContent, 'utf8');
-              fs.writeFileSync(path.join(pkgDir, 'voiceover_words.json'), JSON.stringify({ words: absoluteWords }, null, 2), 'utf8');
-              const ttsBackendLabel = isVcdStudioVoice(voice) && resolvedVcdVoiceId
-                ? cacheVoiceKey
-                : voice.startsWith('kokoro-')
-                  ? `kokoro:${voice.slice('kokoro-'.length)}`
-                  : voice.startsWith('macos-')
-                    ? `say:${voice.slice('macos-'.length)}`
-                    : voice;
-              fs.writeFileSync(
-                path.join(pkgDir, 'narration.json'),
-                JSON.stringify(
-                  {
-                    segments,
-                    shotDurations,
-                    totalAudioDuration: assembled.totalSec,
-                    voiceoverPath: publicPath,
-                    captionsPath: path.join(pkgDir, 'captions.vtt'),
-                    captionsVttContent: vttContent,
-                    words: absoluteWords,
-                    wordsPath: path.join(pkgDir, 'voiceover_words.json'),
-                    ttsBackend: ttsBackendLabel,
-                    voice: resolvedVcdVoiceId ?? (voice.startsWith('kokoro-') ? voice.slice('kokoro-'.length) : voice),
-                    speed: voice.startsWith('kokoro-') ? DEFAULT_KOKORO_SPEED : null,
-                    lines: { recorded: lineSummary.recorded, reused: lineSummary.reused },
-                  },
-                  null,
-                  2,
-                ),
-                'utf8',
-              );
+                const merged = new Float32Array(pieces.reduce((sum, piece) => sum + piece.length, 0));
+                let at = 0;
+                for (const piece of pieces) {
+                  merged.set(piece, at);
+                  at += piece.length;
+                }
+                fs.writeFileSync(publicPath, encodeWav(merged, rate));
+              } else {
+                const segmentChunks = lineResult.lines.map((line) =>
+                  line.audio.chunks.map((chunk) => ({
+                    text: chunk.text,
+                    samples: resampleLinear(chunk.samples, line.audio.sampleRate, rate),
+                  })),
+                );
+                const assembled = assembleSegments(segmentChunks, {
+                  ...DEFAULT_ASSEMBLE_OPTIONS,
+                  sampleRate: rate,
+                });
+                const normalized = normalizePeak(assembled.samples);
+                fs.writeFileSync(publicPath, encodeWav(normalized, rate));
+
+                // Write word timings, WebVTT captions, and narration metadata so the master clock,
+                // captions, and end card stay in sync with Studio-recorded audio.
+                const shotDurations = deriveShotDurations(assembled.segments, assembled.totalSec);
+                assembledShotDurations = shotDurations;
+                const absoluteWords: Array<{ word: string; punctuated_word: string; start: number; end: number }> = [];
+                const segments = assembled.segments.map((seg) => {
+                  const relativeWords = distributeWordTimings(seg.text, seg.durationSec);
+                  relativeWords.forEach((w) => {
+                    absoluteWords.push({
+                      word: w.word,
+                      punctuated_word: w.punctuated_word,
+                      start: Number((seg.startSec + w.start).toFixed(3)),
+                      end: Number((seg.startSec + w.end).toFixed(3)),
+                    });
+                  });
+                  return {
+                    text: seg.text,
+                    duration: seg.durationSec,
+                    startOffset: seg.startSec,
+                    words: relativeWords,
+                    utterances: [{ start: 0, end: seg.durationSec, transcript: seg.text }],
+                  };
+                });
+                const vttContent = buildCaptionsVtt(absoluteWords);
+                fs.writeFileSync(path.join(pkgDir, 'captions.vtt'), vttContent, 'utf8');
+                fs.writeFileSync(path.join(pkgDir, 'voiceover_words.json'), JSON.stringify({ words: absoluteWords }, null, 2), 'utf8');
+                fs.writeFileSync(
+                  path.join(pkgDir, 'narration.json'),
+                  JSON.stringify(
+                    {
+                      segments,
+                      shotDurations,
+                      totalAudioDuration: assembled.totalSec,
+                      voiceoverPath: publicPath,
+                      captionsPath: path.join(pkgDir, 'captions.vtt'),
+                      captionsVttContent: vttContent,
+                      words: absoluteWords,
+                      wordsPath: path.join(pkgDir, 'voiceover_words.json'),
+                      ttsBackend: cacheVoiceKey,
+                      voice: resolvedVcdVoiceId,
+                      speed: null,
+                      lines: { recorded: lineSummary.recorded, reused: lineSummary.reused },
+                    },
+                    null,
+                    2,
+                  ),
+                  'utf8',
+                );
+              }
 
               generated = true;
-              console.log(`[TTS] voiceover (${cacheVoiceKey}): ${lineSummary.recorded} line(s) recorded, ${lineSummary.reused} reused (${cleanText.length} chars)`);
+              console.log(`[TTS] voiceover: ${lineSummary.recorded} line(s) recorded, ${lineSummary.reused} reused (${cleanText.length} chars)`);
             } catch (err) {
               if (err instanceof VcdUnavailableError) vcdError = err;
               else if (err instanceof VoiceSynthesisError) synthesisError = err;
-              console.warn('[TTS] synthesis failed:', err instanceof Error ? err.message : String(err));
+              console.warn('[TTS] synthesis failed:', err instanceof VcdUnavailableError ? err.message : err);
             }
 
             if (generated) {
@@ -2203,7 +2213,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                     const sumNew = computedShots.reduce((sum: number, s: any) => sum + s.dur, 0);
                     const diff = measuredDuration - sumNew;
                     if (Math.abs(diff) > 0.001 && computedShots.length > 0) {
-                      computedShots[computedShots.length - 1].dur = Number((computedShots[computedShots.length - 1].dur + diff).toFixed(3));
+                      computedShots[computedShots.length - 1].dur = Number((computedShots[computedShots.length - 1].dur + diff).toFixed(assembledShotDurations ? 3 : 2));
                     }
 
                     updatedShots = computedShots;
@@ -2216,8 +2226,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                         speed: 1,
                         version: Date.now().toString(),
                         durationSec: measuredDuration,
-                        voice,
-                        ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}),
+                        ...(isClonedVoice ? { voice, ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}) } : {}),
                       },
                       audioClips: undefined,
                     } as Film;
@@ -2260,8 +2269,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 spokenWordCount: taskOpts.spokenWordCount,
                 estimatedDurationSec: Math.round(measuredDuration),
                 actualDurationSec: measuredDuration,
-                voice,
-                voiceKey: cacheVoiceKey,
+                ...(isClonedVoice ? { voice, voiceKey: cacheVoiceKey } : {}),
                 lines: lineSummary,
                 intakeNotices,
                 shots: updatedShots,
@@ -2284,7 +2292,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 attempts: synthesisError?.attempts,
               });
             }
-          }).catch(err => sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) }));
+          }).catch(err => sendJson(res, 500, { error: String(err) }));
           return;
         }
 

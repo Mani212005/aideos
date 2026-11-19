@@ -15,8 +15,10 @@ import path from "path";
 import { resolveVoiceCloneSettings } from "./aideosConfig";
 import { decodeWav } from "./pcm";
 import {
+  isVcdStudioVoice,
   resolveVcdVoiceId,
   synthesizeWithVcd,
+  vcdStudioVoiceLanguage,
   vcdVoiceCacheKey,
   type VcdHttpDeps,
   type VcdLanguagePreference,
@@ -351,11 +353,16 @@ export async function createTtsBackend(options?: {
   if (requested === "google") return createGoogleBackend(voice === "af_heart" ? "en-US-Journey-F" : voice);
   if (requested === "kokoro") return createKokoroBackend(voice, speed);
 
+  const studioVoice = explicitVoice && isVcdStudioVoice(explicitVoice) ? explicitVoice : undefined;
+  const enrolledVoiceId = explicitVoice && !studioVoice && (requested === "vcd" || explicitVoice.startsWith("voice_")) ? explicitVoice : undefined;
+  const nonVcdVoiceWithoutBackend = requested === undefined && explicitVoice && !studioVoice && !enrolledVoiceId;
+  if (nonVcdVoiceWithoutBackend) return createKokoroBackend(voice, speed);
+
   if (requested === "vcd" || requested === undefined) {
     return createVcdBackend({
       url: options?.vcdUrl,
-      voiceId: explicitVoice && explicitVoice !== "vcd-my-voice" && explicitVoice !== "vcd-my-voice-hi" ? explicitVoice : undefined,
-      language: options?.language,
+      voiceId: enrolledVoiceId,
+      language: studioVoice ? vcdStudioVoiceLanguage(studioVoice, options?.language) : options?.language,
       deps: options?.vcdDeps,
     });
   }

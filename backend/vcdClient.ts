@@ -85,6 +85,8 @@ const DEVANAGARI_RE = /[\u0900-\u097F]/;
 const DEFAULT_POLL_MS = 250;
 const DEFAULT_TIMEOUT_MS = 5 * 60_000;
 const MAX_QUEUE_RETRIES = 6;
+const SHORT_REQUEST_TIMEOUT_MS = 5_000;
+const LONG_REQUEST_TIMEOUT_MS = 60_000;
 const VCD_START_HINT = "Start the local voice service with `vcd serve` on 127.0.0.1:8740, or choose another voice explicitly (such as Kokoro or macOS in Studio, or `--tts kokoro` / `--tts say` in the CLI).";
 
 // Waits for the given number of milliseconds.
@@ -162,15 +164,16 @@ function unreachableError(url: string, detail?: string): VcdUnavailableError {
   );
 }
 
-// Wraps fetch to turn low-level socket failures into a plain VcdUnavailableError.
+// Wraps fetch with a per-request timeout and turns low-level socket failures into a plain VcdUnavailableError.
 async function vcdFetch(
   url: string,
   baseUrl: string,
   init: RequestInit | undefined,
   fetchImpl: typeof fetch,
+  timeoutMs: number = LONG_REQUEST_TIMEOUT_MS,
 ): Promise<Response> {
   try {
-    return await fetchImpl(url, init);
+    return await fetchImpl(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw unreachableError(baseUrl, msg);
@@ -203,7 +206,7 @@ export async function listVcdVoices(
 ): Promise<VcdVoiceSummary[]> {
   const baseUrl = assertLoopbackVcdUrl(rawUrl);
   const fetchImpl = deps.fetch ?? fetch;
-  const res = await vcdFetch(`${baseUrl}/v1/voices`, baseUrl, { method: "GET" }, fetchImpl);
+  const res = await vcdFetch(`${baseUrl}/v1/voices`, baseUrl, { method: "GET" }, fetchImpl, SHORT_REQUEST_TIMEOUT_MS);
   if (!res.ok) {
     const problem = await readProblemDetail(res);
     throw new VcdUnavailableError(

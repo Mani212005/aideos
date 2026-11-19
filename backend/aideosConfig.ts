@@ -141,11 +141,8 @@ export function resolveVoiceCloneSettings(
   file?: string,
 ): VoiceCloneConfig {
   let fromFile: VoiceCloneConfig = { url: DEFAULT_VCD_URL, voiceId: "", language: "auto" };
-  try {
-    fromFile = loadAideosConfig(file ?? configPath(env)).voiceClone ?? fromFile;
-  } catch {
-    // Allow callers without a config file (such as isolated unit tests) to still use env/defaults.
-  }
+  const configFile = file ?? configPath(env);
+  if (fs.existsSync(configFile)) fromFile = loadAideosConfig(configFile).voiceClone ?? fromFile;
   const rawUrl = overrides.url?.trim() || env.AIDEOS_VCD_URL?.trim() || fromFile.url || DEFAULT_VCD_URL;
   const url = assertLoopbackVcdUrl(rawUrl);
   const voiceId = (overrides.voiceId ?? env.AIDEOS_VCD_VOICE_ID ?? fromFile.voiceId ?? "").trim();
