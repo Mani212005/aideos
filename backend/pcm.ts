@@ -226,7 +226,11 @@ export function shotDurationsOnMillisecondGrid(startOffsets: number[], shotDurat
 /** Rough syllable count, used to weight how long a word occupies the narration timeline. */
 function syllableCount(word: string): number {
   const w = word.toLowerCase().replace(/[^a-z']/g, "");
-  if (!w) return 1;
+  if (!w) {
+    // Non-Latin scripts (for example Devanagari Hindi): weight proportionally by base letters.
+    const letters = word.replace(/[^\p{L}\p{N}]/gu, "");
+    return Math.max(1, Math.ceil(letters.length / 2));
+  }
   const groups = w.match(/[aeiouy]+/g);
   let n = groups ? groups.length : 1;
   // A trailing silent "e" ("shape", "table") is written but not spoken.
@@ -236,7 +240,7 @@ function syllableCount(word: string): number {
 
 /** Extra weight for the pause a closing punctuation mark buys the word it follows. */
 function punctuationWeight(word: string): number {
-  if (/[.!?]["')\]]?$/.test(word)) return 1.1;
+  if (/[.!?।]["')\]]?$/.test(word)) return 1.1;
   if (/[,;:]["')\]]?$/.test(word)) return 0.55;
   return 0;
 }
@@ -268,7 +272,7 @@ export function distributeWordTimings(
     // The last word closes exactly on the segment end, so rounding never leaves a sliver.
     const end = i === tokens.length - 1 ? durationSec : cursor + span;
     words.push({
-      word: token.toLowerCase().replace(/[^\w']/g, ""),
+      word: token.toLowerCase().replace(/[^\p{L}\p{N}\p{M}']/gu, ""),
       punctuated_word: token,
       start: Number((startSec + start).toFixed(3)),
       end: Number((startSec + end).toFixed(3)),

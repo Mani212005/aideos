@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { produceAudioPipeline, type ProduceAudioOptions, type ProduceAudioResult } from "../audio";
 import type { TtsBackendName } from "../tts";
+import type { VcdLanguagePreference } from "../vcdClient";
 import { DELIVERY_CONFIG, endCardEnabledFor, type DeliveryConfig } from "../../src/dl/delivery";
 import type { Film } from "../../src/dl/schema";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
@@ -22,13 +23,15 @@ import { readFilm, writeFilm } from "../pipeline/filmStore";
 /** Folder inside a package holding the spoken line. */
 export const END_CARD_DIR = "endcard";
 const RECORD_FILE = "line.json";
-const TTS_BACKENDS: TtsBackendName[] = ["kokoro", "google", "say", "tone"];
+const TTS_BACKENDS: TtsBackendName[] = ["vcd", "kokoro", "google", "say", "tone"];
 
 /** The voice a film was narrated with, enough to synthesize another line that matches it. */
 export interface NarrationVoice {
   backend: TtsBackendName;
   voice: string | null;
   speed: number | null;
+  /** Language preference of the cloned voice (vcd only), so the line is spoken in the same language as the story. */
+  language?: VcdLanguagePreference;
 }
 
 /** What line.json records about a synthesized line. */
@@ -49,7 +52,13 @@ export type LineSynthesizer = (text: string, outDir: string, options: ProduceAud
 export function narrationVoiceOf(result: Pick<ProduceAudioResult, "ttsBackend" | "voice" | "speed">): NarrationVoice | null {
   const kind = String(result.ttsBackend ?? "").split(":")[0] as TtsBackendName;
   if (!TTS_BACKENDS.includes(kind)) return null;
-  return { backend: kind, voice: result.voice ?? null, speed: result.speed ?? null };
+  const language = kind === "vcd" ? String(result.ttsBackend).split(":")[2] : undefined;
+  return {
+    backend: kind,
+    voice: result.voice ?? null,
+    speed: result.speed ?? null,
+    ...(language === "auto" || language === "en" || language === "hi" ? { language } : {}),
+  };
 }
 
 // Reads the narration voice recorded in a package's narration.json; null when it was never recorded.
@@ -68,7 +77,7 @@ export function readNarrationVoice(pkgDir: string): NarrationVoice | null {
 
 // Short stable hash of the line and the voice it is spoken in.
 export function endCardLineFingerprint(text: string, voice: NarrationVoice): string {
-  return crypto.createHash("sha256").update(JSON.stringify([text, voice.backend, voice.voice, voice.speed])).digest("hex").slice(0, 16);
+  return crypto.createHash("sha256").update(JSON.stringify([text, voice.backend, voice.voice, voice.speed, ...(voice.language ? [voice.language] : [])])).digest("hex").slice(0, 16);
 }
 
 // Reads a package's line.json when it matches the fingerprint and its audio is still there.
@@ -103,6 +112,7 @@ export async function synthesizeEndCardLine(
     backend: voice.backend,
     ...(voice.voice ? { voice: voice.voice } : {}),
     ...(voice.speed ? { speed: voice.speed } : {}),
+    ...(voice.language ? { language: voice.language } : {}),
   });
   const record: EndCardLineRecord = {
     schema: "aideos.endcard-line/1",

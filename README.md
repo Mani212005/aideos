@@ -51,7 +51,7 @@ Aideos solves this with **Video as Pure Data**:
 
 ## Key Features
 
-- **Audio-First Master Clock**: Narration is the single source of truth for time. Pluggable speech backends (offline Kokoro-82M ONNX, Google Cloud TTS, or macOS say) synthesize narration per shot. Silence trimming and sample-domain assembly guarantee that visual transitions align to speech within +-50ms.
+- **Audio-First Master Clock**: Narration is the single source of truth for time. Pluggable speech backends (My voice via the local `vcd` voice-clone service as the default, offline Kokoro-82M ONNX, Google Cloud TTS, or macOS say) synthesize narration per shot. Silence trimming and sample-domain assembly guarantee that visual transitions align to speech within +-50ms.
 - **Word-Level Kinetic Subtitles**: Phrase-locked captions reveal words in sync with voiceover audio, using active semantic theme tokens. Caption placement can be repositioned and locked per format in the Studio preview.
 - **Aideos Studio Web Editor**: Interactive web app (React 19 + Tailwind CSS + Remotion Player) running locally. Features 4 dedicated stages: Words (script) authoring, Look styling with Ask, Non-linear multi-track Cut (edit) with caption words, and Check (gates, fix list and Export). When it detects a concurrent film change, it offers the choice to keep the open version or use the newer version.
 - **Non-Linear Timeline Geometry**: OpenShot-grade timeline with transaction-grouped edits, magnetic ripple editing (toggle via `R` key), sticky boundary snapping, audio waveforms, and atomic undo/redo (`Cmd + Z`).
@@ -75,7 +75,7 @@ Aideos solves this with **Video as Pure Data**:
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 2. AUDIO-FIRST TIMING ENGINE                                                │
-│ • Synthesizes speech per segment via Kokoro-82M ONNX, Google TTS, or say    │
+│ • Synthesizes speech per segment via My voice (vcd), Kokoro, Google, or say │
 │ • Normalizes audio (-16 LUFS) and aligns word timestamps                    │
 │ • Writes voiceover.wav, captions.vtt, and voiceover_words.json              │
 └──────────────────────────────────────┬──────────────────────────────────────┘
@@ -235,7 +235,7 @@ Traditional video editors store video as static media slices on a timeline. Aide
 No. The 9:16 Vertical Reel is compiled from the same canvas, camera, and visual scene data as the 16:9 Landscape Film. If the film is under 179 seconds, it reuses the long narration directly. If longer, Aideos condenses the script to fit mobile limits while preserving key hooks, numbers, and decisive visual moments.
 
 #### Can I run Aideos completely offline without paid API keys?
-Yes. Speech synthesis defaults to Kokoro-82M ONNX, which runs locally without network access. Screenplays can be authored by hand in markdown, and rendering uses local Remotion and FFmpeg. Paid API keys (Google Gemini, Claude) are only required when using autonomous LLM director drafting or automated multimodal video reviews.
+Yes. Speech synthesis defaults to your local cloned voice (`vcd` on `127.0.0.1:8740`, supporting English and Hindi/Hinglish), with offline Kokoro-82M ONNX and macOS `say` available as explicit choices without network access. Screenplays can be authored by hand in markdown, and rendering uses local Remotion and FFmpeg. Paid API keys (Google Gemini, Claude) are only required when using autonomous LLM director drafting or automated multimodal video reviews.
 
 #### How does audio-first timing work when the script changes?
 The synthesized narration audio track serves as the master clock for the film. Total shot durations must sum to the voiceover length within +-50ms. When dialogue changes, narration is stored per line by content fingerprint (`voiceover_lines/`) so only changed lines are re-recorded. The synthesizer updates the audio spine, measures exact word boundaries, and retimes all camera transitions and subtitle reveals accordingly.

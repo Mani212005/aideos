@@ -91,7 +91,7 @@ export interface VisualDecisionResult {
  * Extracts a concise 4-8 word punchy headline from a narration sentence (Rule E-b).
  */
 export function extractConciseHeadline(narration: string): string {
-  const cleaned = narration.replace(/[^\w\s-]/g, "").trim();
+  const cleaned = narration.replace(/[^\p{L}\p{N}\p{M}\s-]/gu, "").trim();
   const words = cleaned.split(/\s+/).filter(Boolean);
 
   if (words.length <= 8) {

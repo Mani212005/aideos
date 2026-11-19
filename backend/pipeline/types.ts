@@ -8,6 +8,7 @@
  */
 
 import type { TtsBackendName } from "../tts";
+import type { VcdLanguagePreference } from "../vcdClient";
 import type { JudgeState } from "../lookPlan/contract";
 
 /** The ordered stages a production run moves through. */
@@ -63,10 +64,12 @@ export interface ProductionRequest {
   brollMaxClips?: number;
   /** Length of each generated B-roll clip, in seconds. */
   brollSeconds?: number;
-  /** Pin the speech synthesizer. Defaults to Kokoro running locally. */
+  /** Pin the speech synthesizer. Defaults to vcd (My voice, local cloned voice). */
   ttsBackend?: TtsBackendName;
   /** Voice id, interpreted by the chosen synthesizer. */
   voice?: string;
+  /** Language preference for multi-language synthesizers such as vcd ("auto", "en", or "hi"). */
+  language?: VcdLanguagePreference;
   /** Narration pace multiplier. Below 1 slows delivery. Defaults to 1. */
   speed?: number;
   /** Optional background music filename inside public/. */

@@ -402,7 +402,13 @@ export async function runProduction(
     if (shouldStop("intake")) return buildResult("intake");
 
     // ---- narrate: synthesize the voiceover and derive the timing spine -----------------------
-    const narrationFingerprint = fingerprint(script, request.ttsBackend ?? "auto", request.voice ?? "default", request.speed ?? DEFAULT_KOKORO_SPEED);
+    const narrationFingerprint = fingerprint(
+      script,
+      request.ttsBackend ?? "auto",
+      request.voice ?? "default",
+      request.speed ?? DEFAULT_KOKORO_SPEED,
+      ...(request.language && request.language !== "auto" ? [request.language] : []),
+    );
     const narrationCachePath = path.join(pkgDir, "narration.json");
 
     // A package that already carries narration spoken from this script (a recorded voice, or one made
@@ -424,6 +430,7 @@ export async function runProduction(
           intakeSource: request.script ?? "",
           backend: request.ttsBackend,
           voice: request.voice,
+          language: request.language,
           speed: request.speed,
           syncToPreview: request.syncToPreview,
           onProgress: (done, total, label) =>

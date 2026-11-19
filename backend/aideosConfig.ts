@@ -16,6 +16,17 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { parseDeliveryConfig, type DeliveryConfig } from "../src/dl/delivery";
 import { readOriginSession } from "./agentSession/originSession";
+import { assertLoopbackVcdUrl, DEFAULT_VCD_URL, type VcdLanguagePreference } from "./vcdClient";
+
+/** Local cloned-voice (`vcd`) configuration stored in aideos.config.json. */
+export interface VoiceCloneConfig {
+  /** Loopback URL of the local vcd service (default http://127.0.0.1:8740). */
+  url: string;
+  /** Optional enrolled voice id (`voice_...`). When empty, vcd's enrolled voice is auto-discovered. */
+  voiceId: string;
+  /** Default language preference for cloned-voice narration ("auto", "en", or "hi"). */
+  language: VcdLanguagePreference;
+}
 
 /** An agent CLI plus the model id it is run with. */
 export interface AgentModel {
@@ -41,6 +52,8 @@ export interface AideosConfig {
   videoModels: VideoModelPolicy;
   /** End card and reel length settings (absent sections take their defaults). */
   delivery: DeliveryConfig;
+  /** Local cloned-voice (`vcd`) service settings (absent section takes loopback defaults). */
+  voiceClone?: VoiceCloneConfig;
 }
 
 /** An unusable config or a refused model, as one clear message. */
@@ -87,7 +100,56 @@ export function loadAideosConfig(file: string = configPath()): AideosConfig {
       forbiddenGenerationModels: forbidden as string[],
     },
     delivery: parseDelivery(raw),
+    voiceClone: parseVoiceClone(raw),
   };
+}
+
+// Validates the optional voiceClone section, defaulting to the local loopback vcd endpoint.
+function parseVoiceClone(raw: unknown): VoiceCloneConfig {
+  const section = (raw as { voiceClone?: Record<string, unknown> } | undefined)?.voiceClone;
+  if (section === undefined) {
+    return { url: DEFAULT_VCD_URL, voiceId: "", language: "auto" };
+  }
+  if (!section || typeof section !== "object" || Array.isArray(section)) {
+    throw new AideosConfigError(`aideos.config.json: voiceClone must be an object`);
+  }
+  const rawUrl = section.url === undefined ? DEFAULT_VCD_URL : section.url;
+  if (typeof rawUrl !== "string" || !rawUrl.trim()) {
+    throw new AideosConfigError(`aideos.config.json: voiceClone.url must be a non-empty loopback URL string`);
+  }
+  let url: string;
+  try {
+    url = assertLoopbackVcdUrl(rawUrl);
+  } catch (err) {
+    throw new AideosConfigError(`aideos.config.json: voiceClone.url: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  const rawVoiceId = section.voiceId === undefined ? "" : section.voiceId;
+  if (typeof rawVoiceId !== "string") {
+    throw new AideosConfigError(`aideos.config.json: voiceClone.voiceId must be a string`);
+  }
+  const rawLang = section.language === undefined ? "auto" : section.language;
+  if (rawLang !== "auto" && rawLang !== "en" && rawLang !== "hi") {
+    throw new AideosConfigError(`aideos.config.json: voiceClone.language must be "auto", "en", or "hi"`);
+  }
+  return { url, voiceId: rawVoiceId.trim(), language: rawLang };
+}
+
+// Resolves local voice-clone settings: explicit overrides, then environment variables, then aideos.config.json, then defaults.
+export function resolveVoiceCloneSettings(
+  overrides: Partial<VoiceCloneConfig> = {},
+  env: NodeJS.ProcessEnv = process.env,
+  file?: string,
+): VoiceCloneConfig {
+  let fromFile: VoiceCloneConfig = { url: DEFAULT_VCD_URL, voiceId: "", language: "auto" };
+  const configFile = file ?? configPath(env);
+  if (fs.existsSync(configFile)) fromFile = loadAideosConfig(configFile).voiceClone ?? fromFile;
+  const rawUrl = overrides.url?.trim() || env.AIDEOS_VCD_URL?.trim() || fromFile.url || DEFAULT_VCD_URL;
+  const url = assertLoopbackVcdUrl(rawUrl);
+  const voiceId = (overrides.voiceId ?? env.AIDEOS_VCD_VOICE_ID ?? fromFile.voiceId ?? "").trim();
+  const envLang = env.AIDEOS_VCD_LANGUAGE?.trim();
+  const candidateLang = overrides.language ?? (envLang === "auto" || envLang === "en" || envLang === "hi" ? envLang : undefined) ?? fromFile.language;
+  const language: VcdLanguagePreference = candidateLang === "en" || candidateLang === "hi" ? candidateLang : "auto";
+  return { url, voiceId, language };
 }
 
 // Validates the delivery sections, rethrowing a bad value as a config error.

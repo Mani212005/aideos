@@ -17,6 +17,7 @@ import { runProduction } from "./pipeline/run";
 import { draftStopAfter, type DesignMode, type ProductionFormat, type ProductionProgress, type ProductionStage, type ProductionRequest } from "./pipeline/types";
 import { runDirector, type DirectorRequest } from "./pipeline/director";
 import type { TtsBackendName } from "./tts";
+import type { VcdLanguagePreference } from "./vcdClient";
 import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
 import { registerAudioCommands } from "./audioLibrary/cli";
 import { registerCharacterCommands } from "./characters/cli";
@@ -81,6 +82,9 @@ program
   .description("Produce an audio-first Aideos film from a narration script")
   .requiredOption("--script <script>", "Narration script text")
   .option("--out <dir>", "Output directory for generated files", "public")
+  .option("--tts <backend>", "speech synthesizer (vcd for My voice [default], kokoro, google, say, tone)")
+  .option("--voice <voice>", "voice id for the chosen synthesizer")
+  .option("--language <lang>", "narration language for My voice (auto, en, or hi)")
   .option("--music <src>", "Optional background music audio file in public/")
   .option("--sfx", "Automatically place transition sound effects at segment boundaries")
   .addOption(
@@ -92,6 +96,9 @@ program
     async (options: {
       script: string;
       out: string;
+      tts?: TtsBackendName;
+      voice?: string;
+      language?: VcdLanguagePreference;
       music?: string;
       sfx?: boolean;
       format: "long" | "reel" | "both" | "none";
@@ -103,7 +110,11 @@ program
       const outDir = path.resolve(ROOT, options.out);
       console.log(`[Audio-First Pipeline] Synthesizing script into audio timing spine...`);
 
-      const audioResult = await produceAudioPipeline(options.script, outDir);
+      const audioResult = await produceAudioPipeline(options.script, outDir, {
+        backend: options.tts,
+        voice: options.voice,
+        language: options.language,
+      });
       console.log(
         `[Audio-First Pipeline] Concatenated ${audioResult.segments.length} segment(s) into voiceover.wav (${audioResult.totalAudioDuration.toFixed(2)}s total duration)`,
       );
@@ -204,6 +215,7 @@ export interface FilmCliOptions {
   brollSeconds: string;
   tts?: TtsBackendName;
   voice?: string;
+  language?: VcdLanguagePreference;
   speed?: string;
   music?: string;
   resume: boolean;
@@ -238,6 +250,7 @@ export function buildFilmProductionRequest(
     brollSeconds: Number(options.brollSeconds),
     ttsBackend: options.tts,
     voice: options.voice,
+    language: options.language,
     speed: options.speed !== undefined ? Number(options.speed) : undefined,
     music: options.music,
     resume: options.resume,
@@ -265,8 +278,9 @@ program
   .option("--broll-engine <name>", "which VideoEngine renders b-roll", "ssh-wangp")
   .option("--broll-clips <n>", "maximum number of b-roll clips", "4")
   .option("--broll-seconds <n>", "length of each b-roll clip in seconds", "8")
-  .option("--tts <backend>", "pin the speech synthesizer (kokoro, google, say, tone)")
+  .option("--tts <backend>", "pin the speech synthesizer (vcd for My voice [default], kokoro, google, say, tone)")
   .option("--voice <voice>", "voice id for the chosen synthesizer")
+  .option("--language <lang>", "narration language for My voice (auto, en, or hi)")
   .option("--speed <n>", "narration pace multiplier; below 1 slows delivery")
   .option("--music <src>", "background music filename inside public/")
   .option("--no-resume", "ignore cached stage results and run everything again")
@@ -352,6 +366,7 @@ export interface DirectCliOptions {
   brollSeconds: string;
   tts?: TtsBackendName;
   voice?: string;
+  language?: VcdLanguagePreference;
   speed?: string;
   music?: string;
   maxAttempts: string;
@@ -382,6 +397,7 @@ export function buildDirectorRequest(
     brollSeconds: Number(options.brollSeconds),
     ttsBackend: options.tts,
     voice: options.voice,
+    language: options.language,
     speed: options.speed !== undefined ? Number(options.speed) : undefined,
     music: options.music,
     maxAttempts: Number(options.maxAttempts),
@@ -409,8 +425,9 @@ program
   .option("--broll-engine <name>", "which VideoEngine renders b-roll", "ssh-wangp")
   .option("--broll-clips <n>", "maximum number of b-roll clips", "4")
   .option("--broll-seconds <n>", "length of each b-roll clip in seconds", "8")
-  .option("--tts <backend>", "pin the speech synthesizer (kokoro, google, say, tone)")
+  .option("--tts <backend>", "pin the speech synthesizer (vcd for My voice [default], kokoro, google, say, tone)")
   .option("--voice <voice>", "voice id for the chosen synthesizer")
+  .option("--language <lang>", "narration language for My voice (auto, en, or hi)")
   .option("--speed <n>", "narration pace multiplier; below 1 slows delivery")
   .option("--music <src>", "background music filename inside public/")
   .option("--max-attempts <n>", "how many screenplay drafts the director may attempt", "3")

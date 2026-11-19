@@ -312,11 +312,11 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ### `backend/tts.ts`
 * `DEFAULT_KOKORO_SPEED`: Kokoro default pace multiplier (0.75) chosen to keep explainer narration within the review pacing limit.
-* `createTtsBackend(options)`: Instantiates pluggable TTS engine (`kokoro` via worker process, `google`, `say`, `tone`).
-* `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (default).
+* `createTtsBackend(options)`: Instantiates pluggable TTS engine (`vcd` My voice by default, failing plainly when unreachable; explicit `kokoro` via worker process, `google`, `say`, `tone`).
+* `KokoroTtsBackend`: Local offline ONNX synthesizer using Kokoro-82M (explicit option, not the default).
 
 ### `backend/voiceSynthesis.ts`
-* `synthesizeVoiceover(req, deps, env)`: Executes the multi-provider voiceover synthesis chain (local Kokoro -> Deepgram Aura -> Google Cloud TTS -> macOS `say`) for `/api/generate-voiceover` and returns WAV audio with the winning provider, throwing `VoiceSynthesisError` with diagnostic reasons for all skipped or failed providers on total failure.
+* `synthesizeVoiceover(req, deps, env)`: Executes the multi-provider voiceover synthesis chain for `/api/generate-voiceover`: a vcd Studio voice (My voice) goes only to the local `vcd` service and never falls through to another voice; other voices use local Kokoro -> Deepgram Aura -> Google Cloud TTS -> macOS `say`. Returns WAV audio with the winning provider, throwing `VoiceSynthesisError` with diagnostic reasons for all skipped or failed providers on total failure.
 * `VoiceSynthesisError`: Error carrying `attempts: ProviderAttempt[]` recording why each provider failed or was skipped.
 * `kokoroFits(limit, env)`: Verifies whether the container or host memory meets the minimum threshold (1.5 GB) for in-process Kokoro TTS, honoring `AIDEOS_KOKORO=1/0` overrides.
 * `readContainerMemoryLimit()`: Detects cgroup v1 and v2 memory limits in containerized Linux environments.

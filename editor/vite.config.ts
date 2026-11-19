@@ -35,11 +35,23 @@ import { newProjectFilmTheme } from '../src/projectTheme.ts';
 import type { Film } from '../src/dl/schema.ts'
 import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
-import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath } from '../backend/audio.ts'
+import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
+import { AideosConfigError, resolveVoiceCloneSettings } from '../backend/aideosConfig.ts'
+import {
+  VCD_DEFAULT_VOICE_KEY,
+  VCD_HINDI_VOICE_KEY,
+  VcdUnavailableError,
+  isVcdStudioVoice,
+  probeVcdService,
+  resolveVcdVoiceId,
+  vcdStudioVoiceLanguage,
+  vcdVoiceCacheKey,
+  type VcdLanguagePreference,
+} from '../backend/vcdClient.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
 import { transcribe, writeImportWords } from '../backend/transcribe.ts'
 import { detectFillers } from '../backend/editContext/detectFillers.ts'
@@ -60,9 +72,17 @@ import {
 import { narrationLines } from '../backend/storyScript.ts'
 import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
-import { recordedStatus, synthesizeLines, resampleLinear, type LineAudio } from '../backend/voiceLines.ts'
+import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, type LineAudio } from '../backend/voiceLines.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
-import { decodeWav, encodeWav, DEFAULT_ASSEMBLE_OPTIONS } from '../backend/pcm.ts'
+import {
+  assembleSegments,
+  decodeWav,
+  deriveShotDurations,
+  distributeWordTimings,
+  encodeWav,
+  normalizePeak,
+  DEFAULT_ASSEMBLE_OPTIONS,
+} from '../backend/pcm.ts'
 import {
   dispatchTask,
   getAgentSession,
@@ -91,8 +111,64 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
   });
 }
 
-// The voice the studio narrates with when a request does not name one.
-const DEFAULT_VOICE_KEY = 'aura-helios-en';
+// The voice the studio narrates with when a request does not name one (owner's cloned voice).
+const DEFAULT_VOICE_KEY = VCD_DEFAULT_VOICE_KEY;
+
+// Maps a stored narration backend or voiceLines voiceKey back to a Studio voice selector id.
+function mapStoredVoiceToStudioId(raw: string): string | null {
+  const key = raw.trim();
+  if (!key) return null;
+  if (key === VCD_DEFAULT_VOICE_KEY || key === VCD_HINDI_VOICE_KEY) return key;
+  if (key.startsWith('vcd:')) return key.endsWith(':hi') ? VCD_HINDI_VOICE_KEY : VCD_DEFAULT_VOICE_KEY;
+  if (key.startsWith('kokoro-') || key.startsWith('aura-') || key.startsWith('macos-')) return key;
+  const head = key.split('|')[0];
+  if (head.startsWith('kokoro:')) return `kokoro-${head.slice('kokoro:'.length)}`;
+  if (head.startsWith('say:')) return `macos-${head.slice('say:'.length).toLowerCase()}`;
+  return null;
+}
+
+// Detects the voice an existing project previously chose, or null for a new project without prior narration.
+function detectProjectVoice(pkgDir: string, film: Film | null): string | null {
+  if (film?.voiceover?.voice && film.voiceover.voice.trim()) {
+    return film.voiceover.voice.trim();
+  }
+  const narrationPath = path.join(pkgDir, 'narration.json');
+  if (fs.existsSync(narrationPath)) {
+    try {
+      const narration = JSON.parse(fs.readFileSync(narrationPath, 'utf8')) as { ttsBackend?: string; voice?: string | null };
+      if (typeof narration.ttsBackend === 'string') {
+        const mapped = mapStoredVoiceToStudioId(narration.ttsBackend);
+        if (mapped) return mapped;
+      }
+    } catch {
+      // Ignore corrupt narration metadata and fall through.
+    }
+  }
+  const linesDir = voiceLinesDir(pkgDir);
+  if (fs.existsSync(linesDir)) {
+    try {
+      const files = fs
+        .readdirSync(linesDir)
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => ({ file: path.join(linesDir, f), mtime: fs.statSync(path.join(linesDir, f)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+      for (const entry of files) {
+        try {
+          const meta = JSON.parse(fs.readFileSync(entry.file, 'utf8')) as { voiceKey?: string };
+          if (typeof meta.voiceKey === 'string') {
+            const mapped = mapStoredVoiceToStudioId(meta.voiceKey);
+            if (mapped) return mapped;
+          }
+        } catch {
+          // Skip unreadable line entries.
+        }
+      }
+    } catch {
+      // Ignore unreadable directory.
+    }
+  }
+  return null;
+}
 const examplesDir = getExamplesDir();
 
 // The schema's own id rule. It also happens to make traversal unrepresentable:
@@ -1164,28 +1240,46 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
         // Handle /api/narration/:id (the narration change list, and which lines already have a recording)
         if (url.startsWith('/api/narration/') && req.method === 'GET') {
-          const parsedUrl = new URL(req.url ?? '', 'http://localhost');
-          const narrationId = parsedUrl.pathname.slice('/api/narration/'.length);
-          if (!narrationId || !FILM_ID.test(narrationId)) {
-            sendJson(res, 400, { error: `Invalid project ID: "${narrationId}"` });
-            return;
-          }
-          const pkgDir = path.join(videosDir, narrationId);
-          if (!fs.existsSync(pkgDir)) {
-            sendJson(res, 404, { error: `Project "${narrationId}" not found` });
-            return;
-          }
-          // Anything that changed script.md since the last look was not made by this studio: it is the agent's.
-          syncNarrationLog(pkgDir, 'agent');
-          const text = readScriptText(pkgDir);
-          const lines = narrationLines(text);
-          const recorded = recordedStatus(pkgDir, lines, parsedUrl.searchParams.get('voice') || DEFAULT_VOICE_KEY);
-          sendJson(res, 200, {
-            ok: true,
-            revision: createHash('sha1').update(text).digest('hex').slice(0, 12),
-            entries: (readNarrationLog(pkgDir)?.entries ?? []).slice(-100).reverse(),
-            lines: lines.map((line, index) => ({ text: line, recorded: recorded[index] })),
-          });
+          void (async () => {
+            const parsedUrl = new URL(req.url ?? '', 'http://localhost');
+            const narrationId = parsedUrl.pathname.slice('/api/narration/'.length);
+            if (!narrationId || !FILM_ID.test(narrationId)) {
+              sendJson(res, 400, { error: `Invalid project ID: "${narrationId}"` });
+              return;
+            }
+            const pkgDir = path.join(videosDir, narrationId);
+            if (!fs.existsSync(pkgDir)) {
+              sendJson(res, 404, { error: `Project "${narrationId}" not found` });
+              return;
+            }
+            // Anything that changed script.md since the last look was not made by this studio: it is the agent's.
+            syncNarrationLog(pkgDir, 'agent');
+            const text = readScriptText(pkgDir);
+            const lines = narrationLines(text);
+            const projectVoice = detectProjectVoice(pkgDir, readFilm(narrationId));
+            const requestedVoice = parsedUrl.searchParams.get('voice') || projectVoice || DEFAULT_VOICE_KEY;
+            let cacheVoiceKey = requestedVoice;
+            let voiceService: Awaited<ReturnType<typeof probeVcdService>> | null = null;
+            if (isVcdStudioVoice(requestedVoice)) {
+              const settings = resolveVoiceCloneSettings();
+              voiceService = await probeVcdService({ url: settings.url, voiceId: settings.voiceId });
+              if (voiceService.voiceId) {
+                cacheVoiceKey = vcdVoiceCacheKey(
+                  voiceService.voiceId,
+                  vcdStudioVoiceLanguage(requestedVoice, settings.language),
+                );
+              }
+            }
+            const recorded = recordedStatus(pkgDir, lines, cacheVoiceKey);
+            sendJson(res, 200, {
+              ok: true,
+              revision: createHash('sha1').update(text).digest('hex').slice(0, 12),
+              entries: (readNarrationLog(pkgDir)?.entries ?? []).slice(-100).reverse(),
+              lines: lines.map((line, index) => ({ text: line, recorded: recorded[index] })),
+              projectVoice,
+              voiceService,
+            });
+          })().catch((err) => sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) }));
           return;
         }
 
@@ -1877,10 +1971,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        // Handle /api/generate-voiceover (AI Voice Synthesis with Kokoro / Deepgram / macOS TTS)
+        // Handle /api/generate-voiceover (AI Voice Synthesis with My voice [vcd] / Kokoro / Deepgram / macOS TTS)
         if (url === '/api/generate-voiceover' && req.method === 'POST') {
           void readBody(req).then(async (body: any) => {
-            const { script, voice = DEFAULT_VOICE_KEY, projectId = 'kvcache', spokenTextOverride } = body || {};
+            const { script, voice = DEFAULT_VOICE_KEY, projectId = 'kvcache', spokenTextOverride, language: requestedLanguage } = body || {};
             if (!projectId || !FILM_ID.test(projectId)) {
               sendJson(res, 400, { error: `Invalid project ID: "${projectId}"` });
               return;
@@ -1918,6 +2012,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
             let generated = false;
             let synthesisError: VoiceSynthesisError | undefined;
+            let vcdError: Error | undefined;
 
             let deepgramKey = process.env.DEEPGRAM_API_KEY || '';
             if (!deepgramKey) {
@@ -1929,7 +2024,27 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }
 
             let lineSummary = { total: narrationLinesToSpeak.length, recorded: 0, reused: 0 };
+            let resolvedVcdVoiceId: string | undefined;
+            let resolvedVcdUrl: string | undefined;
+            let resolvedVcdLanguage: VcdLanguagePreference | undefined;
+            let cacheVoiceKey = voice;
+            let assembledShotDurations: number[] | undefined;
+            const isClonedVoice = isVcdStudioVoice(voice);
+
             try {
+              if (isClonedVoice) {
+                const settings = resolveVoiceCloneSettings();
+                const resolved = await resolveVcdVoiceId({ url: settings.url, voiceId: settings.voiceId });
+                resolvedVcdUrl = resolved.url;
+                resolvedVcdVoiceId = resolved.voiceId;
+                const resolvedLang: VcdLanguagePreference =
+                  requestedLanguage === 'en' || requestedLanguage === 'hi' || requestedLanguage === 'auto'
+                    ? requestedLanguage
+                    : vcdStudioVoiceLanguage(voice, settings.language);
+                resolvedVcdLanguage = resolvedLang;
+                cacheVoiceKey = vcdVoiceCacheKey(resolved.voiceId, resolvedLang);
+              }
+
               const synthDeps = {
                 fetch,
                 kokoro: async (text: string, kokoroVoice: string) => {
@@ -1947,34 +2062,110 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               // words and voice are unchanged is reused as is, so only edited or new lines are recorded again.
               const recordLine = async (text: string): Promise<LineAudio> => {
                 const spoken = await synthesizeVoiceover(
-                  { text, voice, deepgramKey, googleKey: process.env.GOOGLE_API_KEY || '', chunk: chunkTextForTTS, trimSilence },
+                  {
+                    text,
+                    voice,
+                    ...(resolvedVcdUrl ? { vcdUrl: resolvedVcdUrl } : {}),
+                    ...(resolvedVcdVoiceId ? { vcdVoiceId: resolvedVcdVoiceId } : {}),
+                    ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}),
+                    deepgramKey,
+                    googleKey: process.env.GOOGLE_API_KEY || '',
+                    chunk: chunkTextForTTS,
+                    trimSilence,
+                  },
                   synthDeps,
                 );
                 const wav = decodeWav(spoken.wav);
                 return { sampleRate: wav.sampleRate, chunks: [{ text, samples: wav.samples }] };
               };
-              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: voice, synthesize: recordLine });
+              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: cacheVoiceKey, synthesize: recordLine });
               lineSummary = { total: lineResult.lines.length, recorded: lineResult.recorded, reused: lineResult.reused };
 
               const rate = lineResult.lines[0].audio.sampleRate;
-              const gap = new Float32Array(Math.round((rate * DEFAULT_ASSEMBLE_OPTIONS.segmentGapMs) / 1000));
-              const pieces: Float32Array[] = [];
-              lineResult.lines.forEach((line, index) => {
-                if (index > 0) pieces.push(gap);
-                for (const chunk of line.audio.chunks) pieces.push(resampleLinear(chunk.samples, line.audio.sampleRate, rate));
-              });
-              const merged = new Float32Array(pieces.reduce((sum, piece) => sum + piece.length, 0));
-              let at = 0;
-              for (const piece of pieces) {
-                merged.set(piece, at);
-                at += piece.length;
+              if (!isClonedVoice) {
+                const gap = new Float32Array(Math.round((rate * DEFAULT_ASSEMBLE_OPTIONS.segmentGapMs) / 1000));
+                const pieces: Float32Array[] = [];
+                lineResult.lines.forEach((line, index) => {
+                  if (index > 0) pieces.push(gap);
+                  for (const chunk of line.audio.chunks) pieces.push(resampleLinear(chunk.samples, line.audio.sampleRate, rate));
+                });
+                const merged = new Float32Array(pieces.reduce((sum, piece) => sum + piece.length, 0));
+                let at = 0;
+                for (const piece of pieces) {
+                  merged.set(piece, at);
+                  at += piece.length;
+                }
+                fs.writeFileSync(publicPath, encodeWav(merged, rate));
+              } else {
+                const segmentChunks = lineResult.lines.map((line) =>
+                  line.audio.chunks.map((chunk) => ({
+                    text: chunk.text,
+                    samples: resampleLinear(chunk.samples, line.audio.sampleRate, rate),
+                  })),
+                );
+                const assembled = assembleSegments(segmentChunks, {
+                  ...DEFAULT_ASSEMBLE_OPTIONS,
+                  sampleRate: rate,
+                });
+                const normalized = normalizePeak(assembled.samples);
+                fs.writeFileSync(publicPath, encodeWav(normalized, rate));
+
+                // Write word timings, WebVTT captions, and narration metadata so the master clock,
+                // captions, and end card stay in sync with Studio-recorded audio.
+                const shotDurations = deriveShotDurations(assembled.segments, assembled.totalSec);
+                assembledShotDurations = shotDurations;
+                const absoluteWords: Array<{ word: string; punctuated_word: string; start: number; end: number }> = [];
+                const segments = assembled.segments.map((seg) => {
+                  const relativeWords = distributeWordTimings(seg.text, seg.durationSec);
+                  relativeWords.forEach((w) => {
+                    absoluteWords.push({
+                      word: w.word,
+                      punctuated_word: w.punctuated_word,
+                      start: Number((seg.startSec + w.start).toFixed(3)),
+                      end: Number((seg.startSec + w.end).toFixed(3)),
+                    });
+                  });
+                  return {
+                    text: seg.text,
+                    duration: seg.durationSec,
+                    startOffset: seg.startSec,
+                    words: relativeWords,
+                    utterances: [{ start: 0, end: seg.durationSec, transcript: seg.text }],
+                  };
+                });
+                const vttContent = buildCaptionsVtt(absoluteWords);
+                fs.writeFileSync(path.join(pkgDir, 'captions.vtt'), vttContent, 'utf8');
+                fs.writeFileSync(path.join(pkgDir, 'voiceover_words.json'), JSON.stringify({ words: absoluteWords }, null, 2), 'utf8');
+                fs.writeFileSync(
+                  path.join(pkgDir, 'narration.json'),
+                  JSON.stringify(
+                    {
+                      segments,
+                      shotDurations,
+                      totalAudioDuration: assembled.totalSec,
+                      voiceoverPath: publicPath,
+                      captionsPath: path.join(pkgDir, 'captions.vtt'),
+                      captionsVttContent: vttContent,
+                      words: absoluteWords,
+                      wordsPath: path.join(pkgDir, 'voiceover_words.json'),
+                      ttsBackend: cacheVoiceKey,
+                      voice: resolvedVcdVoiceId,
+                      speed: null,
+                      lines: { recorded: lineSummary.recorded, reused: lineSummary.reused },
+                    },
+                    null,
+                    2,
+                  ),
+                  'utf8',
+                );
               }
-              fs.writeFileSync(publicPath, encodeWav(merged, rate));
+
               generated = true;
               console.log(`[TTS] voiceover: ${lineSummary.recorded} line(s) recorded, ${lineSummary.reused} reused (${cleanText.length} chars)`);
             } catch (err) {
-              if (err instanceof VoiceSynthesisError) synthesisError = err;
-              console.warn('[TTS] synthesis failed:', err);
+              if (err instanceof VcdUnavailableError || err instanceof AideosConfigError) vcdError = err;
+              else if (err instanceof VoiceSynthesisError) synthesisError = err;
+              console.warn('[TTS] synthesis failed:', err instanceof VcdUnavailableError || err instanceof AideosConfigError ? err.message : err);
             }
 
             if (generated) {
@@ -2004,18 +2195,25 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   const jsonMatch = mod.match(/export const \w+:\s*Film\s*=\s*([\s\S]+?);(?:\s*\n|$)/);
                   if (jsonMatch) {
                     const parsedFilm = JSON.parse(jsonMatch[1]);
-                    const currentTotal = parsedFilm.shots.reduce((sum: number, s: any) => sum + (s.dur || 0), 0);
-                    const scale = currentTotal > 0 ? measuredDuration / currentTotal : 1.0;
-
-                    const computedShots = parsedFilm.shots.map((s: any) => ({
-                      ...s,
-                      dur: Number(((s.dur || 1) * scale).toFixed(2)),
-                    }));
+                    const computedShots =
+                      assembledShotDurations && parsedFilm.shots.length === assembledShotDurations.length
+                        ? parsedFilm.shots.map((s: any, idx: number) => ({
+                            ...s,
+                            dur: Number(assembledShotDurations![idx].toFixed(3)),
+                          }))
+                        : (() => {
+                            const currentTotal = parsedFilm.shots.reduce((sum: number, s: any) => sum + (s.dur || 0), 0);
+                            const scale = currentTotal > 0 ? measuredDuration / currentTotal : 1.0;
+                            return parsedFilm.shots.map((s: any) => ({
+                              ...s,
+                              dur: Number(((s.dur || 1) * scale).toFixed(2)),
+                            }));
+                          })();
 
                     const sumNew = computedShots.reduce((sum: number, s: any) => sum + s.dur, 0);
                     const diff = measuredDuration - sumNew;
                     if (Math.abs(diff) > 0.001 && computedShots.length > 0) {
-                      computedShots[computedShots.length - 1].dur = Number((computedShots[computedShots.length - 1].dur + diff).toFixed(2));
+                      computedShots[computedShots.length - 1].dur = Number((computedShots[computedShots.length - 1].dur + diff).toFixed(assembledShotDurations ? 3 : 2));
                     }
 
                     updatedShots = computedShots;
@@ -2028,6 +2226,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                         speed: 1,
                         version: Date.now().toString(),
                         durationSec: measuredDuration,
+                        ...(isClonedVoice ? { voice, ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}) } : {}),
                       },
                       audioClips: undefined,
                     } as Film;
@@ -2070,6 +2269,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 spokenWordCount: taskOpts.spokenWordCount,
                 estimatedDurationSec: Math.round(measuredDuration),
                 actualDurationSec: measuredDuration,
+                ...(isClonedVoice ? { voice, voiceKey: cacheVoiceKey } : {}),
                 lines: lineSummary,
                 intakeNotices,
                 shots: updatedShots,
@@ -2078,10 +2278,17 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 taskFile: `videos/${projectId}/director_task.md`,
                 dispatch,
               });
-            } else {
+            } else if (vcdError) {
               sendJson(res, 503, {
-                error: 'Failed to synthesize voiceover audio.',
-                detail: synthesisError?.message,
+                error: vcdError.message,
+                ...(vcdError instanceof VcdUnavailableError ? { code: vcdError.code } : {}),
+                attempts: [{ provider: 'vcd', reason: vcdError.message }],
+              });
+            } else {
+              const vcdOnly = synthesisError?.attempts.length === 1 && synthesisError.attempts[0].provider === 'vcd';
+              sendJson(res, 503, {
+                error: vcdOnly ? synthesisError!.attempts[0].reason : 'Failed to synthesize voiceover audio.',
+                detail: vcdOnly ? undefined : synthesisError?.message,
                 attempts: synthesisError?.attempts,
               });
             }

@@ -17,13 +17,20 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { resolveVoiceCloneSettings } from "./aideosConfig";
+import {
+  isVcdStudioVoice,
+  synthesizeWithVcd,
+  vcdStudioVoiceLanguage,
+  type VcdLanguagePreference,
+} from "./vcdClient";
 
 /** Smallest container memory limit (bytes) on which the in-process Kokoro model is attempted. */
 export const KOKORO_MIN_MEMORY_BYTES = 1.5 * 1024 ** 3;
 
 /** One provider's outcome when it did not produce audio. */
 export interface ProviderAttempt {
-  provider: "kokoro" | "deepgram" | "google" | "say";
+  provider: "vcd" | "kokoro" | "deepgram" | "google" | "say";
   reason: string;
 }
 
@@ -47,6 +54,8 @@ export interface PcmAudio {
 /** Injectable I/O so tests never touch the network, ONNX or `say`. */
 export interface SynthesisDeps {
   fetch: typeof fetch;
+  /** Synthesizes text with the local vcd cloned-voice service and returns a mono WAV buffer. */
+  vcd?: (text: string, options: { url?: string; voiceId?: string; language?: VcdLanguagePreference }) => Promise<Buffer>;
   /** Synthesizes text with local Kokoro and returns float samples. */
   kokoro: (text: string, voice: string) => Promise<{ samples: Float32Array; sampleRate: number }>;
   /** Synthesizes with macOS `say` and returns a WAV file's bytes. */
@@ -60,6 +69,12 @@ export interface SynthesisDeps {
 export interface SynthesisRequest {
   text: string;
   voice: string;
+  /** Optional language preference for multi-language voices such as vcd ("auto", "en", or "hi"). */
+  language?: VcdLanguagePreference;
+  /** Optional loopback URL override for the local vcd service. */
+  vcdUrl?: string;
+  /** Optional enrolled vcd voice id override. */
+  vcdVoiceId?: string;
   deepgramKey?: string;
   googleKey?: string;
   /** Splits text into provider-sized chunks. */
@@ -240,6 +255,38 @@ export async function synthesizeVoiceover(
       return null;
     }
   };
+
+  if (isVcdStudioVoice(req.voice)) {
+    // Owner's cloned voice: never silently swap to another voice when vcd is unreachable.
+    try {
+      const settings = resolveVoiceCloneSettings(
+        {
+          ...(req.vcdUrl ? { url: req.vcdUrl } : {}),
+          ...(req.vcdVoiceId ? { voiceId: req.vcdVoiceId } : {}),
+          ...(req.language ? { language: req.language } : {}),
+        },
+        env,
+      );
+      const language = req.language ?? vcdStudioVoiceLanguage(req.voice, settings.language);
+      const wav = deps.vcd
+        ? await deps.vcd(req.text, { url: settings.url, voiceId: settings.voiceId || undefined, language })
+        : (
+            await synthesizeWithVcd(
+              {
+                text: req.text,
+                url: settings.url,
+                voiceId: settings.voiceId || undefined,
+                language,
+              },
+              { fetch: deps.fetch },
+            )
+          ).wav;
+      return { wav, provider: "vcd" };
+    } catch (err) {
+      attempts.push({ provider: "vcd", reason: err instanceof Error ? err.message : String(err) });
+      throw new VoiceSynthesisError(attempts);
+    }
+  }
 
   if (req.voice.startsWith("kokoro-")) {
     const limit = deps.memoryLimitBytes();

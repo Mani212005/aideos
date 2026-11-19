@@ -12,6 +12,18 @@ import { execFileSync } from "child_process";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
+import { resolveVoiceCloneSettings } from "./aideosConfig";
+import { decodeWav } from "./pcm";
+import {
+  isVcdStudioVoice,
+  resolveVcdVoiceId,
+  synthesizeWithVcd,
+  vcdStudioVoiceLanguage,
+  vcdVoiceCacheKey,
+  type VcdHttpDeps,
+  type VcdLanguagePreference,
+} from "./vcdClient";
+import { resampleLinear } from "./voiceLines";
 
 /** The one sample rate every backend normalizes to before assembly. Kokoro's native rate. */
 export const PCM_SAMPLE_RATE = 24000;
@@ -26,6 +38,8 @@ export interface TtsBackend {
   voice?: string;
   /** The pace multiplier this backend actually applies, when it has pace control. */
   speed?: number;
+  /** The language preference applied by this backend, when it supports multiple languages. */
+  language?: VcdLanguagePreference;
   /** Longest text one call may receive; the caller chunks above this. */
   maxChars: number;
   synthesize(text: string): Promise<Float32Array>;
@@ -33,8 +47,8 @@ export interface TtsBackend {
   close?(): Promise<void>;
 }
 
-/** Names the pipeline understands for AIDEOS_TTS. */
-export type TtsBackendName = "kokoro" | "google" | "say" | "tone";
+/** Names the pipeline understands for AIDEOS_TTS and --tts. */
+export type TtsBackendName = "vcd" | "kokoro" | "google" | "say" | "tone";
 
 /**
  * Decodes any audio file ffmpeg understands into mono Float32 PCM at PCM_SAMPLE_RATE.
@@ -263,18 +277,73 @@ function createToneBackend(): TtsBackend {
 }
 
 /**
- * Picks a synthesis backend. AIDEOS_TTS pins one explicitly; otherwise Kokoro is tried
- * first and the chain degrades to macOS `say` and finally the offline tone placeholder,
- * so the pipeline always produces a timing spine rather than failing outright.
+ * Owner's own cloned voice running locally via the loopback `vcd` HTTP service.
+ * Resolves the enrolled voice id up front so an unreachable service fails plainly before
+ * synthesis starts, and embeds voice id plus language in the backend name so per-line caches
+ * never serve audio from a different voice.
+ */
+export async function createVcdBackend(options?: {
+  url?: string;
+  voiceId?: string;
+  language?: VcdLanguagePreference;
+  deps?: VcdHttpDeps;
+}): Promise<TtsBackend> {
+  const settings = resolveVoiceCloneSettings({
+    ...(options?.url ? { url: options.url } : {}),
+    ...(options?.voiceId ? { voiceId: options.voiceId } : {}),
+    ...(options?.language ? { language: options.language } : {}),
+  });
+  const resolved = await resolveVcdVoiceId(
+    { url: settings.url, voiceId: settings.voiceId },
+    options?.deps,
+  );
+  const language = settings.language;
+
+  return {
+    name: vcdVoiceCacheKey(resolved.voiceId, language),
+    voice: resolved.voiceId,
+    language,
+    // vcd enforces a 2000-char job cap and splits chunks internally with language-aware word limits.
+    maxChars: 1800,
+    async synthesize(text: string): Promise<Float32Array> {
+      const result = await synthesizeWithVcd(
+        {
+          text,
+          url: resolved.url,
+          voiceId: resolved.voiceId,
+          language,
+        },
+        options?.deps,
+      );
+      const decoded = decodeWav(result.wav);
+      return decoded.sampleRate === PCM_SAMPLE_RATE
+        ? decoded.samples
+        : resampleLinear(decoded.samples, decoded.sampleRate, PCM_SAMPLE_RATE);
+    },
+  };
+}
+
+/**
+ * Picks a synthesis backend. Defaults to "vcd" (My voice, the owner's local cloned voice).
+ * When the owner's voice is requested or selected by default and vcd is not reachable, it fails
+ * plainly rather than silently swapping to another voice. Pass --tts kokoro, google, say, or tone
+ * (or set AIDEOS_TTS) to explicitly pick another voice.
  */
 export async function createTtsBackend(options?: {
   backend?: TtsBackendName;
   voice?: string;
   /** Narration pace multiplier. Below 1 slows delivery, which reads better for explainer copy. */
   speed?: number;
+  /** Language preference for multi-language backends such as vcd ("auto", "en", or "hi"). */
+  language?: VcdLanguagePreference;
+  /** Loopback URL override for the local vcd voice service. */
+  vcdUrl?: string;
+  /** Injectable HTTP dependencies for vcd tests. */
+  vcdDeps?: VcdHttpDeps;
 }): Promise<TtsBackend> {
   const requested = (options?.backend ?? (process.env.AIDEOS_TTS as TtsBackendName | undefined)) || undefined;
-  const voice = options?.voice ?? process.env.AIDEOS_TTS_VOICE ?? "af_heart";
+  const explicitVoice = options?.voice ?? process.env.AIDEOS_TTS_VOICE;
+  const voice = explicitVoice ?? "af_heart";
   const envSpeed = Number(process.env.AIDEOS_TTS_SPEED);
   const requestedSpeed = options?.speed ?? (Number.isFinite(envSpeed) && envSpeed > 0 ? envSpeed : DEFAULT_KOKORO_SPEED);
   const speed = Math.min(2, Math.max(0.5, requestedSpeed));
@@ -282,22 +351,24 @@ export async function createTtsBackend(options?: {
   if (requested === "tone") return createToneBackend();
   if (requested === "say") return createSayBackend(voice === "af_heart" ? "Samantha" : voice);
   if (requested === "google") return createGoogleBackend(voice === "af_heart" ? "en-US-Journey-F" : voice);
+  if (requested === "kokoro") return createKokoroBackend(voice, speed);
 
-  if (requested === "kokoro" || requested === undefined) {
-    try {
-      return await createKokoroBackend(voice, speed);
-    } catch (err) {
-      if (requested === "kokoro") throw err;
-      console.warn(`[tts] Kokoro unavailable (${(err as Error).message}); falling back to macOS say.`);
-    }
+  const studioVoice = explicitVoice && isVcdStudioVoice(explicitVoice) ? explicitVoice : undefined;
+  const studioVoiceLanguage = studioVoice ? vcdStudioVoiceLanguage(studioVoice) : "auto";
+  const enrolledVoiceId = explicitVoice && !studioVoice && (requested === "vcd" || explicitVoice.startsWith("voice_")) ? explicitVoice : undefined;
+  const nonVcdVoiceWithoutBackend = requested === undefined && explicitVoice && !studioVoice && !enrolledVoiceId;
+  if (nonVcdVoiceWithoutBackend) return createKokoroBackend(voice, speed);
+
+  if (requested === "vcd" || requested === undefined) {
+    return createVcdBackend({
+      url: options?.vcdUrl,
+      voiceId: enrolledVoiceId,
+      language: studioVoiceLanguage !== "auto" ? studioVoiceLanguage : options?.language,
+      deps: options?.vcdDeps,
+    });
   }
 
-  try {
-    const say = createSayBackend("Samantha");
-    await say.synthesize("test");
-    return say;
-  } catch (sayErr) {
-    if (requested === "tone") return createToneBackend();
-    throw new Error(`[tts] No speech synthesizer available (Kokoro and macOS say failed: ${(sayErr as Error).message}); pass --voice tone if placeholder audio is intended.`);
-  }
+  throw new Error(
+    `[tts] Unknown speech backend "${String(requested)}". Use vcd (My voice), kokoro, google, say, or tone.`,
+  );
 }

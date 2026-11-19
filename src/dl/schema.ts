@@ -871,6 +871,10 @@ export const filmBaseSchema = z.object({
       retimedSrc: z.string().optional(),
       version: z.string().optional(),
       durationSec: z.number().min(0).optional(),
+      /** Voice id selected for this project (for example "vcd-my-voice" or "kokoro-am_adam") so existing projects keep their voice. */
+      voice: z.string().optional(),
+      /** Language preference used when synthesizing the voiceover ("auto", "en", or "hi"). */
+      language: z.enum(["auto", "en", "hi"]).optional(),
     })
     .optional(),
   audioClips: z.array(audioClipSchema).optional(),

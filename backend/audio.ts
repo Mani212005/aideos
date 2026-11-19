@@ -24,6 +24,7 @@ import { assertScriptReadyForSynthesis, detectChapterStartsFromScript, extractSp
 import type { ScriptIssue } from "./screenplayLines";
 import { synthesizeLines } from "./voiceLines";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
+import type { VcdLanguagePreference } from "./vcdClient";
 import * as fsSync from "fs";
 import {
   assembleSegments,
@@ -103,6 +104,8 @@ export interface ProduceAudioOptions {
   backend?: TtsBackendName;
   /** Voice id, interpreted by the chosen backend. */
   voice?: string;
+  /** Language preference for multi-language backends such as vcd ("auto", "en", or "hi"). */
+  language?: VcdLanguagePreference;
   /** Narration pace multiplier. Below 1 slows delivery, which reads better for explainer copy. */
   speed?: number;
   /** Called once per synthesized chunk so long runs can report progress. */
@@ -147,8 +150,8 @@ export function chunkTextForTTS(text: string, maxChars = 800): string[] {
       chunks.push(p);
       continue;
     }
-    // Match complete sentences preserving punctuation and sentence prosody
-    const sentences = p.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [p];
+    // Match complete sentences preserving punctuation and sentence prosody (including Devanagari danda)
+    const sentences = p.match(/[^.!?।]+[.!?।]+(?:\s+|$)|[^.!?।]+$/g) || [p];
     let currentChunk = "";
 
     for (const sentence of sentences) {
@@ -236,7 +239,7 @@ export function splitScriptIntoSegments(script: string | string[]): string[] {
   }
 
   for (const seg of rawSegments) {
-    if (!seg || seg.replace(/[^a-zA-Z0-9]/g, "").length === 0) {
+    if (!seg || seg.replace(/[^\p{L}\p{N}]/gu, "").length === 0) {
       throw new Error("A shot with no narration is not allowed mid-script in v1");
     }
   }
@@ -375,7 +378,14 @@ export async function produceAudioPipeline(
 
   await fs.mkdir(outDir, { recursive: true });
 
-  const backend = options?.ttsBackendInstance ?? (await createTtsBackend({ backend: options?.backend, voice: options?.voice, speed: options?.speed }));
+  const backend =
+    options?.ttsBackendInstance ??
+    (await createTtsBackend({
+      backend: options?.backend,
+      voice: options?.voice,
+      speed: options?.speed,
+      language: options?.language,
+    }));
   console.error(`[narration] synthesizing ${segmentTexts.length} segment(s) with ${backend.name}`);
 
   let segmentChunks: PcmChunk[][];
@@ -535,7 +545,7 @@ export function buildFilmFromAudioResult(
   const numShots = audioResult.segments.length;
   // Create 2-6 concept entities reflecting screenplay structure
   const conceptEntities: ConceptEntity[] = audioResult.segments.slice(0, Math.min(8, Math.max(3, numShots))).map((seg, i) => {
-    const words = seg.text.replace(/[^\w\s-]/g, "").split(/\s+/).filter(Boolean);
+    const words = seg.text.replace(/[^\p{L}\p{N}\p{M}\s-]/gu, "").split(/\s+/).filter(Boolean);
     const label = words.slice(0, 3).join(" ") || `Concept ${i + 1}`;
     const sub = words.slice(3, 7).join(" ");
     const isContrast = seg.text.toLowerCase().includes("contrast") || seg.text.toLowerCase().includes("versus") || seg.text.toLowerCase().includes("however");

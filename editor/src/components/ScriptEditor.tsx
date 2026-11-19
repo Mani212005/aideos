@@ -46,11 +46,30 @@ interface ScriptEditorProps {
   onNavigateToVideo?: () => void;
 }
 
+const DEFAULT_VOICE_ID = "vcd-my-voice";
+
 const VOICES = [
+  // OWNER CLONED VOICE (LOCAL VCD SERVICE)
+  {
+    id: "vcd-my-voice",
+    name: "My voice",
+    provider: "My Cloned Voice",
+  },
+  {
+    id: "vcd-my-voice-hi",
+    name: "My voice (Hindi / Hinglish)",
+    provider: "My Cloned Voice",
+  },
+
   // KOKORO LOCAL NEURAL VOICES (ONNX)
   {
     id: "kokoro-am_adam",
     name: "Kokoro: Adam (Crisp Explainer - Male)",
+    provider: "Kokoro Neural",
+  },
+  {
+    id: "kokoro-af_heart",
+    name: "Kokoro: Heart (Default Narrative - Female)",
     provider: "Kokoro Neural",
   },
   {
@@ -154,11 +173,22 @@ interface NarrationEntry {
   after?: string;
 }
 
+/** Availability summary for the local vcd cloned-voice service. */
+interface VoiceServiceStatus {
+  available: boolean;
+  url: string;
+  voiceId: string | null;
+  voiceName: string | null;
+  message: string | null;
+}
+
 /** The server's view of the narration: the change list plus which lines already have a recording. */
 interface NarrationState {
   revision: string;
   entries: NarrationEntry[];
   lines: Array<{ text: string; recorded: boolean }>;
+  projectVoice?: string | null;
+  voiceService?: VoiceServiceStatus | null;
 }
 
 /** True when a section's title is just the opening words of its first paragraph, so it need not be shown twice. */
@@ -275,7 +305,8 @@ export function ScriptEditor({
   const [saving, setSaving] = useState<boolean>(false);
   const [generating, setGenerating] = useState<boolean>(false);
   const [buildingScenes, setBuildingScenes] = useState<boolean>(false);
-  const [selectedVoice, setSelectedVoice] = useState<string>("kokoro-am_adam");
+  const [selectedVoice, setSelectedVoice] = useState<string>(film.voiceover?.voice || DEFAULT_VOICE_ID);
+  const userPickedVoiceRef = useRef<boolean>(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<{
     type: "success" | "error" | "info";
@@ -376,6 +407,8 @@ export function ScriptEditor({
     let isMounted = true;
     setLoading(true);
     const currentFilm = filmRef.current;
+    userPickedVoiceRef.current = false;
+    setSelectedVoice(currentFilm.voiceover?.voice || DEFAULT_VOICE_ID);
     setDiskChanged(false);
     fetch(`/api/scripts/${film.id}`)
       .then((res) => res.json())
@@ -447,7 +480,21 @@ export function ScriptEditor({
       const res = await fetch(`/api/narration/${film.id}?voice=${encodeURIComponent(selectedVoice)}`);
       if (!res.ok) return;
       const data: NarrationState & { ok: boolean } = await res.json();
-      setNarration({ revision: data.revision, entries: data.entries, lines: data.lines });
+      setNarration({
+        revision: data.revision,
+        entries: data.entries,
+        lines: data.lines,
+        projectVoice: data.projectVoice ?? null,
+        voiceService: data.voiceService ?? null,
+      });
+      if (
+        !userPickedVoiceRef.current &&
+        !filmRef.current.voiceover?.voice &&
+        data.projectVoice &&
+        data.projectVoice !== selectedVoice
+      ) {
+        setSelectedVoice(data.projectVoice);
+      }
       if (adopt || !revisionRef.current) {
         revisionRef.current = data.revision;
         return;
@@ -645,6 +692,8 @@ export function ScriptEditor({
     }
   };
 
+  const selectedVoiceLabel = VOICES.find((v) => v.id === selectedVoice)?.name ?? selectedVoice;
+
   /**
    * Synthesizes ONLY the spoken dialogue lines from the screenplay into a studio-grade .wav audio file.
    */
@@ -659,7 +708,7 @@ export function ScriptEditor({
     setGenerating(true);
     setStatusMsg({
       type: "info",
-      text: `Recording ${unrecordedCount > 0 ? `${unrecordedCount} new or changed line${unrecordedCount === 1 ? "" : "s"}` : "the narration"} (${spokenWords.length} spoken words) using ${selectedVoice}...`,
+      text: `Recording ${unrecordedCount > 0 ? `${unrecordedCount} new or changed line${unrecordedCount === 1 ? "" : "s"}` : "the narration"} (${spokenWords.length} spoken words) using ${selectedVoiceLabel}...`,
     });
     try {
       const res = await fetch("/api/generate-voiceover", {
@@ -688,6 +737,7 @@ export function ScriptEditor({
           version: Date.now().toString(),
           speed: film.voiceover?.speed ?? 1.0,
           durationSec: data.actualDurationSec || data.estimatedDurationSec,
+          voice: selectedVoice,
         },
         audioClips: undefined, // Clear stale clip overrides so fresh voiceover spine takes effect across the player
       };
@@ -1202,15 +1252,28 @@ export function ScriptEditor({
               Engine
             </h3>
             <p className="text-xs text-ink-soft">
-              Select from Kokoro ONNX, Deepgram Aura, or macOS neural voices:
+              Defaults to your local cloned voice (My voice), or pick Kokoro ONNX, Deepgram Aura, or macOS voices:
             </p>
 
             <select
               value={selectedVoice}
-              onChange={(e) => setSelectedVoice(e.target.value)}
+              onChange={(e) => {
+                userPickedVoiceRef.current = true;
+                setSelectedVoice(e.target.value);
+              }}
               aria-label="Narration voice"
+              data-testid="voice-selector"
               className="w-full bg-paper-3 border border-line p-2.5 text-xs text-ink outline-none focus:border-select font-medium"
             >
+              <optgroup label="My Cloned Voice (Local vcd)">
+                {VOICES.filter((v) => v.provider === "My Cloned Voice").map(
+                  (v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ),
+                )}
+              </optgroup>
               <optgroup label="Kokoro Local Neural (ONNX)">
                 {VOICES.filter((v) => v.provider === "Kokoro Neural").map(
                   (v) => (
@@ -1238,7 +1301,34 @@ export function ScriptEditor({
                   ),
                 )}
               </optgroup>
+              {!VOICES.some((v) => v.id === selectedVoice) && (
+                <optgroup label="Saved Project Voice">
+                  <option value={selectedVoice}>{selectedVoice}</option>
+                </optgroup>
+              )}
             </select>
+
+            {selectedVoice.startsWith("vcd-") && narration?.voiceService && !narration.voiceService.available && (
+              <div
+                className="p-2.5 bg-warn/25 border border-line text-xs text-ink space-y-1"
+                role="status"
+                data-testid="vcd-unavailable-notice"
+              >
+                <div className="font-semibold">Local voice service not reachable</div>
+                <p className="text-ink-soft leading-relaxed">
+                  {narration.voiceService.message || `Start the local vcd service at ${narration.voiceService.url} with \`vcd serve\`, or choose another voice above.`}
+                </p>
+              </div>
+            )}
+
+            {selectedVoice.startsWith("vcd-") && narration?.voiceService?.available && (
+              <div
+                className="px-2.5 py-1.5 bg-success/20 border border-line text-xs text-ink"
+                data-testid="vcd-ready-notice"
+              >
+                My voice ready via local service ({narration.voiceService.url})
+              </div>
+            )}
 
             <div className="p-2.5 bg-paper-3 border border-line text-xs text-ink-soft space-y-1">
               <div>
