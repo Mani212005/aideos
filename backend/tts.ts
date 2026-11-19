@@ -354,6 +354,7 @@ export async function createTtsBackend(options?: {
   if (requested === "kokoro") return createKokoroBackend(voice, speed);
 
   const studioVoice = explicitVoice && isVcdStudioVoice(explicitVoice) ? explicitVoice : undefined;
+  const studioVoiceLanguage = studioVoice ? vcdStudioVoiceLanguage(studioVoice) : "auto";
   const enrolledVoiceId = explicitVoice && !studioVoice && (requested === "vcd" || explicitVoice.startsWith("voice_")) ? explicitVoice : undefined;
   const nonVcdVoiceWithoutBackend = requested === undefined && explicitVoice && !studioVoice && !enrolledVoiceId;
   if (nonVcdVoiceWithoutBackend) return createKokoroBackend(voice, speed);
@@ -362,7 +363,7 @@ export async function createTtsBackend(options?: {
     return createVcdBackend({
       url: options?.vcdUrl,
       voiceId: enrolledVoiceId,
-      language: studioVoice ? vcdStudioVoiceLanguage(studioVoice, options?.language) : options?.language,
+      language: studioVoiceLanguage !== "auto" ? studioVoiceLanguage : options?.language,
       deps: options?.vcdDeps,
     });
   }
