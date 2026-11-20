@@ -279,6 +279,64 @@ test("main-red-alert workflow satisfies least privilege, triggers only on workfl
   }
 });
 
+test("W10 main-red-alert resolve job closes the open alert issue only when the green commit is main HEAD", () => {
+  const alertPath = path.join(workflowDir, "main-red-alert.yml");
+  const doc = YAML.parse(fs.readFileSync(alertPath, "utf8")) as WorkflowDocument;
+  const resolveStep = doc.jobs?.resolve?.steps?.find((s) => s.run?.includes("gh issue close"));
+  assert.ok(resolveStep?.run, "main-red-alert.yml must define a resolve job that closes issues");
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-resolve-"));
+  try {
+    const binDir = path.join(dir, "bin");
+    fs.mkdirSync(binDir);
+    const issuesFile = path.join(dir, "issues.json");
+    const logFile = path.join(dir, "gh.log");
+    fs.writeFileSync(
+      issuesFile,
+      JSON.stringify([
+        { number: 143, title: "CI: main branch failure" },
+        { number: 7, title: "Unrelated issue" },
+      ]),
+    );
+    const stub = [
+      "#!/bin/bash",
+      'if [ "$1" = "api" ]; then echo "$STUB_MAIN_HEAD"; exit 0; fi',
+      'if [ "$1" = "issue" ] && [ "$2" = "list" ]; then',
+      '  while [ $# -gt 0 ]; do if [ "$1" = "--jq" ]; then FILTER="$2"; fi; shift; done',
+      '  jq -r "$FILTER" "$STUB_ISSUES"; exit 0',
+      "fi",
+      'if [ "$1" = "issue" ] && [ "$2" = "close" ]; then echo "close $3" >> "$STUB_LOG"; exit 0; fi',
+      "exit 1",
+      "",
+    ].join("\n");
+    fs.writeFileSync(path.join(binDir, "gh"), stub, { mode: 0o755 });
+
+    const run = (commitSha: string, mainHead: string) => {
+      fs.rmSync(logFile, { force: true });
+      const result = spawnSync("bash", ["-e", "-c", resolveStep.run!], {
+        env: {
+          ...process.env,
+          PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+          REPO: "owner/repo",
+          RUN_URL: "https://example.test/run/1",
+          COMMIT_SHA: commitSha,
+          STUB_MAIN_HEAD: mainHead,
+          STUB_ISSUES: issuesFile,
+          STUB_LOG: logFile,
+        },
+        encoding: "utf8",
+      });
+      assert.equal(result.status, 0, result.stderr);
+      return fs.existsSync(logFile) ? fs.readFileSync(logFile, "utf8").trim().split("\n") : [];
+    };
+
+    assert.deepEqual(run("abc123", "abc123"), ["close 143"]);
+    assert.deepEqual(run("abc123", "def456"), []);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("golden comparison skips on non-Linux platforms with a clear message and has no force flag", () => {
   if (process.platform !== "linux") {
     assert.equal(notLinux(), "golden frames are verified on the Linux CI platform only");

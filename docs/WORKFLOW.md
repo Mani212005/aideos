@@ -166,6 +166,7 @@ The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http:
 | `aideos review <slug\|mp4> [--format <format>]` | Runs deterministic quality review checks (default reviews every rendered format) | `<out>/review.json`, `review.reel.json`, evidence stills |
 | `aideos gemini-review <mp4>` | Evaluates video against 12-criterion rubric via Gemini 3.8 Flash (agy) | Terminal score & verdict, JSON |
 | `aideos all-check <slug>` | Full check and repair, fixed by your own agent session (long and reel, 9.0+ bar) | `videos/<slug>/all-check/`, final MP4s |
+| `aideos verdict <slug> [publish\|fix\|reject] [--note "..."] [--json]` | Records the owner's own watch verdict on a film (`fix` stores `publish-after-fixes`), or shows the saved one when no decision is given; automated checks never write it | `videos/<slug>/owner-verdict.json` |
 | `aideos film [--final-export]` (or `npm run backend -- film`) | Autonomous pipeline (intake, narrate, look, design, reel, b-roll, assemble), stopping at a draft; `--final-export` (only when the user explicitly asked) also runs render and verify | Draft: `videos/<slug>/film.json`, narration and design. With `--final-export`: `videos/<slug>/renders/long.mp4`, `videos/<slug>/renders/reel.mp4` (or `<outDir>/<slug>-<format>.mp4` when `--out` is set) |
 | `aideos connect` | Connects local coding agent via one-time pairing code | Connected agent session |
 | `npm run validate:film <path>` | Standalone invariant validator for arbitrary film manifests | Runsheet & status in terminal |

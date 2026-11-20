@@ -172,8 +172,10 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
   uses Azure's Ubuntu archive, the step adds `archive.ubuntu.com` as a lower-priority fallback. Each
   apt step has its own `timeout-minutes: 10`, which fits the 540-second worst-case retry budget.
 * **Red-main alert**: `.github/workflows/main-red-alert.yml` runs on `workflow_run` when the CI workflow
-  completes on the main branch with failure, timed_out, or cancelled conclusions. It opens or updates a single
+  completes on the main branch. On failure, timed_out, or cancelled conclusions it opens or updates a single
   GitHub issue (`CI: main branch failure`) naming the failing run URL and commit SHA, preventing unnoticed red builds.
+  When CI completes with `success` on the current `main` HEAD commit, the `resolve` job automatically closes any open
+  `CI: main branch failure` issue with the green run URL and commit SHA.
 
 Rendering tests rewrite the generated `src/dl/activeFilm.ts`, so they run sequentially
 (`--test-concurrency=1`) and every harness restores the file afterwards. Check disk first: the

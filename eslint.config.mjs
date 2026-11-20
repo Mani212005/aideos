@@ -27,7 +27,6 @@ const LEGACY_ANY = [
   "backend/cli.ts",
   "backend/editPlanner/{interpreter,validator}.ts",
   "backend/geminiReview/{geminiReview,types}.ts",
-  "backend/goodVideoRubric.ts",
   "backend/ideation/{segmentSync,visualSelector}.ts",
   "backend/mcp/server.ts",
   "backend/timeline/{layer_manager,snap,updates}.ts",

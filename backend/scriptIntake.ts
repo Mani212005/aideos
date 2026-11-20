@@ -177,7 +177,13 @@ export function parseClaudeScript(raw: string): ScriptSegment[] {
     usedIds.add(id);
     current = {
       id,
-      title: header.title || (header.timeStart ? `${header.timeStart}-${header.timeEnd}` : `Segment ${segments.length + 1}`),
+      title:
+        header.title ||
+        (header.timeStart
+          ? header.timeEnd
+            ? `${header.timeStart}-${header.timeEnd}`
+            : header.timeStart
+          : `Segment ${segments.length + 1}`),
       timeStart: header.timeStart,
       timeEnd: header.timeEnd,
       beats: [],
@@ -252,6 +258,9 @@ export function serializeSegmentsToScript(segments: ScriptSegment[]): string {
     if (seg.timeStart && seg.timeEnd) {
       headerLine += ` ${seg.timeStart}-${seg.timeEnd}`;
       if (seg.title) headerLine += ` - ${seg.title}`;
+    } else if (seg.timeStart) {
+      headerLine += ` ${seg.timeStart}`;
+      if (seg.title && seg.title !== seg.timeStart) headerLine += ` - ${seg.title}`;
     } else if (seg.title) {
       headerLine += ` ${seg.title}`;
     } else {

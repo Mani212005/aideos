@@ -89,7 +89,7 @@ function isWordCountNote(line: string): boolean {
   return /^\*{0,2}[([\\(]?(?:Narration\s*)?word count.*[)\\]]?\*{0,2}$/i.test(line);
 }
 
-/** Matches a segment header line (with or without # hashes) and extracts its timestamp range, title, and optional explicit id. */
+/** Matches a segment header line (with or without # hashes) and extracts its timestamp (range or single), title, and optional explicit id. */
 function matchSegmentHeader(line: string): (SegmentHeaderInfo & { hashed: boolean; bareScene: boolean }) | null {
   let headerText = line.trim();
   if (!headerText) return null;
@@ -101,18 +101,29 @@ function matchSegmentHeader(line: string): (SegmentHeaderInfo & { hashed: boolea
     hashed = true;
     headerText = hashMatch[1].trim();
   } else {
-    const isBareTimestamp = /^(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})\b/.test(headerText);
+    const isBareTimestamp =
+      /^(\d{1,2}:\d{2}(?::\d{2})?)\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2}(?::\d{2})?)\b/.test(headerText);
     bareScene = /^(?:Scene|Shot|Segment|Act)\s+\d+\b/i.test(headerText);
     if (!isBareTimestamp && !bareScene) return null;
   }
 
   let timeStart: string | undefined;
   let timeEnd: string | undefined;
-  const tm = headerText.match(/^(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})(.*)$/);
-  if (tm) {
-    timeStart = tm[1];
-    timeEnd = tm[2];
-    headerText = tm[3].replace(/^\s*[-–—:]\s*/, "").trim();
+  const rangeMatch = headerText.match(
+    /^(\d{1,2}:\d{2}(?::\d{2})?)\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2}(?::\d{2})?)(.*)$/,
+  );
+  if (rangeMatch) {
+    timeStart = rangeMatch[1];
+    timeEnd = rangeMatch[2];
+    headerText = rangeMatch[3].replace(/^\s*[-\u2013\u2014:]\s*/, "").trim();
+  } else {
+    const singleMatch = headerText.match(
+      /^(\d{1,2}:\d{2}(?::\d{2})?)(?:(?:\s*[-\u2013\u2014:]\s*|\s+)(.*))?$/,
+    );
+    if (singleMatch) {
+      timeStart = singleMatch[1];
+      headerText = (singleMatch[2] ?? "").trim();
+    }
   }
 
   let explicitId: string | undefined;
@@ -178,7 +189,7 @@ function matchStoryTag(line: string): string | null {
 
 /** Matches a bare `m:ss - m:ss` timestamp range at the start of a story line. */
 function isStoryTimestamp(line: string): boolean {
-  return /^\d{1,2}:\d{2}\s*[-–—]\s*\d{1,2}:\d{2}/.test(line);
+  return /^\d{1,2}:\d{2}(?::\d{2})?\s*[-\u2013\u2014]\s*\d{1,2}:\d{2}(?::\d{2})?/.test(line);
 }
 
 /** Words that may stay lower case inside a title-cased heading. */

@@ -1,5 +1,5 @@
-# File Description: Alerts on failed, timed out, or cancelled CI runs on the main branch by opening or updating a GitHub issue.
-# Inputs and outputs: workflow_run completion event for CI on main -> open or updated GitHub issue naming run URL and commit.
+# File Description: Alerts on failed, timed out, or cancelled CI runs on the main branch by opening or updating a GitHub issue, and automatically closes open alert issues when main goes green again.
+# Inputs and outputs: workflow_run completion event for CI on main -> open/updated GitHub issue on failure, or closed issue with recovery comment on green head commit.
 # Used by: GitHub Actions. Documented in docs/CI.md.
 name: Main red alert
 
@@ -39,3 +39,33 @@ jobs:
           else
             gh issue create --repo "$REPO" --title "CI: main branch failure" --body "$BODY"
           fi
+
+  resolve:
+    name: resolve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: >-
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Close open issue when main is green again
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          HEAD_SHA=$(gh api "repos/$REPO/git/ref/heads/main" --jq '.object.sha')
+          if [ "$COMMIT_SHA" != "$HEAD_SHA" ]; then
+            echo "Skipping close: green run commit $COMMIT_SHA is behind main HEAD $HEAD_SHA."
+            exit 0
+          fi
+          OPEN_ISSUES=$(gh issue list --repo "$REPO" --state open --json number,title --jq '.[] | select(.title == "CI: main branch failure") | .number')
+          if [ -z "$OPEN_ISSUES" ]; then
+            echo "No open main-red-alert issue to close."
+            exit 0
+          fi
+          BODY=$(printf "Main branch CI is green again:\n- Run: %s\n- Commit: %s\n" "$RUN_URL" "$COMMIT_SHA")
+          for ISSUE_NUMBER in $OPEN_ISSUES; do
+            gh issue close "$ISSUE_NUMBER" --repo "$REPO" --comment "$BODY"
+          done

@@ -39,6 +39,7 @@ import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSil
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
+import { pruneStudioExports } from '../backend/exportRetention.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { AideosConfigError, resolveVoiceCloneSettings } from '../backend/aideosConfig.ts'
 import {
@@ -1012,6 +1013,16 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   writeDescriptionCredits(rendersDir, [renderedFilm]);
                   if (master.status === 'skipped') endCardNotice = [endCardNotice, `Master skipped: ${master.reason}`].filter(Boolean).join('; ');
                   return endCardNotice;
+                },
+                onDone: async () => {
+                  const pruned = await pruneStudioExports({
+                    rendersDir,
+                    filmId: postedFilm.id,
+                    format: outFormat,
+                    keepFilenames: [filename],
+                    acceptancePath: path.join(videosDir, postedFilm.id, 'acceptance.json'),
+                  });
+                  if (pruned.skippedReason) console.warn(`[export] retention skipped: ${pruned.skippedReason}`);
                 },
               });
               sendJson(res, busy ? 409 : 202, busy ? { error: 'Another export is already running.', job } : { job });

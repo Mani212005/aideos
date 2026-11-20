@@ -30,6 +30,8 @@ export interface ExportJobInput {
   downloadUrl: string;
   prepare?: (film: Film) => Promise<Film>;
   onMaster?: (master: MasterResult, film: Film) => string | void;
+  /** Runs once after the final export file is atomically published (never on cancel or failure). */
+  onDone?: () => void | Promise<void>;
   cleanup?: () => void;
 }
 
@@ -178,6 +180,15 @@ export function createExportJobs(deps: ExportJobDeps = {}) {
               read(pending);
               snapshot.progress = 1;
               snapshot.downloadUrl = input.downloadUrl;
+              const warnHookFailure = (error: unknown) =>
+                console.warn(
+                  `[export] post-export hook failed: ${error instanceof Error ? error.message : String(error)}`,
+                );
+              try {
+                void Promise.resolve(input.onDone?.()).catch(warnHookFailure);
+              } catch (error) {
+                warnHookFailure(error);
+              }
             }
           },
         },
