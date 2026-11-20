@@ -102,8 +102,7 @@ function matchSegmentHeader(line: string): (SegmentHeaderInfo & { hashed: boolea
     headerText = hashMatch[1].trim();
   } else {
     const isBareTimestamp =
-      /^(\d{1,2}:\d{2}(?::\d{2})?)\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2}(?::\d{2})?)\b/.test(headerText) ||
-      /^(\d{1,2}:\d{2}(?::\d{2})?)\s*[-\u2013\u2014:]\s+\S/.test(headerText);
+      /^(\d{1,2}:\d{2}(?::\d{2})?)\s*[-\u2013\u2014]\s*(\d{1,2}:\d{2}(?::\d{2})?)\b/.test(headerText);
     bareScene = /^(?:Scene|Shot|Segment|Act)\s+\d+\b/i.test(headerText);
     if (!isBareTimestamp && !bareScene) return null;
   }

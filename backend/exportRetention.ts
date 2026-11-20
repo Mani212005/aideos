@@ -1,9 +1,10 @@
 /**
- * File Description: Bounded retention for timestamped Studio exports in videos/<film>/renders/. Keeps the newest exports per format so repeated Studio exports cannot fill a tight disk, while strictly preserving CLI renders, hand-named exports, active outputs, and any file referenced by publish/record.json.
- * Inputs and outputs: renders directory, film id, format, keep count, protected filenames, and optional publish record path -> list of kept and removed export files.
- * Used by: editor/vite.config.ts (POST /api/export onDone), backend/exportRetention.test.ts.
+ * File Description: Bounded retention for timestamped Studio exports (aideos_<film>_<format>_<epoch>.mp4) in videos/<film>/renders/. Rule: per film and format, keep the newest two timestamped exports plus the just-finished export, and also keep every export whose SHA-256 mp4 hash is named in videos/<film>/acceptance.json (formats[format].mp4Hash, formats[format].measured.mp4Hash, formats[format].judged[*].mp4Hash). Everything else timestamped is removed with its sidecars. CLI renders, hand-named files and other formats or films are never touched. Fails closed: if acceptance.json exists but cannot be read or parsed, nothing is deleted; an export that cannot be hashed is kept. owner-verdict.json is not part of retention.
+ * Inputs and outputs: renders directory, film id, format, keep count, protected filenames, and optional acceptance.json path -> list of kept and removed export files.
+  * Used by: editor/vite.config.ts (POST /api/export onDone), backend/exportRetention.test.ts.
  */
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -25,15 +26,15 @@ export interface PruneStudioExportsInput {
   keep?: number;
   /** Additional filenames that must never be deleted (for example the just-finished export). */
   keepFilenames?: Iterable<string>;
-  /** Optional path to videos/<film>/publish/record.json; files named in it are never deleted. */
-  publishRecordPath?: string;
+  /** Optional path to videos/<film>/acceptance.json; exports whose SHA-256 mp4 hash it names are never deleted. */
+  acceptancePath?: string;
 }
 
 export interface PruneStudioExportsResult {
   kept: string[];
   removed: string[];
   protectedNames: string[];
-  /** Set when pruning aborted safely without deleting any file (for example a corrupt publish record). */
+  /** Set when pruning aborted safely without deleting any file (for example an unreadable acceptance record). */
   skippedReason?: string;
 }
 
@@ -56,41 +57,55 @@ export function parseStudioExportFilename(
   return Number.isSafeInteger(ts) ? ts : null;
 }
 
-// Recursively collects file basenames from string values inside a JSON publish record.
-function collectReferencedBasenames(value: unknown, out: Set<string>): void {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (trimmed) out.add(path.basename(trimmed));
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) collectReferencedBasenames(item, out);
-    return;
-  }
-  if (value && typeof value === "object") {
-    for (const entry of Object.values(value as Record<string, unknown>)) {
-      collectReferencedBasenames(entry, out);
-    }
-  }
+// Adds a value to the set when it is a non-empty string.
+function addHash(value: unknown, out: Set<string>): void {
+  if (typeof value === "string" && value.trim()) out.add(value.trim().toLowerCase());
 }
 
-// Reads filenames referenced by publish/record.json; fails closed when the file exists but cannot be parsed.
-export function readProtectedPublishFilenames(
-  publishRecordPath: string,
-): { ok: true; names: Set<string> } | { ok: false; reason: string } {
-  if (!fs.existsSync(publishRecordPath)) {
-    return { ok: true, names: new Set<string>() };
+// Reads the SHA-256 mp4 hashes named by acceptance.json (record, measured and judged draws of each format); fails closed when the file exists but cannot be read or parsed.
+export function readProtectedMp4Hashes(
+  acceptancePath: string,
+): { ok: true; hashes: Set<string> } | { ok: false; reason: string } {
+  if (!fs.existsSync(acceptancePath)) {
+    return { ok: true, hashes: new Set<string>() };
   }
   try {
-    const raw: unknown = JSON.parse(fs.readFileSync(publishRecordPath, "utf8"));
-    const names = new Set<string>();
-    collectReferencedBasenames(raw, names);
-    return { ok: true, names };
+    const raw: unknown = JSON.parse(fs.readFileSync(acceptancePath, "utf8"));
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error("expected a JSON object");
+    }
+    const formats = (raw as { formats?: unknown }).formats;
+    const hashes = new Set<string>();
+    if (formats && typeof formats === "object") {
+      for (const record of Object.values(formats as Record<string, unknown>)) {
+        if (!record || typeof record !== "object") continue;
+        const { mp4Hash, measured, judged } = record as {
+          mp4Hash?: unknown;
+          measured?: { mp4Hash?: unknown } | null;
+          judged?: unknown;
+        };
+        addHash(mp4Hash, hashes);
+        addHash(measured?.mp4Hash, hashes);
+        if (Array.isArray(judged)) {
+          for (const draw of judged) addHash((draw as { mp4Hash?: unknown } | null)?.mp4Hash, hashes);
+        }
+      }
+    }
+    return { ok: true, hashes };
   } catch (err) {
     return {
       ok: false,
-      reason: `unreadable publish record at ${publishRecordPath}: ${err instanceof Error ? err.message : String(err)}`,
+      reason: `unreadable acceptance record at ${acceptancePath}: ${err instanceof Error ? err.message : String(err)}`,
     };
+  }
+}
+
+// SHA-256 of a file as lowercase hex, or null when it cannot be read.
+function hashFile(file: string): string | null {
+  try {
+    return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+  } catch {
+    return null;
   }
 }
 
@@ -111,17 +126,18 @@ export function pruneStudioExports(input: PruneStudioExportsInput): PruneStudioE
     }
   }
 
-  if (input.publishRecordPath) {
-    const published = readProtectedPublishFilenames(input.publishRecordPath);
-    if (!published.ok) {
+  let protectedHashes = new Set<string>();
+  if (input.acceptancePath) {
+    const accepted = readProtectedMp4Hashes(input.acceptancePath);
+    if (accepted.ok === false) {
       return {
         kept: [],
         removed: [],
         protectedNames: [...protectedSet].sort(),
-        skippedReason: published.reason,
+        skippedReason: accepted.reason,
       };
     }
-    for (const name of published.names) protectedSet.add(name);
+    protectedHashes = accepted.hashes;
   }
 
   const candidates: Array<{ name: string; ts: number }> = [];
@@ -138,11 +154,17 @@ export function pruneStudioExports(input: PruneStudioExportsInput): PruneStudioE
 
   for (let i = 0; i < candidates.length; i++) {
     const { name } = candidates[i];
+    const target = path.join(input.rendersDir, name);
     if (i < keep || protectedSet.has(name)) {
       kept.push(name);
       continue;
     }
-    const target = path.join(input.rendersDir, name);
+    const hash = protectedHashes.size > 0 ? hashFile(target) : null;
+    if (protectedHashes.size > 0 && (hash === null || protectedHashes.has(hash))) {
+      protectedSet.add(name);
+      kept.push(name);
+      continue;
+    }
     fs.rmSync(target, { force: true });
     for (const suffix of STUDIO_EXPORT_SIDECAR_SUFFIXES) {
       fs.rmSync(`${target}${suffix}`, { force: true });

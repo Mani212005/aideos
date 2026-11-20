@@ -1,10 +1,11 @@
 /**
  * File Description: Tests for W8 bounded Studio export retention: keeps the newest two Studio exports per format, removes older exports with their sidecars, and never deletes CLI renders, hand-named exports, other formats, or files listed in publish/record.json.
- * Inputs and outputs: temporary renders directories and mock publish records -> assertions on retained and pruned files.
+ * Inputs and outputs: temporary renders directories and mock acceptance records -> assertions on retained and pruned files.
  * Used by: npm test.
  */
 
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -75,54 +76,57 @@ test("W8 export retention: keeps newest 2 Studio exports per format and prunes o
   }
 });
 
-test("W8 export retention: never deletes a file named in publish/record.json and fails closed on corrupt publish records", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-retention-pub-"));
+test("W8 export retention: preserves an older export whose mp4 hash acceptance.json names, prunes unreferenced ones, and fails closed on an unreadable acceptance record", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-retention-acc-"));
   const rendersDir = path.join(root, "renders");
-  const publishDir = path.join(root, "publish");
   fs.mkdirSync(rendersDir, { recursive: true });
-  fs.mkdirSync(publishDir, { recursive: true });
   try {
-    writeExportWithSidecars(rendersDir, "aideos_demo_long_1000.mp4");
-    writeExportWithSidecars(rendersDir, "aideos_demo_long_2000.mp4");
-    writeExportWithSidecars(rendersDir, "aideos_demo_long_3000.mp4");
-    writeExportWithSidecars(rendersDir, "aideos_demo_long_4000.mp4");
-
-    const recordPath = path.join(publishDir, "record.json");
+    for (const ts of [1000, 2000, 3000, 4000]) {
+      const name = `aideos_demo_long_${ts}.mp4`;
+      writeExportWithSidecars(rendersDir, name);
+      fs.writeFileSync(path.join(rendersDir, name), `bytes-${ts}`);
+    }
+    const sha = (text: string) => crypto.createHash("sha256").update(text).digest("hex");
+    const acceptancePath = path.join(root, "acceptance.json");
     fs.writeFileSync(
-      recordPath,
+      acceptancePath,
       JSON.stringify({
-        schema: "aideos.publish/1",
-        uploads: [{ format: "long", sourceFile: "videos/demo/renders/aideos_demo_long_1000.mp4" }],
+        schema: "aideos.acceptance/1",
+        toolWrites: [],
+        formats: {
+          long: {
+            mp4Hash: sha("bytes-4000"),
+            measured: { mp4Hash: sha("bytes-1000") },
+            judged: [{ mp4Hash: sha("bytes-2000") }],
+          },
+        },
       }),
       "utf8",
     );
 
-    const res = pruneStudioExports({
-      rendersDir,
-      filmId: "demo",
-      format: "long",
-      publishRecordPath: recordPath,
-    });
-    assert.deepEqual(res.kept, [
-      "aideos_demo_long_4000.mp4",
-      "aideos_demo_long_3000.mp4",
-      "aideos_demo_long_1000.mp4",
-    ]);
-    assert.deepEqual(res.removed, ["aideos_demo_long_2000.mp4"]);
-    assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_1000.mp4")), true);
+    const res = pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
+    assert.deepEqual(res.removed, ["aideos_demo_long_3000.mp4"]);
+    for (const kept of [1000, 2000, 4000]) {
+      assert.equal(fs.existsSync(path.join(rendersDir, `aideos_demo_long_${kept}.mp4`)), true);
+    }
 
-    // A corrupt publish record stops pruning rather than risking deleting a published file.
-    fs.writeFileSync(recordPath, "{not valid json", "utf8");
-    const blocked = pruneStudioExports({
-      rendersDir,
-      filmId: "demo",
-      format: "long",
-      keep: 1,
-      publishRecordPath: recordPath,
-    });
+    fs.writeFileSync(
+      acceptancePath,
+      JSON.stringify({ schema: "aideos.acceptance/1", formats: { long: { mp4Hash: sha("bytes-1000") } } }),
+      "utf8",
+    );
+    const partial = pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
+    assert.deepEqual(partial.removed, ["aideos_demo_long_2000.mp4"]);
+    assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_1000.mp4")), true);
+    assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_2000.mp4")), false);
+    assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_2000.mp4.render.json")), false);
+
+    fs.writeFileSync(acceptancePath, "{not valid json", "utf8");
+    const blocked = pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
     assert.deepEqual(blocked.removed, []);
-    assert.match(blocked.skippedReason ?? "", /unreadable publish record/);
-    assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_3000.mp4")), true);
+    assert.match(blocked.skippedReason ?? "", /unreadable acceptance record/);
+    assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_1000.mp4")), true);
+    assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_4000.mp4")), true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

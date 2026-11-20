@@ -260,7 +260,7 @@ test("parseClaudeScript still reads a mixed legacy and bracket screenplay throug
   ]);
 });
 
-test("W9 single-timestamp chapter headings: strips leading single timestamp from section titles without catching plain prose", () => {
+test("W9 single-timestamp chapter headings: only a hashed heading carries one timestamp, and an unhashed clock-time line stays prose", () => {
   const script = [
     "## 0:00-0:30 - Range Heading",
     "[NARRATION]",
@@ -270,8 +270,7 @@ test("W9 single-timestamp chapter headings: strips leading single timestamp from
     "[NARRATION]",
     "3:00 is just a time mentioned inside prose.",
     "",
-    "1:05: The Bare Timestamp Heading",
-    "[NARRATION]",
+    "1:05: Unhashed clock time stays prose.",
     "Closing line.",
   ].join("\n");
 
@@ -281,8 +280,10 @@ test("W9 single-timestamp chapter headings: strips leading single timestamp from
     [
       { title: "Range Heading", timeStart: "0:00", timeEnd: "0:30" },
       { title: "The Problem With Proving Software", timeStart: "0:30", timeEnd: undefined },
-      { title: "The Bare Timestamp Heading", timeStart: "1:05", timeEnd: undefined },
     ],
   );
-  assert.equal(segments[1].beats[0].text, "3:00 is just a time mentioned inside prose.");
+  assert.equal(
+    segments[1].beats[0].text,
+    "3:00 is just a time mentioned inside prose. 1:05: Unhashed clock time stays prose. Closing line.",
+  );
 });

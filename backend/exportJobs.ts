@@ -182,8 +182,10 @@ export function createExportJobs(deps: ExportJobDeps = {}) {
               snapshot.downloadUrl = input.downloadUrl;
               try {
                 input.onDone?.();
-              } catch {
-                /* Preserve the finished export if post-publish retention fails. */
+              } catch (error) {
+                console.warn(
+                  `[export] post-export hook failed: ${error instanceof Error ? error.message : String(error)}`,
+                );
               }
             }
           },

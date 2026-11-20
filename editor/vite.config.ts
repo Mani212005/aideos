@@ -1015,13 +1015,14 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   return endCardNotice;
                 },
                 onDone: () => {
-                  pruneStudioExports({
+                  const pruned = pruneStudioExports({
                     rendersDir,
                     filmId: postedFilm.id,
                     format: outFormat,
                     keepFilenames: [filename],
-                    publishRecordPath: path.join(videosDir, postedFilm.id, 'publish', 'record.json'),
+                    acceptancePath: path.join(videosDir, postedFilm.id, 'acceptance.json'),
                   });
+                  if (pruned.skippedReason) console.warn(`[export] retention skipped: ${pruned.skippedReason}`);
                 },
               });
               sendJson(res, busy ? 409 : 202, busy ? { error: 'Another export is already running.', job } : { job });
