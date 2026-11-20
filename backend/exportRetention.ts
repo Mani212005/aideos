@@ -7,6 +7,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 
 /** Default number of timestamped Studio exports retained per film and format. */
 export const STUDIO_EXPORT_KEEP_PER_FORMAT = 2;
@@ -100,17 +101,19 @@ export function readProtectedMp4Hashes(
   }
 }
 
-// SHA-256 of a file as lowercase hex, or null when it cannot be read.
-function hashFile(file: string): string | null {
+// SHA-256 of a file as lowercase hex, streamed in chunks, or null when it cannot be read.
+async function hashFile(file: string): Promise<string | null> {
   try {
-    return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+    const hash = crypto.createHash("sha256");
+    await pipeline(fs.createReadStream(file), hash);
+    return hash.digest("hex");
   } catch {
     return null;
   }
 }
 
 // Removes Studio exports beyond the newest `keep` per format while never deleting hand-named, CLI, active, or published exports.
-export function pruneStudioExports(input: PruneStudioExportsInput): PruneStudioExportsResult {
+export async function pruneStudioExports(input: PruneStudioExportsInput): Promise<PruneStudioExportsResult> {
   const keep = input.keep ?? STUDIO_EXPORT_KEEP_PER_FORMAT;
   if (!Number.isInteger(keep) || keep < 1) {
     throw new Error(`Invalid keep count (${keep}): expected a positive integer`);
@@ -159,7 +162,7 @@ export function pruneStudioExports(input: PruneStudioExportsInput): PruneStudioE
       kept.push(name);
       continue;
     }
-    const hash = protectedHashes.size > 0 ? hashFile(target) : null;
+    const hash = protectedHashes.size > 0 ? await hashFile(target) : null;
     if (protectedHashes.size > 0 && (hash === null || protectedHashes.has(hash))) {
       protectedSet.add(name);
       kept.push(name);

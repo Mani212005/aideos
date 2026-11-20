@@ -1014,8 +1014,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   if (master.status === 'skipped') endCardNotice = [endCardNotice, `Master skipped: ${master.reason}`].filter(Boolean).join('; ');
                   return endCardNotice;
                 },
-                onDone: () => {
-                  const pruned = pruneStudioExports({
+                onDone: async () => {
+                  const pruned = await pruneStudioExports({
                     rendersDir,
                     filmId: postedFilm.id,
                     format: outFormat,

@@ -25,7 +25,7 @@ function writeExportWithSidecars(dir: string, filename: string): void {
   }
 }
 
-test("W8 export retention: keeps newest 2 Studio exports per format and prunes older ones with sidecars, leaving manual/CLI/other-format files untouched", () => {
+test("W8 export retention: keeps newest 2 Studio exports per format and prunes older ones with sidecars, leaving manual/CLI/other-format files untouched", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-retention-"));
   const rendersDir = path.join(root, "renders");
   fs.mkdirSync(rendersDir, { recursive: true });
@@ -44,7 +44,7 @@ test("W8 export retention: keeps newest 2 Studio exports per format and prunes o
     assert.equal(parseStudioExportFilename("aideos_demo_long_4000.mp4", "demo", "long"), 4000);
     assert.equal(parseStudioExportFilename("long.mp4", "demo", "long"), null);
 
-    const res = pruneStudioExports({
+    const res = await pruneStudioExports({
       rendersDir,
       filmId: "demo",
       format: "long",
@@ -76,7 +76,7 @@ test("W8 export retention: keeps newest 2 Studio exports per format and prunes o
   }
 });
 
-test("W8 export retention: preserves an older export whose mp4 hash acceptance.json names, prunes unreferenced ones, and fails closed on an unreadable acceptance record", () => {
+test("W8 export retention: preserves an older export whose mp4 hash acceptance.json names, prunes unreferenced ones, and fails closed on an unreadable acceptance record", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-retention-acc-"));
   const rendersDir = path.join(root, "renders");
   fs.mkdirSync(rendersDir, { recursive: true });
@@ -104,7 +104,7 @@ test("W8 export retention: preserves an older export whose mp4 hash acceptance.j
       "utf8",
     );
 
-    const res = pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
+    const res = await pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
     assert.deepEqual(res.removed, ["aideos_demo_long_3000.mp4"]);
     for (const kept of [1000, 2000, 4000]) {
       assert.equal(fs.existsSync(path.join(rendersDir, `aideos_demo_long_${kept}.mp4`)), true);
@@ -115,14 +115,14 @@ test("W8 export retention: preserves an older export whose mp4 hash acceptance.j
       JSON.stringify({ schema: "aideos.acceptance/1", formats: { long: { mp4Hash: sha("bytes-1000") } } }),
       "utf8",
     );
-    const partial = pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
+    const partial = await pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
     assert.deepEqual(partial.removed, ["aideos_demo_long_2000.mp4"]);
     assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_1000.mp4")), true);
     assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_2000.mp4")), false);
     assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_2000.mp4.render.json")), false);
 
     fs.writeFileSync(acceptancePath, "{not valid json", "utf8");
-    const blocked = pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
+    const blocked = await pruneStudioExports({ rendersDir, filmId: "demo", format: "long", keep: 1, acceptancePath });
     assert.deepEqual(blocked.removed, []);
     assert.match(blocked.skippedReason ?? "", /unreadable acceptance record/);
     assert.equal(fs.existsSync(path.join(rendersDir, "aideos_demo_long_1000.mp4")), true);
