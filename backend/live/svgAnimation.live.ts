@@ -33,6 +33,7 @@ test("A-14 / Visual Review: render a custom SVG animation frame strip to out/svg
     const outPng = path.join(OUT_STRIP_DIR, `strip_${String(f).padStart(3, "0")}.png`);
     renderFrameStill(compiled.frames[f], outPng, {
       svgSources: assets.svgSources,
+      rasterUrls: assets.rasterUrls,
       width: 960,
       height: 540,
       sceneSize: scene.sceneSize,

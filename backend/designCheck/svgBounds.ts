@@ -167,7 +167,7 @@ function num(node: SvgNode, name: string, fallback = 0): number {
 }
 
 // Reads a style property from a node's attributes or its inline style.
-function styleValue(node: SvgNode, name: string): string | undefined {
+export function styleValue(node: SvgNode, name: string): string | undefined {
   const inline = node.attrs.style?.match(new RegExp(`(?:^|;)\\s*${name}\\s*:\\s*([^;]+)`));
   return (inline?.[1] ?? node.attrs[name])?.trim();
 }

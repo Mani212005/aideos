@@ -1,10 +1,10 @@
 /**
- * File Description: Loads and checks a Render IR document (`aideos.render/1` or its superset `aideos.render/2`): rejects bad JSON, an unknown version or a structurally invalid document (each version against its own schema), then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, and for the Three stage its graph, tracks, parts, textures and face programs). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files.
+ * File Description: Loads and checks a Render IR document (`aideos.render/1`, its superset `aideos.render/2` or that one's superset `aideos.render/3`): rejects bad JSON, an unknown version or a structurally invalid document (each version against its own schema), then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, for the Three stage its graph, tracks, parts, textures and face programs, and for a picture its image asset, its one element and the properties that element may animate). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files.
  * Inputs and outputs: JSON text or an already parsed value -> a typed RenderIr, or a failure of kind not_json, unsupported_version or invalid_document with every issue found.
  * Used by: backend/renderIr/emit.ts (checks every emitted document), backend/renderIr/renderIr.test.ts, backend/renderIr/stage3d.test.ts.
  */
 
-import { RENDER_IR_VERSION, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, type Asset, type FormatName, type Keyframe, type Node, type RenderIr, type Stage3dNode } from "./schema";
+import { IMAGE_ELEMENT_PROPERTIES, RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, type Asset, type FormatName, type Keyframe, type Node, type RenderIr, type Stage3dNode } from "./schema";
 
 /** The versions this build reads, as the `supported` text of an unsupported_version failure. */
 export const SUPPORTED_VERSIONS_TEXT = RENDER_IR_VERSIONS.join(", ");
@@ -58,8 +58,8 @@ export function validateRenderIr(value: unknown): LoadResult {
   if (!(RENDER_IR_VERSIONS as readonly string[]).includes(found)) {
     return { ok: false, error: { kind: "unsupported_version", found, supported: SUPPORTED_VERSIONS_TEXT } };
   }
-  // Each version is checked against its own shape, so a `/1` document cannot carry a `/2` addition.
-  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : renderIrSchemaV2).safeParse(value);
+  // Each version is checked against its own shape, so an older document cannot carry a later version's addition.
+  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : found === RENDER_IR_VERSION_2 ? renderIrSchemaV2 : renderIrSchemaV3).safeParse(value);
   if (!parsed.success) {
     return invalid(parsed.error.issues.map((i) => ({
       code: "schema",
@@ -175,7 +175,7 @@ export function checkSemantics(ir: RenderIr): Issue[] {
       const p = at(path, i);
       if (ids.has(node.id)) add("duplicate_node_id", at(p, "id"), `node id ${node.id} is already used`);
       ids.add(node.id);
-      const allowed = node.kind === "stage3d" ? space === "stage" && top : space === "stage" ? node.kind === "svg" || node.kind === "group" : node.kind !== "svg";
+      const allowed = node.kind === "stage3d" ? space === "stage" && top : space === "stage" ? node.kind === "svg" || node.kind === "image" || node.kind === "group" : node.kind !== "svg" && node.kind !== "image";
       if (!allowed) add("node_not_allowed", at(p, "kind"), node.kind === "stage3d" ? "a stage3d node is drawn only at the top of the stage" : `a ${node.kind} node cannot be drawn in the ${space}`);
       if (node.visible) checkSpan(at(p, "visible"), node.visible.fromFrame, node.visible.toFrame);
       switch (node.kind) {
@@ -190,14 +190,19 @@ export function checkSemantics(ir: RenderIr): Issue[] {
           checkNodeTracks(p, node.tracks);
           walk(node.children, at(p, "children"), space, false);
           break;
-        case "svg": {
+        case "svg":
+        case "image": {
           checkNodeTracks(p, node.tracks);
-          const asset = needAsset(at(p, "asset"), node.asset, "svg");
+          const asset = needAsset(at(p, "asset"), node.asset, node.kind);
+          // A drawn picture is pinned, so a render is as repeatable as an SVG render.
+          if (node.kind === "image" && asset?.kind === "image" && asset.sha256 === undefined) add("image_unpinned", at(p, "asset"), `image asset ${asset.id} carries no sha256; a drawn picture is pinned`);
           const keys = new Set<string>();
           const origins = new Map<string, string>();
           node.elementTracks.forEach((t, j) => {
             const tp = at(p, "elementTracks", j);
-            if (asset?.kind === "svg" && !asset.elementIds.includes(t.target)) add("unknown_element", at(tp, "target"), `asset ${node.asset} declares no element ${t.target}`);
+            if (node.kind === "svg" && asset?.kind === "svg" && !asset.elementIds.includes(t.target)) add("unknown_element", at(tp, "target"), `asset ${node.asset} declares no element ${t.target}`);
+            if (node.kind === "image" && t.target !== node.element) add("unknown_element", at(tp, "target"), `image node ${node.id} has the one element ${node.element}, not ${t.target}`);
+            if (node.kind === "image" && !(IMAGE_ELEMENT_PROPERTIES as readonly string[]).includes(t.property)) add("property_not_allowed", at(tp, "property"), `a picture's ${t.property} cannot be animated; move, scale, rotate or fade it`);
             const key = `${t.target}\u0000${t.property}`;
             if (keys.has(key)) add("duplicate_track", tp, `${t.property} of ${t.target} is driven by two tracks`);
             keys.add(key);

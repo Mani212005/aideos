@@ -16,11 +16,15 @@ import { createNativeRenderer } from "./nativeRenderer";
 import { parseRenderIr } from "./renderIr/validate";
 import { nativeSceneFilm, PROBE_SVG } from "./testSupport/nativeSceneFilm";
 
-/** The stand-in binary: answers `measure` like the fake measurer and `video` by recording what it saw. */
+/** The stand-in binary: answers `check` as the real loader does for a film it accepts, `measure` like the fake measurer and `video` by recording what it saw. */
 const STUB = `#!/usr/bin/env node
 const fs = require("fs");
 const path = require("path");
 const args = process.argv.slice(2);
+if (args[0] === "check") {
+  process.stdout.write("ok stub\\n");
+  process.exit(0);
+}
 if (args[0] === "measure") {
   const req = JSON.parse(fs.readFileSync(args[1], "utf8"));
   process.stdout.write(JSON.stringify({

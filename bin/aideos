@@ -184,6 +184,21 @@ if [ "$#" -gt 0 ]; then
           ;;
       esac
       ;;
+    pictures)
+      # aideos pictures status <film> | aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin]
+      SUB="${1:-}"
+      shift || true
+      case "$SUB" in
+        status|add)
+          cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts "pictures-$SUB" "$@"
+          ;;
+        *)
+          echo "Usage: aideos pictures status <film>" >&2
+          echo "       aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin]" >&2
+          exit 1
+          ;;
+      esac
+      ;;
     character)
       # aideos character check|sheet <spec...>
       SUB="${1:-}"
@@ -307,6 +322,7 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos look brief|check <film>      Write or check a film's look plan (aideos look --help)"
       echo "  aideos reel brief|check|build <film> Write, check or build a condensed reel narration cut"
       echo "  aideos design check|brief|build <film>  Check, brief or build a film's bespoke design (aideos design --help)"
+      echo "  aideos pictures status|add <film>  List a film's generated pictures, or store one made on the Mac (docs/GOOD_VIDEO.md)"
       echo "  aideos connect <code>       Link the studio to the coding agent in this terminal"
       echo "  aideos mcp                  Serve the production tools over MCP (stdio)"
       echo "  aideos engine-test          Run the backend engine self-test"

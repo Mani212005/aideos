@@ -13,7 +13,7 @@ import { reelForRender } from "../backend/reelCut/store";
 import { createRenderJob } from "../backend/renderJob";
 import { createRemotionRenderer } from "../backend/remotionRenderer";
 import { createNativeRenderer } from "../backend/nativeRenderer";
-import { describeChoice, requestedRenderer, selectRenderer } from "../backend/rendererSelection";
+import { createSelectedRenderer, requestedRenderer } from "../backend/rendererSelection";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 
@@ -27,16 +27,20 @@ async function main(): Promise<void> {
   const rendersDir = path.join(resolvePackageDir(activeFilm), "renders");
   const outPath = path.join(rendersDir, `${format}.mp4`);
   const requested = requestedRenderer(process.argv.slice(3));
-  const choice = selectRenderer(film, format, requested.name, {
+  // The choice is made while the job prepares, so the native loader's own refusal falls back to Remotion visibly.
+  const renderer = createSelectedRenderer({
+    mode: requested.name,
     remotion: () => createRemotionRenderer({ caller: "manual", extraArgs: requested.rest }),
     native: () => createNativeRenderer({
       onLog: (message) => console.log(`[render] ${message}`),
       onReport: (r) => console.log(`[render] native: ${r.frames} frames in ${r.elapsedSec.toFixed(1)} s (${r.framesPerSecond.toFixed(1)} fps), encoder ${r.encoder}${r.fallbackReason ? ` (${r.fallbackReason})` : ""}`),
     }),
+    onChoice: (choice, message) => {
+      (choice.fallbackReason ? console.warn : console.log)(`[render] ${message}`);
+      console.log(`[render] Rendering active film "${activeFilm}" (${format}, ${choice.name}) to ${path.relative(REPO_ROOT, outPath)}...`);
+    },
   });
-  (choice.fallbackReason ? console.warn : console.log)(`[render] ${describeChoice(choice, film, format)}`);
-  console.log(`[render] Rendering active film "${activeFilm}" (${format}, ${choice.name}) to ${path.relative(REPO_ROOT, outPath)}...`);
-  await createRenderJob({ film, format, outPath, profile: "final" }, choice.renderer).run();
+  await createRenderJob({ film, format, outPath, profile: "final" }, renderer).run();
   writeDescriptionCredits(rendersDir, [film]);
   console.log(`[render] Render complete: ${outPath}`);
 }

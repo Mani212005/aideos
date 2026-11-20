@@ -293,6 +293,8 @@ pub struct EndCardCopy {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Node {
     Svg(SvgNode),
+    /// A pinned picture on the stage (`aideos.render/3`).
+    Image(ImageNode),
     Rect(RectNode),
     Text(TextNode),
     Rail(RailNode),
@@ -307,6 +309,7 @@ impl Node {
     pub fn id(&self) -> &str {
         match self {
             Node::Svg(n) => &n.id,
+            Node::Image(n) => &n.id,
             Node::Rect(n) => &n.id,
             Node::Text(n) => &n.id,
             Node::Rail(n) => &n.id,
@@ -321,6 +324,7 @@ impl Node {
     pub fn visible(&self) -> Option<&Visible> {
         match self {
             Node::Svg(n) => n.visible.as_ref(),
+            Node::Image(n) => n.visible.as_ref(),
             Node::Rect(n) => n.visible.as_ref(),
             Node::Text(n) => n.visible.as_ref(),
             Node::Rail(n) => n.visible.as_ref(),
@@ -335,6 +339,7 @@ impl Node {
     pub fn kind_name(&self) -> &'static str {
         match self {
             Node::Svg(_) => "svg",
+            Node::Image(_) => "image",
             Node::Rect(_) => "rect",
             Node::Text(_) => "text",
             Node::Rail(_) => "rail",
@@ -362,6 +367,31 @@ pub struct SvgNode {
     pub rotation: f64,
     #[serde(deserialize_with = "de_whole_i32")]
     pub layer: i32,
+    pub tracks: Vec<NodeTrack>,
+    pub element_tracks: Vec<ElementTrack>,
+}
+
+/// A pinned picture placed on the stage (`aideos.render/3`): placed like an svg node, then its own element tracks
+/// (all on `element`) move, scale, turn and fade it about its origin, then the image asset fills the `width` x
+/// `height` box centred on that origin.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ImageNode {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible: Option<Visible>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opacity: Option<f64>,
+    pub asset: String,
+    pub x: f64,
+    pub y: f64,
+    pub scale: f64,
+    pub rotation: f64,
+    #[serde(deserialize_with = "de_whole_i32")]
+    pub layer: i32,
+    pub width: f64,
+    pub height: f64,
+    pub element: String,
     pub tracks: Vec<NodeTrack>,
     pub element_tracks: Vec<ElementTrack>,
 }

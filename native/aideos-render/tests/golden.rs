@@ -1,4 +1,4 @@
-//! File Description: Native golden frames: the CPU raster's own reference frames of hello-scene and still-talking (long and reel), rendered from the committed Render IR documents in `fixtures/golden/`, downscaled 4x4 to the Chrome goldens' quarter scale and compared with the committed PNGs under the same strict tolerance as backend/journeys/goldenCompare.ts (mean difference at most 0.05, at most 0.1% of pixels changed by more than 8). `AIDEOS_NATIVE_GOLDEN_UPDATE=1` renders every frame twice, requires identical pixels, and rewrites the PNGs and MANIFEST.json.
+//! File Description: Native golden frames: the CPU raster's own reference frames of the films in `fixtures/golden/cases.json` (hello-scene, still-talking, the Three-stage films and pictures-stage, the illustrated stage's picture fixture; long and reel), rendered from the committed Render IR documents in `fixtures/golden/`, downscaled 4x4 to the Chrome goldens' quarter scale and compared with the committed PNGs under the same strict tolerance as backend/journeys/goldenCompare.ts (mean difference at most 0.05, at most 0.1% of pixels changed by more than 8). `AIDEOS_NATIVE_GOLDEN_UPDATE=1` renders every frame twice, requires identical pixels, and rewrites the PNGs and MANIFEST.json.
 //! Inputs and outputs: fixtures/golden/cases.json, <film>/render.<format>.json, <film>/visuals/*.svg, native/fonts and frames/<film>/<format>-<frame>.png -> a passing or failing comparison per frame, or (update mode) new frames and a manifest.
 //! Used by: `cargo test --manifest-path native/Cargo.toml` (the CI unit job's cargo step), docs/NATIVE_RENDERER.md.
 
@@ -101,6 +101,11 @@ fn renderer_for(case: &Case) -> Renderer {
     let meshes = golden_dir().join(&case.film).join("meshes");
     if meshes.is_dir() {
         copy_files(&meshes, &package.join("meshes"));
+    }
+    // A film with pictures (`aideos.render/3`) ships each pinned PNG.
+    let pictures = golden_dir().join(&case.film).join("pictures");
+    if pictures.is_dir() {
+        copy_files(&pictures, &package.join("pictures"));
     }
     let ir =
         aideos_render_ir::load_from_path(golden_dir().join(&case.ir)).expect("the golden IR loads");

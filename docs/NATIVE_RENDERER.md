@@ -1,10 +1,10 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
 
-`aideos-render` evaluates a Render IR [`aideos.render/1` or `/2`](RENDER_IR.md) as a pure function of the frame
+`aideos-render` evaluates a Render IR [`aideos.render/1`, `/2` or `/3`](RENDER_IR.md) as a pure function of the frame
 number and draws the frame with Skia. Skia's **CPU rasterizer is the deterministic reference**; an
 optional GPU path draws the same frame through OpenGL. There is no browser, no DOM and no HTML.
 
@@ -26,13 +26,13 @@ adapter in `backend/nativeRenderer.ts` hands it an IR path, a package directory 
 | Retained SVG model and parser | `native/aideos-render/src/svg/mod.rs`, `color.rs` |
 | Raster: stage and overlay, SVG drawing, chrome (rail, captions, end card), fonts | `native/aideos-render/src/raster/` |
 | Three stage rasterizer (graph pose, face painting, triangle setup, tile raster) | `native/aideos-render/src/raster/stage3d/` (`pose.rs`, `face.rs`, `setup.rs`, `tiles.rs`) |
-| Public `Renderer` (asset loading, checks, CPU render, PNG) | `native/aideos-render/src/renderer.rs` |
+| Public `Renderer` (asset loading, checks, picture decode and pin check, CPU render, PNG) | `native/aideos-render/src/renderer.rs`, `src/sha256.rs` |
 | Optional GPU path (feature `gpu`) | `native/aideos-render/src/gpu.rs` |
 | Whole-film render: worker threads, RGBA to I420, in-order hand-off to the R3 encoder, audio plan from the IR | `native/aideos-render/src/video.rs` |
 | Text measurement for the emitter | `native/aideos-render/src/measure.rs` |
-| CLI (`<ir> --frame`, `video`, `measure`) | `native/aideos-render/src/main.rs` |
+| CLI (`<ir> --frame`, `video`, `measure`, `check`) | `native/aideos-render/src/main.rs` |
 | Vendored variable fonts (Geist, JetBrains Mono) used by every emitted film | `native/fonts/` (provenance in its README) |
-| The IR emitter (film.json to `aideos.render/1`, or `/2` for a Three-stage film) | `backend/renderIr/emit.ts`, `backend/renderIr/emitStage3d.ts` |
+| The IR emitter (film.json to `aideos.render/1`, `/2` for a Three-stage film, `/3` for a film with pictures) | `backend/renderIr/emit.ts`, `backend/renderIr/emitStage3d.ts` |
 | RenderJob adapter and the renderer flag | `backend/nativeRenderer.ts`, `backend/rendererSelection.ts` |
 | Linux fontconfig link shim | `native/aideos-render/build.rs` |
 | Test package (vendored OFL fonts, artwork, IR) | `native/aideos-render/fixtures/package/` |
@@ -50,6 +50,7 @@ native/target/release/aideos-render <ir.json> --frame N [--format long|reel] [--
 native/target/release/aideos-render video <ir.json> --format long|reel --out film.mp4 [--package DIR] [--frames A-B] \
     [--profile draft|review|final] [--backend auto|software|vaapi|videotoolbox] [--threads N] [--encoder-threads N]
 native/target/release/aideos-render measure <request.json>
+native/target/release/aideos-render check <ir.json> [--package DIR]    # load everything a render loads, draw nothing
 
 aideos render                               # native when it can draw the film, else Remotion (the reason is printed)
 AIDEOS_RENDERER=remotion aideos render      # kill switch: every film on Remotion (or --renderer remotion)
@@ -71,6 +72,10 @@ own audio clips (path, start, length, source offset, gain and its linear envelop
 description of the film; a non-linear gain envelope is refused. A frame range shifts the audio with it.
 It prints `frames D/T` lines and then one JSON report (frames, size, threads, encoder, wall time, fps).
 
+`check` loads the IR and every asset it draws (SVG artwork, pinned pictures, fonts, the Three stage mesh) exactly as
+a render does and draws nothing: it prints `ok <film> (<version>)` or exits 1 naming what it refuses. The renderer
+choice asks it before rendering (see [The renderer flag](#the-renderer-flag)).
+
 `measure` takes `{fonts: [{id, path, family, weight}], runs: [{text, font, size, letterSpacing}],
 metrics: [{font, size}]}` and prints `{widths, metrics: [{baseline, height, ascent, descent}]}`: each run's
 single-line width (letter spacing follows every glyph, as in CSS) and each face's `line-height: normal`
@@ -81,7 +86,7 @@ metrics, in whole pixels as browsers round them.
 1. **Background**: the IR `background` fills the frame.
 2. **Stage**, in scene units under the camera: the frame centre, the cover fit
    `max(width / scene.width, height / scene.height)`, then the camera's rotation, zoom and centre
-   (`projectStagePoint` in `src/dl/scene/projection.ts`). Stage siblings draw by svg `layer` (a group
+   (`projectStagePoint` in `src/dl/scene/projection.ts`). Stage siblings draw by svg or image `layer` (a group
    counts as 0), document order breaking ties, as SceneView sorts entities by layer.
 3. **Overlay**, in frame pixels, in document order: groups, rects, text, the rail, captions, the end card.
 
@@ -92,7 +97,8 @@ transform is appended to the authored one (translate, then rotate and scale abou
 driven opacity replaces the authored attribute, `drawOn` dashes a stroke over its own length and a group's
 `drawOn` reaches the strokeable shapes inside it, and `x1`/`y1`/`x2`/`y2` move a line. A compositing layer
 is used only where the result needs one: a group (or node) below full opacity, or a shape that has both a
-fill and a stroke below full opacity.
+fill and a stroke below full opacity. An `image` node (a picture) is drawn the same way up to its element state,
+then its decoded image fills its box (see [Pictures](#pictures-the-illustrated-stage-phase-1)).
 
 ### Evaluation
 
@@ -176,7 +182,7 @@ the package directory (including through a symlink).
 
 `native/aideos-render/tests/golden.rs` holds the CPU raster's own reference frames, separate from the Chrome
 goldens in `backend/journeys/goldens/` (those still guard the default Remotion render and are untouched). The set
-covers the native-supported fixture films, `hello-scene`, `still-talking` and the Three-stage character films `iona-receive`, `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters` (the J5 film: Iona, Pip and Marlo, each with a glider) and `journey-j3-j4-dots` (the dots-v1 film), in long and reel, at the same frames
+covers the native-supported fixture films, `hello-scene`, `still-talking`, the Three-stage character films `iona-receive`, `pixels-stage-pip`, `pixels-stage-marlo` and `journey-three-characters` (the J5 film: Iona, Pip and Marlo, each with a glider) and `journey-j3-j4-dots` (the dots-v1 film), and `pictures-stage` (the illustrated stage's synthetic picture film, `/3`, its pinned PNGs in `<film>/pictures/`), in long and reel, at the same frames
 and the same quarter scale as the Chrome goldens (`fixtures/golden/frames/<film>/<format>-<frame>.png`, 480 x 270
 or 270 x 480, a 4 x 4 box average of the 1920 x 1080 CPU frame). `fixtures/golden/<film>/render.<format>.json` are
 the emitter's IR for those films with the audio clips dropped (the frame raster never opens audio), with the
@@ -219,6 +225,49 @@ No frame has an SSIM under 0.98, the worst frames in both formats are the end ca
 are ACCEPT. Machine load differed between the native and Remotion runs, so the times are indicative. The evidence
 (README.md and completeness.md, which lists what the unfinished film still lacks) is in
 `/home/mani/aideos-linux-home/data/aideos-phase1-dreaming-proof/`.
+
+## Pictures (the illustrated stage, phase 1)
+
+Phase 1 of the illustrated stage (one generated plate and a few generated objects on the one stage, every word,
+line and motion still SVG; [GOOD_VIDEO.md](GOOD_VIDEO.md#pictures-the-illustrated-stage)) is drawn natively. A scene
+asset with a `raster` source becomes an `image` node of an `aideos.render/3` document (a film with no picture stays
+`/1` or `/2`, byte for byte), and its pinned PNG is staged at `pictures/<sha256>.png`.
+
+**Loading.** Only the images an `image` node draws are opened. Each must be exactly the pinned bytes (its SHA-256,
+computed by `src/sha256.rs`, must equal the asset's `sha256`) and decode to exactly the declared size, else the film is
+refused at load naming the asset. The pixels are decoded once into the frame surface's own layout (N32,
+premultiplied, no colour space, so no colour conversion per draw), marked opaque when every pixel is, with mipmaps
+built once. The worker threads of `video` share one decoded set (`SharedAssets`, with the Three stage), so a film's
+pictures cost their memory once, not once per thread.
+
+**Drawing** follows SceneView's `<image preserveAspectRatio="none">`: the node placement (`translate`, `scale`,
+`rotate`, node opacity as a group), the element state (translate, then rotate and scale about the track origin), the
+element opacity as the paint's alpha, then the image stretched over `width` x `height` centred on the origin with its
+straight alpha blended over the stage below; SVG layers above it and the whole overlay (captions, rail, end card) draw
+over it. Sampling matches Chrome as measured in the Remotion render: bilinear when the picture is enlarged on screen
+(closer to Chrome than Mitchell or Catmull-Rom cubics: 0.9966 to 0.9973 SSIM against 0.9959 to 0.9969 and 0.9954 to
+0.9966) and bilinear on the nearest mipmap level when it is reduced (0.9976 to 0.9979 on the reduced object, the same
+as blending two levels at about two thirds of its cost; with no mipmaps 0.988).
+
+**Parity with Remotion** on the synthetic fixture film `pictures-stage` (a 48 px plate enlarged 40 times, a 32 px orb
+and a 24 px chip with alpha, SVG labels and kinetic captions over them; every frame of the native goldens, both
+formats): whole-frame SSIM 0.9959 to 0.9967 and stage SSIM (above the caption band) 0.9959 to 0.9972 with the
+Mitchell enlargement first tried, 0.9966 to 0.9973 with bilinear; a 600 px object shown at a third of its size measured
+0.9976 to 0.9979 on its crop. `backend/journeys/pictures_stage.journey.ts` gates the stage at SSIM 0.995 (the bar of
+the reports above) and the native frames against their goldens at the strict tolerance.
+
+**Speed.** Measured on the Linux laptop (12 threads, x264 `final`, 480 frames of 1920 x 1080, alternating runs with a
+pause between them because the laptop throttles under sustained load): the fixture layout with a realistic picture set
+(one 1672 x 941 plate covering the frame, eight 1254 x 1254 objects with alpha, the generator's measured sizes) renders
+at **42 to 52 fps**, against **99 to 107 fps** for the same layout drawn as SVG, and **12.4 fps** for Remotion on the same
+picture film (PNG frames only, no encode). Drawing only, on one thread: 10 ms a frame without the pictures, about 12 ms
+more for the enlarged full-frame plate (Skia's CPU bilinear cost per output pixel, the same through every draw path;
+nearest sampling is 3.8 ms but breaks parity) and about 5 ms for the eight objects. So a picture film keeps about half
+of the native speed and stays about 4 times faster than its Remotion fallback; the plate is the cost.
+
+**Not drawn in phase 1** (phase 2): parallax (a depth factor per layer), masks, soft mattes and blend modes (a cut-out
+with real transparency is the phase 1 route), and picture motion beyond placing, scaling, turning and fading. A raster
+inside an SVG asset (`<image>`) is still refused at load, as before; the design check refuses it first.
 
 ## Determinism
 
@@ -283,6 +332,7 @@ differ per format.
 | Film part | IR |
 | --- | --- |
 | `film.scene` background and props | `svg` stage nodes at their position, scale, rotation, opacity and layer (`layer ?? round(y)`, as the compiler) |
+| A picture (`raster` asset: the plate or a generated object) | an `image` stage node the same way, its box the PNG's pixel size, its one element the asset id, over an `image` asset carrying the pinned `sha256`; the document becomes `aideos.render/3` |
 | Clip timelines | one element track per driven slot (`scale` writes `scaleX` and `scaleY`, as the compiler); each clip is one eased segment; a clip ended by an adjacent clip that continues from its end value stays one segment; a clip cut by a snapping clip or by the story's end is linear or held where that is exact, else per-frame keyframes. `emit.test.ts` checks every frame against `compileScene` |
 | The camera (`compileCameraTrack`, including the hold push) | per-frame linear keyframes, compressed to where the slope changes |
 | Asset-level Catmull-Rom tracks | per-frame keyframes from `compileScene` |
@@ -546,11 +596,15 @@ the job actually renders (after the studio's preparation), and is read from `AID
 
 | `AIDEOS_RENDERER` | Behaviour |
 | --- | --- |
-| unset or `auto` (default) | native when `nativeSupport` accepts the film in that format and the binary is built (`native/target/release/aideos-render`, or `AIDEOS_RENDER_BIN`); otherwise Remotion renders it exactly as before, and the log names every reason |
+| unset or `auto` (default) | native when `nativeSupport` accepts the film in that format, the binary is built (`native/target/release/aideos-render`, or `AIDEOS_RENDER_BIN`) and the native loader accepts the staged package (`aideos-render check`, asked while the job prepares); otherwise Remotion renders it exactly as before, and the log names every reason, including the loader's own refusal |
 | `remotion` | the kill switch: every film on Remotion |
 | `native` | native is required: a film it cannot draw, or a missing binary, fails the job with every reason |
 
-A failure of the native renderer on a film it accepted fails the job; it never falls back to Remotion. The job
+A failure of the native renderer on a film it accepted fails the job; it never falls back to Remotion. A refusal at
+load is not acceptance: before the illustrated stage, a PNG wrapped inside an SVG asset passed the design check, was
+sent to the native renderer and failed there with no fallback. Now the design check refuses it, and if such a film
+is rendered anyway the native loader's refusal (`unsupported element <image>`) sends it to Remotion in `auto`, with that
+reason in the log (`backend/journeys/pictures_stage.journey.ts` reproduces it end to end); `native` mode still fails it. The job
 sidecar (`<output>.render.json`) records the renderer that drew the file (`renderer`), next to the profile
 settings it applied.
 
@@ -560,8 +614,9 @@ range); the review and all-check render is `review` (VAAPI or VideoToolbox after
 The Remotion path keeps its own unchanged flags (`FINAL_ENCODE_FLAGS`).
 
 The native adapter (`backend/nativeRenderer.ts`)
-implements the RenderJob `Renderer` interface: `prepare` emits the IR and stages the package (IR, artwork,
-fonts, hard-linked audio) inside the job's attempt directory, `checkDiskBudget` needs room for the mp4 plus
+implements the RenderJob `Renderer` interface: `prepare` emits the IR, stages the package (IR, artwork, pictures,
+fonts, hard-linked audio) inside the job's attempt directory and runs `aideos-render check` on it (a refusal is a
+`NativeLoadRefusal`), `checkDiskBudget` needs room for the mp4 plus
 the shared 3 GiB reserve (no frame images are written), and `render` runs `aideos-render video` through the
 shared subprocess runner, which owns cancellation and the disk watchdog. The job's delivery checks,
 mastering, probe and sidecar are shared; the sidecar records the CRF as applied only when x264 encoded. The
@@ -579,5 +634,6 @@ as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-g
 Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and nothing of the Three stage any more: the cel stage with any number of performers is carried by
-`aideos.render/2` since P4.1 and drawn since P4.2 and P4.3, and dots-v1 is carried and drawn since P4.4. `image`, `audio` and `mesh`
-assets are not opened by the frame raster.
+`aideos.render/2` since P4.1 and drawn since P4.2 and P4.3, and dots-v1 is carried and drawn since P4.4. Pictures are
+drawn since `/3` (placing, scaling, turning and fading; parallax, masks and blend modes are phase 2). `audio` assets
+and `image` assets no image node draws are not opened by the frame raster.

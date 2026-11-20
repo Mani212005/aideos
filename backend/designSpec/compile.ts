@@ -4,6 +4,7 @@
  * through the kit's Timeline (so a snap, camera discontinuity or second origin is refused with
  * the element named), and the result is the film with its `scene`, `accent`, `design` provenance
  * and any per-shot block overrides applied.
+ * Declared pictures (the illustrated stage) become raster assets from the pinned files build.ts resolves.
  * Pure: it reads nothing from disk, so the build step and the tests share it. Characters arrive already
  * resolved and verified (see resolveDesignCharacters in build.ts); the compiled film embeds each spec.
  * Inputs and outputs: shot specifications, visual cues, and layout geometry -> compiled scene and shot timelines.
@@ -11,7 +12,7 @@
  */
 
 import { DEVICE_BLOCKS, type Film } from "../../src/dl/schema";
-import type { CameraTrack, EnvironmentAsset, Scene } from "../../src/dl/scene/types";
+import type { CameraTrack, EnvironmentAsset, RasterSource, Scene } from "../../src/dl/scene/types";
 import { FPS, SCENE_SIZE, Timeline, createCues, type Cues, type NarrationTiming } from "../sceneKit";
 import { resolveCue, collapsedCueShot } from "./cues";
 import type { DesignSpec, SpecCamera, SpecClip } from "./spec";
@@ -132,7 +133,7 @@ export function compileDesign(
   spec: DesignSpec,
   words: TimedWord[],
   source: DesignSource,
-  options: { characters?: Readonly<Record<string, CharacterSpec>>; collapsed?: ReadonlyMap<string, number>; format?: "long" | "reel"; splice?: SpliceOptions } = {},
+  options: { characters?: Readonly<Record<string, CharacterSpec>>; collapsed?: ReadonlyMap<string, number>; format?: "long" | "reel"; splice?: SpliceOptions; pictures?: Readonly<Record<string, RasterSource>> } = {},
 ): { film?: Film; errors: string[]; collapsedClips?: Array<{ asset: string; clipId: string; shotId: string; frame: number }> } {
   const errors: string[] = [];
   const collapsedClips: Array<{ asset: string; clipId: string; shotId: string; frame: number }> = [];
@@ -153,8 +154,19 @@ export function compileDesign(
     if (!shotIds.has(id) && !options.collapsed?.has(id)) errors.push(`shots."${id}" overrides a shot the film does not have (shots: ${[...shotIds].join(", ")})`);
   }
 
-  const props: EnvironmentAsset[] = spec.assets.filter((a) => "file" in a).map((a) => {
-    if (!("file" in a)) throw new Error("SVG asset requires a file");
+  // A declared picture resolves to its pinned, cached file (build.ts); an unresolved one is an error, never a placeholder.
+  const declaredPictures = new Set((("pictures" in spec ? spec.pictures?.items : undefined) ?? []).map((p) => p.id));
+  const pictureSource = (where: string, id: string): RasterSource | undefined => {
+    if (!declaredPictures.has(id)) {
+      errors.push(`${where} names picture "${id}", which design.json's pictures do not declare`);
+      return undefined;
+    }
+    const source = options.pictures?.[id];
+    if (!source) errors.push(`${where}: picture "${id}" is not resolved; build designs through buildDesign, which reads the picture cache`);
+    return source;
+  };
+  const props: EnvironmentAsset[] = spec.assets.filter((a) => "file" in a || "picture" in a).map((a) => {
+    if (!("file" in a) && !("picture" in a)) throw new Error("a stage asset requires a file or a picture");
     const timeline = new Timeline(`${a.id}-motion`, cues.durationFrames);
     // Spliced reel state: per element slot, the value it holds, when its last kept clip ended and the dropped clips awaiting one eased carry.
     // Names the element slot a property writes (scale is tracked by its X slot).
@@ -244,10 +256,12 @@ export function compileDesign(
       errors.push(`asset "${a.id}" splice: ${err instanceof Error ? err.message : String(err)}`);
     }
     const built = timeline.build();
+    const raster = "picture" in a && a.picture !== undefined ? pictureSource(`asset "${a.id}"`, a.picture) : undefined;
     return {
       assetId: a.id,
       ...("plane" in a ? { plane: a.plane } : {}),
-      svgSource: `${pkg}/${a.file}`,
+      ...("file" in a && a.file !== undefined ? { svgSource: `${pkg}/${a.file}` } : {}),
+      ...(raster ? { raster } : {}),
       ...(a.layer !== undefined ? { layer: a.layer } : {}),
       position: { x: a.position[0], y: a.position[1] },
       scale: a.scale,
@@ -264,9 +278,11 @@ export function compileDesign(
 
   if (errors.length) return { errors };
 
+  const plate = spec.background && "picture" in spec.background ? pictureSource("background", spec.background.picture) : undefined;
+  if (errors.length) return { errors };
   const background: EnvironmentAsset = {
     assetId: "background",
-    svgSource: `${pkg}/${spec.background?.file ?? DEFAULT_BACKGROUND_FILE}`,
+    ...(plate ? { raster: plate } : { svgSource: `${pkg}/${spec.background && "file" in spec.background ? spec.background.file : DEFAULT_BACKGROUND_FILE}` }),
     layer: 0,
     position: { x: SCENE_SIZE.w / 2, y: SCENE_SIZE.h / 2 },
     scale: spec.background?.scale ?? 4.8,

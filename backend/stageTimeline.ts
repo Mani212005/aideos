@@ -84,7 +84,9 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
       .map((part) => ({ ...part, signature: JSON.stringify([part.bounds, entity.transform.opacity,
         (part.ancestors ?? []).map((id) => [entity.elementStates?.[id], entity.subGroupRotations?.find((s) => s.elementId === id)])]) }));
   };
-  const missingArtwork = new Set(compiled?.frames[0].entities.filter((entity) => !entity.svgSource || !fs.existsSync(resolveRepoAssetPath(entity.svgSource))).map((entity) => entity.entityId));
+  // A picture is measured by its own visible (alpha-trimmed) box, like SVG artwork, when its file is there.
+  const artworkFile = (entity: CompiledEntity) => entity.raster?.src ?? entity.svgSource;
+  const missingArtwork = new Set(compiled?.frames[0].entities.filter((entity) => { const file = artworkFile(entity); return !file || !fs.existsSync(resolveRepoAssetPath(file)); }).map((entity) => entity.entityId));
   // Lists compiled visible identities at a frame for continuity and review consumers.
   const visibleAt = (frame: number) => {
     if (!compiled) return [] as string[];

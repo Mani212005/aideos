@@ -6,12 +6,13 @@
  * Used by: src/dl/scene/SceneClip.tsx, backend/scene/compile.test.ts.
  */
 
-import type { Scene, EnvironmentAsset, SchemaVersion } from "./types";
+import type { Scene, EnvironmentAsset, RasterSource, SchemaVersion } from "./types";
 import type { SvgElementState } from "./svgAnimation";
 import { compileSvgTimeline } from "./svgAnimation";
 import { compileCameraTrack, type CompiledCameraState } from "./cameraTrack";
 import { validateScene } from "./validateScene";
 import { evaluateCatmullRomSpline } from "../motion/spline";
+import { rasterElementIds } from "./raster";
 
 export interface CompiledEntityTransform {
   x: number;
@@ -26,6 +27,8 @@ export interface CompiledEntity {
   kind: "actor" | "prop" | "background";
   rigId?: string;
   svgSource?: string;
+  /** The picture this entity draws instead of SVG artwork (src/dl/scene/raster.ts). */
+  raster?: RasterSource;
   resolvedLayer: number;
   layerSource: "explicit" | "derived";
   transform: CompiledEntityTransform;
@@ -192,7 +195,8 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
     try {
       const compiledTimeline = compileSvgTimeline(asset.animation, {
         durationFrames: totalFrames,
-        availableElementIds: options.assetElementIds?.[asset.assetId],
+        // A picture's one element is the picture itself, whatever ids the caller read from SVG files.
+        availableElementIds: asset.raster ? rasterElementIds(asset) : options.assetElementIds?.[asset.assetId],
       });
       assetElementStates.set(asset.assetId, compiledTimeline.frames);
     } catch (err) {
@@ -222,6 +226,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
         entityId: scene.background.assetId,
         kind: "background",
         svgSource: scene.background.svgSource,
+        ...(scene.background.raster ? { raster: scene.background.raster } : {}),
         resolvedLayer,
         layerSource: hasExplicit ? "explicit" : "derived",
         transform: {
@@ -251,6 +256,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
           entityId: prop.assetId,
           kind: "prop",
           svgSource: prop.svgSource,
+          ...(prop.raster ? { raster: prop.raster } : {}),
           resolvedLayer,
           layerSource: hasExplicit ? "explicit" : "derived",
           transform: {

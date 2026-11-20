@@ -3,16 +3,18 @@
  * SceneView is a pure browser-safe component, so the filesystem half of asset resolution lives
  * here: this module turns a Scene into the svgSources map SceneView renders from, and fails loudly
  * with the asset path in the message when an asset is missing or will not parse.
- * Inputs and outputs: asset directory and scene manifest -> loaded and validated SVG asset sources.
- * Used by: backend/pipeline/run.ts, backend/scene/renderStill.ts.
- * Inputs and outputs: asset directory and scene manifest -> loaded and validated SVG asset sources.
- * Used by: backend/pipeline/run.ts, backend/scene/renderStill.ts.
+ * Pictures (raster assets) are checked against their pinned file and given a file:// URL for still renders.
+ * Inputs and outputs: asset directory and scene manifest -> loaded and validated SVG asset sources and picture URLs.
+ * Used by: backend/pipeline/run.ts, backend/scene/renderStill.ts, backend/nativeRenderer.ts, still and preview callers.
  */
 
 import fs from "node:fs";
+import { pathToFileURL } from "node:url";
 import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
 import { parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { rasterElementIds } from "../../src/dl/scene/raster";
+import { rasterFileProblems } from "../pictures/png";
 
 export interface LoadSceneAssetsOptions {
   /**
@@ -27,7 +29,9 @@ export interface LoadedSceneAssets {
   svgSources: Record<string, string>;
   /** Element ids declared by each asset's document, keyed by assetId, for compile validation. */
   elementIdsByAssetId: Record<string, string[]>;
-  /** Assets that could not be loaded, when strict is disabled. */
+  /** A file:// URL for each picture, keyed by its raster src, as SceneView's `rasterUrls` (still renders). */
+  rasterUrls: Record<string, string>;
+  /** Assets that could not be loaded, when strict is disabled; `svgSource` names the picture file for a picture. */
   problems: Array<{ assetId: string; svgSource: string; message: string }>;
 }
 
@@ -48,6 +52,7 @@ export function loadSceneAssets(
   const strict = options.strict !== false;
   const svgSources: Record<string, string> = {};
   const elementIdsByAssetId: Record<string, string[]> = {};
+  const rasterUrls: Record<string, string> = {};
   const problems: LoadedSceneAssets["problems"] = [];
 
   const assets: EnvironmentAsset[] = [];
@@ -55,6 +60,19 @@ export function loadSceneAssets(
   if (Array.isArray(scene.props)) assets.push(...scene.props);
 
   for (const asset of assets) {
+    if (asset.raster) {
+      // A picture must be the pinned file at its declared size; a render never shows other bytes.
+      const fileProblems = rasterFileProblems(asset.assetId, asset.raster);
+      if (fileProblems.length) {
+        const message = fileProblems.join("; ");
+        if (strict) throw new Error(`SCENE_ASSET_LOAD_FAILED: ${message}`);
+        problems.push({ assetId: asset.assetId, svgSource: asset.raster.src, message });
+        continue;
+      }
+      elementIdsByAssetId[asset.assetId] = rasterElementIds(asset);
+      rasterUrls[asset.raster.src] = pathToFileURL(resolveAssetPath(asset.raster.src)).href;
+      continue;
+    }
     if (!asset.svgSource) continue;
     const resolved = resolveAssetPath(asset.svgSource);
     try {
@@ -79,5 +97,5 @@ export function loadSceneAssets(
     }
   }
 
-  return { svgSources, elementIdsByAssetId, problems };
+  return { svgSources, elementIdsByAssetId, rasterUrls, problems };
 }

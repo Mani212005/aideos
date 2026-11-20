@@ -1,0 +1,15 @@
+{
+  "schema": "aideos.picture/1",
+  "fingerprint": "ff09ea8f87a21b03b79a83224af419c4",
+  "prompt": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.\n\nOne smooth glass sphere glowing softly in violet.\n\nAbsolutely no text, letters, numbers, labels, signs, captions or watermarks anywhere in the image. One abstract object only: no people, no faces, no hands, no animals, no characters. No logos, no brand marks, no real products or trademarks, no recognisable designs of real companies or artists. Keep the background plain so the object can stand on its own, or transparent when asked.",
+  "style": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.",
+  "objectPrompt": "One smooth glass sphere glowing softly in violet.",
+  "aspect": "1:1",
+  "tool": "synthetic-fixture",
+  "cutout": "generator-alpha",
+  "createdAt": "2026-11-20T00:00:00.000Z",
+  "seconds": 0,
+  "sha256": "318bc08ad72419aed7f03cafb9d9202d76f641b52555098ebbfdc10f2d28df9d",
+  "width": 32,
+  "height": 32
+}

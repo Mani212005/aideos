@@ -4,6 +4,8 @@
  * plus the SVG artwork it names. Frames are never written by hand: every clip and camera pose is
  * timed with a cue that names a shot or a spoken phrase, and `aideos design build` resolves the cues
  * against the measured narration, holds the continuity rules and runs the design check before anything ships.
+ * A design may also declare generated pictures (the illustrated stage: one plate and a few objects) by prompt,
+ * placed like SVG assets and pinned by sha256; every word, number, line and motion stays SVG.
  * Inputs and outputs: TypeScript definitions -> types and schemas for DesignSpec and visual cues.
  * Used by: backend/designSpec/designer.ts, backend/designSpec/compile.ts, backend/designSpec/soundtrack.ts.
  *
@@ -20,6 +22,7 @@ import { blockSchema } from "../../src/dl/schema";
 import { MAX_HOLD_PUSH, MIN_HOLD_PUSH } from "../../src/dl/holdPush";
 import { SCENE_SIZE } from "../sceneKit/stage";
 import { decisiveSchema, vec3Schema } from "../../src/dl/scene/stageContract";
+import { PICTURE_ASPECTS } from "../pictures/policy";
 
 const vec2 = z.tuple([z.number(), z.number()]);
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "an accent is a #rrggbb colour");
@@ -30,7 +33,48 @@ export const specAssetSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, "asset ids are lowercase letters, digits and dashes"),
   /** Path inside the film's package, e.g. "visuals/probe.svg". */
   file: z.string().regex(/^visuals\/[a-z0-9-]+\.svg$/, 'artwork lives at "visuals/<name>.svg"'),
+  /** Refused here: an asset names either SVG artwork (`file`) or a declared picture (`picture`), never both. */
+  picture: z.never({ message: "an asset names either a file or a picture, not both" }).optional(),
   /** Where the artwork's centre sits in the 1920 x 1920 scene. */
+  position: vec2,
+  scale: z.number().positive().max(20).default(1),
+  layer: z.number().int().min(0).max(50).optional(),
+  rotation: z.number().default(0),
+  opacity: z.number().min(0).max(1).default(1),
+});
+
+const pictureId = z.string().regex(/^[a-z0-9-]+$/, "picture ids are lowercase letters, digits and dashes");
+const sha256 = z.string().regex(/^[0-9a-f]{64}$/, "a pin is the approved image's sha256 (64 lowercase hex digits)");
+
+/**
+ * One generated picture of the illustrated stage (the plate or one object). Its file comes from the picture
+ * cache (backend/pictures/cache.ts) by the fingerprint of the film's style paragraph, this prompt, the aspect,
+ * the tool and the cut-out; `sha256` pins the approved image so a render is as repeatable as an SVG render.
+ */
+export const specPictureSchema = z.strictObject({
+  id: pictureId,
+  /** The object only, abstract, no text, people, logos, brands or artists (backend/pictures/policy.ts). */
+  prompt: z.string().min(10).max(1200),
+  aspect: z.enum(PICTURE_ASPECTS),
+  /** How the transparent background is obtained ("none" for the plate); part of the fingerprint. */
+  cutout: z.string().min(1).max(80).default("none"),
+  /** The approved image's sha256. A build refuses an unpinned or changed picture. */
+  sha256: sha256.optional(),
+});
+
+/** The film's pictures: one style paragraph pasted into every prompt, one tool label, about one plate and 8 objects. */
+export const specPicturesSchema = z.strictObject({
+  style: z.string().min(20).max(1500),
+  /** Which generator makes them, e.g. "codex-imagegen"; a label recorded and fingerprinted, never called by aideos. */
+  tool: z.string().min(1).max(80),
+  items: z.array(specPictureSchema).min(1).max(12),
+});
+
+/** A declared picture placed on the stage, like an SVG asset; clips move, scale, rotate and fade it by its asset id. */
+export const specPictureAssetSchema = z.strictObject({
+  id: specAssetSchema.shape.id,
+  /** The id of an entry in `pictures.items`. */
+  picture: pictureId,
   position: vec2,
   scale: z.number().positive().max(20).default(1),
   layer: z.number().int().min(0).max(50).optional(),
@@ -106,9 +150,14 @@ const legacyDesignSchema = z.object({
   }),
   /** The film's one accent colour; everything else uses the locked palette. */
   accent: hex.optional(),
-  /** Full-bleed backdrop. Omit for the plain canvas colour. */
-  background: z.object({ file: specAssetSchema.shape.file, scale: z.number().positive().default(4.8) }).optional(),
-  assets: z.array(specAssetSchema).max(40),
+  /** Full-bleed backdrop: SVG artwork, or the illustrated stage's generated plate (a declared picture). Omit for the plain canvas colour. */
+  background: z.union([
+    z.object({ file: specAssetSchema.shape.file, scale: z.number().positive().default(4.8) }),
+    z.strictObject({ picture: pictureId, scale: z.number().positive().default(1) }),
+  ]).optional(),
+  assets: z.array(z.union([specPictureAssetSchema, specAssetSchema])).max(40),
+  /** The illustrated stage's generated pictures (docs/GOOD_VIDEO.md "Pictures"). Omit for an SVG-only film. */
+  pictures: specPicturesSchema.optional(),
   clips: z.array(specClipSchema).max(1500),
   /** Optional camera poses in time order (at least two). Omit for a fixed, centred camera. */
   camera: z.array(specCameraSchema).min(2).max(60).optional(),
@@ -158,3 +207,5 @@ export type SpecCamera = z.infer<typeof specCameraSchema>;
 export type SpecSoundtrackSection = z.infer<typeof specSoundtrackSectionSchema>;
 export type SpecSoundtrackSfx = z.infer<typeof specSoundtrackSfxSchema>;
 export type SpecSoundtrack = z.infer<typeof specSoundtrackSchema>;
+export type SpecPictures = z.infer<typeof specPicturesSchema>;
+export type SpecPictureAsset = z.infer<typeof specPictureAssetSchema>;

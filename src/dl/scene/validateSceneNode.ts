@@ -1,7 +1,8 @@
 /**
  * File Description: Node-runtime asset verifier for Aideos Scene Graphs.
  * Extends the pure validateScene validator with filesystem checks the pure layer cannot make:
- * that every asset's SVG exists and parses, and that every element id referenced by a rotating
+ * that every asset's SVG exists and parses, that every picture's PNG exists, decodes at its declared size and
+ * still has its pinned sha256, and that every element id referenced by a rotating
  * sub-group (D1) or by a custom animation clip is actually declared in that SVG document.
  * Inputs and outputs: Scene data and asset directory -> filesystem existence checks and asset validation.
  * Used by: backend/pipeline/run.ts, backend/scene/loadSceneAssets.ts.
@@ -13,6 +14,7 @@ import type { EnvironmentAsset, Scene } from "./types";
 import { collectSvgElementIds, parseSvgDocument } from "./svgDocument";
 import { resolveRepoAssetPath } from "../videoPackageLoader";
 import { validateStageResources } from "../../../backend/performance/resources";
+import { rasterFileProblems } from "../../../backend/pictures/png";
 
 /**
  * Resolves an asset svgSource: absolute, relative to the working directory, or relative to the
@@ -46,6 +48,13 @@ export function validateSceneWithNodeAssets(sceneInput: Scene): ValidationResult
   if (Array.isArray(sceneInput.props)) assets.push(...sceneInput.props);
 
   for (const asset of assets) {
+    if (asset.raster) {
+      for (const message of rasterFileProblems(asset.assetId, asset.raster)) {
+        result.isValid = false;
+        result.errors.push({ rule: 11, entityId: asset.assetId, message });
+      }
+      continue;
+    }
     if (!asset.svgSource) continue;
     const resolvedPath = resolveAssetPath(asset.svgSource);
 

@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "pictures-stage",
+  "title": "Pictures on one stage",
+  "fps": 30,
+  "accent": "#635BFF",
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "accent": "#635BFF"
+  },
+  "chapters": [
+    "Stage"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "a",
+        "label": "Stage",
+        "x": 160,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "b",
+        "label": "Pictures",
+        "x": 590,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      }
+    ],
+    "edges": [
+      {
+        "from": "a",
+        "to": "b"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "plate",
+      "ch": "Stage",
+      "dur": 3,
+      "stage": "none",
+      "look": "a",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "One dark stage holds every piece.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "orb",
+      "ch": "Stage",
+      "dur": 3,
+      "stage": "none",
+      "look": "a",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "An orb arrives and settles in the light.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "chip",
+      "ch": "Stage",
+      "dur": 4,
+      "stage": "none",
+      "look": "a",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Then a chip joins the orb on the stage.",
+      "speed": 1,
+      "blocks": []
+    }
+  ],
+  "captions": "kinetic",
+  "voiceover": {
+    "src": "videos/pictures-stage/voiceover.wav",
+    "durationSec": 10
+  }
+}

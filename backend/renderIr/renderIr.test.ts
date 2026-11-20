@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the Render IR validator: it holds the TypeScript side to the shared fixture verdicts that the Rust loader is also tested against (native/aideos-render-ir/tests/fixtures.rs), checks the version rejection path, round-trips the `/2` example and every `/1` example unchanged, and fails when either committed JSON Schema drifts from the zod source.
+ * File Description: Behavioural tests of the Render IR validator: it holds the TypeScript side to the shared fixture verdicts that the Rust loader is also tested against (native/aideos-render-ir/tests/fixtures.rs), checks the version rejection path, round-trips every valid example unchanged, and fails when any committed JSON Schema drifts from the zod source.
  * Inputs and outputs: native/aideos-render-ir/fixtures/** and the committed JSON Schema -> pass or fail.
  * Used by: npm test (found by glob), the CI unit job.
  */
@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { RENDER_IR_SCHEMA_PATH, RENDER_IR_SCHEMA_V2_PATH, renderIrJsonSchemaText, renderIrJsonSchemaV2Text } from "./jsonSchema";
+import { RENDER_IR_SCHEMA_PATH, RENDER_IR_SCHEMA_V2_PATH, RENDER_IR_SCHEMA_V3_PATH, renderIrJsonSchemaText, renderIrJsonSchemaV2Text, renderIrJsonSchemaV3Text } from "./jsonSchema";
 import { parseRenderIr, validateRenderIr } from "./validate";
 
 const FIXTURES = path.resolve(__dirname, "../../native/aideos-render-ir/fixtures");
@@ -44,7 +44,7 @@ test("invalid fixtures are refused with the verdict the Rust loader also gives",
     assert.equal(result.error.kind, want.kind, rel);
     if (want.kind === "unsupported_version" && result.error.kind === "unsupported_version") {
       assert.equal(result.error.found, want.found, rel);
-      assert.equal(result.error.supported, "aideos.render/1, aideos.render/2");
+      assert.equal(result.error.supported, "aideos.render/1, aideos.render/2, aideos.render/3");
     }
     if (want.kind === "invalid_document" && result.error.kind === "invalid_document") {
       const structural = want.issues.every((i) => i.path === undefined);
@@ -89,6 +89,10 @@ test("the committed JSON Schema is the one the zod source produces", () => {
 
 test("the committed /2 JSON Schema is the one the zod source produces", () => {
   assert.equal(fs.readFileSync(RENDER_IR_SCHEMA_V2_PATH, "utf8"), renderIrJsonSchemaV2Text(), "run `npm run render-ir:schema`");
+});
+
+test("the committed /3 JSON Schema is the one the zod source produces", () => {
+  assert.equal(fs.readFileSync(RENDER_IR_SCHEMA_V3_PATH, "utf8"), renderIrJsonSchemaV3Text(), "run `npm run render-ir:schema`");
 });
 
 test("the /2 example and every /1 example survive a JSON round trip unchanged, keeping their version", () => {

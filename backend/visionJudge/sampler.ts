@@ -110,7 +110,7 @@ export function renderSamples(filmId: string, film: Film, options: SampleOptions
   const scene = film.scene as Scene | undefined;
   if (!scene) throw new Error(`film "${filmId}" has no scene, so there is nothing to sample stills from`);
   if (scene.renderer === "three") throw new Error("Three stage craft is unmeasured by the SVG sampler; review actual FilmView renders instead.");
-  const { svgSources, elementIdsByAssetId } = loadSceneAssets(scene);
+  const { svgSources, elementIdsByAssetId, rasterUrls } = loadSceneAssets(scene);
   const compiled = compileScene(scene, { assetElementIds: elementIdsByAssetId });
   const outDir = options.outDir ?? judgeFramesDir(filmId);
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -123,6 +123,7 @@ export function renderSamples(filmId: string, film: Film, options: SampleOptions
       height: 1080,
       sceneSize: scene.sceneSize,
       svgSources,
+      rasterUrls,
     });
     return { frame, timeSec: Number((frame / fps).toFixed(3)), png, ...describeFrame(film, frame) };
   });

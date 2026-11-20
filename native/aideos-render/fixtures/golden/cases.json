@@ -133,5 +133,25 @@
       111,
       240
     ]
+  },
+  {
+    "film": "pictures-stage",
+    "format": "long",
+    "ir": "pictures-stage/render.long.json",
+    "frames": [
+      45,
+      135,
+      225,
+      285
+    ]
+  },
+  {
+    "film": "pictures-stage",
+    "format": "reel",
+    "ir": "pictures-stage/render.reel.json",
+    "frames": [
+      135,
+      285
+    ]
   }
 ]

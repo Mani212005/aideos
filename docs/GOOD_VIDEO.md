@@ -10,6 +10,37 @@ Before you make or change any video: read this document, run deterministic check
 
 Every video, in both formats, has music, sound effects and the call to action end card. They are steps of making a video, not options: delivery is refused with a plain message when any is missing. Author the music and effects in the `soundtrack` block of `design/design.json` or let `aideos design build <film>` assign the default score and effects (run `aideos audio fetch` first). The end card is appended automatically and cannot be switched off. See [Compulsory finishing steps](WORKFLOW.md#compulsory-finishing-steps-every-video).
 
+## Pictures (the illustrated stage)
+
+A film may add generated pictures to its one stage. The format is fixed:
+
+- **One plate and a few objects.** One generated background plate for the whole film, and about 8 generated objects
+  with transparent backgrounds that stay on the stage and change like SVG props (placed, scaled, turned and faded by
+  clips, carried between shots). Never a picture per scene, never slides.
+- **SVG keeps every word.** Every word, number, label, line, arrow, chart and all motion stay SVG. A picture carries no
+  text of any kind: the design check reads every picture with OCR and fails any word it finds.
+- **One style paragraph.** The film declares one style paragraph in `design.json` `pictures.style`; it is pasted into
+  every prompt (with the fixed rules in `backend/pictures/policy.ts`), so the objects share one look.
+- **Abstract objects only.** No people, faces or characters, no logos or brand marks, no real products, no named brands,
+  studios or artists. The design check refuses a prompt that asks for one; the owner still looks at each new object once.
+- **Provenance is kept.** Each picture is stored as `visuals/generated/<fingerprint>.png` exactly as the generator
+  returned it (its provenance data and any invisible watermark included) beside `<fingerprint>.json` (prompt, date,
+  seconds, tool, sha256). Never re-encode, crop or clean a stored original, never strip a watermark or provenance data;
+  a cut-out is a new picture with its own `cutout` setting. State "AI-generated images" where a platform asks.
+- **Pinned and repeatable.** The fingerprint is the hash of the style paragraph, the object prompt, the aspect ratio,
+  the tool label and the cut-out settings, so rebuilding with unchanged prompts makes no request. The design pins each
+  approved picture by `sha256`; both renderers refuse any other bytes.
+- **Colour and contrast.** A picture's strong colours sit near the film accent and the plate's tone near the canvas
+  (the palette rule reads pixels). Every SVG label over a picture keeps 4.5:1 contrast (3:1 when large) against the
+  busiest tenth of the picture behind it; give a label its own ground over a busy plate.
+- **Where pictures come from.** aideos never calls an image service. Pictures are made on the captain's Mac through
+  Codex image generation and stored with `aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin]`;
+  `aideos pictures status <film>` lists what is cached, pinned or still to make, with each prompt.
+
+Both renderers draw pictures: the native renderer natively (Render IR `aideos.render/3`, [docs/RENDER_IR.md](RENDER_IR.md)),
+Remotion through SceneView. Phase 1 places, scales, turns and fades pictures; parallax, masks, blend modes and picture
+motion beyond that are phase 2 and not available yet.
+
 ## Pass Bar
 No gate fails, total >= 36/48, and every criterion >= 2. Targets are for a 60 to 120 s explainer at 1920x1080.
 Final acceptance requires a Gemini 3.8 Flash review score of 9.0 or higher (out of 10.0) with all 6 hard gates passing (`aideos all-check <slug>` or `aideos gemini-review <mp4>`), verdict ACCEPT, and the captain's own watch, recorded with `aideos verdict <slug> publish|fix|reject` in `videos/<slug>/owner-verdict.json` (`aideos all-check` never writes it).

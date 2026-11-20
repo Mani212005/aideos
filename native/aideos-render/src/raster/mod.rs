@@ -1,4 +1,4 @@
-//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Drawing reads only the IR, the loaded assets and the frame number, so the same frame always draws the same pixels.
+//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Drawing reads only the IR, the loaded assets and the frame number, so the same frame always draws the same pixels.
 //! Inputs and outputs: a canvas, the loaded film (`Loaded`), a format, a frame number and the frame size -> pixels on the canvas.
 //! Used by: crate::renderer (CPU raster and the optional GPU surface).
 
@@ -11,13 +11,13 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use aideos_render_ir::types::{
-    Align, GroupNode, Node, RectNode, RenderIr, Stage3dNode, SvgNode, TextNode,
+    Align, GroupNode, ImageNode, Node, RectNode, RenderIr, Stage3dNode, SvgNode, TextNode,
 };
 use skia_safe::textlayout::TextAlign;
 use skia_safe::gradient::{shaders, Colors, Gradient, Interpolation};
 use skia_safe::{
-    images, paint, AlphaType, Canvas, Color4f, ColorType, Data, ImageInfo, Matrix, Paint, RRect,
-    Rect, TileMode,
+    images, paint, AlphaType, Canvas, Color4f, ColorType, Data, FilterMode, Image,
+    ImageInfo, Matrix, MipmapMode, Paint, RRect, Rect, SamplingOptions, TileMode,
 };
 
 use crate::eval::{self, captions::Phrase, CameraPose, Format, NodeTransform};
@@ -32,6 +32,8 @@ pub struct Loaded {
     pub ir: RenderIr,
     /// Parsed SVG assets by asset id.
     pub svgs: BTreeMap<String, SvgDocument>,
+    /// Decoded pictures (with mipmaps) by image asset id, for the image nodes that draw them (`aideos.render/3`); shared between renderers of one film.
+    pub images: Arc<BTreeMap<String, Image>>,
     pub fonts: Fonts,
     /// Caption phrases by (captions node id, format), computed once at load.
     pub phrases: BTreeMap<(String, Format), Vec<Phrase>>,
@@ -111,11 +113,12 @@ pub(crate) fn exact_colour(colour: skia_safe::Color) -> Option<skia_safe::Shader
     SOLID_COLOUR.with(|effect| effect.as_ref().and_then(|e| e.make_shader(skia_safe::Data::new_copy(&uniform), &[], None)))
 }
 
-/// Stage siblings in drawing order: by svg `layer` (groups count as layer 0), document order breaking ties.
+/// Stage siblings in drawing order: by svg or image `layer` (groups count as layer 0), document order breaking ties.
 fn stage_order(nodes: &[Node]) -> Vec<&Node> {
     let mut ordered: Vec<&Node> = nodes.iter().collect();
     ordered.sort_by_key(|n| match n {
         Node::Svg(s) => s.layer,
+        Node::Image(i) => i.layer,
         _ => 0,
     });
     ordered
@@ -153,6 +156,7 @@ fn draw_stage_node(
     let dur = l.ir.film.duration_frames.0;
     match node {
         Node::Svg(n) => draw_svg_node(canvas, l, n, frame),
+        Node::Image(n) => draw_image_node(canvas, l, n, frame),
         Node::Stage3d(n) => return draw_stage3d_node(canvas, l, n, frame, view),
         Node::Group(g) => {
             if !eval::is_visible(g.visible.as_ref(), frame) {
@@ -273,6 +277,71 @@ fn draw_svg_node(canvas: &Canvas, l: &Loaded, n: &SvgNode, frame: u32) {
     canvas.restore();
 }
 
+/// How a picture is sampled at a given device scale, matched to how Chrome paints an SVG `<image>` in the
+/// Remotion render: bilinear when the picture is enlarged (measured closer to Chrome than Mitchell or
+/// Catmull-Rom cubics), bilinear on the nearest mipmap level when it is reduced (the same measured parity
+/// as blending two levels, at about two thirds of the cost; without mipmaps parity falls to 0.988 SSIM).
+fn image_sampling(device_scale: f64) -> SamplingOptions {
+    if device_scale > 1.0 {
+        SamplingOptions::new(FilterMode::Linear, MipmapMode::None)
+    } else {
+        SamplingOptions::new(FilterMode::Linear, MipmapMode::Nearest)
+    }
+}
+
+/// Draws a picture placed on the stage: the node placement, then its element state about its origin, then the image
+/// stretched over the `width` x `height` box centred there, with straight alpha blended over what is below (SceneView's
+/// `<image preserveAspectRatio="none">`). Opacity is the node's (a layer, like an svg node) times the element's own.
+fn draw_image_node(canvas: &Canvas, l: &Loaded, n: &ImageNode, frame: u32) {
+    if !eval::is_visible(n.visible.as_ref(), frame) {
+        return;
+    }
+    let Some(image) = l.images.get(&n.asset) else {
+        return;
+    };
+    let dur = l.ir.film.duration_frames.0;
+    let base = NodeTransform {
+        x: n.x,
+        y: n.y,
+        scale: n.scale,
+        scale_x: 1.0,
+        scale_y: 1.0,
+        rotation: n.rotation,
+        opacity: 1.0,
+    };
+    let t = eval::placed_transform(base, n.opacity, &n.tracks, frame, dur);
+    let state = eval::element_states_of(&n.element_tracks, frame, dur)
+        .remove(&n.element)
+        .unwrap_or_default();
+    let element_opacity = state.opacity.unwrap_or(1.0);
+    if element_opacity <= 0.0 {
+        return;
+    }
+    canvas.save();
+    apply_placement(canvas, &t);
+    with_opacity(canvas, t.opacity, || {
+        canvas.save();
+        canvas.concat(&svg::state_matrix(&state));
+        let dst = Rect::from_xywh(
+            (-n.width / 2.0) as f32,
+            (-n.height / 2.0) as f32,
+            n.width as f32,
+            n.height as f32,
+        );
+        // Device pixels per image pixel along the smaller axis decide enlarging against reducing.
+        let m = canvas.local_to_device_as_3x3();
+        let axis = |a: f32, b: f32| f64::from(a).hypot(f64::from(b));
+        let device_scale = (axis(m.scale_x(), m.skew_y()) * n.width / f64::from(image.width()))
+            .min(axis(m.skew_x(), m.scale_y()) * n.height / f64::from(image.height()));
+        let mut paint = Paint::default();
+        paint.set_anti_alias(true);
+        paint.set_alpha_f(element_opacity as f32);
+        canvas.draw_image_rect_with_sampling_options(image, None, dst, image_sampling(device_scale), &paint);
+        canvas.restore();
+    });
+    canvas.restore();
+}
+
 /// What every overlay draw needs.
 pub struct OverlayCtx<'a> {
     pub l: &'a Loaded,
@@ -326,8 +395,8 @@ fn draw_overlay_node(canvas: &Canvas, ctx: &OverlayCtx, node: &Node) {
         Node::Rail(r) => chrome::draw_rail(canvas, ctx, r),
         Node::Captions(c) => chrome::draw_captions(canvas, ctx, c),
         Node::EndCard(e) => chrome::draw_end_card(canvas, ctx, e),
-        // The loader refuses svg and stage3d nodes in the overlay.
-        Node::Svg(_) | Node::Stage3d(_) => {}
+        // The loader refuses svg, image and stage3d nodes in the overlay.
+        Node::Svg(_) | Node::Image(_) | Node::Stage3d(_) => {}
     }
 }
 

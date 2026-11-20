@@ -1,6 +1,7 @@
 /**
  * File Description: Behavioural tests of the renderer choice, encoding the native renderer Phase 1 wiring decision (firstmate decision p1-wire-step0, option A: native does the real work for every film it supports, Remotion is the kill switch, refusals are logged, a native failure on a supported film is an error): `auto` is the default and draws a supported film natively; it renders a refused film on Remotion with every reason (including a missing binary, a chapter no shot belongs to and an asset with no SVG source); `remotion` keeps every film on Remotion; `native` refuses a film it cannot draw; the job-level renderer chooses on the film the job actually renders, records the renderer in the sidecar, and fails, without trying Remotion, when native fails.
  * Inputs and outputs: argument lists, environments, the synthetic scene film, fake renderers and a RenderJob with stub services -> asserted choices, reasons, sidecars and failures.
+ * The illustrated stage (phase 1) adds: a film the native loader refuses while the job prepares (a picture or SVG content it cannot draw yet) renders on Remotion in `auto`, with the refusal as the logged reason, and still fails under `native`.
  * Used by: npm test (Node test runner).
  */
 
@@ -13,15 +14,20 @@ import path from "node:path";
 import { createSelectedRenderer, rendererModeFromEnv, requestedRenderer, selectRenderer } from "./rendererSelection";
 import { createRenderJob, type Renderer, type RenderServices } from "./renderJob";
 import { nativeSceneFilm } from "./testSupport/nativeSceneFilm";
+import { NativeLoadRefusal } from "./nativeRenderer";
 
 /** A renderer stand-in that writes a file on render, tagged with a name, plus a log of which factories ran. */
-function factories(options: { nativeFails?: boolean } = {}) {
+function factories(options: { nativeFails?: boolean; nativeRefusesAtLoad?: string } = {}) {
   const made: string[] = [];
   const make = (name: "remotion" | "native") => () => {
     made.push(name);
     return {
       name,
       profileSettingsApplied: { codec: true },
+      // The native loader refusing the staged film (`aideos-render check`) while the job prepares.
+      prepare: () => {
+        if (name === "native" && options.nativeRefusesAtLoad) throw new NativeLoadRefusal(options.nativeRefusesAtLoad);
+      },
       checkDiskBudget: async () => {},
       render: async (request) => {
         if (name === "native" && options.nativeFails) throw new Error("aideos-render exited with code 1: frame 3 was refused");
@@ -144,4 +150,24 @@ test("a native failure on a supported film fails the job and never falls back to
   );
   assert.deepEqual(f.made, ["native"]);
   assert.equal(fs.existsSync(out), false);
+});
+
+// Captain's decision, illustrated stage phase 1 (option A), item 2: a film with pictures (or SVG content) the native renderer cannot yet draw falls back to Remotion visibly instead of failing.
+test("auto renders a film the native loader refuses at load on Remotion, saying why; native mode still fails it", async (t) => {
+  const refusal = 'svg asset "svg-label": unsupported element <image>';
+  const f = factories({ nativeRefusesAtLoad: refusal });
+  const messages: string[] = [];
+  const out = outPath(t);
+  const renderer = createSelectedRenderer({ mode: "auto", ...f, binaryProblem: () => null, onChoice: (_c, message) => messages.push(message) });
+  await createRenderJob({ film: nativeSceneFilm(), format: "long", outPath: out, profile: "final" }, renderer, { services }).run();
+  assert.equal(fs.readFileSync(out, "utf8"), "remotion mp4");
+  assert.deepEqual(f.made, ["native", "remotion"]);
+  assert.equal(JSON.parse(fs.readFileSync(`${out}.render.json`, "utf8")).renderer, "remotion");
+  assert.equal(messages.length, 1);
+  assert.match(messages[0], /Remotion renders "native-probe"; the native renderer cannot: the native loader refused it: svg asset "svg-label": unsupported element <image>/);
+
+  const required = factories({ nativeRefusesAtLoad: refusal });
+  const strict = createSelectedRenderer({ mode: "native", ...required, binaryProblem: () => null });
+  await assert.rejects(createRenderJob({ film: nativeSceneFilm(), format: "long", outPath: outPath(t), profile: "final" }, strict, { services }).run(), /unsupported element <image>/);
+  assert.deepEqual(required.made, ["native"]);
 });

@@ -297,17 +297,28 @@ export const svgAnimationTimelineSchema = z.object({
   clips: z.array(svgAnimationClipSchema),
 });
 
+/** A picture (the illustrated stage's plate or one generated object): a pinned PNG, see src/dl/scene/raster.ts. */
+export const rasterSourceSchema = z.object({
+  src: z.string().min(1).regex(/\.png$/i, "a picture is a .png file"),
+  width: z.number().int().min(1).max(16_384),
+  height: z.number().int().min(1).max(16_384),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/, "a picture is pinned by its sha256 (64 lowercase hex digits)"),
+});
+
 export const environmentAssetSchema = z.object({
   plane: z.enum(["background", "foreground"]).optional(),
   assetId: z.string().min(1),
-  svgSource: z.string().min(1).endsWith(".svg"),
+  /** SVG artwork; exactly one of `svgSource` and `raster` is set. */
+  svgSource: z.string().min(1).endsWith(".svg").optional(),
+  /** A picture instead of SVG artwork. */
+  raster: rasterSourceSchema.optional(),
   layer: z.number().int().optional(),
   position: z.object({ x: z.number(), y: z.number() }),
   scale: z.number().positive(),
   rotation: z.number(),
   opacity: z.number().min(0).max(1),
   animation: svgAnimationTimelineSchema.optional(),
-});
+}).refine((a) => (a.svgSource === undefined) !== (a.raster === undefined), { message: "an asset draws exactly one of svgSource (SVG artwork) and raster (a picture)" });
 
 export const cameraKeyframeSchema = z.object({
   frame: z.number().int().min(0),

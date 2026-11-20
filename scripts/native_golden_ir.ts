@@ -1,6 +1,6 @@
 /**
- * File Description: Emits the Render IR documents and artwork the native golden frames are rendered from (hello-scene, still-talking and the Three-stage character films iona-receive, pixels-stage-pip, pixels-stage-marlo and journey-three-characters, long and reel) into native/aideos-render/fixtures/golden/, plus cases.json naming the golden frames. Narration, music and effect clips are dropped from the committed IR (the frame raster never opens audio), so the files stay small; everything the picture depends on is the emitter's own output (for the Three-stage films that includes the stage3d node, its face programs and the mesh file).
- * Inputs and outputs: the committed example and fixture films, the release aideos-render binary (text measurement) -> native/aideos-render/fixtures/golden/<film>/render.<format>.json, visuals/*.svg and cases.json.
+ * File Description: Emits the Render IR documents and artwork the native golden frames are rendered from (hello-scene, still-talking, the Three-stage character films iona-receive, pixels-stage-pip, pixels-stage-marlo and journey-three-characters, and the picture fixture pictures-stage, long and reel) into native/aideos-render/fixtures/golden/, plus cases.json naming the golden frames. Narration, music and effect clips are dropped from the committed IR (the frame raster never opens audio), so the files stay small; everything the picture depends on is the emitter's own output (for the Three-stage films that includes the stage3d node, its face programs and the mesh file).
+ * Inputs and outputs: the committed example and fixture films, the release aideos-render binary (text measurement) -> native/aideos-render/fixtures/golden/<film>/render.<format>.json, visuals/*.svg, pictures/*.png and cases.json.
  * Used by: `npm run goldens:native:ir` (run before `AIDEOS_NATIVE_GOLDEN_UPDATE=1 cargo test ... --test golden`), docs/NATIVE_RENDERER.md.
  */
 
@@ -25,7 +25,15 @@ const SPECS: Array<{ slug: string; frames: Record<NativeFormat, number[]>; build
   // iona-receive fixture; P4.3 adds Pip and Marlo as the performer and the three-character film (Iona, Pip and Marlo, each with a glider).
   { slug: "iona-receive", frames: { long: [0.1, 0.37, 0.6, 0.95], reel: [0.37, 0.8] }, build: buildIonaReceive },
   ...CHARACTER_FILM_SLUGS.map((slug: CharacterFilmSlug) => ({ slug, frames: { long: [0.1, 0.37, 0.6, 0.95], reel: [0.37, 0.8] }, build: () => void buildCharacterFilm(slug) })),
+  // The illustrated stage's picture fixture (aideos.render/3): a generated-style plate and two objects with alpha, SVG labels and captions over them.
+  { slug: "pictures-stage", frames: { long: [0.15, 0.45, 0.75, 0.95], reel: [0.45, 0.95] }, build: buildPicturesStage },
 ];
+
+/** Builds the pictures-stage fixture package in place through the real design build (picture cache, pins and picture rules). */
+function buildPicturesStage(): void {
+  const built = buildDesign("pictures-stage", "hand-built");
+  if (built.state !== "passed") throw new Error(`cannot build pictures-stage: ${JSON.stringify(built).slice(0, 500)}`);
+}
 
 /** Builds the iona-receive fixture package in place. */
 function buildIonaReceive(): void {
@@ -54,6 +62,11 @@ function main(): void {
       fs.writeFileSync(path.join(dir, irName), `${JSON.stringify(picture)}\n`);
       for (const file of files) {
         if (file.path.startsWith("visuals/") && "text" in file) fs.writeFileSync(path.join(dir, file.path), file.text);
+        // A picture is copied byte for byte (the renderer checks it against its pinned sha256); both formats share it.
+        if (file.path.startsWith("pictures/") && "from" in file) {
+          fs.mkdirSync(path.join(dir, "pictures"), { recursive: true });
+          fs.copyFileSync(file.from, path.join(dir, file.path));
+        }
         // The Three stage's mesh file is shared by both formats (the same bytes).
         if (file.path.startsWith("meshes/") && "bytes" in file) {
           fs.mkdirSync(path.join(dir, "meshes"), { recursive: true });

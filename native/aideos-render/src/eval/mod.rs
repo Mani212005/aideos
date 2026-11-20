@@ -227,8 +227,17 @@ fn element_value(track: &ElementTrack, frame: u32, dur: u32) -> f64 {
 /// Evaluates every element track of an SVG node at a frame, keyed by element id.
 /// `scale` sets both axes; a `scaleX` or `scaleY` track, when present, wins on its own axis.
 pub fn element_states(node: &SvgNode, frame: u32, dur: u32) -> BTreeMap<String, ElementState> {
+    element_states_of(&node.element_tracks, frame, dur)
+}
+
+/// Evaluates a list of element tracks (an svg node's, or an image node's tracks on its one element) at a frame, keyed by element id.
+pub fn element_states_of(
+    element_tracks: &[ElementTrack],
+    frame: u32,
+    dur: u32,
+) -> BTreeMap<String, ElementState> {
     let mut states: BTreeMap<String, ElementState> = BTreeMap::new();
-    for track in &node.element_tracks {
+    for track in element_tracks {
         let state = states.entry(track.target.clone()).or_default();
         if let Some(origin) = &track.origin {
             state.origin_x = origin.x;
@@ -236,7 +245,7 @@ pub fn element_states(node: &SvgNode, frame: u32, dur: u32) -> BTreeMap<String, 
         }
     }
     // Uniform scale first so a per-axis track applied after it overrides its axis.
-    let mut ordered: Vec<&ElementTrack> = node.element_tracks.iter().collect();
+    let mut ordered: Vec<&ElementTrack> = element_tracks.iter().collect();
     ordered.sort_by_key(|t| u8::from(t.property != ElementProperty::Scale));
     for track in ordered {
         let v = element_value(track, frame, dur);

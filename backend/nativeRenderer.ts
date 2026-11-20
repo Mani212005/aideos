@@ -1,10 +1,10 @@
 /**
- * File Description: The native renderer behind the RenderJob `Renderer` interface (R4 of the native renderer plan). `prepare` emits the film's Render IR for the requested format and stages a self-contained render package (the IR, its SVG artwork, the vendored fonts and the narration) beside the job's output; `render` runs `aideos-render video` on it through the shared, renderer-neutral subprocess runner, which owns cancellation and the disk reserve. It imports no Remotion type and never touches the Remotion path.
+ * File Description: The native renderer behind the RenderJob `Renderer` interface (R4 of the native renderer plan). `prepare` emits the film's Render IR for the requested format, stages a self-contained render package (the IR, its SVG artwork and pictures, the vendored fonts and the narration) beside the job's output and asks `aideos-render check` whether the native loader accepts it (a refusal is a `NativeLoadRefusal`, which the renderer choice turns into a visible Remotion fallback); `render` runs `aideos-render video` on it through the shared, renderer-neutral subprocess runner, which owns cancellation and the disk reserve. It imports no Remotion type and never touches the Remotion path.
  * Inputs and outputs: a renderer-neutral RenderRequest -> an encoded mp4 at the request's output path, with the encode policy it actually applied reported through `profileSettingsApplied`.
  * Used by: backend/rendererSelection.ts (the renderer choice), backend/pipeline/run.ts, backend/exportJobs.ts, backend/geminiReview/render.ts, scripts/render_active.ts, backend/nativeRenderer.test.ts.
  */
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -32,6 +32,29 @@ export function nativeBinaryProblem(binary = nativeRendererBinary()): string | n
   } catch {
     return `the native renderer binary is not built (${binary}); build it with: cargo build --locked --release --manifest-path native/Cargo.toml -p aideos-render`;
   }
+}
+
+/**
+ * Raised when the native renderer's own loader refuses a staged film before any frame is drawn (an SVG element or
+ * attribute it does not draw, a picture it cannot decode). In `auto` the renderer choice then falls back to Remotion
+ * and logs this reason; a film native accepted and then failed to render stays an error.
+ */
+export class NativeLoadRefusal extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = "NativeLoadRefusal";
+  }
+}
+
+/** Asks `aideos-render check` whether the native loader accepts a staged package; null when it does, else its reason. */
+export function checkRenderPackage(irPath: string, packageDir: string, binary = nativeRendererBinary()): string | null {
+  const result = spawnSync(binary, ["check", irPath, "--package", packageDir], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+  if (result.error) return `the native renderer could not be started: ${result.error.message}`;
+  if (result.status === 0) return null;
+  const said = `${result.stderr ?? ""}`.trim().split("\n")[0]?.replace(/^aideos-render:\s*/, "") ?? "";
+  // A usage error means a binary older than this checkout, which has no `check`: it cannot vouch for the film.
+  if (result.status === 2) return `the native renderer binary is older than this checkout (no \`check\`); rebuild it with: cargo build --locked --release --manifest-path native/Cargo.toml -p aideos-render`;
+  return said || `aideos-render check exited with code ${result.status}`;
 }
 
 /** Measures text with the native renderer's own fonts through `aideos-render measure`. */
@@ -134,6 +157,9 @@ export function createNativeRenderer(options: NativeRendererOptions = {}, deps: 
       const emitted = options.emit ? options.emit(request.film, request.format) : emitFilmIr(request.film, request.format, binary);
       stageDir = path.join(path.dirname(request.outPath), "native-package");
       irPath = stageRenderPackage(emitted, stageDir);
+      // The native loader is the authority on what it draws: it loads the staged film once, and refuses before any frame.
+      const refusal = checkRenderPackage(irPath, stageDir, binary);
+      if (refusal) throw new NativeLoadRefusal(refusal);
       fps = emitted.ir.film.fps;
       frameCount = request.frames ? request.frames[1] - request.frames[0] + 1 : emitted.ir.film.durationFrames;
     },

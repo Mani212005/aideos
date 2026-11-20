@@ -2,6 +2,7 @@
   "//": "Shared by backend/renderIr/renderIr.test.ts and native/aideos-render-ir/tests/fixtures.rs. A structural issue lists only its code (a JSON Schema validator and zod word and locate those differently); every other issue lists its code and exact JSON Pointer.",
   "valid": [
     "valid/gradient-and-axis-scale.json",
+    "valid/image-stage.json",
     "valid/integral-floats.json",
     "valid/minimal-reel.json",
     "valid/mirrored-element.json",
@@ -87,6 +88,43 @@
         {
           "code": "stops_unordered",
           "path": "/overlay/0/gradient/stops/1/offset"
+        }
+      ]
+    },
+    "invalid/image-in-version-2.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/image-references.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "asset_kind_mismatch",
+          "path": "/stage/0/asset"
+        },
+        {
+          "code": "image_unpinned",
+          "path": "/stage/1/asset"
+        },
+        {
+          "code": "unknown_element",
+          "path": "/stage/2/elementTracks/0/target"
+        },
+        {
+          "code": "property_not_allowed",
+          "path": "/stage/2/elementTracks/1/property"
+        },
+        {
+          "code": "unknown_asset",
+          "path": "/stage/3/asset"
+        },
+        {
+          "code": "node_not_allowed",
+          "path": "/overlay/0/kind"
         }
       ]
     },
@@ -428,7 +466,7 @@
     },
     "invalid/unsupported-version.json": {
       "kind": "unsupported_version",
-      "found": "aideos.render/3"
+      "found": "aideos.render/4"
     },
     "invalid/wrong-type.json": {
       "kind": "invalid_document",

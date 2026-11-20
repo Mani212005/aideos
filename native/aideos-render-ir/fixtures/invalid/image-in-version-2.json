@@ -1,0 +1,48 @@
+{
+  "schema": "aideos.render/2",
+  "film": {
+    "id": "pictures",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0A0A0B",
+  "assets": [
+    {
+      "kind": "image",
+      "id": "img-plate",
+      "path": "visuals/generated/plate.png",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "width": 64,
+      "height": 36
+    }
+  ],
+  "stage": [
+    {
+      "kind": "image",
+      "id": "asset-background",
+      "asset": "img-plate",
+      "x": 960,
+      "y": 960,
+      "scale": 30,
+      "rotation": 0,
+      "layer": 0,
+      "width": 64,
+      "height": 36,
+      "element": "background",
+      "tracks": [],
+      "elementTracks": []
+    }
+  ],
+  "overlay": [],
+  "audio": []
+}

@@ -1,0 +1,214 @@
+{
+  "schema": "aideos.render/3",
+  "film": {
+    "id": "pictures",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0A0A0B",
+  "assets": [
+    {
+      "kind": "image",
+      "id": "img-plate",
+      "path": "visuals/generated/plate.png",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "width": 64,
+      "height": 36
+    },
+    {
+      "kind": "image",
+      "id": "img-orb",
+      "path": "visuals/generated/orb.png",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "width": 16,
+      "height": 16
+    },
+    {
+      "kind": "svg",
+      "id": "svg-label",
+      "path": "visuals/label.svg",
+      "elementIds": [
+        "label"
+      ]
+    }
+  ],
+  "camera": {
+    "centerX": [
+      {
+        "frame": 0,
+        "value": 960
+      }
+    ],
+    "centerY": [
+      {
+        "frame": 0,
+        "value": 960
+      }
+    ],
+    "zoom": [
+      {
+        "frame": 0,
+        "value": 1,
+        "ease": "expoOut"
+      },
+      {
+        "frame": 29,
+        "value": 1.2
+      }
+    ],
+    "rotation": [
+      {
+        "frame": 0,
+        "value": 0
+      }
+    ]
+  },
+  "stage": [
+    {
+      "kind": "image",
+      "id": "asset-background",
+      "asset": "img-plate",
+      "x": 960,
+      "y": 960,
+      "scale": 30,
+      "rotation": 0,
+      "layer": 0,
+      "width": 64,
+      "height": 36,
+      "element": "background",
+      "tracks": [],
+      "elementTracks": []
+    },
+    {
+      "kind": "image",
+      "id": "asset-orb",
+      "asset": "img-orb",
+      "x": 700,
+      "y": 900,
+      "scale": 4,
+      "rotation": 0,
+      "layer": 2,
+      "opacity": 0.9,
+      "width": 16,
+      "height": 16,
+      "element": "orb",
+      "tracks": [
+        {
+          "property": "y",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 900,
+              "ease": "linear"
+            },
+            {
+              "frame": 29,
+              "value": 880
+            }
+          ]
+        }
+      ],
+      "elementTracks": [
+        {
+          "target": "orb",
+          "property": "opacity",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 0,
+              "ease": "expoOut"
+            },
+            {
+              "frame": 12,
+              "value": 1
+            }
+          ]
+        },
+        {
+          "target": "orb",
+          "property": "scale",
+          "origin": {
+            "x": 0,
+            "y": 0
+          },
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 0.8,
+              "ease": "expoOut"
+            },
+            {
+              "frame": 12,
+              "value": 1
+            }
+          ]
+        },
+        {
+          "target": "orb",
+          "property": "translateX",
+          "keyframes": [
+            {
+              "frame": 10,
+              "value": 0,
+              "ease": "expoInOut"
+            },
+            {
+              "frame": 29,
+              "value": 40
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "svg",
+      "id": "asset-label",
+      "asset": "svg-label",
+      "x": 960,
+      "y": 700,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 3,
+      "tracks": [],
+      "elementTracks": []
+    },
+    {
+      "kind": "group",
+      "id": "cluster",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "tracks": [],
+      "children": [
+        {
+          "kind": "image",
+          "id": "asset-orb-2",
+          "asset": "img-orb",
+          "x": 1200,
+          "y": 900,
+          "scale": 3,
+          "rotation": 15,
+          "layer": 2,
+          "width": 16,
+          "height": 16,
+          "element": "orb-2",
+          "tracks": [],
+          "elementTracks": []
+        }
+      ]
+    }
+  ],
+  "overlay": [],
+  "audio": []
+}
