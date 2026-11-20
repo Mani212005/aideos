@@ -478,7 +478,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `loadVideoPackage(slug)`: Loads and parses a standalone video package (`film.json`, `shotlist.json`, `treatment.json`, and visuals availability).
 
 ### `backend/scene/loadSceneAssets.ts`
-* `loadSceneAssets(scene, options)`: Reads a scene's SVG assets off disk on the Node side, returning `svgSources` and `elementIdsByAssetId` for browser components.
+* `loadSceneAssets(scene, options)`: Reads a scene's SVG assets off disk on the Node side, returning `svgSources` and `elementIdsByAssetId` for browser components, and checks each picture (raster asset) against its pinned file, returning its `file://` URL in `rasterUrls`.
 
 ### `backend/scene/renderStill.ts`
 * `findChromeBinary()`: Locates an installed Chrome or Chromium binary for high-accuracy rasterization.
