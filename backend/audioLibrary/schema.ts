@@ -40,6 +40,8 @@ export const audioItemSchema = z.object({
   moods: z.array(z.string()),
   energy: z.number().int().min(1).max(5),
   contentIdRisk: z.enum(["none", "low", "medium", "high"]),
+  // An item is required unless the manifest says false; only a missing required item fails `aideos audio fetch`.
+  required: z.boolean().optional(),
 });
 
 export const audioLibrarySchema = z.object({

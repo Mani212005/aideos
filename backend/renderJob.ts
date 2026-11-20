@@ -5,9 +5,9 @@
  */
 
 import { createHash } from "node:crypto";
-import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import lockfile from "proper-lockfile";
 import type { Film } from "../src/dl/schema";
 import type { ProductionFormat, RenderedOutput } from "./pipeline/types";
 import { resolvePackageDir } from "../src/dl/videoPackageLoader";
@@ -167,56 +167,64 @@ export function renderFilmHash(film: Film): string {
     .digest("hex");
 }
 
-/** Acquires a kernel-owned advisory lock so abandoned lock files cannot block or race reclamation. */
+/** Polls interval between attempts to take a publication lock another job holds. */
+const PUBLICATION_LOCK_POLL_MS = 25;
+
+/** Longest time a crashed holder can block publication before its lock is reclaimed as stale. */
+const PUBLICATION_LOCK_STALE_MS = 5000;
+
+/** Sleeps for a while but wakes early, with the abort reason, when the signal aborts. */
+function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/**
+ * Takes a cross-process publication lock with Node only (proper-lockfile), so it works on Linux and macOS
+ * with no external binary. The holder keeps its lock fresh while alive; a crashed holder is reclaimed after
+ * PUBLICATION_LOCK_STALE_MS, so an abandoned lock can neither block nor race a later publisher.
+ */
 async function acquirePublicationLock(
   outPath: string,
   signal: AbortSignal,
 ): Promise<() => Promise<void>> {
   signal.throwIfAborted();
-  const lockPath = `${path.resolve(outPath)}.publish.lock`;
-  const child = spawn(
-    "flock",
-    ["-x", lockPath, "sh", "-c", "printf 'locked\\n'; cat"],
-    { stdio: ["pipe", "pipe", "pipe"] },
-  );
-  let stderr = "";
-  child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
-    stderr += chunk;
-  });
-  await new Promise<void>((resolve, reject) => {
-    let ready = false;
-    let output = "";
-    const abort = () => child.kill("SIGTERM");
-    signal.addEventListener("abort", abort, { once: true });
-    child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
-      output += chunk;
-      if (!ready && output.includes("\n")) {
-        ready = true;
-        signal.removeEventListener("abort", abort);
-        resolve();
-      }
-    });
-    child.once("error", (error) => {
-      signal.removeEventListener("abort", abort);
-      reject(error);
-    });
-    child.once("close", (code) => {
-      signal.removeEventListener("abort", abort);
-      if (ready) return;
-      reject(
-        signal.aborted
-          ? signal.reason
-          : new Error(`Unable to acquire publication lock (${code}): ${stderr}`),
-      );
-    });
-    if (signal.aborted) abort();
-  });
-  return () =>
-    new Promise<void>((resolve, reject) => {
-      child.once("error", reject);
-      child.once("close", () => resolve());
-      child.stdin.end();
-    });
+  const target = `${path.resolve(outPath)}.publish.lock`;
+  for (;;) {
+    try {
+      const release = await lockfile.lock(target, {
+        // The target is only a name: it need not exist, and the lock lives in its own sibling directory.
+        realpath: false,
+        lockfilePath: `${target}.d`,
+        stale: PUBLICATION_LOCK_STALE_MS,
+        // A lost lock must not kill the render server; the publication steps are short renames.
+        onCompromised: () => {},
+      });
+      let released = false;
+      return async () => {
+        if (released) return;
+        released = true;
+        try {
+          await release();
+        } catch (error) {
+          // The lock was reclaimed as stale while we held it: nothing is left to release.
+          if ((error as NodeJS.ErrnoException).code !== "ERELEASED") throw error;
+        }
+      };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ELOCKED") throw error;
+      await abortableDelay(PUBLICATION_LOCK_POLL_MS, signal);
+    }
+  }
 }
 
 /** Creates a single-use job; cancellation waits for backend teardown before discarding partial output. */

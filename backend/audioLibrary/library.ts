@@ -7,7 +7,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
+import { promisify } from "node:util";
 import { getProjectRoot, getAudioLibraryCacheDir } from "../../src/dl/videoPackageLoader";
 import { overrideSoundtrackLibrary } from "../../src/dl/audio/sectionMixer";
 import { audioItemIdSchema, parseAudioLibrary, type AudioItem, type AudioLibrary } from "./schema";
@@ -44,7 +45,7 @@ export interface AudioLibraryVerifyReport {
 export interface AudioFetchItemResult {
   id: string;
   filename: string;
-  status: "downloaded" | "skipped" | "manual";
+  status: "downloaded" | "skipped" | "manual" | "failed";
   bytes: number;
   sha256: string;
   message?: string;
@@ -58,6 +59,9 @@ export interface AudioLibraryFetchReport {
     downloaded: number;
     skipped: number;
     manual: number;
+    failed: number;
+    /** Failed items that the manifest does not mark `required: false`; these alone make the fetch not ok. */
+    requiredFailed: number;
   };
   results: AudioFetchItemResult[];
 }
@@ -203,19 +207,41 @@ export function verifyAudioLibrary(library: AudioLibrary, options: { cacheDir?: 
   };
 }
 
-// Downloads raw bytes from a URL and saves them to a destination file.
+const execFileAsync = promisify(execFile);
+
+// Some hosts (kenney.nl) answer a bare request with an HTML page and a 200; a same-site Referer gets the real file.
+function downloadHeaders(url: string): Record<string, string> {
+  return {
+    "User-Agent": "Mozilla/5.0 (compatible; aideos-audio-fetch/1.0)",
+    Referer: `${new URL(url).origin}/`,
+  };
+}
+
+// Downloads raw bytes from a URL and saves them to a destination file; an HTML page is never accepted as audio.
 async function downloadToFile(url: string, destPath: string): Promise<void> {
+  const headers = downloadHeaders(url);
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { headers });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+    if ((res.headers.get("content-type") ?? "").toLowerCase().includes("text/html")) {
+      throw new Error("server returned an HTML page instead of an audio file");
     }
     const arrayBuffer = await res.arrayBuffer();
     fs.writeFileSync(destPath, Buffer.from(arrayBuffer));
   } catch {
     // Fall back to curl if Node fetch encountered network or SSL transport issue
-    execFileSync("curl", ["-fsSL", url, "-o", destPath], { stdio: "pipe" });
+    await execFileAsync("curl", ["-fsSL", "-A", headers["User-Agent"], "-e", headers.Referer, url, "-o", destPath]);
   }
+}
+
+// Turns a thrown fetch error into one readable line (execFileSync errors carry the tool's stderr).
+function describeFetchError(err: unknown): string {
+  const stderr = (err as { stderr?: Buffer | string } | null)?.stderr;
+  const detail = stderr ? String(stderr).trim() : "";
+  const message = err instanceof Error ? err.message.split("\n")[0] : String(err);
+  return detail ? `${message} (${detail.split("\n")[0]})` : message;
 }
 
 // Fetches a single audio item, verifies its sha256, and stores it in the cache.
@@ -327,7 +353,7 @@ export async function fetchAudioItem(
   }
 }
 
-// Fetches audio items sequentially into the shared cache and verifies hashes.
+// Fetches audio items sequentially into the shared cache and verifies hashes; a failing item is reported, not fatal.
 export async function fetchAudioLibrary(
   library: AudioLibrary,
   options: {
@@ -353,11 +379,24 @@ export async function fetchAudioLibrary(
 
   try {
     for (const item of itemsToFetch) {
-      const result = await fetchAudioItem(item, {
-        cacheDir,
-        force: options.force,
-        archiveCache,
-      });
+      let result: AudioFetchItemResult;
+      try {
+        result = await fetchAudioItem(item, {
+          cacheDir,
+          force: options.force,
+          archiveCache,
+        });
+      } catch (err) {
+        // One broken item must not skip the rest of the batch; it is reported in the summary instead.
+        result = {
+          id: item.id,
+          filename: getAudioItemFilename(item),
+          status: "failed",
+          bytes: 0,
+          sha256: item.sha256,
+          message: describeFetchError(err),
+        };
+      }
       results.push(result);
       options.onProgress?.(result);
     }
@@ -378,10 +417,14 @@ export async function fetchAudioLibrary(
     downloaded: results.filter((r) => r.status === "downloaded").length,
     skipped: results.filter((r) => r.status === "skipped").length,
     manual: results.filter((r) => r.status === "manual").length,
+    failed: results.filter((r) => r.status === "failed").length,
+    requiredFailed: results.filter(
+      (r) => r.status === "failed" && itemsToFetch.find((i) => i.id === r.id)?.required !== false,
+    ).length,
   };
 
   return {
-    ok: summary.manual === 0,
+    ok: summary.manual === 0 && summary.requiredFailed === 0,
     cacheDir,
     summary,
     results,

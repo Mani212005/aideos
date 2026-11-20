@@ -26,7 +26,8 @@ aideos audio fetch --json
 - Downloads items sequentially (never crawls or scrapes).
 - Verifies SHA256 checksums immediately upon download; mismatches are rejected and deleted.
 - Skips items already present in the cache with matching SHA256 hashes.
-- Exits with code 1 when manual items still need importing.
+- Sends a same-site `Referer` (some hosts, such as kenney.nl, answer a bare request with an HTML page) and rejects an HTML response as an audio file.
+- Continues past an item that fails, then prints a summary naming each failed item. It exits with code 1 only when a required item failed (an item is required unless the manifest sets `"required": false`) or manual items still need importing.
 
 ### `aideos audio verify`
 Verifies all cached audio assets against their declared SHA256 hashes:
@@ -72,7 +73,7 @@ Each library-backed section and effect records an item ID; a SHA256 can also be 
 
 The section mixer uses each manifest item's integrated loudness to set the gain toward `targetLufs`, which defaults to -16 LUFS. It then applies the section volume and a mono-to-stereo correction where needed. It does not analyze the music file during playback.
 
-At chapter cuts, sections overlap with equal-power fades centered on the cut. Long uses a 3-second crossfade and Reel uses 1.5 seconds. The last section extends through the end card and is back-timed from the end of its source. Sources are never looped. The design check rejects sections whose full frame-rounded source span does not fit the track.
+At chapter cuts, sections overlap with equal-power fades centered on the cut. Long uses a 3-second crossfade and Reel uses 1.5 seconds. The last section extends through the end card and is back-timed from 0.75 s before the end of its source (`LAST_SECTION_TAIL_HEADROOM_SEC`), so an MP3 that decodes slightly shorter than its manifest duration still covers the whole delivery. Sources are never looped. The design check rejects sections whose full frame-rounded source span does not fit the track.
 
 Narration assembly inserts a default 900 ms gap before a segment that starts a new chapter. This chapter breath gives a soundtrack crossfade room to land between spoken lines. `src/dl/audio/voiceActivity.ts` owns the shared speech / pause / gap state machine used by both music ducking and the music review measurement. It treats each 10 ms narration RMS frame above -40 dB as active speech and joins speech runs separated by less than 0.6 seconds into a phrase. Shorter silences are pauses where music stays ducked; silence reaching 0.6 seconds is a gap where music may rise. The checker includes a 400 ms measurement window when any positive portion overlaps speech according to this same timeline, regardless of the window's average level. Narration measurements map through clip timing and speed, and their saved fingerprint covers narration bytes and clip edits so a change triggers new measurements. The timeline is based on audio levels, not text timing or inferred breaths.
 
