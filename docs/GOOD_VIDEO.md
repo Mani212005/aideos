@@ -32,7 +32,9 @@ A film may add generated pictures to its one stage. The format is fixed:
   approved picture by `sha256`; both renderers refuse any other bytes.
 - **Colour and contrast.** A picture's strong colours sit near the film accent and the plate's tone near the canvas
   (the palette rule reads pixels). Every SVG label over a picture keeps 4.5:1 contrast (3:1 when large) against the
-  busiest tenth of the picture behind it; give a label its own ground over a busy plate.
+  busiest tenth of the picture behind it. The rule measures picture pixels only (not SVG scrims, cards or pills drawn
+  between the plate and the label) and samples the middle of each shot only, so a label that fails must be moved or
+  recoloured, or the plate quieted.
 - **Where pictures come from.** aideos never calls an image service. Pictures are made on the captain's Mac through
   Codex image generation and stored with `aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin]`;
   `aideos pictures status <film>` lists what is cached, pinned or still to make, with each prompt.

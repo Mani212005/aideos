@@ -323,6 +323,7 @@ function composite(x: number, y: number, pictures: DrawnPicture[], canvas: [numb
 /**
  * The contrast rule for labels over pictures: at the middle of every shot, in each format, every SVG text label drawn
  * over a picture must keep WCAG contrast against the worst tenth of the picture behind it (a busy plate lowers that).
+ * It measures picture pixels only, never SVG fills drawn between the plate and the label, and samples only the middle of each shot.
  */
 export function checkLabelContrast(film: Film, scene: Scene, compiled: CompiledScene, formats: ReadonlyArray<"long" | "reel">): DesignFinding[] {
   const t = PICTURE_THRESHOLDS;
@@ -382,7 +383,7 @@ export function checkLabelContrast(film: Film, scene: Scene, compiled: CompiledS
             rule: "contrast",
             severity: "error",
             where: `shot ${timed.shot.id} / ${entity.entityId} / ${label.name}`,
-            message: `label over picture "${pictures.map((p) => p.id).join(", ")}" has contrast ${worst.toFixed(2)}:1 against the busiest tenth behind it in the ${format === "long" ? "wide" : "reel"} cut at frame ${f} (needs ${need}:1). Give the label its own ground, move it to a quieter part of the picture, or change its colour.`,
+            message: `label over picture "${pictures.map((p) => p.id).join(", ")}" has contrast ${worst.toFixed(2)}:1 against the busiest tenth behind it in the ${format === "long" ? "wide" : "reel"} cut at frame ${f} (needs ${need}:1). This rule measures picture pixels only (not SVG scrims, cards or pills drawn between the plate and the label) and samples the middle of each shot only, so move the label, change its colour, or quiet the plate.`,
           });
         }
       });
