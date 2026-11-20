@@ -12,7 +12,7 @@ Every video, in both formats, has music, sound effects and the call to action en
 
 ## Pass Bar
 No gate fails, total >= 36/48, and every criterion >= 2. Targets are for a 60 to 120 s explainer at 1920x1080.
-Final acceptance requires a Gemini 3.8 Flash review score of 9.0 or higher (out of 10.0) with all 6 hard gates passing (`aideos all-check <slug>` or `aideos gemini-review <mp4>`), verdict ACCEPT, and the captain's own watch.
+Final acceptance requires a Gemini 3.8 Flash review score of 9.0 or higher (out of 10.0) with all 6 hard gates passing (`aideos all-check <slug>` or `aideos gemini-review <mp4>`), verdict ACCEPT, and the captain's own watch, recorded with `aideos verdict <slug> publish|fix|reject` in `videos/<slug>/owner-verdict.json` (`aideos all-check` never writes it).
 
 ## Rubric
 
