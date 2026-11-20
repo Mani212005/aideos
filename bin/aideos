@@ -66,11 +66,11 @@ fi
 # Reject unknown commands before resolving a checkout or touching Studio state.
 if [ "$#" -gt 0 ]; then
   case "$1" in
-    version|--version|which|exit|stop|down|kill|validate|review|study|compare|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|end-card|help|--help|-h)
+    version|--version|which|exit|stop|down|kill|validate|review|study|compare|verdict|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|end-card|help|--help|-h)
       ;;
     *)
       echo "Error: unknown aideos command '$1'." >&2
-      echo "Commands: exit (stop/down/kill), validate, review, study, compare, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
+      echo "Commands: exit (stop/down/kill), validate, review, study, compare, verdict, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
       echo "Run 'aideos help' for usage." >&2
       exit 2
       ;;
@@ -144,6 +144,11 @@ if [ "$#" -gt 0 ]; then
       # aideos compare <ours.mp4> <reference.mp4> [--out dir] [--ours-words f] [--ref-words f] [--no-sheet] [--send-to film] [--json]
       # Compares one of our videos with a local reference as numbers only: a labelled contact sheet and a metric diff. Local files only; never downloads.
       cd "$AIDEOS_DIR" && AIDEOS_CALLER_CWD="${AIDEOS_CALLER_CWD:-$OLDPWD}" exec npx tsx backend/cli.ts compare "$@"
+      ;;
+    verdict)
+      # aideos verdict <slug> [publish|fix|reject] [--note "..."] [--json]
+      # Records or displays the owner's own watch verdict in videos/<slug>/owner-verdict.json.
+      cd "$AIDEOS_DIR" && exec npx tsx backend/cli.ts verdict "$@"
       ;;
     gemini-review)
       # gemini-review --json must keep npm lifecycle banners off stdout.
@@ -293,6 +298,7 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos review <slug|mp4>    Measured (deterministic) review of a rendered video"
       echo "  aideos study <mp4...>       Measure local reference videos as numbers only (craft, never identity); writes a style bible and a look seed (docs/STUDY.md)"
       echo "  aideos compare <ours.mp4> <ref.mp4>  Compare our video with a local reference as numbers only: contact sheet plus metric diff (docs/COMPARE.md)"
+      echo "  aideos verdict <slug> [publish|fix|reject] [--note \"...\"]  Record or show the owner's watch verdict for a film"
       echo "  aideos character check <spec>  Validate a character spec, naming bad fields (--stamp writes its hash)"
       echo "  aideos character sheet <spec>  Render its model sheet, expression sheet and receive stills"
       echo "  aideos audio fetch [--item <id>]    Fetch background music and sound effects into shared cache"

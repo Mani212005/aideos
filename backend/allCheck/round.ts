@@ -117,6 +117,7 @@ function settleRoundAcceptance(slug: string, rec: FormatRoundRecord, target: num
   if (readRecord(pkg, rec.format).state === "unreviewed") recordRoundAcceptance(slug, rec, target);
   const current = readRecord(pkg, rec.format);
   if (current.mp4Hash !== mp4Hash) return;
+  // Records automated all-check acceptance only; owner watch approval lives strictly in videos/<slug>/owner-verdict.json and is never set here.
   if (rec.passed && current.state === "judged") applyEvents(pkg, rec.format, [{ type: "approved", mp4Hash, at: rec.createdAt }]);
   else if (!rec.passed && current.state === "accepted") applyEvents(pkg, rec.format, [{ type: "revoked", mp4Hash, at: new Date().toISOString() }]);
 }

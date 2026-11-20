@@ -30,6 +30,8 @@ export interface ExportJobInput {
   downloadUrl: string;
   prepare?: (film: Film) => Promise<Film>;
   onMaster?: (master: MasterResult, film: Film) => string | void;
+  /** Runs once after the final export file is atomically published (never on cancel or failure). */
+  onDone?: () => void;
   cleanup?: () => void;
 }
 
@@ -178,6 +180,11 @@ export function createExportJobs(deps: ExportJobDeps = {}) {
               read(pending);
               snapshot.progress = 1;
               snapshot.downloadUrl = input.downloadUrl;
+              try {
+                input.onDone?.();
+              } catch {
+                /* Preserve the finished export if post-publish retention fails. */
+              }
             }
           },
         },

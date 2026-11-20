@@ -279,6 +279,19 @@ test("main-red-alert workflow satisfies least privilege, triggers only on workfl
   }
 });
 
+test("W10 main-red-alert workflow automatically closes open alert issues when main goes green on HEAD", () => {
+  const alertPath = path.join(workflowDir, "main-red-alert.yml");
+  const doc = YAML.parse(fs.readFileSync(alertPath, "utf8")) as WorkflowDocument;
+  const resolveJob = doc.jobs?.resolve;
+  assert.ok(resolveJob, "main-red-alert.yml must define a resolve job for green main runs");
+  assert.match(resolveJob.if ?? "", /head_branch == 'main'/);
+  assert.match(resolveJob.if ?? "", /conclusion == 'success'/);
+  const closeStep = resolveJob.steps?.find((s) => s.run?.includes("gh issue close"));
+  assert.ok(closeStep?.run, "resolve job must close open CI failure issues");
+  assert.match(closeStep.run, /git\/ref\/heads\/main/, "resolve job must verify the green commit is still main HEAD");
+  assert.match(closeStep.run, /CI: main branch failure/);
+});
+
 test("golden comparison skips on non-Linux platforms with a clear message and has no force flag", () => {
   if (process.platform !== "linux") {
     assert.equal(notLinux(), "golden frames are verified on the Linux CI platform only");

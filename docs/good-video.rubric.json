@@ -37,7 +37,7 @@
       "id": "4",
       "name": "Camera that does something",
       "gate": true,
-      "target": "present, purposeful",
+      "target": "present, purposeful, settled",
       "anchors": {
         "0": "Absent",
         "2": "Partly",
@@ -46,7 +46,7 @@
     },
     {
       "id": "5",
-      "name": "Bottom captions",
+      "name": "Captions at placed position (default bottom)",
       "gate": true,
       "target": "pass",
       "anchors": {

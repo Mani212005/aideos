@@ -259,3 +259,30 @@ test("parseClaudeScript still reads a mixed legacy and bracket screenplay throug
     ["Two", ["narration:Second words."]],
   ]);
 });
+
+test("W9 single-timestamp chapter headings: strips leading single timestamp from section titles without catching plain prose", () => {
+  const script = [
+    "## 0:00-0:30 - Range Heading",
+    "[NARRATION]",
+    "Opening line.",
+    "",
+    "## 0:30 - The Problem With Proving Software",
+    "[NARRATION]",
+    "3:00 is just a time mentioned inside prose.",
+    "",
+    "1:05: The Bare Timestamp Heading",
+    "[NARRATION]",
+    "Closing line.",
+  ].join("\n");
+
+  const segments = parseClaudeScript(script);
+  assert.deepEqual(
+    segments.map((s) => ({ title: s.title, timeStart: s.timeStart, timeEnd: s.timeEnd })),
+    [
+      { title: "Range Heading", timeStart: "0:00", timeEnd: "0:30" },
+      { title: "The Problem With Proving Software", timeStart: "0:30", timeEnd: undefined },
+      { title: "The Bare Timestamp Heading", timeStart: "1:05", timeEnd: undefined },
+    ],
+  );
+  assert.equal(segments[1].beats[0].text, "3:00 is just a time mentioned inside prose.");
+});

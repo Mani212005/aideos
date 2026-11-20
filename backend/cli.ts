@@ -19,6 +19,7 @@ import { runDirector, type DirectorRequest } from "./pipeline/director";
 import type { TtsBackendName } from "./tts";
 import type { VcdLanguagePreference } from "./vcdClient";
 import { registerAllCheckCommands, rewriteAllCheckArgv } from "./allCheck/cli";
+import { registerVerdictCommands } from "./lessons/cli";
 import { registerAudioCommands } from "./audioLibrary/cli";
 import { registerCharacterCommands } from "./characters/cli";
 import { registerReelCommands } from "./reelCut/cli";
@@ -733,6 +734,7 @@ registerCharacterCommands(program);
 registerAudioCommands(program);
 registerStudyCommands(program);
 registerCompareCommands(program);
+registerVerdictCommands(program);
 
 export { program };
 
