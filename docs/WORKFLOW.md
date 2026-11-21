@@ -51,7 +51,7 @@ Every video is narrated with the owner's cloned voice (the local `vcd` service, 
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  STAGE 2: AUDIO-FIRST TIMING SPINE ENGINE                                    │
-│  • Shot-scoped segmentation & Neural / Kokoro audio synthesis                │
+│  • Shot-scoped segmentation & owner-voice (vcd) audio synthesis              │
 │  • Silence trimming & chapter-aware pauses (see Production Pipeline)         │
 │  • Word-level forced timestamp alignment -> captions.vtt                     │
 └──────────────────────────────────────┬───────────────────────────────────────┘
