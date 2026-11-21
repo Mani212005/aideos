@@ -48,7 +48,7 @@ struct StageView {
     pose: CameraPose,
 }
 
-/// Reads an IR colour (`#RRGGBB` or `#RRGGBBAA`, already checked by the loader).
+/// Reads an IR colour (`#RRGGBB` or `#RRGGBBAA`). The loader's schema guarantees that format for every colour field of a loaded IR, so a parse failure is unreachable there: no silent black fallback and no panic on bad input. The opaque black fallback only keeps this a total function for hand-built IR that skipped the loader.
 pub fn ir_color(s: &str) -> Rgba {
     parse_color(s).unwrap_or(Rgba {
         r: 0.0,

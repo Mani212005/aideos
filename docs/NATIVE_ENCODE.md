@@ -58,7 +58,9 @@ is x264.
 **Input layouts.** `rgba` frames are converted by ffmpeg with an accurate BT.709 limited-range matrix
 (`scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int`); alpha is ignored, so frames must be
 opaque (the PNG reader composites transparency over black). `i420` frames must already be limited-range BT.709, as the
-GPU conversion R2 plans produces. Sizes must be even in both directions. Both 16:9 (1920x1080) and 9:16 (1080x1920)
+GPU conversion R2 plans produces. Every layout ends in a `setparams` filter that tags each frame BT.709 limited range
+(primaries, transfer, matrix), because ffmpeg 8 no longer copies the output-option colour tags into the stream; older
+ffmpeg versions accept the same chain. Sizes must be even in both directions. Both 16:9 (1920x1080) and 9:16 (1080x1920)
 are the same code path.
 
 **Determinism.** The same frames, audio and options give byte-identical output on one machine: the tests encode twice

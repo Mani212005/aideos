@@ -170,6 +170,9 @@ impl Drop for Cleanup {
 /// The scale filter that turns RGBA into limited-range BT.709 (accurate rounding and full chroma interpolation keep hairlines and small type clean).
 const RGBA_TO_709: &str = "scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int";
 
+/// The filter that tags every frame limited-range BT.709, so the colour tags reach the stream even where ffmpeg 8 no longer copies them from the output options.
+const TAG_709: &str = "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=tv";
+
 /// Creates an exclusively reserved scratch file beside the requested output.
 fn reserve_scratch(dir: &Path, name: &str, suffix: &str) -> io::Result<PathBuf> {
     static NEXT_SCRATCH_ID: AtomicU64 = AtomicU64::new(0);
@@ -203,14 +206,12 @@ fn build_args(spec: &FrameSpec, profile: Profile, backend: Backend, audio: Optio
         push(&["-map", "0:v:0", "-map", "1:a:0"]);
     }
     let filter = match (backend, spec.pixel_format) {
-        (Backend::Vaapi, PixelFormat::Rgba8) => Some(format!("{RGBA_TO_709},format=nv12,hwupload")),
-        (Backend::Vaapi, PixelFormat::I420) => Some("format=nv12,hwupload".to_string()),
-        (_, PixelFormat::Rgba8) => Some(format!("{RGBA_TO_709},format=yuv420p")),
-        (_, PixelFormat::I420) => None,
+        (Backend::Vaapi, PixelFormat::Rgba8) => format!("{RGBA_TO_709},format=nv12,{TAG_709},hwupload"),
+        (Backend::Vaapi, PixelFormat::I420) => format!("format=nv12,{TAG_709},hwupload"),
+        (_, PixelFormat::Rgba8) => format!("{RGBA_TO_709},format=yuv420p,{TAG_709}"),
+        (_, PixelFormat::I420) => TAG_709.to_string(),
     };
-    if let Some(chain) = &filter {
-        push(&["-vf", chain]);
-    }
+    push(&["-vf", &filter]);
     match backend {
         Backend::Software => {
             push(&["-c:v", "libx264", "-preset", profile.x264_preset(), "-crf", &profile.policy().crf.to_string(), "-pix_fmt", "yuv420p"]);

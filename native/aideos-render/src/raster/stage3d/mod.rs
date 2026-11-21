@@ -88,6 +88,8 @@ pub(crate) struct EdgeSet {
 /// What a drawable is drawn as while its treatment is dots-v1.
 pub(crate) struct DotsDrawable {
     pub shading: Shading,
+    /// Which faces the dots paper or ink draws: the dots material's own side, not the cel look's.
+    pub side: Side,
     /// The ink hull's push along the normals, as in the cel look.
     pub ink_width: Option<f32>,
     /// three's creation id of the paper material: the opaque draw order key.
@@ -233,12 +235,22 @@ impl Stage3dScene {
             .map(|(i, g)| (g.id.as_str(), i))
             .collect();
         let mut graph = Vec::with_capacity(node.nodes.len());
-        for g in &node.nodes {
+        for (position, g) in node.nodes.iter().enumerate() {
             let parent = match &g.parent {
                 None => None,
-                Some(p) => Some(*index.get(p.as_str()).ok_or_else(|| {
-                    format!("stage3d {id}: node {} names the unknown parent {p}", g.id)
-                })?),
+                Some(p) => {
+                    let parent = *index.get(p.as_str()).ok_or_else(|| {
+                        format!("stage3d {id}: node {} names the unknown parent {p}", g.id)
+                    })?;
+                    // `world_matrices` poses the graph in one pass, so a parent must come before its children.
+                    if parent >= position {
+                        return Err(format!(
+                            "stage3d {id}: node {} is listed before its parent {p}",
+                            g.id
+                        ));
+                    }
+                    Some(parent)
+                }
             };
             let channel = node.channels.iter().find(|c| c.node == g.id);
             let samples_of = |v: &Option<Vec<f64>>,
@@ -453,11 +465,12 @@ impl Stage3dScene {
                 None => None,
                 Some(look) => {
                     let what = format!("drawable {}", dr.id);
-                    let (dshading, dink) = match &look.material {
+                    let (dshading, dside, dink) = match &look.material {
                         DotsMaterial::Basic(m) => (
                             Shading::Flat {
                                 rgba: pack_linear(rgb32(m.color)),
                             },
+                            m.side,
                             None,
                         ),
                         DotsMaterial::FaceLuma(m) => {
@@ -476,6 +489,7 @@ impl Stage3dScene {
                                     texture,
                                     color: rgb32(m.color),
                                 },
+                                m.side,
                                 None,
                             )
                         }
@@ -483,6 +497,7 @@ impl Stage3dScene {
                             Shading::Flat {
                                 rgba: pack_linear(rgb32(m.color)),
                             },
+                            m.side,
                             Some(m.width as f32),
                         ),
                     };
@@ -507,6 +522,7 @@ impl Stage3dScene {
                     };
                     Some(DotsDrawable {
                         shading: dshading,
+                        side: dside,
                         ink_width: dink,
                         order: look.order,
                         samples,

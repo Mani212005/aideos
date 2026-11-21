@@ -263,7 +263,8 @@ fn run_measure(raw: Vec<String>) -> Result<String, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let request: aideos_render::measure::MeasureRequest =
         serde_json::from_str(&text).map_err(|e| format!("{} is not a measure request: {e}", path.display()))?;
-    let base = path.parent().unwrap_or_else(|| Path::new("."));
+    // A bare file name has the empty path as its parent: its directory is the current one.
+    let base = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
     let report = aideos_render::measure::measure(&request, base)?;
     serde_json::to_string(&report).map_err(|e| e.to_string())
 }
