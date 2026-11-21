@@ -179,35 +179,6 @@ export function isLocalStudioRequest(req: StudioGuardRequest): boolean {
   );
 }
 
-// Checks that a loopback-only read with side effects (such as GET /api/audio/retime) is local and same-origin.
-export function isLocalLoopbackRead(req: StudioGuardRequest): boolean {
-  if (!isLoopbackIp(req.socket?.remoteAddress)) return false;
-  if (hasProxyForwardingHeaders(req)) return false;
-
-  const requestOrigin = parseHostHeader(singleHeader(req.headers, "host"), "http:");
-  if (!requestOrigin || !isLoopbackHostname(requestOrigin.hostname)) return false;
-
-  const fetchSite = singleHeader(req.headers, "sec-fetch-site")?.toLowerCase();
-  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return false;
-
-  const originHeader = singleHeader(req.headers, "origin");
-  if (originHeader) {
-    const origin = parseHttpOrigin(originHeader);
-    if (!origin || origin.origin !== requestOrigin.origin) return false;
-  }
-
-  const refererHeader = singleHeader(req.headers, "referer");
-  if (refererHeader) {
-    try {
-      const referer = new URL(refererHeader);
-      if (referer.origin !== requestOrigin.origin) return false;
-    } catch {
-      return false;
-    }
-  }
-  return true;
-}
-
 // Resolves the exact allowlisted CORS origin to echo for a request, or null when no CORS grant applies.
 export function resolveAllowedCorsOrigin(
   req: StudioGuardRequest,
@@ -317,7 +288,7 @@ export function resolveResourcePolicy(req: StudioGuardRequest, allowedOrigin: st
 
 // Picks a clear, route-specific error message when a non-local caller is refused on a guarded Studio route.
 function localGuardMessage(pathname: string): string {
-  if (pathname === "/api/generate-voiceover" || pathname === "/api/voiceover") {
+  if (pathname === "/api/generate-voiceover") {
     return "Voiceover synthesis is only available to the local Studio page.";
   }
   if (EXPORT_ROUTE.test(pathname)) {
@@ -340,17 +311,8 @@ export function guardStudioApiRequest(
   const method = (req.method ?? "GET").toUpperCase();
   if (method === "OPTIONS") return { allow: true };
 
-  // Safe read methods remain open to read (CORS allowlist still prevents foreign web pages from reading them),
-  // except /api/audio/retime which invokes ffmpeg and writes to .tmp_audio/.
+  // Safe read methods remain open to read (CORS allowlist still prevents foreign web pages from reading them).
   if (SAFE_HTTP_METHODS.has(method)) {
-    if (pathname === "/api/audio/retime" && !isLocalLoopbackRead(req)) {
-      return {
-        allow: false,
-        status: 403,
-        code: "local_studio_required",
-        error: "Audio retiming is only available to the local Studio page.",
-      };
-    }
     return { allow: true };
   }
 

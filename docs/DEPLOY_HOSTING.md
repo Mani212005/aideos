@@ -146,9 +146,9 @@ Before deploying, ensure you have:
 
 - The server binds loopback (`127.0.0.1`) unless `HOST` is set. The Docker image passes `--host 0.0.0.0` explicitly.
 - CORS is allowlist-only (never `*`): a local Studio page gets its own loopback origin, and hosted deployments get the origins in `AIDEOS_ALLOWED_ORIGINS` and `AIDEOS_PUBLIC_API_URL` plus their own HTTPS origin. Other preflights get 403 `origin_not_allowed`.
-- Every non-GET API route except OPTIONS is refused with 403 `local_studio_required` unless the request is a same-origin loopback Studio page. This covers writes, voice synthesis and exports. GET and HEAD stay open, except `/api/audio/retime`, which is local only.
+- Every non-GET API route except OPTIONS is refused with 403 `local_studio_required` unless the request is a same-origin loopback Studio page. This covers writes, voice synthesis and exports. GET and HEAD stay open.
 - Agent link `claim`, `result`, `pair`, `DELETE /api/agent-link`, `/api/mcp` and the acceptance check stay reachable on hosted deployments (foreign browser origins are refused).
-- Non-local write, export, upload, voice synthesis and edit requests are refused with 403 `local_studio_required`. This includes the routes that dispatch tasks to a linked agent (`/api/prompt-agent`, `/api/ai-edit`, project design and shot-redesign routes). The hosted access model is an open decision, so no hosted route beyond the list above is opened by this guard.
+- Non-local write, export, upload, voice synthesis and edit requests are refused with 403 `local_studio_required`. This includes the routes that dispatch tasks to a linked agent (`/api/prompt-agent`, `/api/ai-edit`, project design and shot motion routes). The hosted access model is an open decision, so no hosted route beyond the list above is opened by this guard.
 
 ---
 

@@ -7,7 +7,7 @@
  * Used by: editor/src/components/ui/index.ts, editor forms.
  */
 
-import React, { useId } from "react";
+import React from "react";
 import { cn } from "./cn";
 
 const CONTROL_BASE =
@@ -189,22 +189,5 @@ export function NumberStepper({
         </button>
       </div>
     </div>
-  );
-}
-
-export interface LabelledInputProps extends InputProps {
-  label: React.ReactNode;
-  hint?: React.ReactNode;
-  aside?: React.ReactNode;
-  wrapperClassName?: string;
-}
-
-/** Convenience pairing of Field and Input that wires up the label association. */
-export function LabelledInput({ label, hint, aside, wrapperClassName, ...rest }: LabelledInputProps) {
-  const id = useId();
-  return (
-    <Field label={label} hint={hint} aside={aside} htmlFor={id} className={wrapperClassName}>
-      <Input id={id} {...rest} />
-    </Field>
   );
 }

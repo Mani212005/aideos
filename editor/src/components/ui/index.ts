@@ -26,7 +26,6 @@ export {
   Select,
   Range,
   NumberStepper,
-  LabelledInput,
   type FieldProps,
   type InputProps,
   type TextareaProps,

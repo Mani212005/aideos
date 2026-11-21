@@ -83,14 +83,9 @@ export default {
           "0%": { backgroundPosition: "0 0" },
           "100%": { backgroundPosition: "28px 0" },
         },
-        "nb-blink": {
-          "0%, 49%": { opacity: "1" },
-          "50%, 100%": { opacity: "0.3" },
-        },
       },
       animation: {
         "nb-marquee": "nb-marquee 600ms linear infinite",
-        "nb-blink": "nb-blink 1200ms var(--nb-ease) infinite",
       },
     },
   },

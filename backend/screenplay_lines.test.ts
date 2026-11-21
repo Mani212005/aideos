@@ -176,7 +176,7 @@ test("the shared synthesis boundary rejects a leaked title before any voice is s
   }
 });
 
-test("Studio /api/voiceover rejects a title leak before generating audio", () => {
+test("Studio voiceover intake rejects a title leak before generating audio", () => {
   const result = checkVoiceoverIntake("## Closing\n[NARRATION]\nClosing.");
   assert.equal(result.ok, false);
   if (!result.ok) {

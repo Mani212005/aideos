@@ -10,7 +10,6 @@ import { Img, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame
 import { accentAt, MONO, SERIF, useLayout, useTokens } from "./tokens";
 import { EXPO, frames, MS, useEntrance, useProgress } from "./motion";
 import { useAccent } from "./accent";
-import { AlignContext } from "./align";
 import { getFullScreenHeroLayout, heroScrimGradient } from "./fullScreenHeroLayout";
 import type { BlockProps } from "./primitives";
 
@@ -762,42 +761,5 @@ export const AnalogyInset: React.FC<BlockProps & { caption: string; src?: string
       )}
       <div style={layout.label()}>{caption}</div>
     </div>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
-/* TextBeat - the breather                                                     */
-/* -------------------------------------------------------------------------- */
-
-/**
- * One sentence, full frame, nothing else. Resets attention.
- *
- * There is no device here on purpose. After sixty seconds of diagrams the most
- * effective thing you can put on screen is a single claim with nothing to read
- * around it.
- */
-export const TextBeat: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const layout = useLayout();
-  // Long-form centres; a reel does not. A 9:16 frame is read like a page, and
-  // centred type in a narrow column gives every line a different left edge.
-  const align = layout.format === "reel" ? "left" : "center";
-
-  return (
-    <AlignContext.Provider value={align}>
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          maxWidth: layout.format === "long" ? layout.px(1180) : "100%",
-          marginInline: align === "center" ? "auto" : undefined,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          gap: layout.grid * 3,
-        }}
-      >
-        {children}
-      </div>
-    </AlignContext.Provider>
   );
 };

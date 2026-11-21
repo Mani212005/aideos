@@ -1,8 +1,8 @@
 /**
  * File Description: Comprehensive semantic validator for Aideos Scene Graph data (Phase 1).
  * Rejects unsupported actor rigs before applying scene integrity rules, custom SVG animation
- * timeline rules (Rule 20), picture assets (Rule 11 with src/dl/scene/raster.ts: one pinned PNG, its one element
- * moved by placement, scale, rotation and opacity clips only), and normalized median scale warnings (W1).
+ * timeline rules (Rule 20), and picture assets (Rule 11 with src/dl/scene/raster.ts: one pinned PNG, its one element
+ * moved by placement, scale, rotation and opacity clips only).
  * 100% pure TypeScript validator with zero Node runtime dependencies.
  * Inputs and outputs: Scene data object -> validation diagnostics and errors.
  * Used by: src/dl/scene/validateSceneNode.ts, backend/scene/scene.test.ts.
@@ -64,32 +64,14 @@ export function validateScene(scene: Scene): ValidationResult {
     };
   }
 
-  // Rule 2: actors.length <= 15
   errors.push(...validateStage(scene).map((message) => ({ rule: 22, message })));
 
-  if (!Array.isArray(scene.actors) || scene.actors.length > 15) {
+  // Rule 2: actors field must be an array (non-empty actor arrays are rejected above under Rule 21).
+  if (!Array.isArray(scene.actors)) {
     errors.push({
       rule: 2,
-      message: `Scene contains ${scene.actors?.length ?? 0} actors. Maximum allowed actors per scene is 15.`,
+      message: "Scene actors must be an array.",
     });
-  }
-
-  // Rule 3: All instanceId values unique within the scene
-  const instanceIds = new Set<string>();
-  if (Array.isArray(scene.actors)) {
-    for (const actor of scene.actors) {
-      if (!actor.instanceId) {
-        errors.push({ rule: 3, message: "Actor is missing required instanceId" });
-      } else if (instanceIds.has(actor.instanceId)) {
-        errors.push({
-          rule: 3,
-          entityId: actor.instanceId,
-          message: `Duplicate actor instanceId "${actor.instanceId}" found in scene`,
-        });
-      } else {
-        instanceIds.add(actor.instanceId);
-      }
-    }
   }
 
   // Rule 4: All assetId values unique within the scene
@@ -123,9 +105,6 @@ export function validateScene(scene: Scene): ValidationResult {
     }
   };
   for (const asset of allAssets) checkLayer(asset.layer, asset.assetId);
-  if (Array.isArray(scene.actors)) {
-    for (const actor of scene.actors) checkLayer(actor.layer, actor.instanceId);
-  }
 
   // Helper to validate tracks (Rules 8, 9)
   const validateTrack = (track: Track, entityId: string, trackName: string) => {
