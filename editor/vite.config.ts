@@ -2432,10 +2432,9 @@ export default defineConfig({
     strictPort: true,
     // CORS is enforced exclusively by setupApiMiddlewares (studioApiGuard) with an allowlist, never '*'.
     cors: false,
-    // The hosted backend is `vite preview` of the built editor (the API lives in the same middleware,
-    // which preview inherits through `server.allowedHosts`), reached as aideos-backend.onrender.com
-    // directly and through Vercel's /api rewrite. Vite rejects any Host it does not know with a 403,
-    // so name the hosting domains; AIDEOS_ALLOWED_HOSTS adds more.
+    // The hosted backend is this dev server (the API lives in its middleware), reached as
+    // aideos-backend.onrender.com directly and through Vercel's /api rewrite. Vite rejects any
+    // Host it does not know with a 403, so name the hosting domains; AIDEOS_ALLOWED_HOSTS adds more.
     allowedHosts: resolveAllowedHosts(),
     fs: {
       allow: ['..', ...(audioLibraryOverride ? [path.dirname(path.resolve(audioLibraryOverride))] : [])]
