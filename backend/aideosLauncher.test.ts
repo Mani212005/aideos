@@ -123,7 +123,6 @@ test("aideos launcher help exits 0 and the top-level help lists look and design"
       "render",
       "reel",
       "studio",
-      "frames",
       "test",
       "produce",
       "direct",

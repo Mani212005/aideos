@@ -66,11 +66,11 @@ fi
 # Reject unknown commands before resolving a checkout or touching Studio state.
 if [ "$#" -gt 0 ]; then
   case "$1" in
-    version|--version|which|exit|stop|down|kill|validate|review|study|compare|verdict|all-check|connect|design|look|pictures|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|end-card|help|--help|-h)
+    version|--version|which|exit|stop|down|kill|validate|review|study|compare|verdict|all-check|connect|design|look|pictures|character|render|render:reel|reel|studio|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|end-card|help|--help|-h)
       ;;
     *)
       echo "Error: unknown aideos command '$1'." >&2
-      echo "Commands: exit (stop/down/kill), validate, review, study, compare, verdict, all-check, connect, design, look, pictures, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
+      echo "Commands: exit (stop/down/kill), validate, review, study, compare, verdict, all-check, connect, design, look, pictures, character, render, reel, studio, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
       echo "Run 'aideos help' for usage." >&2
       exit 2
       ;;
@@ -276,10 +276,6 @@ if [ "$#" -gt 0 ]; then
       cd "$AIDEOS_DIR" && npm run studio -- --port "$((AIDEOS_PORT + 100))" "$@"
       exit 0
       ;;
-    frames)
-      cd "$AIDEOS_DIR" && npm run frames "$@"
-      exit 0
-      ;;
     test)
       cd "$AIDEOS_DIR" && npm test "$@"
       exit 0
@@ -303,7 +299,6 @@ if [ "$#" -gt 0 ]; then
       echo "  aideos render        Render long-form video (videos/<slug>/renders/long.mp4)"
       echo "  aideos reel          Render vertical reel (videos/<slug>/renders/reel.mp4)"
       echo "  aideos studio        Open Remotion Studio"
-      echo "  aideos frames        Render proof stills to .frames/"
       echo "  aideos test          Run full test suite"
       echo "  aideos produce       Audio-first timing spine generation"
       echo "  aideos direct <prompt>  Auto-prompt: LLM director plans and produces a draft film (--final-export renders mp4s)"
