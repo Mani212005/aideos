@@ -82,7 +82,11 @@ vertical space in a reel. The alternative is authoring a second canvas, which
 ## Owner caption cards
 
 The shared caption geometry is `captionPlacement.ts`. Film and shot placements are optional and
-independent in `long` and `reel`; absence preserves the existing bottom card with zero pixel changes.
+independent in `long` and `reel`; absence uses the format default: the bottom card in `long` (zero pixel changes)
+and the `REEL_CAPTION_SAFE_ZONE` card in `reel` (see Frame safe areas below). A saved reel placement that is exactly the
+retired default (`x 0.5`, `y 0.78`) is not an owner choice: `migrateLegacyReelPlacement` resolves it to the reel default in the
+renderer, the design check and the Gemini review facts. Any other saved placement renders as saved, and the placement check flags it
+when it leaves the format bounds.
 An absent `w` keeps the legacy shrink-to-content card, including after Lock or movement. Collision checks
 reserve the full 86% default band; the Studio selection ring hugs the card that was actually rendered.
 Explicit `w` values from 0 through 1 are clamped to the format's minimum and maximum. An omitted
@@ -103,7 +107,7 @@ Wide and Reel keep independent positions and **Copy to Wide** / **Copy to Reel**
 undo step. Snap guides and the unsafe areas of the frame appear only while dragging, snapping within 6 screen
 pixels; hold Alt to bypass. An auto-width card can move sideways only as far as its reserved band allows
 (up and down are free), and the strip says so: narrow the card with its side handles to move it sideways.
-The strip under the preview also offers **Center**, **Default position** (back to the bottom position and
+The strip under the preview also offers **Center**, **Default position** (back to the format default position and
 automatic width), **Lock** and, when a shot has its own position written by an agent, **Follow whole video**.
 The Studio no longer creates per-shot positions; existing ones still render and can be cleared. **Lock** only
 stops checked agent edits and rebuilds: Studio saves are trusted owner writes, so you can still drag a
