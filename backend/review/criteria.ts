@@ -9,6 +9,7 @@
  */
 
 import { storyRanges } from "../stageTimeline";
+import { HOUSE_PACE } from "../pacingProfile";
 import type { Loudness, Silence } from "./media";
 import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
@@ -91,15 +92,15 @@ function carryOver(i: ReviewInputs): CriterionResult {
   const { film, video } = i;
   if (!film) return skipped(2, "carry-over", "Carry-over with transformation", false, "needs aideos film data; pixel overlap in place measures stillness, not continuity");
   const hits = film.boundaries.filter((b) => b.transformed > 0);
-  const per20 = (hits.length / Math.max(1, video.durationSec)) * 20;
-  const floor = 1 / 20;
-  const ok = hits.length / Math.max(1, video.durationSec) >= floor;
+  const every = HOUSE_PACE.carryOverPerSec;
+  const perWindow = (hits.length / Math.max(1, video.durationSec)) * every;
+  const ok = perWindow >= 1;
   return {
     id: 2, key: "carry-over", name: "Carry-over with transformation", gate: false,
-    status: ok ? "pass" : "fail", score: score(per20, 0, 1.5),
-    summary: `${hits.length} beat boundaries carry an element across while changing it (${round(per20, 2)} per 20 s, needs at least 1)`,
-    metrics: { transformedBoundaries: hits.length, per20s: round(per20) },
-    threshold: { per20sMin: 1 },
+    status: ok ? "pass" : "fail", score: score(perWindow, 0, 1.5),
+    summary: `${hits.length} beat boundaries carry an element across while changing it (${round(perWindow, 2)} per ${every} s, needs at least 1)`,
+    metrics: { transformedBoundaries: hits.length, perWindow: round(perWindow), windowSec: every },
+    threshold: { perWindowMin: 1, windowSec: every },
     evidence: spread(hits.map((b) => b.t), 3).map((t) => ({ t: t + 0.5, note: "an element persists across this boundary and is transformed" })),
     fix: ok ? undefined : "At each beat boundary keep at least one named element and change its position, scale, shape or role (a graph that slides aside and shrinks into a flowchart card).",
   };

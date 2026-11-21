@@ -38,7 +38,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | # | Criterion (gate in bold) | Measured from | Pass when |
 |---|---|---|---|
 | 1 | **One persistent stage** | pixels (ink layout correlation with 2 s earlier, stage-clear events) and film data (beats that keep the previous elements on stage) | median correlation >= 0.65, <= 2.2 stage clears per 30 s, >= 60% of beat boundaries keep their elements |
-| 2 | Carry-over with transformation | film data only: an element stays across a beat boundary and is transformed | >= 1 per 20 s |
+| 2 | Carry-over with transformation | film data only: an element stays across a beat boundary and is transformed | >= 1 per 17 s |
 | 13 | Look plan adherence | when `design/look.json` is available, scene motion, carried objects, camera poses, device spacing and stage treatment are checked against the plan as a non-gate score; on a character film each planned performance is checked by its evaluated contact frame against its decisive word (anticipation may start earlier, no clip at the cue is needed), its character id and version, and its actor and prop on stage in this output | all planned shots follow the plan; this rendered-output score remains non-gating until calibrated on the proof and two or three more films. Design build acceptance is a separate gate; see [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery) |
 | 3 | Cues aimed at spoken words | film clips against word timings, compared with chance; declared Three performances contribute their evaluated contact events | clip starts and performance contacts land on word starts clearly more often than chance |
 | 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 17 s, none faster than 20% of the frame width per second (a scene camera also fails the design check on a zoom jump over 0.8% a frame or a pan acceleration over 0.3 widths per second squared) |
@@ -46,11 +46,11 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 6 | **Readability** | OCR box height (normalised to a 1080 short side) and pixel contrast | <= 58% of words under 18 px, <= 10% under 3:1 contrast |
 | 7 | **No overlap or clipping** | OCR boxes overlapping, text inside the edge margin, canvas node overlap | <= 10% of sampled frames affected |
 | 8 | **Audio sync** | audio vs video length, film length, shot boundaries vs word timings | lengths within 0.1 s, no shot boundary through a spoken word |
-| 9 | Pacing | compiled stage motion plus frame difference (static holds, hard cuts), word timings or silence (dead air, pace), film shot lengths (mean beat) | [house pace](GOOD_VIDEO.md#house-pace): no story hold over 2.5 s, <= 2 hard cuts per minute, no pause over 0.6 s, 145 to 215 wpm, mean beat 4 to 10 s |
+| 9 | Pacing | compiled stage motion plus frame difference (static holds, hard cuts), word timings or silence (dead air, pace), film shot lengths (mean beat) | [house pace](GOOD_VIDEO.md#house-pace): no story hold over 2.5 s, <= 2.4 hard cuts per minute, no pause over 0.6 s, 145 to 215 wpm, mean beat 4 to 10 s |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms windows overlapping speech on the shared voice activity timeline | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
 | 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
-| 15 | Reel hook | timed narration words (`punctuated_word` for sentence ends) | first word starts under 0.3 s, first sentence is 10 to 16 words, no greeting or intro opener; evaluated on reel reviews, non-gating |
+| 15 | Reel hook | timed narration words (`punctuated_word` for sentence ends) | first word starts under 0.25 s, first sentence is 10 to 16 words, no greeting or intro opener; evaluated on reel reviews, non-gating |
 
 ### Stage timeline and stillness
 

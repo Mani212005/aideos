@@ -24,19 +24,18 @@ import {
   type VcdLanguagePreference,
 } from "./vcdClient";
 import { resampleLinear } from "./voiceLines";
-import { NARRATION_RATE } from "./pacingProfile";
 
 /** The one sample rate every backend normalizes to before assembly. Kokoro's native rate. */
 export const PCM_SAMPLE_RATE = 24000;
 
-/** Kokoro's speed setting for explainer narration before the 2026-11-21 house pace decision. */
-const PRE_2026_11_21_KOKORO_SPEED = 0.75;
-
 /**
- * Kokoro default: the house narration rate (backend/pacingProfile.ts) applied natively, because Kokoro has its
- * own speaking-rate setting. Backends without one are re-paced by time-stretch in backend/audio.ts instead.
+ * Kokoro default pace multiplier, applied natively because Kokoro has its own speaking-rate setting (backends
+ * without one are re-paced by time-stretch in backend/audio.ts instead). It is 1.05 because that is the smallest
+ * 0.05 step whose take of the sample-explainer fixture clears the house wpm floor (backend/pacingProfile.ts):
+ * measured with local Kokoro af_heart at the house gaps, 0.9 gave 135 wpm, 0.95 gave 140, 1.0 gave 144 and 1.05
+ * gave 147 wpm (floor 145). It is not the old 0.75 times the house narration rate, which lands below the floor.
  */
-export const DEFAULT_KOKORO_SPEED = Number((PRE_2026_11_21_KOKORO_SPEED * NARRATION_RATE).toFixed(3));
+export const DEFAULT_KOKORO_SPEED = 1.05;
 
 /** A synthesis backend: text in, mono Float32 PCM at PCM_SAMPLE_RATE out. */
 export interface TtsBackend {

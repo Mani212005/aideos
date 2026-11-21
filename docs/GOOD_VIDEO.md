@@ -68,7 +68,7 @@ full camera/pacing rubric honestly. It is engineering evidence, not an accepted 
 | # | Criterion | How to measure | Pass target | Method |
 |---|---|---|---|---|
 | 1 G | **One persistent stage** | element-level: of the elements visible at the end of beat k, share still visible (possibly transformed) in beat k+1; pixel-level fallback: layout correlation over 2 s | stage-clear events <= 1 per 30 s; median 2 s layout correlation >= 0.65 | deterministic (data and pixels) |
-| 2 | **Carry-over with transformation** | at least 3 beat boundaries in which a named element persists and changes position, scale, shape or role (graph -> card in a flowchart); plan a distinct resulting state, finish the change during a camera hold on that object, and leave it framed for at least about 2 s | >= 1 per 20 s | deterministic from scene data + judge confirms it reads as the same object |
+| 2 | **Carry-over with transformation** | at least 3 beat boundaries in which a named element persists and changes position, scale, shape or role (graph -> card in a flowchart); plan a distinct resulting state, finish the change during a camera hold on that object, and leave it framed for at least about 2 s | >= 1 per 17 s | deterministic from scene data + judge confirms it reads as the same object |
 | 3 | **Visible cause and effect** | each narrated claim of mechanism has an animation whose start is within 0.4 s of the spoken keyword, and which moves the thing named | every beat with a verb of action | cue-vs-word timing deterministic; "does the animation show the claim" = judge |
 | 4 G | **Camera that does something** | camera track with >= 1 move per 17 s; each move is a deliberate turn toward the next subject, arrives about one beat before its cue word, then holds for about 2.5 to 4 s; no move faster than 20% frame width per second | present, purposeful, settled | deterministic from compiled camera data; framing purpose = judge |
 | 5 G | **Captions at placed position (default bottom)** | burned-in caption card at its owner-declared position, or, when no position is declared, in the format default band (widescreen 16:9: bottom 22% starting at 78%; vertical 9:16 reel: platform safe zone y 40-60%, bottom edge <= 60%, x 6-84%) for >= 95% of narrated time; text >= 36 px at 1080p (45 px default), <= 2 lines, no widows, caption words match narration, clear of stage art | pass | deterministic (OCR in the declared card or format default safe zone + word-timing diff) |
@@ -91,16 +91,27 @@ that decision. [`backend/pacingProfile.ts`](../backend/pacingProfile.ts) owns th
 the old one, so the targets above (story hold, mean beat, dead air, words per minute, camera moves and holds) and
 the silences between lines all move together:
 
-- **Narration 1.2x.** A synthesizer with its own speaking-rate setting uses it (Kokoro: 0.9 from 0.75 in the pipeline, 1.2 from 1 in scene films). One
-  without (the cloned voice, Google, say) is re-paced line by line with a pitch-preserving time-stretch
-  (`timeStretch` in `backend/pcm.ts`); the rate is part of each line's cache key. The stretch was measured
-  with a local speech-to-text round trip before it became the default; re-measure when the voice changes.
+- **Narration 1.2x.** A synthesizer with its own speaking-rate setting uses it (Kokoro: 1.05 in the pipeline, the
+  smallest 0.05 step whose fixture take clears the 145 wpm floor, measured and not 0.75 times 1.2; 1.2 from 1 in scene
+  films). One without (the cloned voice, Google, say) is re-paced line by line with a pitch-preserving time-stretch
+  (`timeStretch` in `backend/pcm.ts`); the rate is part of each line's cache key. Whether the cloned voice reaches
+  the 145 wpm floor at 1.2x is unverified: measure it with the real voice.
+- **Clarity was measured once, not gated.** A faster-whisper small.en (CPU, int8) speech-to-text round trip on the
+  `sample-explainer` fixture, word error rate against the script: before 9.8%, Kokoro 0.9 8.1%, WSOLA stretch 1.2x
+  8.6%, ffmpeg `atempo` 1.2x reference 9.0%, Kokoro 1.05 6.8%; no content word misheard. See
+  [the evidence log](evidence/verify/2026-11-21-faster-pacing-profile.md). A repeatable check is a follow-up
+  (`aideos-intelligibility-check`).
 - **Tighter gaps.** Silence between lines 170 ms (pipeline) and 350 ms (scene kit), chapter breath 750 ms.
 - **Shorter beats, more camera.** Beats average 4 to 10 s, the camera moves at least once per 17 s and holds
   2.5 to 4 s per subject, and no story picture holds still past 2.5 s.
-- **Unchanged and at least as strict.** Camera speed (20% of the frame width per second), hard cuts, captions,
+- **More cuts, earlier hook.** At most 2.4 hard cuts per minute (2 before), a carry-over with transformation at least
+  once per 17 s (20 before), and the reel's first word starts before 0.25 s (0.3 before). Each is the old value
+  scaled by 1.2 in `backend/pacingProfile.ts`; the 10 to 16 word hook sentence is unchanged.
+- **Unchanged and at least as strict.** Camera speed (20% of the frame width per second), captions,
   readability, overlap, audio sync and the reel caption safe zone. The 179 s reel cap is a platform limit; a
   reel cut budgets words from the long take's measured pace, so it speeds up with the long by itself.
+- **Story length is a consequence, not a gate.** The story playing 20 to 30 percent shorter for the same script
+  follows from the faster narration and tighter gaps; nothing enforces a story length target.
 
 ### Reel supplement
 
@@ -121,7 +132,7 @@ Every 9:16 reel places burned-in captions inside `REEL_CAPTION_SAFE_ZONE` (`src/
 
 | # | Criterion | How to measure | Pass target | Method |
 |---|---|---|---|---|
-| 15 | **Reel hook** | the first spoken word's start, the word count of the first sentence, and its opening words | first word starts under 0.3 s; first sentence is 10 to 16 words; no greeting or intro opener; non-gating | deterministic (word timings and sentence punctuation); skipped when either is missing |
+| 15 | **Reel hook** | the first spoken word's start, the word count of the first sentence, and its opening words | first word starts under 0.25 s; first sentence is 10 to 16 words; no greeting or intro opener; non-gating | deterministic (word timings and sentence punctuation); skipped when either is missing |
 
 ## Anchors for scoring (0-4)
 - 0: Absent

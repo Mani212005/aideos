@@ -36,14 +36,15 @@ test("hook: a 13 word statement of fact voiced at 0.0 s passes with its measurem
   assert.equal(r.metrics.firstSentenceWords, 13);
   assert.equal(r.metrics.firstWordStartSec, 0);
   assert.equal(r.metrics.greetingOpener, false);
-  assert.deepEqual(r.threshold, { firstWordMaxSec: 0.3, sentenceWordsMin: 10, sentenceWordsMax: 16 });
+  assert.deepEqual(r.threshold, { firstWordMaxSec: 0.25, sentenceWordsMin: 10, sentenceWordsMax: 16 });
 });
 
-test("hook: the first word must start under 0.3 s", () => {
-  assert.equal(hook(narrate([OPENER], 0.29)).status, "pass");
-  const late = hook(narrate([OPENER], 0.3));
+// The 0.25 s bound is the 2026-11-21 house pace decision (captain: "I want a bit more faster editing"), 0.3 s before it.
+test("hook: the first word must start under 0.25 s", () => {
+  assert.equal(hook(narrate([OPENER], 0.24)).status, "pass");
+  const late = hook(narrate([OPENER], 0.25));
   assert.equal(late.status, "fail");
-  assert.match(late.summary, /voice starts at 0\.3 s/);
+  assert.match(late.summary, /voice starts at 0\.25 s/);
   assert.equal(hook(narrate([OPENER], 1.2)).status, "fail");
 });
 

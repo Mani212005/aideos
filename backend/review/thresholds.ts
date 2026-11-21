@@ -91,7 +91,8 @@ export const THRESHOLDS = {
     meanBeatSec: HOUSE_PACE.meanBeatSec,
     /** Hard cuts (frame difference above this at 10 fps) allowed per minute. */
     hardCutDiff: 12,
-    hardCutsPerMinMax: 2,
+    /** Hard cuts allowed per minute (house pace: 2 before 2026-11-21, scaled by the narration rate). */
+    hardCutsPerMinMax: HOUSE_PACE.hardCutsPerMinMax,
   },
   /**
    * Reel hook (reel reviews only, non-gating). Set from the reference-video study
@@ -101,8 +102,8 @@ export const THRESHOLDS = {
    * ordering is untouched; re-measure on real reels before tightening any value.
    */
   hook: {
-    /** The first spoken word must start before this many seconds. */
-    firstWordMaxSec: 0.3,
+    /** The first spoken word must start before this many seconds (house pace: 0.3 s before 2026-11-21). */
+    firstWordMaxSec: HOUSE_PACE.hookFirstWordMaxSec,
     /** The first sentence has at least this many words. */
     sentenceWordsMin: 10,
     /** The first sentence has at most this many words. */

@@ -17,7 +17,7 @@
 | Expect / golden test for complex output | N/A | No new structured output or rendered frames; no render was made (a render is a final export) |
 | No sleeps in tests | PASS | None added |
 | No mocks of thing under test | PASS | The real pipeline, cache and criteria run; only the synthesizer is injected |
-| Protected suites unloosened | PASS | Every changed number is stricter or a deliberate captain pace change: story hold 3 -> 2.5 s, dead air 0.7 -> 0.6 s, camera move per 20 -> 17 s, wpm window 120-180 -> 145-215, mean beat 5-12 -> 4-10 s; camera speed cap, hard cuts, captions, readability, overlap, audio sync and reel caption safe zone unchanged |
+| Protected suites unloosened | PASS | Every changed number is stricter or a deliberate captain pace change: story hold 3 -> 2.5 s, dead air 0.7 -> 0.6 s, camera move per 20 -> 17 s, carry-over floor 1 per 20 -> 1 per 17 s, hard cuts per minute 2 -> 2.4, reel hook first word 0.3 -> 0.25 s, wpm window 120-180 -> 145-215, mean beat 5-12 -> 4-10 s; camera speed cap, captions, readability, overlap, audio sync and reel caption safe zone unchanged |
 | Weak-test audit | PASS | The three `reel-fast` profile tests were replaced (the profile is gone, its 200 wpm ceiling now sits inside the default window) by stronger tests of the new window on both formats and the mean beat window |
 | Independent review | PENDING | `no-mistakes` pipeline, run when firstmate asks |
 | Evidence log written | PASS | This file |
@@ -60,8 +60,27 @@ measured here.
 Every WER error is a spelling artefact of the comparison ("twenty twenty two" heard as "2022", "Midjourney" as
 "mid journey", "hardcoded" as "hard coded", "U-Net" as "unet"), identical across variants; speeding up lost no word.
 The camera failure is the fixture's own node-graph cut (1.25 frame widths per second) and is the same at every pace.
-Kokoro `af_heart` is slow for this window: its old 0.75 setting already ran under the old 120 wpm floor, so the
-pacing failure is not new; the default voice is the cloned voice (`vcd`), which takes the stretch path.
+Kokoro `af_heart` at 0.75 already ran under the old 120 wpm floor, so the pacing failure of the before and stretch
+columns is not new. The shipped Kokoro default is now 1.05 (below), which passes pacing.
+
+### Kokoro default speed sweep
+
+Same fixture, `produceAudioPipeline` with local Kokoro `af_heart` at the house gaps:
+
+| Kokoro speed | Narration pace | Clears the 145 wpm floor |
+| --- | --- | --- |
+| 0.9 | 135 wpm | no |
+| 0.95 | 140 wpm | no |
+| 1.0 | 144 wpm | no |
+| 1.05 | 147 wpm | yes (92.2 s, mean beat 6.6 s, design check pass) |
+
+Speech-to-text WER (faster-whisper small.en): 6.8% at 1.05, 8.1% at 1.0, 9.8% before (0.75, old gaps), so 1.05 is no
+less clear. `DEFAULT_KOKORO_SPEED` is 1.05.
+
+Which path passes: the Kokoro path passes pacing at the shipped default. The stretch path (the cloned voice) was
+measured on this fixture with a Kokoro 0.75 stand-in and lands 124 wpm, below the floor. The cloned voice's own
+natural rate was not measurable on this host (the `vcd` service was not running), so whether the owner voice reaches
+145 wpm at 1.2x is unverified and must be measured with the real voice.
 
 ## Fix attempts
 

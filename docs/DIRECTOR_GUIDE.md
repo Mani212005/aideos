@@ -54,7 +54,7 @@ shots or voice.
 1. **Sentence 1 is a statement of fact or a paradox**, 10 to 16 words, a claim a viewer wants resolved
    ("Honey found in Egyptian tombs is still edible after three thousand years."). No greeting, no
    channel or topic introduction ("hey", "welcome", "in this video", "today we").
-2. **The voice starts at the very start of the film**: the first word begins under 0.3 s, with no
+2. **The voice starts at the very start of the film**: the first word begins under 0.25 s, with no
    silent title or logo lead-in before it.
 3. **Pivot to the explanation**: sentence 2 or 3 turns from the claim to how or why ("Here is what
    happens inside"), and the picture starts showing the mechanism there.

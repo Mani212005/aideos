@@ -337,8 +337,8 @@ film narrated by another voice is not built or rendered. Only the captain may al
 `AIDEOS_ALLOW_OTHER_VOICE=1` for the run, which downgrades the finding to a warning that stays in the report.
 
 Other backends exist only for the captain's explicit choice. Kokoro-82M runs locally through ONNX with no
-API key and is configured with a default pace multiplier of 0.9 (`DEFAULT_KOKORO_SPEED`: the
-[house pace](GOOD_VIDEO.md#house-pace), 1.2x the 0.75 it replaced; `AIDEOS_TTS_SPEED` or `--speed` overrides);
+API key and is configured with a default pace multiplier of 1.05 (`DEFAULT_KOKORO_SPEED`:
+the smallest 0.05 step whose fixture take clears the [house pace](GOOD_VIDEO.md#house-pace) wpm floor, measured; `AIDEOS_TTS_SPEED` or `--speed` overrides);
 `AIDEOS_TTS` or the `ttsBackend` option pins `kokoro`, `google`, `say` or the offline `tone`
 placeholder instead. A backend without its own speaking-rate setting (`vcd`, `google`, `say`, `tone`) is
 re-paced to the house narration rate line by line with a pitch-preserving time-stretch (`timeStretch` in

@@ -5,7 +5,7 @@
  * all derive from here, so a later pace decision changes one constant instead of a dozen copies.
  * Pure data and arithmetic with no Node imports: the editor bundle, the review and the audio pipeline import it.
  * Inputs and outputs: none -> pacing constants and derived gaps.
- * Used by: backend/audio.ts, backend/pcm.ts, backend/tts.ts, backend/pipeline/run.ts, backend/sceneKit/voiceover.ts,
+ * Used by: backend/audio.ts, backend/pcm.ts, backend/pipeline/run.ts, backend/sceneKit/voiceover.ts,
  * backend/stageTimeline.ts, backend/review/thresholds.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
  * backend/geminiReview/rubric.ts, editor/vite.config.ts.
  *
@@ -43,6 +43,12 @@ const PRE_2026_11_21 = {
   wpmWindow: [120, 180] as const,
   /** Design target for the mean beat (shot) length, seconds. */
   meanBeatSec: [5, 12] as const,
+  /** Hard cuts allowed per minute before the picture reads as separate panels. */
+  hardCutsPerMinMax: 2,
+  /** Carry-over with transformation: at least one beat boundary per this many seconds. */
+  carryOverPerSec: 20,
+  /** Reel hook: the first spoken word must start before this many seconds. */
+  hookFirstWordMaxSec: 0.3,
 };
 
 // Scales a duration of the old pace onto the faster timeline, rounded to `step`.
@@ -69,4 +75,7 @@ export const HOUSE_PACE = {
   wpmTarget: [quicker(PRE_2026_11_21.wpmTarget[0]), quicker(PRE_2026_11_21.wpmTarget[1])] as const,
   wpmWindow: [quicker(PRE_2026_11_21.wpmWindow[0]), quicker(PRE_2026_11_21.wpmWindow[1])] as const,
   meanBeatSec: [faster(PRE_2026_11_21.meanBeatSec[0], 0.5), faster(PRE_2026_11_21.meanBeatSec[1], 0.5)] as const,
+  hardCutsPerMinMax: Number((PRE_2026_11_21.hardCutsPerMinMax * NARRATION_RATE).toFixed(1)),
+  carryOverPerSec: faster(PRE_2026_11_21.carryOverPerSec, 1),
+  hookFirstWordMaxSec: faster(PRE_2026_11_21.hookFirstWordMaxSec, 0.05),
 } as const;
