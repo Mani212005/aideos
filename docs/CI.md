@@ -81,7 +81,7 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
   `timeout-minutes` stays 30 and nothing is retried.
 * **Branch protection** requires only `all-green`, so the leg names (`journeys (shard 1/3)`) are not
   required checks and can change without touching protection.
-* **Why three**: each shard pays a fixed setup of about 76 s (median of 8 runs: 63 s checkout, apt, `npm ci`
+* **Why three**: each shard pays a fixed setup of about 76 s (median of 8 runs before the `node_modules` cache: 63 s checkout, apt, `npm ci`
   and caches, plus 13 s Chrome warm-up) on top of its share of about 26 minutes of serial work. Predicted
   wall time: 1 shard about 28 min, 2 shards about 15 min, 3 shards about 10 min, 4 shards about 8 min. Going
   from 2 to 3 shards saves about 4.5 min of wall time for about 1.3 extra runner minutes; a fourth would save
@@ -94,7 +94,19 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
 
 ## Setup that every job shares
 
-* Every workflow job uses Node 22 and `npm ci` (npm cache keyed on both lockfiles). Jobs that render
+* Every workflow job uses Node 22 and installs through the `.github/actions/install-dependencies` composite
+  action. It restores `node_modules` and `editor/node_modules` from one cache keyed on the OS, the CPU, the
+  exact Node version, both `package.json` files, both lockfiles and `.npmrc`, then runs only
+  `npm run ensure:generated`. On a miss it runs `npm ci` (npm cache keyed on both lockfiles) and saves the
+  cache right after the install, before any step writes into `node_modules`. Why: the `npm ci` step took 39 to
+  63 s per job (median 41 s) in GitHub job step timings of real runs on `main` (run ids 44886280947,
+  44893547868, 44897331283, 44899769863, 44902106289); the bun evaluation report
+  (`data/aideos-bun-evaluation/report.md`, section 1b) recorded 11 to 24 s on 15 Nov and 41 to 64 s on 17 to
+  19 Nov with unchanged lockfiles. The effect of the cache is expected, not yet measured: confirm it with this
+  pull request's own CI runs by comparing the `Install dependencies` step time per job (the `npm ci` step
+  before; the cache restore plus `ensure:generated` after) over at least 3 runs. A pull request branch cannot
+  read a cache that another pull request created, so its first run is a miss; caches made by `main` are
+  readable everywhere. Jobs that render
   install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`. APT packages
   are cached across runs under `/home/runner/.apt-cache` with retry-hardened installs (detailed under
   [Runner hardening and red-main alert](#runner-hardening-and-red-main-alert)).

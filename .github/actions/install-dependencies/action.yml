@@ -1,0 +1,47 @@
+# File Description: Composite action that installs root and editor dependencies for every CI job, restoring both node_modules trees from one cache and running `npm ci` only on a miss.
+# Inputs and outputs: a checked-out repo with Node on PATH -> root `node_modules` and `editor/node_modules` ready, generated film shadows written, `cache-hit` output.
+# Used by: .github/workflows/ci.yml (static, unit, journeys and legacy jobs). Documented in docs/CI.md.
+name: Install dependencies
+description: Restore node_modules from a cache keyed on both lockfiles, both package.json files, .npmrc, the OS, the CPU and the exact Node version, or run npm ci and save it.
+
+outputs:
+  cache-hit:
+    description: "'true' when node_modules came from the cache and npm ci was skipped."
+    value: ${{ steps.modules.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    # The exact Node version goes into the key because native addons (onnxruntime-node, sharp) are tied to it.
+    - name: Read the Node version
+      id: node
+      shell: bash
+      run: echo "version=$(node --version)" >> "$GITHUB_OUTPUT"
+    - name: Restore node_modules
+      id: modules
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          node_modules
+          editor/node_modules
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.version }}-${{ hashFiles('package.json', 'package-lock.json', 'editor/package.json', 'editor/package-lock.json', '.npmrc') }}
+    # npm ci runs the root postinstall, which also runs `npm --prefix editor ci` and ensure_generated.
+    - name: Install with npm ci (cache miss)
+      if: steps.modules.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm ci
+    # Saved right after the install, before any job step writes into node_modules, so every job shares one clean tree.
+    # Several jobs miss at once on a cold key: the first save wins and the others only log a warning.
+    - name: Save node_modules (cache miss)
+      if: steps.modules.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          node_modules
+          editor/node_modules
+        key: ${{ steps.modules.outputs.cache-primary-key }}
+    # The postinstall of a cache hit never ran, so write the generated film shadows and bundled SVG assets here.
+    - name: Write generated files (cache hit)
+      if: steps.modules.outputs.cache-hit == 'true'
+      shell: bash
+      run: npm run ensure:generated
