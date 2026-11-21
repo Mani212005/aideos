@@ -17,7 +17,7 @@
     },
     {
       "name": "hello-scene/reel-150.png",
-      "sha256": "11514c098c8075178ed3489df15a7ed70e813e6f8912cf4e8749b8bf226bf5b4"
+      "sha256": "9a9e30d0703d68c1c6005c89deda507886536fd3faf1d13ab249a76839caddfc"
     },
     {
       "name": "sample-explainer/long-273.png",
@@ -33,7 +33,7 @@
     },
     {
       "name": "sample-explainer/reel-1365.png",
-      "sha256": "2b6ccfce782ba0feb3d4c69c3607fbc4c7dc4de73e3f2e587212fd7fc97009bc"
+      "sha256": "c655e724a6d5a5296d6f5ce074400535767aa6270cfb7f4fe44daf90fd3b4258"
     },
     {
       "name": "inset-stage/long-90.png",
@@ -45,7 +45,7 @@
     },
     {
       "name": "inset-stage/reel-150.png",
-      "sha256": "0c05f85894adbbce3dd8533a1c37609fdf349de61b68bf94dc8cb857cb0b2eb7"
+      "sha256": "33f084ddfbb08de286b4e490456eac401894752ca90eaac5980ac3dae8122b44"
     },
     {
       "name": "still-talking/long-924.png",
@@ -57,7 +57,7 @@
     },
     {
       "name": "still-talking/reel-1848.png",
-      "sha256": "db0073ce0de7786ff11a9dc9b0bbf7dc4f108c0efc401954b7f79e14e1024166"
+      "sha256": "0a868930646fb235213bc6bfdabc4320d4abf3bd0d7823a43abe0683dca61f9f"
     }
   ]
 }

@@ -42,7 +42,7 @@
       "frame": 150,
       "width": 270,
       "height": 480,
-      "bytes": 15266
+      "bytes": 15663
     },
     {
       "name": "frames/still-talking/long-924.png",
@@ -69,7 +69,7 @@
       "frame": 1848,
       "width": 270,
       "height": 480,
-      "bytes": 23769
+      "bytes": 23626
     },
     {
       "name": "frames/iona-receive/long-30.png",
@@ -123,7 +123,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 14801
+      "bytes": 14886
     },
     {
       "name": "frames/pixels-stage-pip/long-30.png",
@@ -168,7 +168,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 14666
+      "bytes": 14624
     },
     {
       "name": "frames/pixels-stage-pip/reel-240.png",
@@ -177,7 +177,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 13678
+      "bytes": 13794
     },
     {
       "name": "frames/pixels-stage-marlo/long-30.png",
@@ -222,7 +222,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 14063
+      "bytes": 13944
     },
     {
       "name": "frames/pixels-stage-marlo/reel-240.png",
@@ -231,7 +231,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 13486
+      "bytes": 13548
     },
     {
       "name": "frames/journey-three-characters/long-30.png",
@@ -276,7 +276,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 12852
+      "bytes": 12918
     },
     {
       "name": "frames/journey-three-characters/reel-240.png",
@@ -285,7 +285,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 12489
+      "bytes": 12548
     },
     {
       "name": "frames/journey-j3-j4-dots/long-30.png",
@@ -330,7 +330,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 22064
+      "bytes": 21907
     },
     {
       "name": "frames/journey-j3-j4-dots/reel-240.png",
@@ -339,7 +339,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 20708
+      "bytes": 20600
     }
   ]
 }
