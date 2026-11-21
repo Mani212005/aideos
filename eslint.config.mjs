@@ -1,7 +1,7 @@
 /**
- * File Description: ESLint flat configuration. Remotion's preset applies to the video code in src; backend, scripts and the editor get the same base rules with Node or browser globals and without the Remotion-only rules.
- * Inputs and outputs: Remotion flat ESLint config -> exported ESLint configuration array covering src, backend, scripts and editor/src.
- * Used by: npm run lint, npm run ci (static job).
+ * File Description: ESLint flat configuration. Remotion's preset applies to the video code in src; backend, scripts, bin, root *.mjs/*.config.* and editor/src get the same base rules with Node or browser globals and without the Remotion-only rules. Note: `npm run lint` runs ESLint on `src` only, while `npm run ci` (static job) runs it on `src`, `backend`, `scripts` and `editor/src`.
+ * Inputs and outputs: Remotion flat ESLint config -> exported ESLint configuration array for passed repository paths.
+ * Used by: npm run lint (src), npm run ci (static job: src, backend, scripts, editor/src).
  */
 
 import { config as remotionConfig } from "@remotion/eslint-config-flat";

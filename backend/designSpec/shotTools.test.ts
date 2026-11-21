@@ -4,8 +4,6 @@
  * and the shot-focused redesign prompt sent to the agent.
  * Inputs and outputs: shot tool operations and context -> test assertions.
  * Used by: npm test.
- * Inputs and outputs: shot tool operations and context -> test assertions.
- * Used by: npm test.
  */
 
 import assert from "node:assert/strict";

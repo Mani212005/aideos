@@ -3,8 +3,6 @@
  * Verifies S-1 through S-8, pure JSON round-trip serialization, and 18 exhaustive negative cases for every validation rule.
  * Inputs and outputs: scene data models and validation rules -> test assertions.
  * Used by: npm test.
- * Inputs and outputs: scene data models and validation rules -> test assertions.
- * Used by: npm test.
  */
 
 import { test } from "node:test";
