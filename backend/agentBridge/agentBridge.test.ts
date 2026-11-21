@@ -13,7 +13,8 @@ import os from "node:os";
 import path from "node:path";
 import childProcess from "node:child_process";
 import { ROOT } from "../pipeline/filmStore";
-import { dispatchLocalAndTmux, setAgentSession } from "./dispatcher";
+import { dispatchLocalAndTmux } from "./dispatcher";
+import { writeAgentSessionFile } from "../testSupport/agentSessionFile";
 import { paneDelivery } from "./paneDelivery";
 import {
   TaskQueue,
@@ -422,7 +423,7 @@ test("dispatchTask without a recorded pane never calls tmux", async (t) => {
     if (previous) fs.writeFileSync(sessionFile, previous);
     else fs.rmSync(sessionFile, { force: true });
   });
-  setAgentSession({ tmuxSession: "aideos", tmuxPane: undefined });
+  writeAgentSessionFile({ tmuxSession: "aideos" });
   const calls: string[][] = [];
   const result = await dispatchTask({
     eventType: "custom_directive",
@@ -448,7 +449,7 @@ test("dispatchTask targets only the recorded pane", async (t) => {
     if (previous) fs.writeFileSync(sessionFile, previous);
     else fs.rmSync(sessionFile, { force: true });
   });
-  setAgentSession({ tmuxSession: "aideos", tmuxPane: "%42" });
+  writeAgentSessionFile({ tmuxSession: "aideos", tmuxPane: "%42" });
   const calls: string[][] = [];
   const result = await dispatchTask({
     eventType: "custom_directive", filmId: "paired-test", enableFallback: false,

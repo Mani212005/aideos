@@ -1,9 +1,7 @@
 /**
- * File Description: Tests for the studio's per-shot design actions: the design overview (motion
- * placed in the shot it starts in), swapping a shot's visual through the honest authoring path,
- * and the shot-focused redesign prompt sent to the agent.
- * Inputs and outputs: shot tool operations and context -> test assertions.
- * Used by: npm test.
+ * File Description: Tests for the studio's design tools: the design overview (motion placed in the
+ * shot it starts in, look plan and cast), captain approval of the look plan, and the shot-focused
+ * redesign prompt the agent bridge builds.
  * Inputs and outputs: shot tool operations and context -> test assertions.
  * Used by: npm test.
  */
@@ -13,25 +11,11 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
-import { parseFilm, type Film } from "../../src/dl/schema";
+import { parseFilm } from "../../src/dl/schema";
 import { buildDirectingPrompt } from "../agentBridge/contextBuilder";
-import { approveLookPlan, designOverview, swapShotVisual } from "./shotTools";
+import { approveLookPlan, designOverview } from "./shotTools";
 
 const DESIGNED = parseFilm(JSON.parse(fs.readFileSync(path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed/film.json"), "utf8")));
-
-// A two-shot film with on-screen copy, for swaps.
-function film(narration: string): Film {
-  return parseFilm({
-    ...DESIGNED,
-    id: "swap-probe",
-    scene: undefined,
-    design: undefined,
-    shots: [
-      { ...DESIGNED.shots[0], id: "beat-01", scriptText: narration, stage: "frame", blocks: [{ c: "TextReveal", text: "The stack" }] },
-      { ...DESIGNED.shots[1], id: "beat-02", stage: "none", blocks: [] },
-    ],
-  });
-}
 
 test("ShotTools: the overview places every clip in the shot it starts in, in time order", () => {
   const overview = designOverview(DESIGNED);
@@ -65,30 +49,6 @@ test("ShotTools: captain approval is persisted to look.json", () => {
   } finally {
     fs.writeFileSync(planFile, original, "utf8");
   }
-});
-
-test("ShotTools: a swap draws authored data, and refuses with the reason when it cannot", async () => {
-  const f = film("At the bottom of the stack sits the hardware, then the kernels, then the model.");
-  const ok = await swapShotVisual(f, "beat-01", "LayerStack", async () =>
-    JSON.stringify({ "beat-01": { LayerStack: { layers: ["Hardware", "Kernels", "Model"] } } }),
-  );
-  assert.equal(ok.ok, true, ok.reason ?? "");
-  assert.equal(ok.stage, "anchor");
-  assert.deepEqual(ok.blocks.map((b) => b.c), ["TextReveal", "LayerStack"]);
-
-  const invented = await swapShotVisual(f, "beat-01", "LayerStack", async () =>
-    JSON.stringify({ "beat-01": { LayerStack: { layers: ["Hardware", "Runtime", "Model"] } } }),
-  );
-  assert.equal(invented.ok, false);
-  assert.match(invented.reason ?? "", /runtime/);
-  assert.deepEqual(invented.blocks, f.shots[0].blocks, "a refused swap leaves the shot as it was");
-
-  assert.match((await swapShotVisual(f, "beat-01", "Plot", null)).reason ?? "", /never describes/);
-  assert.match((await swapShotVisual(f, "beat-01", "LayerStack", null)).reason ?? "", /no chart data model/);
-  assert.match((await swapShotVisual(f, "beat-02", "Text", null)).reason ?? "", /no on-screen copy/);
-  const text = await swapShotVisual(f, "beat-01", "Text", null);
-  assert.equal(text.ok, true);
-  assert.equal(text.stage, "frame");
 });
 
 test("ShotTools: a shot redesign prompt names the shot and keeps the rest of the design", () => {
