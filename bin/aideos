@@ -66,11 +66,11 @@ fi
 # Reject unknown commands before resolving a checkout or touching Studio state.
 if [ "$#" -gt 0 ]; then
   case "$1" in
-    version|--version|which|exit|stop|down|kill|validate|review|study|compare|verdict|all-check|connect|design|look|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|end-card|help|--help|-h)
+    version|--version|which|exit|stop|down|kill|validate|review|study|compare|verdict|all-check|connect|design|look|pictures|character|render|render:reel|reel|studio|frames|test|lint|produce|engine-test|film|direct|mcp|gemini-review|audio|end-card|help|--help|-h)
       ;;
     *)
       echo "Error: unknown aideos command '$1'." >&2
-      echo "Commands: exit (stop/down/kill), validate, review, study, compare, verdict, all-check, connect, design, look, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
+      echo "Commands: exit (stop/down/kill), validate, review, study, compare, verdict, all-check, connect, design, look, pictures, character, render, reel, studio, frames, test, lint, produce, engine-test, film, direct, mcp, gemini-review, audio, help" >&2
       echo "Run 'aideos help' for usage." >&2
       exit 2
       ;;
