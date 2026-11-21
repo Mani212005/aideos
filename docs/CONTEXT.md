@@ -543,7 +543,13 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `planFilmLook(filmId, options)`, `designFilm(filmId, options)` (`designer.ts`): Delivers look planning and scene design through inline, agent, server, or templates policies.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
 * `designOverview(film)`, `approveLookPlan(filmId)`, `swapShotVisual(film, shotId, visual, caller)`, `requestShotRedesign(film, shotId, note, options)` (`shotTools.ts`): Gathers design and look plan overview (`look.json`, `LOOK.md`, stage, cast, shot treatments) for the Studio Look stage, records captain look approval, executes honest chart visual swaps, and dispatches per-shot redesign requests.
-* `designSpecSchema`, `specCameraSchema`, `specClipSchema`, `specAssetSchema` (`spec.ts`): Zod schemas and TypeScript types for bespoke film designs (brief, accent, background, assets, cue-timed clips, camera poses with optional focus, and shot block overrides).
+* `designSpecSchema`, `specCameraSchema`, `specClipSchema`, `specAssetSchema` (`spec.ts`): Zod schemas and TypeScript types for bespoke film designs (brief, accent, background, assets, optional generated `pictures`, cue-timed clips, camera poses with optional focus, and shot block overrides).
+
+### `backend/pictures/` (Illustrated Stage Picture Cache & Policy)
+* `pictureFingerprint(request)`, `readCachedPicture(pkgDir, request)`, `storePicture(pkgDir, request, png, made)`, `ensurePictures(pkgDir, pictures, generate?)`, `resolvePinnedPictures(pkgDir, pictures, packageRepoPath)` (`cache.ts`): The picture cache like the per-line voice cache: originals kept byte for byte as `visuals/generated/<fingerprint>.png` with a record, and each design-pinned `sha256` resolved to a `RasterSource`. Nothing here calls an image service.
+* `composePicturePrompt(style, objectPrompt)`, `promptProblems(text)`, `PICTURE_RULES` (`policy.ts`): The fixed prompt rules (abstract objects, no text, people, logos, brands or artists).
+* `readPngHeader`, `decodePng`, `encodePng`, `sha256Hex`, `rasterFileProblems` (`png.ts`), `loadPicture`, `alphaBounds`, `pictureLocalBox` (`bounds.ts`): Dependency-free PNG reading and the alpha bounds of a picture.
+* `pictureStatusLines(film)`, `addPicture(film, pictureId, file, options)`, `registerPictureCommands(program)` (`cli.ts`): `aideos pictures status|add`. See [GOOD_VIDEO.md](GOOD_VIDEO.md) "Pictures".
 
 ### `backend/lookPlan/` (Look Plan Specification, Semantic Checker, Briefing & Renderer)
 * `lookPlanSchema`, `lookFilmSchema`, `lookCastItemSchema`, `lookChangeSchema`, `lookCameraPoseSchema`, `lookCaptionsSchema`, `lookShotSchema`, `lookApprovalSchema`, `parseLookPlan(data)`, `safeParseLookPlan(data)` (`schema.ts`): Zod schemas for `look.json` (`aideos.look/1`), defining stage, persistent cast transformations with distinct resulting states, camera poses with optional focus, palette, captions, and per-shot beat treatments (`scene`, `scene+card`, `device`, `footage`).
@@ -663,4 +669,4 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 
 ## 8. Render IR and native renderer (`backend/renderIr/`, `native/`)
 
-* **`aideos.render/1` and `/2`**: the versioned, data-only boundary for the native renderer (`/2` is a strict superset of `/1` that carries the Three stage). See [RENDER_IR.md](RENDER_IR.md) (the contract) and [NATIVE_RENDERER.md](NATIVE_RENDERER.md) (renderer behavior and commands).
+* **`aideos.render/1`, `/2` and `/3`**: the versioned, data-only boundary for the native renderer (`/2` is a strict superset of `/1` that carries the Three stage; `/3` is a strict superset of `/2` that carries pictures as `image` stage nodes). See [RENDER_IR.md](RENDER_IR.md) (the contract) and [NATIVE_RENDERER.md](NATIVE_RENDERER.md) (renderer behavior and commands).
