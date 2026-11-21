@@ -132,6 +132,9 @@ Before deploying, ensure you have:
 | `DEEPGRAM_API_KEY` | No | - | Deepgram API key for speech recognition and neural TTS |
 | `AIDEOS_KOKORO` | No | - | Override container memory gate for local Kokoro TTS (1 to force enable, 0 to force disable) |
 | `PORT` | No | `8080` (Docker) / `3001` (Dev) | Port for the backend server |
+| `HOST` | No | `127.0.0.1` (Dev) / `0.0.0.0` (Docker `--host 0.0.0.0`) | Bind address for the Studio server; defaults to loopback-only for safety (set `HOST=0.0.0.0` or pass `--host 0.0.0.0` to opt in to network interfaces) |
+| `AIDEOS_ALLOWED_HOSTS` | No | `.onrender.com` | Comma-separated extra hostnames allowed by Vite in hosted deployments |
+| `AIDEOS_ALLOWED_ORIGINS` | No | - | Comma-separated explicit origins (for example `https://aideos.vercel.app`) allowed for hosted Studio CORS |
 | `NODE_ENV` | No | `production` | Node environment |
 | `WAN_GPU_HOST` | No | - | Remote GPU host for Wan2.1 video diffusion B-roll |
 | `WAN_GPU_USER` | No | - | Remote GPU SSH user |
