@@ -75,7 +75,7 @@ Aideos solves this with **Video as Pure Data**:
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 2. AUDIO-FIRST TIMING ENGINE                                                │
-│ • Synthesizes speech per segment via My voice (vcd), Kokoro, Google, or say │
+│ • Synthesizes speech per segment via My voice (vcd), the voice of choice    │
 │ • Normalizes audio (-16 LUFS) and aligns word timestamps                    │
 │ • Writes voiceover.wav, captions.vtt, and voiceover_words.json              │
 └──────────────────────────────────────┬──────────────────────────────────────┘

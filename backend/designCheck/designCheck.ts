@@ -11,7 +11,7 @@
  * (the illustrated stage) provenance, palette on pixels, no text (OCR), label contrast and resolution (pictures.ts),
  * and the voice of choice (a package narrated by another voice than the owner's cloned voice fails unless overridden).
  * Inputs and outputs: Film or Scene data -> standard-layer design rule violations and warnings.
- * Used by: backend/cli.ts, backend/pipeline/run.ts.
+ * Used by: backend/cli.ts, backend/pipeline/run.ts, backend/designSpec/build.ts, backend/reelCut/build.ts.
  */
 
 import { stageTimeline, STORY_HOLD_MAX_SEC } from "../stageTimeline";
