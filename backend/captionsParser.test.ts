@@ -29,6 +29,54 @@ Second segment with more details.
   assert.equal(cues[1].text, "Second segment with more details.");
 });
 
+// A narrated number on its own is a cue of digits: it is cue text, never a cue identifier.
+test("Captions: parseVtt keeps single-word numeric cues and drops only identifiers above a timing line", () => {
+  const vtt = `WEBVTT
+
+NOTE a comment block
+
+1
+00:00:00.000 --> 00:00:00.500
+2026
+
+intro
+00:00:00.500 --> 00:00:01.000 align:start
+42
+
+00:00:01.000 --> 00:00:02.000
+in 2026
+7
+`;
+  assert.deepEqual(parseVtt(vtt), [
+    { startSec: 0, endSec: 0.5, text: "2026" },
+    { startSec: 0.5, endSec: 1, text: "42" },
+    { startSec: 1, endSec: 2, text: "in 2026 7" },
+  ]);
+  // The words of a one-word numeric cue survive the whole caption path.
+  assert.deepEqual(generateWordsFromFilm({ fps: 30, captions: vtt }).map((w) => w.text), ["2026", "42", "in", "2026", "7"]);
+});
+
+// Property: whatever the words are (numbers included), writing a track and reading it back keeps every word in order, and a one-word cue keeps its exact frames.
+test("Captions: a written track reads back every word for any mix of numbers and text, exact frames at one word per cue", () => {
+  let seed = 20261121;
+  const next = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 0x100000000;
+  const pool = ["2026", "42", "007", "3.5", "1", "ship", "the", "balancer", "GPU", "v2", "100%"];
+  for (let run = 0; run < 200; run++) {
+    const fps = [24, 25, 30, 60][Math.floor(next() * 4)];
+    const count = 1 + Math.floor(next() * 30);
+    let frame = Math.floor(next() * 10);
+    const words = Array.from({ length: count }, () => {
+      const startFrame = frame;
+      frame += 1 + Math.floor(next() * 40);
+      return { text: pool[Math.floor(next() * pool.length)], startFrame, endFrame: frame };
+    });
+    const perCue = 1 + Math.floor(next() * 6);
+    const texts = generateWordsFromFilm({ fps, captions: captionWordsToVtt(words, fps, perCue) }).map((w) => w.text);
+    assert.deepEqual(texts, words.map((w) => w.text), `run ${run}: ${perCue} per cue at ${fps} fps`);
+    assert.deepEqual(generateWordsFromFilm({ fps, captions: captionWordsToVtt(words, fps, 1) }), words, `run ${run}: one word per cue at ${fps} fps`);
+  }
+});
+
 // Tests converting VttCue objects into discrete CaptionWord items with frame timestamps.
 test("Captions: vttToCaptionWords generates evenly spaced word frame bounds matching fps", () => {
   const cues = [

@@ -65,7 +65,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - The 7 animated primitives are TextReveal, StatCounter, CodeBlock, Card, Divider, IconLabel and ProgressBar.
 - Canvas: one 2D infinite spatial canvas with continuous camera motion and wide payoff zooms.
 - Read colour through `useTokens()` from `src/dl/tokens.ts`.
-- Do not use the module-level `PALETTE`, `rule()`, `FAINT` or `SUNKEN` constants.
+- Do not use the module-level `PALETTE` or `rule()` constants.
 - Keep `src/dl/camera.ts` rounding the cumulative timeline position, not single shot durations.
 - Keep `transform-origin: 0 0` on the `CanvasGraph` camera transform.
 - Both camera items are load-bearing. Read the comments at each site before you change them.

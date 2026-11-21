@@ -19,7 +19,7 @@ export interface WaveformProps {
 }
 
 /** Mirrored amplitude waveform drawn as a single filled path, for audio clip bodies. */
-export function Waveform({ peaks, width, height, color = "var(--nb-select, #635BFF)", className }: WaveformProps) {
+export function Waveform({ peaks, width, height, color = "var(--nb-select)", className }: WaveformProps) {
   const path = useMemo(() => {
     if (peaks.length === 0 || width <= 0) return "";
     const mid = height / 2;

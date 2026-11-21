@@ -1,6 +1,6 @@
 /**
  * File Description: Browser smoke check and scrub-save-reload journey (J3) for the Aideos Studio.
- * Starts the editor dev server on a throwaway videos folder holding a film made by the real pipeline, loads the studio in headless Chrome and fails when the page does not render or throws. Then does what a user does in the Cut lens: jump to the end, step and scrub backwards and forwards with the keyboard (the frame readout must move by exactly the frames pressed), return to a frame and require the identical preview picture, split a clip, wait for the autosave, reload the page and require the edit to have survived.
+ * Starts the editor dev server on a throwaway videos folder holding a film made by the real pipeline, loads the studio in headless Chrome and fails when the page does not render or throws. Then does what a user does in the Cut lens: jump to the end, step and scrub backwards and forwards with the keyboard (the frame readout must move by exactly the frames pressed), return to a frame and require the identical preview picture, split a clip, undo and redo a second split one step per key press, wait for the autosave, reload the page and require the edit to have survived.
  * Unit tests run in Node and cannot see a crash that only happens in the browser bundle (for example a Node-only import leaking into client code, which blanked the studio after #43), so this loads the real page the way a user does.
  * Inputs and outputs: none -> launches dev server and headless Chrome, returns exit code 0 on success.
  * Used by: npm run smoke:studio, npm run ci (journeys job).
@@ -51,10 +51,44 @@ async function clipCount(page: StudioPage): Promise<number> {
   return Number(m[1]);
 }
 
-/** The preview picture, the part of the page that must be a pure function of the frame; kept under .ci-artifacts/studio/ so a failing run can be looked at. */
+/** Waits until the Cut footer's clip count satisfies `accept` and returns it (an edit applies asynchronously). */
+async function waitForClipCount(page: StudioPage, accept: (count: number) => boolean, what: string): Promise<number> {
+  const deadline = Date.now() + 5000;
+  let seen = -1;
+  while (Date.now() < deadline) {
+    seen = await clipCount(page);
+    if (accept(seen)) return seen;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`timed out waiting for ${what} (the footer showed ${seen} clips)`);
+}
+
+/**
+ * Sends one Ctrl+Z (or Ctrl+Shift+Z) to the window as a single event. A real key press lets React re-render
+ * between two window listeners, which can hide a second undo handler on the same key; one dispatched event
+ * reaches every listener first, so a duplicate handler undoes twice here every time.
+ */
+async function pressShortcut(page: StudioPage, key: string, shift: boolean): Promise<void> {
+  await page.eval(`window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, ctrlKey: true, shiftKey: ${shift}, bubbles: true, cancelable: true }))`);
+}
+
+/**
+ * The preview picture, the part of the page that must be a pure function of the frame; kept under .ci-artifacts/studio/ so a failing run can be looked at.
+ * The picture is only a function of the frame once its web fonts have arrived: a first capture taken before JetBrains Mono loaded drew the node tag
+ * "01 / 02" in a fallback face and failed the equality check against the same frame later (a 1.5% pixel difference). So the capture waits for the
+ * fonts, then for two captures 200 ms apart to be identical (a seek is also drawn asynchronously).
+ */
 async function previewShot(page: StudioPage, name: string): Promise<string> {
-  await new Promise((r) => setTimeout(r, 500));
-  const png = await page.screenshot(".__remotion-player");
+  await page.waitFor(`document.fonts.status === "loaded"`, "the web fonts to finish loading", 15000);
+  const deadline = Date.now() + 10000;
+  let png = await page.screenshot(".__remotion-player");
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 200));
+    const next = await page.screenshot(".__remotion-player");
+    if (next.equals(png)) break;
+    if (Date.now() > deadline) throw new Error(`the preview picture "${name}" kept changing for 10 s on a fixed frame`);
+    png = next;
+  }
   const dir = path.join(process.env.AIDEOS_CI_ARTIFACTS ?? path.join(ROOT, ".ci-artifacts"), "studio");
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${name}.png`);
@@ -131,6 +165,20 @@ async function scrubSaveReload(page: StudioPage, url: string, filmFile: string):
   if (after <= before) problems.push(`splitting at the playhead did not add a clip (${before} before, ${after} after)`);
   await page.waitFor(`[...document.querySelectorAll('button')].some((b) => (b.getAttribute('title') || '').startsWith('Save the project') && /saved/i.test(b.textContent))`, "the autosave to finish", 15000);
   if (fs.statSync(filmFile).mtimeMs <= savedBefore) problems.push("the autosave reported success but film.json on disk did not change");
+
+  // One Cmd/Ctrl+Z takes back exactly one edit: a second split, then undo and redo, one step each.
+  for (let i = 0; i < 15; i++) await page.key("ArrowRight");
+  await page.key("s");
+  const afterSecond = await waitForClipCount(page, (n) => n > after, "the second split to add clips");
+  await pressShortcut(page, "z", false);
+  const undone = await waitForClipCount(page, (n) => n < afterSecond, "Ctrl+Z to take back the second split");
+  if (undone !== after) problems.push(`one Ctrl+Z left ${undone} clips, expected ${after}: it must undo only the second split`);
+  await pressShortcut(page, "z", true);
+  const redone = await waitForClipCount(page, (n) => n > undone, "Ctrl+Shift+Z to redo the second split");
+  if (redone !== afterSecond) problems.push(`one Ctrl+Shift+Z left ${redone} clips, expected ${afterSecond}`);
+  await pressShortcut(page, "z", false);
+  await waitForClipCount(page, (n) => n === after, "Ctrl+Z to return to the first split");
+  await page.waitFor(`[...document.querySelectorAll('button')].some((b) => (b.getAttribute('title') || '').startsWith('Save the project') && /saved/i.test(b.textContent))`, "the autosave after undo", 15000);
 
   await page.reload();
   await page.waitFor(`document.querySelector('.__remotion-player')`, "the preview player after reload");

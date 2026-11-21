@@ -33,9 +33,6 @@ import {
 
 // Renders the specific UI primitive or interactive device for a given film block.
 export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...timing }) => {
-  // Read unconditionally (a hook inside one switch branch breaks when a block changes type);
-  // outside a Remotion composition, as in unit tests, there is no frame and 0 is used.
-  
   switch (block.c) {
     case "Kicker":
       return <Kicker {...timing} text={block.text} />;
@@ -117,6 +114,8 @@ export const BlockView: React.FC<{ block: Block } & BlockProps> = ({ block, ...t
           count={block.count ?? 32}
           bottomLabel={block.bottomLabel}
           topLabel={block.topLabel}
+          layers={block.layers}
+          prompt={block.prompt}
         />
       );
     case "ScaleBar":

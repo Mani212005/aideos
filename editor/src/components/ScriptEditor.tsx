@@ -581,7 +581,7 @@ export function ScriptEditor({
   };
 
   /**
-   * Saves the current script text to disk under scripts/<projectId>.md.
+   * Saves the current script text to disk as videos/<projectId>/script.md.
    */
   const handleSaveScript = async () => {
     setSaving(true);
@@ -852,9 +852,9 @@ export function ScriptEditor({
             title="Automatically parse timestamped scenes into video shots and dispatch to terminal AI agent"
           >
             {buildingScenes ? (
-              <Loader2 size={13} className="animate-spin text-ink" />
+              <Loader2 size={13} className="animate-spin" />
             ) : (
-              <Sparkles size={13} className="text-ink" />
+              <Sparkles size={13} />
             )}
             <span>
               {buildingScenes
@@ -894,7 +894,7 @@ export function ScriptEditor({
 
       {/* Live Auto-Prompter Dispatch Status */}
       {lastDispatchResult && (
-        <div className="mt-3 px-3.5 py-2.5 bg-success/20 border border-line flex items-center justify-between font-mono text-xs animate-in fade-in duration-150">
+        <div className="mt-3 px-3.5 py-2.5 bg-success/20 border border-line flex items-center justify-between font-mono text-xs">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
             <span className="font-semibold text-ink">AUTO-PROMPTER:</span>
@@ -922,7 +922,7 @@ export function ScriptEditor({
 
       {/* Agent Directing Bridge Banner */}
       {agentDirective && (
-        <div className="mt-4 bg-paper-2 border border-line p-4 flex flex-col gap-3 font-sans animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="mt-4 bg-paper-2 border border-line p-4 flex flex-col gap-3 font-sans">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-primary border border-line text-select-ink">
@@ -963,12 +963,12 @@ export function ScriptEditor({
               >
                 {copiedPrompt ? (
                   <>
-                    <Check size={13} className="text-ink" />
+                    <Check size={13} />
                     <span>Copied to Clipboard!</span>
                   </>
                 ) : (
                   <>
-                    <Copy size={13} className="text-ink" />
+                    <Copy size={13} />
                     <span>Copy Agent Prompt</span>
                   </>
                 )}

@@ -385,7 +385,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
   // 3. Subtitle clips derived from the parsed caption cues (when no explicit overlay subtitles exist).
   const hasExplicitSubtitles = Boolean(film.overlayClips?.some((oc) => oc.kind === "subtitle"));
   if (!hasExplicitSubtitles) {
-    const captionWords = generateWordsFromFilm(film as unknown as Record<string, unknown>);
+    const captionWords = generateWordsFromFilm(film);
     for (let i = 0; i < captionWords.length; i++) {
       const cw = captionWords[i];
       const wStartSec = Number((cw.startFrame / fps).toFixed(3));
