@@ -3,10 +3,10 @@
  * videos/<slug>/film.json (authoritative, what the editor's Player and the package loader read)
  * and src/dl/films/<slug>.ts (the generated shadow Remotion's CLI render bundles). AGENTS.md
  * requires the two never be written independently, so every write in the production pipeline goes
- * through writeFilm here, which is the backend twin of the editor dev server's helper of the same
- * name and emits the identical module format.
+ * through writeFilm here (editor/vite.config.ts currently maintains a sibling helper emitting the
+ * same module format).
  * Inputs and outputs: slug and Film manifest -> writes film.json and src/dl/films shadow.
- * Used by: backend/pipeline/run.ts, editor/vite.config.ts.
+ * Used by: backend/pipeline/run.ts, backend/designSpec/build.ts, backend/designSpec/designer.ts, backend/cli.ts.
  *
  * Neither location is committed: videos/ (or AIDEOS_VIDEOS_DIR) holds the owner's personal videos
  * and src/dl/films/ plus src/dl/activeFilm.ts are generated, so a fresh clone starts with only

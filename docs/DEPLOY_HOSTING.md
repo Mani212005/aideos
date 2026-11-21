@@ -24,7 +24,7 @@ Aideos runs as a decoupled two-service architecture:
                                v
 +-------------------------------------------------------------+
 |                  Render (Backend & Compiler)                |
-|  - Docker Container running Node.js 20 on Debian Bookworm   |
+|  - Docker Container running Node.js 22 on Debian Bookworm   |
 |  - Pre-installed Chromium, FFmpeg, and Asian/Emoji fonts    |
 |  - Google GenAI Agent Compiler & Script Intake              |
 |  - Remotion video rendering and waveform extraction engine  |

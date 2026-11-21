@@ -5,8 +5,6 @@
  * agent session.
  * Inputs and outputs: motion requests and SVG asset fixtures -> test assertions.
  * Used by: npm test.
- * Inputs and outputs: motion requests and SVG asset fixtures -> test assertions.
- * Used by: npm test.
  */
 
 import assert from "node:assert/strict";
