@@ -73,7 +73,7 @@ export function soundtrackItem(itemId: string, sha256?: string): LibraryItem {
 }
 
 // Names the same shared cache asset the library fetcher writes, without importing filesystem code.
-export function soundtrackItemSrc(item: LibraryItem): string {
+export function soundtrackItemSrc(item: { id: string; url: string | null; archivePath?: string }): string {
   const source = "archivePath" in item ? item.archivePath : item.url;
   const extension = source?.split(/[?#]/)[0].match(/\.[^./]+$/)?.[0] ?? ".mp3";
   return `videos/.audio-library/${item.id}${extension}`;
