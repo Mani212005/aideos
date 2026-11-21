@@ -57,8 +57,7 @@ Also measured, from one method, and named as such: `audio.loudnessLufs` (ffmpeg 
 
 ## What it does not measure (and says so)
 
-- **Words per minute without word timings.** There is no offline transcription in this repo (`backend/transcribe.ts` needs a Deepgram key or the
-  whisper CLI), so `aideos study` does not guess. Pass `--words <file>` (a `voiceover_words.json` shape: `word`, `start`, `end` per word) for a single
+- **Words per minute without word timings.** There is no offline transcription in this repo, so `aideos study` does not guess. Pass `--words <file>` (a `voiceover_words.json` shape: `word`, `start`, `end` per word) for a single
   reference, or put `<name>.words.json` next to `<name>.mp4`. The pause map always comes from the audio energy, not from words.
 - **Caption cadence** (words per burst, burst rate, one-word captions). It needs OCR at frame rate, which is out of scope for this step, and the
   review's 2 s sampling cannot resolve a word shown for 0.1 to 0.3 s. Only caption **presence** is measured.
