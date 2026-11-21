@@ -3,9 +3,9 @@
 # Narration about 1.2x and edits 20 to 30 percent faster
 
 - **Date**: 2026-11-21
-- **Status**: Decided, not yet on main (the work is in flight; no pull request was open when this entry was written)
+- **Status**: Decided, not yet on main (the work is in pull request 267, open)
 - **Decided by**: owner, in his own words after watching the Signal video and reel: "I feel that 1.2x of the speed would really fit this nicely. Honestly, I think that the reels that we produce are a bit slow to watch. I want a bit more faster editing. By faster editing, I mean the story needs to pace up a bit by like 20-30% more speed."
-- **Pull requests**: none yet
+- **Pull requests**: https://github.com/Mani212005/aideos/pull/267
 
 ## Context
 
@@ -32,4 +32,4 @@ The owner finds the reels a bit slow to watch and wants faster editing. This is 
 
 ## Where it lives now
 
-Nothing yet on main. When the work lands it changes `docs/GOOD_VIDEO.md`, `docs/REVIEW.md`, the review thresholds in `backend/review/thresholds.ts` and the pacing defaults. Update this entry's status and pull request link when it does. It is related to [2026-11-20-cloned-voice-default-narrator.md](2026-11-20-cloned-voice-default-narrator.md).
+The numbers live in `backend/pacingProfile.ts` (`HOUSE_PACE`, each derived from the old value and the 1.2x narration rate). The targets are in `docs/GOOD_VIDEO.md` (section "House pace"), the review gates in `docs/REVIEW.md` and `backend/review/thresholds.ts`, and the before and after numbers and clarity measurement in `docs/evidence/verify/2026-11-21-faster-pacing-profile.md`. Set this entry's status to `In force` when pull request 267 merges. It is related to [2026-11-20-cloned-voice-default-narrator.md](2026-11-20-cloned-voice-default-narrator.md).
