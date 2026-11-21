@@ -132,10 +132,23 @@ Before deploying, ensure you have:
 | `DEEPGRAM_API_KEY` | No | - | Deepgram API key for speech recognition and neural TTS |
 | `AIDEOS_KOKORO` | No | - | Override container memory gate for local Kokoro TTS (1 to force enable, 0 to force disable) |
 | `PORT` | No | `8080` (Docker) / `3001` (Dev) | Port for the backend server |
+| `HOST` | No | `127.0.0.1` (Dev) / `0.0.0.0` (Docker `--host 0.0.0.0`) | Bind address for the Studio server; defaults to loopback-only for safety (set `HOST=0.0.0.0` or pass `--host 0.0.0.0` to opt in to network interfaces) |
+| `AIDEOS_ALLOWED_HOSTS` | No | `.onrender.com` | Comma-separated extra hostnames allowed by Vite in hosted deployments |
+| `AIDEOS_ALLOWED_ORIGINS` | No | - | Comma-separated explicit origins (for example `https://aideos.vercel.app`) granted CORS by the Studio API; see [Studio API access](#studio-api-access) |
 | `NODE_ENV` | No | `production` | Node environment |
 | `WAN_GPU_HOST` | No | - | Remote GPU host for Wan2.1 video diffusion B-roll |
 | `WAN_GPU_USER` | No | - | Remote GPU SSH user |
 | `WAN_GPU_PASSWORD` | No | - | Remote GPU SSH password |
+
+### Studio API access
+
+`backend/studioApiGuard.ts` owns the contract; its header and function comments are authoritative.
+
+- The server binds loopback (`127.0.0.1`) unless `HOST` is set. The Docker image passes `--host 0.0.0.0` explicitly.
+- CORS is allowlist-only (never `*`): a local Studio page gets its own loopback origin, and hosted deployments get the origins in `AIDEOS_ALLOWED_ORIGINS` and `AIDEOS_PUBLIC_API_URL` plus their own HTTPS origin. Other preflights get 403 `origin_not_allowed`.
+- Every non-GET API route except OPTIONS is refused with 403 `local_studio_required` unless the request is a same-origin loopback Studio page. This covers writes, voice synthesis and exports. GET and HEAD stay open, except `/api/audio/retime`, which is local only.
+- Agent link `claim`, `result`, `pair`, `DELETE /api/agent-link`, `/api/mcp` and the acceptance check stay reachable on hosted deployments (foreign browser origins are refused).
+- Non-local write, export, upload, voice synthesis and edit requests are refused with 403 `local_studio_required`. This includes the routes that dispatch tasks to a linked agent (`/api/prompt-agent`, `/api/ai-edit`, project design and shot-redesign routes). The hosted access model is an open decision, so no hosted route beyond the list above is opened by this guard.
 
 ---
 
@@ -147,7 +160,8 @@ When hosting on Render's free tier, keep the following considerations in mind:
    - Free instances on Render spin down after 15 minutes of inactivity. The first request after dormancy takes ~50 seconds to wake the container.
 2. **Memory and CPU Limits**:
    - Free tier provides 512 MB RAM and 0.1 CPU.
-   - **Interactive Studio, Script Intake, Audio Sync & Canvas**: Fully functional and responsive.
-   - **Full Remotion MP4 Rendering**: Remotion rendering spins up headless Chromium and FFmpeg. On 512 MB RAM, rendering full-length 1080p videos may run slowly or encounter memory constraints. For heavy video rendering workloads, upgrading the Render instance to Starter (512MB-1GB) or Standard (2GB+) is recommended.
+   - **Interactive Studio, Script Intake, Audio Sync & Canvas**: Read-only browsing and the agent-link routes work on a hosted deployment. Writes, edits, uploads, exports and agent dispatch from a non-local origin are refused with 403 (see [Studio API access](#studio-api-access)).
+   - **Full Remotion MP4 Rendering**: The Studio export route is refused on a hosted deployment, so the sizing note below applies to local or self-run renders. Remotion rendering spins up headless Chromium and FFmpeg. On 512 MB RAM, rendering full-length 1080p videos may run slowly or encounter memory constraints. For heavy video rendering workloads, upgrading the Render instance to Starter (512MB-1GB) or Standard (2GB+) is recommended.
 3. **Speech Synthesis**:
+   - On a hosted deployment `/api/generate-voiceover` is refused with 403 `local_studio_required` ([Studio API access](#studio-api-access)) while the hosted access decision is open. The memory gate and fallback below apply to a Studio server reached from a local origin.
    - Local Kokoro TTS requires ~400 MB of ONNX model runtime memory, so on hosts with under 1.5 GB RAM (such as the Render 512 MB free tier), the studio voiceover synthesis route (`/api/generate-voiceover` via `backend/voiceSynthesis.ts`) automatically skips local Kokoro to prevent out-of-memory container crashes. It seamlessly falls back to cloud TTS (`DEEPGRAM_API_KEY` or `GOOGLE_API_KEY`). On memory-constrained hosts without cloud API keys, synthesis returns an HTTP 503 with per-provider failure reasons rather than an opaque 502/500 crash.

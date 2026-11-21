@@ -40,6 +40,13 @@ import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
 import { pruneStudioExports } from '../backend/exportRetention.ts'
+import {
+  applyStudioCorsHeaders,
+  guardStudioApiRequest,
+  resolveAllowedHosts,
+  resolveResourcePolicy,
+  resolveStudioHost,
+} from '../backend/studioApiGuard.ts'
 import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
 import { AideosConfigError, resolveVoiceCloneSettings } from '../backend/aideosConfig.ts'
 import {
@@ -309,24 +316,6 @@ const bearerOf = (req: IncomingMessage): string | undefined => {
   return m ? m[1] : undefined;
 };
 
-// Checks that a request to the reel rebuild endpoint comes from a loopback Studio page.
-function isLocalStudioRequest(req: IncomingMessage): boolean {
-  const peer = String(req.socket.remoteAddress ?? '').toLowerCase();
-  const loopbackPeer = peer === '::1' || peer.startsWith('127.') || peer.startsWith('::ffff:127.');
-  const originHeader = req.headers.origin;
-  const hostHeader = req.headers.host;
-  if (!loopbackPeer || typeof originHeader !== 'string' || typeof hostHeader !== 'string') return false;
-  try {
-    const origin = new URL(originHeader);
-    const requestOrigin = new URL(`http://${hostHeader}`);
-    const hostname = origin.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
-    const loopbackHost = hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === '::1' || hostname.startsWith('127.');
-    return loopbackHost && origin.protocol === 'http:' && origin.origin === requestOrigin.origin;
-  } catch {
-    return false;
-  }
-}
-
 // The URL a connector should dial: the configured public API URL, else the one this request reached.
 const publicApiUrl = (req: IncomingMessage): string => {
   if (process.env.AIDEOS_PUBLIC_API_URL) return process.env.AIDEOS_PUBLIC_API_URL.replace(/\/$/, '');
@@ -373,13 +362,18 @@ function serveFileWithRange(req: IncomingMessage, res: ServerResponse, filePath:
   const contentType = ASSET_MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
   const range = req.headers.range;
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Range, Accept-Ranges, Content-Type');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Accept-Ranges, Content-Length');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  const allowedOrigin = applyStudioCorsHeaders(req, res, {
+    methods: 'GET, HEAD, OPTIONS',
+    headers: 'Range, Accept-Ranges, Content-Type',
+    exposeHeaders: 'Content-Range, Accept-Ranges, Content-Length',
+  });
+  res.setHeader('Cross-Origin-Resource-Policy', resolveResourcePolicy(req, allowedOrigin));
 
   if (req.method === 'OPTIONS') {
+    if (req.headers.origin && !allowedOrigin) {
+      sendJson(res, 403, { error: 'Origin is not allowed by Aideos Studio.', code: 'origin_not_allowed' });
+      return;
+    }
     res.writeHead(204);
     res.end();
     return;
@@ -719,19 +713,29 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
 function setupApiMiddlewares(server: { middlewares: any }): void {
   startFilmWatcher();
   server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
-    if (req.url === '/api/release-channel') {
-      sendJson(res, 200, releaseChannel(path.resolve(__dirname, '..')));
-      return;
-    }
     const url = (req.url ?? '').split('?')[0];
 
-    // Ensure permissive CORS headers for all incoming API and asset requests
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range, Authorization, Accept, X-Requested-With, X-Aideos-Owner, Mcp-Session-Id, Mcp-Protocol-Version');
+    // Apply strict allowlist-only CORS (never wildcard '*') and reject foreign preflight origins.
+    const allowedOrigin = applyStudioCorsHeaders(req, res);
     if (req.method === 'OPTIONS') {
+      if (req.headers.origin && !allowedOrigin) {
+        sendJson(res, 403, { error: 'Origin is not allowed by Aideos Studio.', code: 'origin_not_allowed' });
+        return;
+      }
       res.statusCode = 204;
       res.end();
+      return;
+    }
+
+    // Fail-closed guard: refuse writes, exports, voice synthesis, and foreign browser mutations before routing.
+    const guard = guardStudioApiRequest(req, url);
+    if (!guard.allow) {
+      sendJson(res, guard.status, { error: guard.error, code: guard.code });
+      return;
+    }
+
+    if (url === '/api/release-channel' && (req.method === 'GET' || req.method === 'HEAD')) {
+      sendJson(res, 200, releaseChannel(path.resolve(__dirname, '..')));
       return;
     }
 
@@ -829,10 +833,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
       if (req.method === 'GET') {
         try { respond(); } catch (error) { sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) }); }
       } else {
-        if (!isLocalStudioRequest(req)) {
-          sendJson(res, 403, { error: 'Reel rebuilds are only available to the local Studio page.' });
-          return;
-        }
         const pkg = reelPackageDir(slug);
         if (!path.resolve(pkg).startsWith(`${path.resolve(videosDir)}${path.sep}`)) {
           sendJson(res, 403, { error: 'Example films are read-only. Open a film in your videos folder to rebuild its reel.' });
@@ -1484,7 +1484,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache, no-transform',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
           });
 
           // Handshake connected event
@@ -2649,12 +2648,16 @@ export default defineConfig({
   publicDir: path.resolve(__dirname, '../public'),
   server: {
     port: Number(process.env.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
-    host: process.env.HOST || '0.0.0.0',
+    // Bind loopback (127.0.0.1) by default so LAN peers cannot reach the local Studio API.
+    // Opt in to binding other interfaces explicitly with HOST=0.0.0.0 (or `vite --host 0.0.0.0`, as Dockerfile does).
+    host: resolveStudioHost(),
     strictPort: true,
+    // CORS is enforced exclusively by setupApiMiddlewares (studioApiGuard) with an allowlist, never '*'.
+    cors: false,
     // The hosted backend is this dev server (the API lives in its middleware), reached as
     // aideos-backend.onrender.com directly and through Vercel's /api rewrite. Vite rejects any
     // Host it does not know with a 403, so name the hosting domains; AIDEOS_ALLOWED_HOSTS adds more.
-    allowedHosts: ['.onrender.com', ...(process.env.AIDEOS_ALLOWED_HOSTS || '').split(',').map((h) => h.trim()).filter(Boolean)],
+    allowedHosts: resolveAllowedHosts(),
     fs: {
       allow: ['..', ...(audioLibraryOverride ? [path.dirname(path.resolve(audioLibraryOverride))] : [])]
     },
@@ -2672,7 +2675,8 @@ export default defineConfig({
   },
   preview: {
     port: Number(process.env.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
-    host: process.env.HOST || '0.0.0.0',
+    host: resolveStudioHost(),
+    cors: false,
   },
   resolve: {
     alias: {

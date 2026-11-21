@@ -193,7 +193,10 @@ test("Studio /api/generate-voiceover rejects a title leak even with a spoken-tex
   try {
     const response = await fetch(new URL("/api/generate-voiceover", server.url), {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        origin: new URL(server.url).origin,
+      },
       body: JSON.stringify({
         projectId: "m6-override",
         script: "## Closing\n[NARRATION]\nClosing.",

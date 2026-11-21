@@ -206,7 +206,7 @@ aideos review <slug> --format reel
 
 `aideos review` writes a separate measured report and evidence for each rendered format. Read the Reel report (`review.reel.json`) for Reel-specific facts, including the delivered-length gate; the review command defaults to every rendered format. See [Review](REVIEW.md) for the criteria, artifacts, and review workflow. This measured review is separate from the optional Gemini visual review and from captain approval of the cut.
 
-Studio's Edit-stage Reel controls are described in the [Studio workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor). The reel rebuild endpoint accepts POST requests only from a same-origin loopback Studio page and rejects example-package writes. This restriction applies only to reel rebuilds; it is not general Studio authentication.
+Studio's Edit-stage Reel controls are described in the [Studio workflow](WORKFLOW.md#4-interactive-web-studio-workflow-editor). The reel rebuild endpoint rejects example-package writes. Like every other mutating, voice synthesis and export route, it accepts requests only from a same-origin loopback Studio page; see [Studio API access](DEPLOY_HOSTING.md#studio-api-access). This is a local-origin guard, not user authentication.
 
 Standalone `videoClips` and `overlayClips` are mapped from source time onto the reel timeline through the kept shots and capped to each shot's shortened narration duration. A clip spanning dropped shots is split into one clip per kept contiguous portion, and clips with no retained portion are omitted. Linked imported-audio clips are retimed, trimmed and split to match their video clips; other `audioClips` keep their source timing.
 
