@@ -10,7 +10,7 @@
  */
 
 import { hasCaptionPlacementForFormat, prepareCaptionReview } from "../review/captionRegion";
-import type { CaptionRect } from "../../src/dl/captionPlacement";
+import { migrateLegacyReelPlacement, type CaptionRect } from "../../src/dl/captionPlacement";
 import { REEL_CAPTION_SAFE_ZONE, SUBTITLE_BAND_TOP_RATIO } from "../../src/dl/fullScreenHeroLayout";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -499,7 +499,8 @@ export async function extractDeterministicFacts(
         captionRectAt = prepared;
       }
       if (captionRectAt && format && hasCaptionPlacementForFormat(film, format)) {
-        placementNote = `- Owner ${format} caption cards: ${JSON.stringify({ film: film.captionPlacement?.[format], shots: film.shots.filter((shot) => shot.captionPlacement?.[format]).map((shot) => ({ id: shot.id, placement: shot.captionPlacement?.[format] })) })}. Check these placed rectangles; locked cards must be preserved.`;
+        const resolved = (entry: NonNullable<typeof film.captionPlacement>[typeof format] | undefined) => entry && migrateLegacyReelPlacement(entry, format);
+        placementNote = `- Owner ${format} caption cards: ${JSON.stringify({ film: resolved(film.captionPlacement?.[format]), shots: film.shots.filter((shot) => shot.captionPlacement?.[format]).map((shot) => ({ id: shot.id, placement: resolved(shot.captionPlacement?.[format]) })) })}. Check these placed rectangles; locked cards must be preserved.`;
       }
       if (film.scene?.renderer === "three" && !viewport) stageNote = "- Stage facts: NOT measured, the output size of this video could not be probed; judge the stage only from the video.";
       else filmFacts = readFilmFacts(film, viewport ?? undefined);
