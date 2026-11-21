@@ -224,6 +224,7 @@ Promotion requires passing full CI, dual-format production, measured rubric revi
 - [Video Design System](src/dl/README.md): Token palettes, contrast requirements, and motion easing specs.
 - [Vector Scene Engine](src/dl/scene/README.md): Declarative SVG animation clips, scene stages, and continuous camera tracks.
 - [Verification Skill](.agents/skills/verify/SKILL.md): Reusable verification workflow (E2E, property, differential, protected suites, independent review, and evidence logs) backed by the [Feature Map](docs/verify/FEATURE_MAP.md).
+- [Decision Log](docs/decisions/README.md): One file per owner or agent decision with its context, reasons, rejected alternatives and pull requests.
 
 ---
 
