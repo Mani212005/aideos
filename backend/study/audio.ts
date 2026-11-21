@@ -1,7 +1,7 @@
 /**
  * File Description: Speech pacing facts of a reference for `aideos study`: first speech time, speech share, the pause map and loudness from the audio
  * energy (two methods: ffmpeg silencedetect at a fixed noise floor, and 20 ms RMS windows against an adaptive floor), and words per minute only
- * when word timings are supplied. There is no offline transcription in this repo (backend/transcribe.ts needs a Deepgram key or the whisper CLI),
+ * when word timings are supplied. There is no offline transcription in this repo,
  * so without a word list wpm is reported as not measured rather than guessed.
  * Inputs and outputs: a video file, its duration and optional word timings -> audio metrics, the pause map and the list of what was not measured.
  * Used by: backend/study/study.ts.
@@ -110,7 +110,7 @@ export function analyzeAudio(file: string, durationSec: number, hasAudio: boolea
       metrics.push(notPixelMetric({ id: "audio.wpm", label: "Speech rate", unit: "words/min", reading: { method: "word timings from the supplied word list, first word start to last word end (one method; not a pixel measurement)", value: wpm } }));
     } else notMeasured.push({ what: "speech rate (words per minute)", why: `${wordsFile} has no timed words` });
   } else {
-    notMeasured.push({ what: "speech rate (words per minute)", why: "no offline transcription exists in this repo (backend/transcribe.ts needs a Deepgram key or the whisper CLI); pass --words <word list with start and end per word> or put <name>.words.json next to the reference. Pauses above come from the audio energy, not from words" });
+    notMeasured.push({ what: "speech rate (words per minute)", why: "no offline transcription exists in this repo; pass --words <word list with start and end per word> or put <name>.words.json next to the reference. Pauses above come from the audio energy, not from words" });
   }
   notMeasured.push({ what: "what is said", why: "a study measures craft, never a script: no words or text of the reference are kept" });
   return { metrics, pauseMap, notMeasured };
