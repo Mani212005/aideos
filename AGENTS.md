@@ -114,8 +114,6 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 ## Transcription and edit context
 
-- `transcribe()` returns the same `TranscribedWord[]` shape for Deepgram and for Whisper.
-- Keep the network fetch, the API key, ffmpeg and the Whisper subprocess injectable through `deps`.
 - Never let a test touch the network, .env files or a real ASR process.
 - Keep the `backend/editContext/` modules pure: plain data in, typed result out, no I/O.
 - `detectFillers` always flags the fixed strong-filler words.
@@ -215,7 +213,6 @@ File Description: This file defines the core guidelines, coding principles, and 
 - `deviceData.ts` refuses a block that shows a word or number the beat never says.
 - `buildBlocksForPrimitive` never invents stand-ins.
 - StatCounter needs narrated numbers. CodeBlock needs inline code. ProgressBar needs explicit percentages. If not, fall back to TextReveal.
-- The studio Look > Design swap and redesign use the same honesty check.
 - Detail: `docs/REVIEW.md`, section "Agent rules detail (moved from AGENTS.md)".
 
 ## Frame safe areas and the palette guard

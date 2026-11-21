@@ -13,7 +13,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { ROOT } from "../pipeline/filmStore";
 import { FakeAgentTerminal, type FakeAgentKind } from "../testSupport/fakeAgentTerminal";
-import { dispatchTask, setAgentSession } from "./dispatcher";
+import { dispatchTask } from "./dispatcher";
+import { writeAgentSessionFile } from "../testSupport/agentSessionFile";
 import { PaneDeliveryQueue } from "./paneDelivery";
 import { readPaneScreen } from "./paneScreen";
 
@@ -165,7 +166,7 @@ test("dispatchTask queues behind a busy agent, says so, and the queue sends it w
     else fs.rmSync(sessionFile, { force: true });
   });
   const term = new FakeAgentTerminal({ agent: "claude", pane: "%51", busyUntil: 20_000 });
-  setAgentSession({ agent: "claude", tmuxSession: "aideos", tmuxPane: term.pane });
+  writeAgentSessionFile({ agent: "claude", tmuxSession: "aideos", tmuxPane: term.pane });
   const deps = { tmux: term.run, sleep: term.sleep, now: term.now };
   const opts = { eventType: "auto_build_scenes" as const, filmId: "queue-e2e", filmTitle: "Queue E2E", enableFallback: false };
 

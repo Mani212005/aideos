@@ -423,17 +423,11 @@ and `placement` (`{x,y,w}` or `{preset:"top"|"middle"|"bottom"}`). Locked target
 
 ### Transcription and edit context
 
-- `backend/transcribe.ts`'s `transcribe(src, opts, deps)` transcribes a video/audio source into
-  word-level timings: Deepgram's prerecorded `listen` API (`smart_format`, `punctuate`,
-  `filler_words`, `utterances` all on) when a key is configured, else a local Whisper CLI
-  fallback. Both paths return the same `TranscribedWord[]` shape (the existing `WordInfo` plus a
-  per-word `confidence`), so downstream code never needs to know which backend ran. The network
-  fetch, the API key resolution, the ffmpeg extraction and the Whisper subprocess are all
-  injectable via `deps`, mirroring the `llmCaller` injection convention elsewhere, so tests
-  exercise real routing/parsing logic without ever touching the network, .env files or a real
-  ASR process. `writeImportWords` persists the result
-  to `videos/<slug>/import_words.json` (`{words: TranscribedWord[]}`, each carrying a `filler`
-  flag once a detection pass has run) plus `import_captions.vtt` via `audio.ts`'s `buildCaptionsVtt`.
+- `backend/transcribe.ts` holds only the `TranscribedWord` type (the existing `WordInfo` plus a
+  per-word `confidence` and a `filler` flag). No transcription runs in this repo: the Deepgram and
+  Whisper transcribe function and `writeImportWords` were removed once nothing but tests called them.
+  A package's `import_words.json` (`{words: TranscribedWord[]}`) is read by `backend/mcp/server.ts`
+  when it exists.
 - `backend/editContext/` holds the pure signal-detection and context-assembly modules
   `detectFillers`, `detectSilences` and `buildEditContext`, each taking plain data and a
   `TranscribedWord[]`/`LayeredFilm` and returning a typed result with no I/O. `detectFillers`

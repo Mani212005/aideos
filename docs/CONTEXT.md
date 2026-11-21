@@ -293,7 +293,6 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `buildAtempoFilter(speed)`: Builds a cascaded FFmpeg atempo filter chain for arbitrary playback speed factors.
 * `resolveAudioSourcePath(src)`: Resolves an audio URL or relative path to an absolute path on disk.
 * `retimeAudioSync(src, speed, options)`: Synchronously retimes audio via FFmpeg WSOLA atempo filter and caches the resulting pitch-corrected WAV.
-* `retimeAudio(src, speed, options)`: Asynchronously retimes audio via WSOLA atempo filter and caches the result.
 * `ensureRetimedAudio(film)`: Pre-renders all retimed audio tracks for a film to ensure static availability for Remotion CLI renders.
 
 ### `src/dl/audio/retime.ts` (Deterministic Retimed Audio Paths)
@@ -368,7 +367,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `paneDelivery` (`backend/agentBridge/paneDelivery.ts`): Process-wide queue (`PaneDeliveryQueue`) delivering prompts to terminal coding agents (Claude, Codex, etc.) when idle at an empty prompt (`enqueue`, `get`, `list`, `drain`, `clear`). Sends via paste, short pause, Enter, and prompt acceptance verification with a single Enter retry, dropping duplicate pending prompts for the same pane.
 * `readPaneScreen(raw)` (`backend/agentBridge/paneScreen.ts`): Inspects captured terminal screens (`capture-pane`) to detect agent prompt state (`busy`, `idle`, `typing`, `unknown`) and extract composer text while ignoring ANSI escape codes, cursor styles, and placeholder hints.
 * `cancelFallbackTimer(taskId)`, `clearAllFallbackTimers()`: Manages and clears active fallback timer callbacks.
-* `getAgentSession()`, `setAgentSession(info)`: Reads and persists active agent session metadata (`.aideos_session.json`).
+* `getAgentSession()`: Reads active agent session metadata (`.aideos_session.json`).
 
 ### `backend/agentLink/` (Headless Coding Agent Link & Connector Hub)
 * `AgentLinkStore` (`backend/agentLink/store.ts`): State store for signed pairing tokens, owner keys, heartbeat tracking, and connected agent long-poll queues with single-agent-per-owner replacement tracking (`startPairing`, `startAgentPairing`, `claim`, `authenticate`, `replacementNote`, `isConnector`, `endReason`, `status`, `disconnect`, `heartbeat`, `enqueue`, `next`, `report`, `recordActivity`, `activity`).
@@ -537,7 +536,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
 * `planFilmLook(filmId, options)`, `designFilm(filmId, options)` (`designer.ts`): Delivers look planning and scene design through inline, agent, server, or templates policies.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
-* `designOverview(film)`, `approveLookPlan(filmId)`, `requestFilmDesign(film, ownerKey)` (`shotTools.ts`): Gathers design and look plan overview (`look.json`, `LOOK.md`, stage, cast, shot treatments) for the Studio Look stage, records captain look approval, and dispatches a whole-film design task to the connected agent. `swapShotVisual` and `requestShotRedesign` in the same file have no studio route and are called only from tests.
+* `designOverview(film)`, `approveLookPlan(filmId)`, `requestFilmDesign(film, ownerKey)` (`shotTools.ts`): Gathers design and look plan overview (`look.json`, `LOOK.md`, stage, cast, shot treatments) for the Studio Look stage, records captain look approval, and dispatches a whole-film design task to the connected agent.
 * `designSpecSchema`, `specCameraSchema`, `specClipSchema`, `specAssetSchema` (`spec.ts`): Zod schemas and TypeScript types for bespoke film designs (brief, accent, background, assets, optional generated `pictures`, cue-timed clips, camera poses with optional focus, and shot block overrides).
 
 ### `backend/pictures/` (Illustrated Stage Picture Cache & Policy)
@@ -566,11 +565,8 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `visibleText.ts`: `visibleReelText(film)`. Extracts on-screen text and numbers across scene stage elements, SVG assets, and text overlays.
 * `cli.ts`: `registerReelCommands(program)`. Registers CLI commands for `aideos reel brief`, `aideos reel check`, and `aideos reel build`.
 
-### `backend/transcribe.ts` (Audio & Video Transcription)
-* `transcribe(src, options, deps)`: Transcribes audio or video media into word-level timings (`TranscribedWord[]`) with confidence scores, using Deepgram with local Whisper CLI fallback.
-* `writeImportWords(packageDir, words)`: Writes `import_words.json` and phrase-grouped `import_captions.vtt` sidecars into the package directory.
-* `readImportWords(packageDir)`: Reads transcribed words from `import_words.json` when present.
-* `resolveDeepgramApiKey()`: Resolves Deepgram API key from environment variables.
+### `backend/transcribe.ts` (Transcribed Word Type)
+* `TranscribedWord`: The word shape shared by the edit-context detectors and the MCP edit tools (`WordInfo` plus ASR `confidence` and a `filler` flag). No transcription runs in this repo.
 
 ### `backend/editContext/` (Edit Context Assembly & Signal Detection)
 * `detectFillers(words, options)` (`detectFillers.ts`): Identifies fixed filler words ("um", "uh") and confidence-gated colloquial phrases ("like", "you know") as `FillerSpan[]`.

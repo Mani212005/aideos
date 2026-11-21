@@ -14,7 +14,8 @@ import { ROOT } from "../pipeline/filmStore";
 import { FakeAgentTerminal } from "../testSupport/fakeAgentTerminal";
 import { agentLink } from "../agentLink/store";
 import { autoPromptBadge, createSingleFlight } from "../../editor/src/state/autoPromptState";
-import { clearAllFallbackTimers, DEFAULT_AGENT_TIMEOUT_MS, dispatchTask, OPEN_AFTER_TIMEOUT_MS, paneDelivery, setAgentSession, taskQueue, type DispatchOptions } from "./index";
+import { writeAgentSessionFile } from "../testSupport/agentSessionFile";
+import { clearAllFallbackTimers, DEFAULT_AGENT_TIMEOUT_MS, dispatchTask, OPEN_AFTER_TIMEOUT_MS, paneDelivery, taskQueue, type DispatchOptions } from "./index";
 
 const CLICK: DispatchOptions = { eventType: "auto_build_scenes", filmId: "click-film", filmTitle: "Click Film", enableFallback: false, idempotent: true };
 
@@ -35,7 +36,7 @@ function isolate(t: test.TestContext): void {
 
 /** Points the studio's agent session at a fake terminal and returns the dispatch deps that drive it. */
 function withTerminal(term: FakeAgentTerminal) {
-  setAgentSession({ agent: "claude", tmuxSession: "aideos", tmuxPane: term.pane });
+  writeAgentSessionFile({ agent: "claude", tmuxSession: "aideos", tmuxPane: term.pane });
   return { tmux: term.run, sleep: term.sleep, now: term.now };
 }
 
