@@ -1,8 +1,8 @@
 /**
- * File Description: Loads a film's design overview from the dev server (/api/design/:id): who
- * designed it, the idea, the look plan, the artwork, motion by shot and why each shot got its visual.
- * Shared by the Look stage's Design view and the shot inspector's "why this visual" panel.
- * Inputs and outputs: film manifest -> computed design metrics (shot count, density, pacing).
+ * File Description: Loads a film's design overview from the dev server (/api/design/:id) - who
+ * designed it, the idea, the look plan, the artwork, motion by shot and why each shot got its visual -
+ * and posts Look-stage design actions to /api/design/:path.
+ * Inputs and outputs: film id and revision (or design action path and JSON body) -> fetched DesignOverview state with refresh/error, or parsed POST action JSON.
  * Used by: editor/src/components/DesignView.tsx.
  */
 
