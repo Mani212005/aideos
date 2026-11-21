@@ -41,8 +41,10 @@ const PRE_2026_11_21 = {
   wpmTarget: [130, 170] as const,
   /** Review pass window for narration pace, words per minute. */
   wpmWindow: [120, 180] as const,
-  /** Design target for the mean beat (shot) length, seconds. */
-  meanBeatSec: [5, 12] as const,
+  /** Longest the mean beat (shot) length may be, seconds. */
+  meanBeatMaxSec: 12,
+  /** Opt-in reel-fast profile: top of the narration pace window, words per minute. */
+  reelFastWpmMax: 200,
   /** Hard cuts allowed per minute before the picture reads as separate panels. */
   hardCutsPerMinMax: 2,
   /** Carry-over with transformation: at least one beat boundary per this many seconds. */
@@ -74,7 +76,8 @@ export const HOUSE_PACE = {
   cameraHoldSec: [faster(PRE_2026_11_21.cameraHoldSec[0], 0.5), faster(PRE_2026_11_21.cameraHoldSec[1], 0.5)] as const,
   wpmTarget: [quicker(PRE_2026_11_21.wpmTarget[0]), quicker(PRE_2026_11_21.wpmTarget[1])] as const,
   wpmWindow: [quicker(PRE_2026_11_21.wpmWindow[0]), quicker(PRE_2026_11_21.wpmWindow[1])] as const,
-  meanBeatSec: [faster(PRE_2026_11_21.meanBeatSec[0], 0.5), faster(PRE_2026_11_21.meanBeatSec[1], 0.5)] as const,
+  meanBeatMaxSec: faster(PRE_2026_11_21.meanBeatMaxSec, 0.5),
+  reelFastWpmMax: quicker(PRE_2026_11_21.reelFastWpmMax),
   hardCutsPerMinMax: Number((PRE_2026_11_21.hardCutsPerMinMax * NARRATION_RATE).toFixed(1)),
   carryOverPerSec: faster(PRE_2026_11_21.carryOverPerSec, 1),
   hookFirstWordMaxSec: faster(PRE_2026_11_21.hookFirstWordMaxSec, 0.05),

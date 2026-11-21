@@ -3,7 +3,7 @@
  * Every number here was set from the calibration videos (see scripts/calibrate_review.ts and the
  * table in the review README), not guessed. Change a value only by re-running the calibration and
  * keeping the recorded reference ordering. The pace numbers (pacing.deadAirMaxSec, the pacing wpm window,
- * pacing.meanBeatSec, camera.movePerSec and the story hold) are the exception: they come from the house pacing
+ * pacing.meanBeatMaxSec, camera.movePerSec and the story hold) are the exception: they come from the house pacing
  * profile (backend/pacingProfile.ts), the captain's 2026-11-21 pace decision, not from calibration.
  * Inputs and outputs: none -> calibrated threshold constants for review criteria.
  * Used by: backend/review/criteria.ts.
@@ -87,8 +87,8 @@ export const THRESHOLDS = {
     /** Narration pace window, words per minute (house pace: 1.2x the 120 to 180 window before 2026-11-21). */
     wpmMin: HOUSE_PACE.wpmWindow[0],
     wpmMax: HOUSE_PACE.wpmWindow[1],
-    /** Mean shot (beat) length window, seconds (house pace). */
-    meanBeatSec: HOUSE_PACE.meanBeatSec,
+    /** Longest the mean shot (beat) length may be, seconds (house pace); shorter is fine. */
+    meanBeatMaxSec: HOUSE_PACE.meanBeatMaxSec,
     /** Hard cuts (frame difference above this at 10 fps) allowed per minute. */
     hardCutDiff: 12,
     /** Hard cuts allowed per minute (house pace: 2 before 2026-11-21, scaled by the narration rate). */
@@ -108,6 +108,16 @@ export const THRESHOLDS = {
     sentenceWordsMin: 10,
     /** The first sentence has at most this many words. */
     sentenceWordsMax: 16,
+  },
+  /**
+   * Named narration pace windows for criterion 9. `default` mirrors `pacing.wpmMin`/`wpmMax` and is what
+   * every review uses. `reel-fast` is opt-in (a reel review that names it) and only raises the upper bound to
+   * 240 words per minute (the 200 it allowed before the 2026-11-21 house pace, scaled by the narration rate);
+   * the lower bound is the house floor, not loosened. It never applies to a long review.
+   */
+  pacingProfiles: {
+    default: { wpmMin: HOUSE_PACE.wpmWindow[0], wpmMax: HOUSE_PACE.wpmWindow[1] },
+    "reel-fast": { wpmMin: HOUSE_PACE.wpmWindow[0], wpmMax: HOUSE_PACE.reelFastWpmMax },
   },
   loudness: {
     lufsMin: -18,
@@ -146,3 +156,6 @@ export const THRESHOLDS = {
     ungroundedMax: 0,
   },
 } as const;
+
+/** Names of the narration pace windows in `THRESHOLDS.pacingProfiles`. */
+export type PacingProfileName = keyof typeof THRESHOLDS.pacingProfiles;

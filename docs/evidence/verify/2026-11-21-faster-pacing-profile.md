@@ -17,8 +17,8 @@
 | Expect / golden test for complex output | N/A | No new structured output or rendered frames; no render was made (a render is a final export) |
 | No sleeps in tests | PASS | None added |
 | No mocks of thing under test | PASS | The real pipeline, cache and criteria run; only the synthesizer is injected |
-| Protected suites unloosened | PASS | Every changed number is stricter or a deliberate captain pace change: story hold 3 -> 2.5 s, dead air 0.7 -> 0.6 s, camera move per 20 -> 17 s, carry-over floor 1 per 20 -> 1 per 17 s, hard cuts per minute 2 -> 2.4, reel hook first word 0.3 -> 0.25 s, wpm window 120-180 -> 145-215, mean beat 5-12 -> 4-10 s; camera speed cap, captions, readability, overlap, audio sync and reel caption safe zone unchanged |
-| Weak-test audit | PASS | The three `reel-fast` profile tests were replaced (the profile is gone, its 200 wpm ceiling now sits inside the default window) by stronger tests of the new window on both formats and the mean beat window |
+| Protected suites unloosened | PASS | Every changed number is stricter or a deliberate captain pace change: story hold 3 -> 2.5 s, dead air 0.7 -> 0.6 s, camera move per 20 -> 17 s, carry-over floor 1 per 20 -> 1 per 17 s, hard cuts per minute 2 -> 2.4, reel hook first word 0.3 -> 0.25 s, wpm window 120-180 -> 145-215, mean beat ceiling 12 -> 10 s (no floor), reel-fast ceiling 200 -> 240 wpm; camera speed cap, captions, readability, overlap, audio sync and reel caption safe zone unchanged |
+| Weak-test audit | PASS | The opt-in `reel-fast` profile was kept and rescaled (200 -> 240 wpm); its three tests are restored with only the numbers the new windows force; the house pace window test and a mean beat ceiling test were added |
 | Independent review | PENDING | `no-mistakes` pipeline, run when firstmate asks |
 | Evidence log written | PASS | This file |
 
@@ -88,8 +88,13 @@ natural rate was not measurable on this host (the `vcd` service was not running)
 
 ## Weak-test removals
 
-- `backend/review/hook.test.ts`: three `reel-fast` pacing profile tests removed with the profile; replaced by the house-pace window and mean-beat tests.
+- None. `backend/review/hook.test.ts`: the three `reel-fast` pacing profile tests are kept with only the forced numbers changed (145 to 215 default window; 231 wpm passes reel-fast up to 240; a 250 wpm narration fails it).
 
 ## Artifacts and links
 
 - Evidence run, takes and scores (outside the repo): `/home/mani/aideos-linux-home/data/aideos-faster-pacing-profile/evidence/` (`results.json`, `intelligibility.json`, `before_after.ts`, `intelligibility.py`)
+
+## Follow-ups
+
+- `aideos-voicelines-prune-old-keys`: recordings in `voiceover_lines/` made under the old plain cache key (before the `|stretch=<rate>` suffix) are orphaned and never pruned.
+- `aideos-intelligibility-check`: a repeatable speech-to-text round trip in the repo; the clarity numbers here were measured once outside it.

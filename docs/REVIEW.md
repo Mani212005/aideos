@@ -25,7 +25,8 @@ aideos review hnsw-explainer                       # slug: reviews every rendere
 aideos review hnsw-explainer --format reel          # explicit format (long or reel)
 aideos review path/to/video.mp4 --film film.json --words voiceover_words.json
 aideos review video.mp4 --words script.json        # narration text only: caption match and number grounding, no timings
-npm run review -- <slug|mp4> [--format long|reel] [--json] [--no-ocr] [--out dir]
+aideos review hnsw-explainer --format reel --pacing-profile reel-fast   # opt-in reel pace window (up to 240 wpm)
+npm run review -- <slug|mp4> [--format long|reel] [--pacing-profile reel-fast] [--json] [--no-ocr] [--out dir]
 ```
 
 Exit code: `0` all gates passed, `1` a gate failed, `2` the review could not run (missing file,
@@ -46,7 +47,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 6 | **Readability** | OCR box height (normalised to a 1080 short side) and pixel contrast | <= 58% of words under 18 px, <= 10% under 3:1 contrast |
 | 7 | **No overlap or clipping** | OCR boxes overlapping, text inside the edge margin, canvas node overlap | <= 10% of sampled frames affected |
 | 8 | **Audio sync** | audio vs video length, film length, shot boundaries vs word timings | lengths within 0.1 s, no shot boundary through a spoken word |
-| 9 | Pacing | compiled stage motion plus frame difference (static holds, hard cuts), word timings or silence (dead air, pace), film shot lengths (mean beat) | [house pace](GOOD_VIDEO.md#house-pace): no story hold over 2.5 s, <= 2.4 hard cuts per minute, no pause over 0.6 s, 145 to 215 wpm, mean beat 4 to 10 s |
+| 9 | Pacing | compiled stage motion plus frame difference (static holds, hard cuts), word timings or silence (dead air, pace), film shot lengths (mean beat) | [house pace](GOOD_VIDEO.md#house-pace): no story hold over 2.5 s, <= 2.4 hard cuts per minute, no pause over 0.6 s, 145 to 215 wpm, mean beat at most 10 s (shorter is fine) |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms windows overlapping speech on the shared voice activity timeline | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
 | 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
@@ -90,10 +91,18 @@ on real reels before changing a value.
 ### House pace
 
 Criterion 9 reviews every format at the [house pace](GOOD_VIDEO.md#house-pace) (the captain's 2026-11-21
-decision): 145 to 215 words per minute, a mean beat of 4 to 10 s, no pause over 0.6 s and no story hold over
-2.5 s. The window is 1.2x the 120 to 180 wpm it replaced, so it now covers the study's reference reels (192 and
-202 wpm) by default and the opt-in `reel-fast` profile is gone. The numbers come from
+decision): 145 to 215 words per minute, a mean beat of at most 10 s (shorter is fine and is the intent), no pause
+over 0.6 s and no story hold over 2.5 s. The window is 1.2x the 120 to 180 wpm it replaced. The numbers come from
 `backend/pacingProfile.ts`, not from the calibration videos.
+
+### Reel pacing profile (opt-in)
+
+Criterion 9 keeps its 145 to 215 words per minute window for every review. A reel review may opt into
+the `reel-fast` profile (`--pacing-profile reel-fast`, or `pacingProfile` on a `ReviewRequest`), which
+raises only the upper bound to 240 words per minute (the 200 it allowed before the house pace, scaled by 1.2).
+The lower bound is the house floor, the profile is ignored on a long review, and a report that used it records
+`pacingProfile` in the pacing metrics and the window in its thresholds. Profiles live in
+`THRESHOLDS.pacingProfiles`.
 
 A character film (Three stage) is measured in the reviewed output's own crop: a cast member is on
 stage when at least half of its projected posed box (outline included) lies inside that output, a
@@ -356,7 +365,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 6 | **readability** | Yes | High contrast (>= 4.5:1), clear font hierarchy (>= 24px), sufficient reading duration (>= 0.35s per word). |
 | 7 | **no_overlap_clipping** | Yes | No text-text or text-artwork overlapping; all essential elements stay within the 96px safe margin. |
 | 8 | **audio_sync** | Yes | Story cues synchronize with voiceover within 120ms; the audio and delivered picture durations agree within 100ms, including the end card. |
-| 9 | pacing | No | Dynamic progression at the [house pace](GOOD_VIDEO.md#house-pace) (see [Stage timeline and stillness](#stage-timeline-and-stillness)), mean beat length 4-10s, no dead air > 0.6s, speech 155-205 wpm and clearly intelligible. |
+| 9 | pacing | No | Dynamic progression at the [house pace](GOOD_VIDEO.md#house-pace) (see [Stage timeline and stillness](#stage-timeline-and-stillness)), mean beat length at most 10s (shorter is fine), no dead air > 0.6s, speech 155-205 wpm and clearly intelligible. |
 | 10 | storyline | No | Clear problem statement, logical progression where beats build on previous content, satisfying payoff beat. |
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |

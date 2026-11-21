@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { evaluateCriteria } from "./criteria";
+import type { PacingProfileName } from "./thresholds";
 import { detectSilences, extractStill, measureLoudness, probeVideo } from "./media";
 import { prepareCaptionReview } from "./captionRegion";
 import { measureRender, type RenderOptions } from "./renderFacts";
@@ -39,6 +40,8 @@ export interface ReviewRequest {
   /** Do not write anything (used by tests and dry runs). */
   noWrite?: boolean;
   skipOcr?: boolean;
+  /** Opt-in narration pace window (for example `reel-fast`); applies to reel reviews only. */
+  pacingProfile?: PacingProfileName;
   onProgress?: (message: string) => void;
 }
 
@@ -171,7 +174,7 @@ export async function reviewVideo(req: ReviewRequest): Promise<ReviewReport> {
   const loudness = video.hasAudio ? measureLoudness(target.mp4) : null;
   const silences = video.hasAudio ? detectSilences(target.mp4, video.durationSec) : [];
   const musicUnderVoice = audioFilm ? await measureMusicUnderVoice(audioFilm, format, req.onProgress) : undefined;
-  const criteria = evaluateCriteria({ video, render, film, narration, loudness, silences, format, musicUnderVoice });
+  const criteria = evaluateCriteria({ video, render, film, narration, loudness, silences, format, musicUnderVoice, pacingProfile: req.pacingProfile });
 
   if (!req.noWrite) attachEvidenceFrames(target.mp4, criteria, target.outDir, video.durationSec, format);
   const scored = criteria.filter((c) => c.score !== null);

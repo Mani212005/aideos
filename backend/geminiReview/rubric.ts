@@ -86,7 +86,7 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     title: "Pacing",
     isGate: false,
     description:
-      `Dynamic visual rhythm at the brisk house pace: no static frame held unchanged for > ${HOUSE_PACE.storyHoldMaxSec}s in the story (the end card's held, dimmed final stage is intentional), mean beat length ${HOUSE_PACE.meanBeatSec[0]}-${HOUSE_PACE.meanBeatSec[1]}s, no dead air > ${HOUSE_PACE.deadAirMaxSec}s, narration delivery pace ${HOUSE_PACE.wpmTarget[0]}-${HOUSE_PACE.wpmTarget[1]} words per minute, every word still clearly intelligible.`,
+      `Dynamic visual rhythm at the brisk house pace: no static frame held unchanged for > ${HOUSE_PACE.storyHoldMaxSec}s in the story (the end card's held, dimmed final stage is intentional), mean beat length at most ${HOUSE_PACE.meanBeatMaxSec}s (shorter is fine), no dead air > ${HOUSE_PACE.deadAirMaxSec}s, narration delivery pace ${HOUSE_PACE.wpmTarget[0]}-${HOUSE_PACE.wpmTarget[1]} words per minute, every word still clearly intelligible.`,
     passTarget: `Continuous visual motion; no static freezes > ${HOUSE_PACE.storyHoldMaxSec}s; brisk but clear delivery`,
   },
   {
