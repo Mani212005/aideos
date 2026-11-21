@@ -49,7 +49,7 @@ validated.
 
 ```bash
 npm run validate        # ~2s: schema + runsheet rules, and prints the runsheet
-npm run frames          # real stills from both formats -> .frames/
+npx tsx backend/sceneKit/reviewFrames.ts <slug>  # review stills -> .frames/<slug>/review/
 npm run studio          # Remotion Studio
 ```
 
