@@ -1,21 +1,17 @@
 /**
- * File Description: Unit tests for segment synchronization, audio result film compilation, ducking calculations, and film asset validation.
- * Inputs and outputs: segment data, audio results, and film fixtures -> test assertions.
+ * File Description: Unit tests for segment synchronization, audio result film compilation, and ducking calculations.
+ * Inputs and outputs: segment data and audio results -> test assertions.
  * Used by: npm test.
  */
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "fs";
-import path from "path";
 import {
   buildBriefFromSegmentFallback,
   runSegmentSyncGate,
 } from "./ideation/segmentSync";
 import { buildFilmFromAudioResult } from "./audio";
 import { calculateDuckingVolume } from "../src/dl/audio/ducking";
-import { validateFilmWithNodeAssets as validateFilmAudioAndAssets } from "../src/dl/validateFilmNode";
-import type { Film } from "../src/dl/schema";
 
 test("segment->shot brief mapping derives shot visuals strictly from segment text", async () => {
   const seg1Text = "Our system utilizes quantitative performance metrics reaching 95% efficiency.";
@@ -137,73 +133,4 @@ test("sfx timeline placement maps timestamps to sequence frame offsets", () => {
 
   assert.equal(frameOffsets[0], 45); // 1.5s * 30fps = 45 frames
   assert.equal(frameOffsets[1], 126); // 4.2s * 30fps = 126 frames
-});
-
-test("validator hard-fails on duration-sum invariant violation and missing audio assets", () => {
-  const tmpDir = path.join(__dirname, "../out/test_validator");
-  fs.mkdirSync(tmpDir, { recursive: true });
-
-  // Create real test files for missing asset checks
-  const realVoPath = path.join(tmpDir, "test_vo.wav");
-  const realMusicPath = path.join(tmpDir, "test_music.mp3");
-  const realSfxPath = path.join(tmpDir, "test_sfx.wav");
-
-  fs.writeFileSync(realVoPath, Buffer.from("RIFF dummy wav file"));
-  fs.writeFileSync(realMusicPath, Buffer.from("ID3 dummy mp3 file"));
-  fs.writeFileSync(realSfxPath, Buffer.from("RIFF dummy sfx file"));
-
-  const baseFilm: Film = {
-    id: "validator-test-film",
-    title: "Validator Test",
-    fps: 30,
-    chapters: ["ch1"],
-    canvas: {
-      nodes: [
-        { id: "n1", label: "ch1", x: 0, y: 0, w: 190, h: 62 },
-        { id: "n2", label: "ch2", x: 400, y: 0, w: 190, h: 62 },
-      ],
-      edges: [{ from: "n1", to: "n2" }],
-    },
-    shots: [
-      { id: "s1", ch: "ch1", dur: 5.0, stage: "frame", look: "n1", move: "cut", drift: false, zoom: 1, blocks: [{ c: "TextReveal", text: "Hi", size: "headline" }] },
-      { id: "s2", ch: "ch1", dur: 5.0, stage: "frame", look: "n2", move: "pan", drift: false, zoom: 1, blocks: [{ c: "TextReveal", text: "Bye", size: "headline" }] },
-    ],
-    voiceover: { src: "test_vo.wav", volume: 1 },
-    music: { src: "test_music.mp3", volume: 1, duckUnderVoiceover: true },
-    sfx: [{ timeSec: 5.0, src: "test_sfx.wav", volume: 1 }],
-  };
-
-  // 1. Duration sum invariant failure (> 0.1s tolerance)
-  assert.throws(
-    () => validateFilmAudioAndAssets(baseFilm, { baseDir: tmpDir, measuredVoiceoverDurationSec: 12.5 }),
-    /Duration sum invariant violated: total shot duration \(10.000s\) differs from voiceover duration \(12.500s\) by 2.500s/,
-  );
-
-  // 2. Missing voiceover file failure
-  const filmMissingVo = { ...baseFilm, voiceover: { src: "nonexistent_vo.wav" } };
-  assert.throws(
-    () => validateFilmAudioAndAssets(filmMissingVo, { baseDir: tmpDir }),
-    /Voiceover asset file missing: "nonexistent_vo.wav"/,
-  );
-
-  // 3. Missing music file failure
-  const filmMissingMusic = { ...baseFilm, music: { src: "nonexistent_music.mp3" } };
-  assert.throws(
-    () => validateFilmAudioAndAssets(filmMissingMusic, { baseDir: tmpDir }),
-    /Music asset file missing: "nonexistent_music.mp3"/,
-  );
-
-  // 4. Missing sfx file failure
-  const filmMissingSfx = { ...baseFilm, sfx: [{ timeSec: 2.0, src: "nonexistent_sfx.wav" }] };
-  assert.throws(
-    () => validateFilmAudioAndAssets(filmMissingSfx, { baseDir: tmpDir }),
-    /SFX asset file missing: "nonexistent_sfx.wav"/,
-  );
-
-  // 5. Valid film passes validation
-  const validFilm = validateFilmAudioAndAssets(baseFilm, { baseDir: tmpDir, measuredVoiceoverDurationSec: 10.005 });
-  assert.equal(validFilm.id, "validator-test-film");
-
-  // Clean up test directory
-  fs.rmSync(tmpDir, { recursive: true, force: true });
 });

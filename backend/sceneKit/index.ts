@@ -6,7 +6,7 @@
  * furniture. Everything here is topic-free: a film supplies its own beats, artwork and accent.
  * Node-only tools are imported directly by the film that needs them rather than re-exported here,
  * because this index is imported by code the editor dev server loads: ./voiceover (narration
- * step), ./measureWords, ./preview, ./reviewStills and ./reviewFrames (stills load Remotion).
+ * step), ./measureWords, ./reviewStills and ./reviewFrames (stills load Remotion).
  * Clip format: src/dl/scene/README.md.
  * Inputs and outputs: scene kit modules -> public library export for authoring bespoke scene films.
  * Used by: backend/stillTalking/buildFilm.ts, examples/diagram-parts/build.ts.

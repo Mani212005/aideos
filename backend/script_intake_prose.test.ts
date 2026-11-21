@@ -1,7 +1,6 @@
 /**
  * File Description: Unit and regression tests for untagged prose parsing, heuristic structuring,
- * Director LLM screenplay transformation, and zero-shot error handling in backend/scriptIntake.ts
- * and backend/pipeline/director.ts.
+ * and zero-shot error handling in backend/scriptIntake.ts.
  * Inputs and outputs: raw untagged prose samples -> screenplay structuring test assertions.
  * Used by: npm test.
  */
@@ -17,10 +16,6 @@ import {
   buildFilmPartsFromScriptAsync,
   extractSpokenBlocks,
 } from "./scriptIntake";
-import {
-  transformProseToScreenplay,
-  type GenerateScreenplayFn,
-} from "./pipeline/director";
 import { shotSchema, nodeSchema } from "../src/dl/schema";
 
 const TAGGED_SCREENPLAY = `# Speculative Decoding
@@ -164,91 +159,4 @@ test("buildFilmPartsFromScript: returns zero shots for empty string without thro
   assert.equal(result.wordCount, 0);
   assert.equal(result.durationSec, 0);
   assert.equal(result.spokenText, "");
-});
-
-test("transformProseToScreenplay: transforms untagged prose via mock generator", async () => {
-  const mockGenerator: GenerateScreenplayFn = async (prose) => {
-    return `# KV Cache Eviction
-
-## Scene 1: The Bottleneck
-[VISUAL] A timeline showing memory saturation.
-[ON SCREEN] Memory Saturation
-[NARRATION] ${prose.slice(0, 50)}
-
-## Scene 2: The Solution
-[VISUAL] Blocks evicted to maintain steady throughput.
-[ON SCREEN] Eviction Strategy
-[NARRATION] Discarding unimportant attention keys keeps inference fast.
-`;
-  };
-
-  const drafted = await transformProseToScreenplay(UNTAGGED_PROSE_SINGLE, {
-    generateScreenplay: mockGenerator,
-    filmTitle: "KV Cache Eviction",
-  });
-
-  assert.equal(drafted.attempts, 1);
-  assert.equal(drafted.title, "KV Cache Eviction");
-  assert.ok(hasScreenplayTags(drafted.screenplay));
-  const parsed = parseClaudeScript(drafted.screenplay);
-  assert.equal(parsed.length, 2);
-  assert.equal(parsed[0].title, "Scene 1: The Bottleneck");
-});
-
-test("transformProseToScreenplay: strips surrounding markdown code fences from model output", async () => {
-  const mockGenerator: GenerateScreenplayFn = async () => {
-    return `\`\`\`markdown
-# Fenced Screenplay
-
-## Scene 1: Introduction
-[VISUAL] Terminal cursor typing.
-[ON SCREEN] Introduction
-[NARRATION] This output was wrapped in a code fence by the model.
-\`\`\``;
-  };
-
-  const drafted = await transformProseToScreenplay("Some input prose", {
-    generateScreenplay: mockGenerator,
-  });
-
-  assert.equal(drafted.attempts, 1);
-  assert.ok(!drafted.screenplay.startsWith("```"), "Screenplay should not start with a code fence");
-  assert.ok(!drafted.screenplay.endsWith("```"), "Screenplay should not end with a code fence");
-  const parsed = parseClaudeScript(drafted.screenplay);
-  assert.equal(parsed.length, 1);
-  assert.equal(parsed[0].title, "Scene 1: Introduction");
-});
-
-test("transformProseToScreenplay: retries rejected draft with feedback and succeeds on retry", async () => {
-  const reasonsSeen: Array<string | undefined> = [];
-  const mockGenerator: GenerateScreenplayFn = async (_prose, reason) => {
-    reasonsSeen.push(reason);
-    if (reasonsSeen.length === 1) {
-      return "just raw text with no tags at all";
-    }
-    return `# Retry Success
-
-## Scene 1: Valid Scene
-[VISUAL] Clear visual diagram.
-[ON SCREEN] Success
-[NARRATION] Now structured properly with narration.
-`;
-  };
-
-  const drafted = await transformProseToScreenplay("Some raw prose", {
-    generateScreenplay: mockGenerator,
-    maxAttempts: 2,
-  });
-
-  assert.equal(drafted.attempts, 2);
-  assert.equal(reasonsSeen[0], undefined);
-  assert.ok(reasonsSeen[1] && reasonsSeen[1].length > 0);
-  assert.equal(drafted.title, "Retry Success");
-});
-
-test("transformProseToScreenplay: throws error on empty prose input", async () => {
-  await assert.rejects(
-    () => transformProseToScreenplay("   "),
-    /prose input cannot be empty/,
-  );
 });

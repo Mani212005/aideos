@@ -2,7 +2,7 @@
  * File Description: Test suite for the declarative custom SVG animation engine (A-1 through A-17).
  * Covers the SVG document parser, timeline validation and compilation, hold-and-evolve continuity,
  * staggered staged entry, draw-on reveals, render-time element identity and id namespacing,
- * byte-for-byte render determinism, audio-first retiming, the Remotion entry point, compiled
+ * byte-for-byte render determinism, the Remotion entry point, compiled
  * opacity winning over an authored opacity attribute. The opt-in frame strip lives in
  * backend/live/svgAnimation.live.ts.
  * Inputs and outputs: SVG animation clips and easing curves -> test assertions.
@@ -38,7 +38,6 @@ import React from "react";
 import ReactDOMServer from "react-dom/server";
 import { SceneClip } from "../../src/dl/scene/SceneClip";
 import { SceneView } from "../../src/dl/scene/SceneView";
-import { alignSceneToAudio, audioSyncDriftMs, framesForAudioMs } from "../../src/dl/scene/sceneTiming";
 
 import { DIAGRAM_SVG, makeDemoScene, makeDemoTimeline } from "../testSupport/svgAnimation";
 
@@ -334,36 +333,6 @@ test("A-13: rendering is frame-driven and reproducible byte for byte", () => {
     renderFrameSvgMarkup(first.frames[0], { svgSources: assets.svgSources }),
     renderFrameSvgMarkup(first.frames[70], { svgSources: assets.svgSources }),
   );
-});
-
-// A-15: Audio-first timing. Re-clocking a scene to a new take retimes its motion with it.
-test("A-15: alignSceneToAudio re-clocks a scene and its animation to the narration", () => {
-  const scene = makeDemoScene();
-  assert.equal(audioSyncDriftMs(scene), 0);
-  assert.equal(framesForAudioMs(4000, 30), 120);
-  assert.equal(framesForAudioMs(4033, 30), 121);
-
-  // A longer second take: the scene stretches, and every clip stretches with it.
-  const relocked = alignSceneToAudio(scene, { audioDurationMs: 6000 });
-  assert.equal(relocked.durationFrames, 180);
-  assert.equal(relocked.audioDurationMs, 6000);
-  assert.ok(audioSyncDriftMs(relocked) <= 50, "A re-clocked scene must satisfy Rule 14");
-  assert.equal(validateSceneWithNodeAssets(relocked).isValid, true);
-
-  const original = scene.props[0].animation!.clips.find((c) => c.clipId === "token-travel")!;
-  const stretched = relocked.props[0].animation!.clips.find((c) => c.clipId === "token-travel")!;
-  assert.equal(stretched.startFrame, original.startFrame * 1.5);
-  assert.equal(stretched.durationFrames, Math.round(original.durationFrames * 1.5));
-
-  // The input scene is never mutated.
-  assert.equal(scene.durationFrames, 120);
-  assert.equal(scene.props[0].animation!.clips.find((c) => c.clipId === "token-travel")!.startFrame, 60);
-
-  // A shorter take compresses without breaking validation.
-  const compressed = alignSceneToAudio(scene, { audioDurationMs: 2000 });
-  assert.equal(compressed.durationFrames, 60);
-  assert.equal(validateSceneWithNodeAssets(compressed).isValid, true);
-  assert.equal(compileSvgTimeline(compressed.props[0].animation!, { durationFrames: 60 }).frames.length, 60);
 });
 
 // A-16: The Remotion entry point renders the scene frame that the composition frame selects.

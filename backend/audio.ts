@@ -15,7 +15,7 @@
  * and a growing drift between the narration and the visuals describing it.
  */
 
-import { execFileSync, execSync } from "child_process";
+import { execFileSync } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { type Film, parseFilm } from "../src/dl/schema";
@@ -258,24 +258,6 @@ export function formatTime(seconds: number): string {
   const m = totalMin % 60;
   const h = Math.floor(totalMin / 60);
   return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms, 3)}`;
-}
-
-/** Measure exact audio file duration using ffprobe. */
-export async function measureAudioDuration(filePath: string): Promise<number> {
-  try {
-    const output = execSync(
-      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
-    )
-      .toString()
-      .trim();
-    const dur = parseFloat(output);
-    if (isNaN(dur) || dur <= 0) {
-      throw new Error(`Invalid duration output: "${output}"`);
-    }
-    return dur;
-  } catch (err) {
-    throw new Error(`Failed to measure audio duration for ${filePath}: ${(err as Error).message}`);
-  }
 }
 
 /** Synthesizes one segment's text as its chunks, each within the backend's length limit. */
