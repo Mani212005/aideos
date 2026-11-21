@@ -16,7 +16,7 @@ import {
 test("isCodeFile recognizes code file extensions and special files", () => {
   assert.equal(isCodeFile("backend/audio.ts"), true);
   assert.equal(isCodeFile("src/dl/Film.tsx"), true);
-  assert.equal(isCodeFile("scripts/frames.mjs"), true);
+  assert.equal(isCodeFile("scripts/aideos-connect.mjs"), true);
   assert.equal(isCodeFile("editor/postcss.config.js"), true);
   assert.equal(isCodeFile("scripts/aideos-connect.d.mts"), true);
   assert.equal(isCodeFile("backend/sceneKit/whisperWords.py"), true);
