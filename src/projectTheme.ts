@@ -104,3 +104,10 @@ export function sameColour(a: string, b: string): boolean {
 export function filmAccent(film: { accent?: string; theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): string {
   return boundTheme(film)?.accent ?? (film?.accent && HEX.test(film.accent) ? film.accent : DEFAULT_PROJECT_ACCENT);
 }
+
+/** The accent a Studio preview draws with, matching the render conversion: the chosen one, else the manifest accent, else the film's own theme accent, else the default theme's accent; always a real #rrggbb colour. */
+export function previewAccent(film: { accent?: string; theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): string {
+  const chosen = boundTheme(film)?.accent;
+  if (chosen) return chosen;
+  return [film?.accent, film?.theme?.accent].find((c): c is string => typeof c === "string" && HEX.test(c)) ?? DEFAULT_PROJECT_ACCENT;
+}

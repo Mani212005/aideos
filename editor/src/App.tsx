@@ -37,7 +37,7 @@ import { EditStage } from "./screens/EditStage";
 import { CheckStage } from "./screens/CheckStage";
 import { useExportJob } from "./state/useExportJob";
 import type { ExportJobSnapshot } from "../../backend/exportJobTypes";
-import { filmAccent } from "../../src/projectTheme";
+import { previewAccent } from "../../src/projectTheme";
 
 /**
  * The project list comes from the dev server at runtime. The editor deliberately does not import
@@ -116,7 +116,7 @@ export default function App() {
 
   const timelineApi = useLayeredTimeline({ film, commit, onReject: handleReject });
 
-  const accent = filmAccent(film);
+  const accent = previewAccent(film);
 
   /** Change the accent colour on the film itself rather than holding a parallel copy in the shell. */
   const setAccent = useCallback(

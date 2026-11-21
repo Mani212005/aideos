@@ -15,7 +15,7 @@ import type { ReelCut } from "../../../backend/reelCut/schema";
 import type { ReelCheckReport } from "../../../backend/reelCut/check";
 import type { DesignFinding } from "../../../backend/designCheck/designCheck";
 import { FilmView } from "../../../src/dl/Film";
-import { filmAccent } from "../../../src/projectTheme";
+import { previewAccent } from "../../../src/projectTheme";
 import { Button, Badge, Stat } from "./ui";
 
 interface ReelPanelData {
@@ -136,7 +136,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
             <div className="mx-auto aspect-[9/16] w-full max-w-[220px] overflow-hidden border border-line bg-matte">
               <Player
                 component={FilmView}
-                inputProps={{ film: preview, timeline, accent: filmAccent(preview), showGrid: preview.theme?.videoType === "case-study", showRail: true, captionWords: words }}
+                inputProps={{ film: preview, timeline, accent: previewAccent(preview), showGrid: preview.theme?.videoType === "case-study", showRail: true, captionWords: words }}
                 durationInFrames={Math.max(1, durationFrames)}
                 initialFrame={Math.min(preview.fps, Math.max(0, durationFrames - 1))}
                 fps={preview.fps}
