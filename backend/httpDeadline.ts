@@ -5,7 +5,7 @@
  * the budget, so a stalled server can never outlive the operation's timeout. The abort signal also
  * covers reading the response body.
  * Inputs and outputs: a budget in milliseconds, an optional clock, a fetch implementation -> a Deadline, abort signals, or an HttpDeadlineError.
- * Used by: backend/vcdClient.ts, backend/voiceSynthesis.ts, backend/transcribe.ts, backend/audioLibrary/library.ts.
+ * Used by: backend/vcdClient.ts, backend/voiceSynthesis.ts, backend/audioLibrary/library.ts.
  */
 
 /** Default per-operation budgets (ms) for the external services that have no budget of their own. */
@@ -14,8 +14,6 @@ export const HTTP_DEADLINES = {
   speechRequestMs: 60_000,
   /** All chunks of one speech-provider attempt; a stalled provider then fails over to the next one. */
   speechProviderMs: 5 * 60_000,
-  /** One Deepgram prerecorded transcription request including the upload and the response body. */
-  transcriptionMs: 5 * 60_000,
   /** One audio library download (also bounds the curl fallback). */
   audioDownloadMs: 2 * 60_000,
 } as const;
@@ -27,14 +25,14 @@ export type NowFn = () => number;
 export class HttpDeadlineError extends Error {
   /** What was being attempted when the budget ran out (a URL host or a phase name). */
   what: string;
-  /** The budget (ms) the operation was given. */
-  budgetMs: number;
+  /** The limit (ms) that fired: the per-request cap when it is shorter than the operation budget, else the budget. */
+  limitMs: number;
 
-  constructor(what: string, budgetMs: number) {
-    super(`${what} timed out (time budget ${budgetMs} ms)`);
+  constructor(what: string, limitMs: number) {
+    super(`${what} timed out (time limit ${limitMs} ms)`);
     this.name = "HttpDeadlineError";
     this.what = what;
-    this.budgetMs = budgetMs;
+    this.limitMs = limitMs;
   }
 }
 
@@ -93,19 +91,24 @@ export async function fetchWithin(
   try {
     return await fetchImpl(url, { ...init, signal });
   } catch (err) {
-    if (isAbortTimeout(err) || signal.aborted) throw new HttpDeadlineError(what, deadline.budgetMs);
+    if (isAbortTimeout(err) || signal.aborted) throw new HttpDeadlineError(what, effectiveLimitMs(deadline, options.capMs));
     throw err;
   }
 }
 
-/** Runs a response-body read and turns an abort or timeout into an HttpDeadlineError. */
-export async function readWithin<T>(deadline: Deadline, what: string, read: () => Promise<T>): Promise<T> {
+/** Runs a response-body read and turns an abort or timeout into an HttpDeadlineError (pass the same `capMs` the request used). */
+export async function readWithin<T>(deadline: Deadline, what: string, read: () => Promise<T>, capMs?: number): Promise<T> {
   try {
     return await read();
   } catch (err) {
-    if (isAbortTimeout(err)) throw new HttpDeadlineError(what, deadline.budgetMs);
+    if (isAbortTimeout(err)) throw new HttpDeadlineError(what, effectiveLimitMs(deadline, capMs));
     throw err;
   }
+}
+
+// The limit a request ran under: its own cap when that is shorter than the operation budget, else the budget.
+function effectiveLimitMs(deadline: Deadline, capMs: number | undefined): number {
+  return Math.min(capMs ?? Infinity, deadline.budgetMs);
 }
 
 // Names the host of a URL for error messages (the whole string when it is not a valid URL).

@@ -171,8 +171,8 @@ async function synthesizeDeepgram(req: SynthesisRequest, deps: SynthesisDeps): P
       },
       { what: "Deepgram speech request", capMs: HTTP_DEADLINES.speechRequestMs },
     );
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await readWithin(deadline, "Deepgram speech request", () => res.text())).slice(0, 200)}`);
-    parts.push(Buffer.from(await readWithin(deadline, "Deepgram speech request", () => res.arrayBuffer())));
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await readWithin(deadline, "Deepgram speech request", () => res.text(), HTTP_DEADLINES.speechRequestMs)).slice(0, 200)}`);
+    parts.push(Buffer.from(await readWithin(deadline, "Deepgram speech request", () => res.arrayBuffer(), HTTP_DEADLINES.speechRequestMs)));
   }
   if (parts.length === 0) throw new Error("no text to synthesize");
   return { pcm: Buffer.concat(parts), sampleRate: 24000 };
@@ -200,8 +200,8 @@ async function synthesizeGoogle(req: SynthesisRequest, deps: SynthesisDeps): Pro
       },
       { what: "Google speech request", capMs: HTTP_DEADLINES.speechRequestMs },
     );
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await readWithin(deadline, "Google speech request", () => res.text())).slice(0, 200)}`);
-    const json = await readWithin(deadline, "Google speech request", () => res.json() as Promise<{ audioContent?: string }>);
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await readWithin(deadline, "Google speech request", () => res.text(), HTTP_DEADLINES.speechRequestMs)).slice(0, 200)}`);
+    const json = await readWithin(deadline, "Google speech request", () => res.json() as Promise<{ audioContent?: string }>, HTTP_DEADLINES.speechRequestMs);
     if (!json.audioContent) throw new Error("response had no audioContent");
     parts.push(wavDataChunk(Buffer.from(json.audioContent, "base64")));
   }

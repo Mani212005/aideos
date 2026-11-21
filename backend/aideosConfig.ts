@@ -22,7 +22,7 @@ import { assertLoopbackVcdUrl, DEFAULT_VCD_URL, type VcdLanguagePreference } fro
 export interface VoiceCloneConfig {
   /** Loopback URL of the local vcd service (default http://127.0.0.1:8740). */
   url: string;
-  /** Optional enrolled voice id (`voice_...`). When empty, the voice named "my-voice" or "me" is used, or the only enrolled voice; several unnamed voices fail with the choices listed. */
+  /** Optional enrolled voice id (`voice_...`). When empty, the one voice named "my-voice" or "me" is used; anything else fails with the choices listed. */
   voiceId: string;
   /** Default language preference for cloned-voice narration ("auto", "en", or "hi"). */
   language: VcdLanguagePreference;

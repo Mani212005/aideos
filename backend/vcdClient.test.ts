@@ -26,6 +26,7 @@ import {
   VcdUnavailableError,
   vcdVoiceCacheKey,
 } from "./vcdClient";
+import { fetchWithin, HttpDeadlineError, startDeadline } from "./httpDeadline";
 import { createTtsBackend, PCM_SAMPLE_RATE } from "./tts";
 import { synthesizeVoiceover, VoiceSynthesisError, pcm16ToWav } from "./voiceSynthesis";
 import { produceAudioPipeline } from "./audio";
@@ -239,7 +240,7 @@ test("per-line cache fingerprint includes vcd voice identity and switching voice
   }
 });
 
-// Voice resolution: the owner's voice is explicit, uniquely named, or the only one enrolled; never an arbitrary pick.
+// Voice resolution: the owner's voice is explicit or uniquely named; never an arbitrary pick.
 
 const VCD = "http://127.0.0.1:8740";
 
@@ -260,9 +261,17 @@ test("vcd resolution picks the one owner-named voice among several, ignoring cas
   assert.equal(resolved.voiceName, "Me");
 });
 
-test("vcd resolution uses the only enrolled voice even when it is not named like the owner", async () => {
-  const resolved = await resolveVcdVoiceId({ url: VCD }, { fetch: voicesOnlyFetch([{ id: "voice_solo", name: "mani" }]) });
-  assert.equal(resolved.voiceId, "voice_solo");
+test("vcd resolution refuses a lone enrolled voice that is not named like the owner and lists it", async () => {
+  await assert.rejects(
+    () => resolveVcdVoiceId({ url: VCD }, { fetch: voicesOnlyFetch([{ id: "voice_solo", name: "mani" }]) }),
+    (err: unknown) => {
+      assert.ok(err instanceof VcdUnavailableError);
+      assert.equal(err.code, "ambiguous_voice");
+      assert.match(err.message, /mani \(voice_solo\)/);
+      assert.match(err.message, /AIDEOS_VCD_VOICE_ID/);
+      return true;
+    },
+  );
 });
 
 test("vcd resolution refuses to guess among several voices and lists the choices", async () => {
@@ -469,6 +478,24 @@ test("a request that hangs forever is aborted by the budget and reported as a ti
   await assert.rejects(
     () => listVcdVoices(VCD, { fetch: hanging }, 50),
     (err: unknown) => err instanceof VcdUnavailableError && err.code === "timeout",
+  );
+});
+
+test("a request that hits its own cap reports that cap, not the whole operation budget", async (t) => {
+  const keepAlive = setInterval(() => {}, 1000);
+  t.after(() => clearInterval(keepAlive));
+  const hanging = ((_input: string | URL | Request, init?: RequestInit) =>
+    new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(init.signal?.reason ?? new Error("aborted")));
+    })) as typeof fetch;
+  const deadline = startDeadline(300_000);
+  await assert.rejects(
+    () => fetchWithin(deadline, hanging, `${VCD}/v1/jobs`, undefined, { what: "voice service", capMs: 40 }),
+    (err: unknown) => err instanceof HttpDeadlineError && err.limitMs === 40 && /40 ms/.test(err.message),
+  );
+  await assert.rejects(
+    () => fetchWithin(startDeadline(30), hanging, `${VCD}/v1/jobs`, undefined, { what: "voice service", capMs: 60_000 }),
+    (err: unknown) => err instanceof HttpDeadlineError && err.limitMs === 30,
   );
 });
 

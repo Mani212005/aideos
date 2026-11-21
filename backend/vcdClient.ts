@@ -192,9 +192,14 @@ async function vcdFetch(
 }
 
 // Reads a vcd response body under the same deadline, mapping a stalled body to the same errors as vcdFetch.
-async function vcdRead<T>(deadline: Deadline, baseUrl: string, read: () => Promise<T>): Promise<T> {
+async function vcdRead<T>(
+  deadline: Deadline,
+  baseUrl: string,
+  read: () => Promise<T>,
+  capMs: number = LONG_REQUEST_TIMEOUT_MS,
+): Promise<T> {
   try {
-    return await readWithin(deadline, `Local voice service at ${baseUrl}`, read);
+    return await readWithin(deadline, `Local voice service at ${baseUrl}`, read, capMs);
   } catch (err) {
     if (err instanceof VcdUnavailableError) throw err;
     throw toVcdError(err, baseUrl);
@@ -208,7 +213,7 @@ function toVcdError(err: unknown, baseUrl: string): VcdUnavailableError {
     return new VcdUnavailableError(
       "timeout",
       baseUrl,
-      `Local voice service at ${baseUrl} did not finish within the ${Math.round(err.budgetMs / 1000)} s time budget.`,
+      `Local voice service at ${baseUrl} did not respond within ${Math.round(err.limitMs / 1000)} s.`,
     );
   }
   return unreachableError(baseUrl, err instanceof Error ? err.message : String(err));
@@ -254,7 +259,7 @@ async function listVoicesWithin(baseUrl: string, fetchImpl: typeof fetch, deadli
       `Local voice service at ${baseUrl} rejected /v1/voices (${problem.detail}). ${VCD_START_HINT}`,
     );
   }
-  const payload = await vcdRead(deadline, baseUrl, () => res.json() as Promise<{ voices?: VcdVoiceSummary[] }>);
+  const payload = await vcdRead(deadline, baseUrl, () => res.json() as Promise<{ voices?: VcdVoiceSummary[] }>, SHORT_REQUEST_TIMEOUT_MS);
   return Array.isArray(payload.voices) ? payload.voices : [];
 }
 
@@ -277,8 +282,7 @@ export async function resolveVcdVoiceId(
  * Voice resolution rule (never silently narrate as someone else):
  *  1. A configured voice id or name must match an enrolled voice exactly, otherwise it fails listing the choices.
  *  2. With nothing configured, exactly one voice named "my-voice" or "me" is the owner's voice.
- *  3. With nothing configured and no owner-named voice, the only enrolled voice is used when there is exactly one.
- *  4. Anything else (several owner-named voices, or several voices and none owner-named) fails listing the choices.
+ *  3. Anything else (several owner-named voices, or no owner-named voice) fails listing the choices.
  */
 // Applies the voice resolution rule above under an already running operation deadline.
 async function resolveWithin(
@@ -312,14 +316,13 @@ async function resolveWithin(
   }
 
   const ownerNamed = voices.filter((v) => VCD_OWNER_VOICE_NAMES.includes(v.name.toLowerCase()));
-  const chosen = ownerNamed.length > 0 ? ownerNamed : voices.length === 1 ? voices : [];
-  if (chosen.length === 1) {
-    return { voiceId: chosen[0].id, voiceName: chosen[0].name, url: baseUrl };
+  if (ownerNamed.length === 1) {
+    return { voiceId: ownerNamed[0].id, voiceName: ownerNamed[0].name, url: baseUrl };
   }
   throw new VcdUnavailableError(
     "ambiguous_voice",
     baseUrl,
-    `Cannot tell which enrolled voice is yours at ${baseUrl}: ${describeVoices(chosen.length > 0 ? chosen : voices)}. ` +
+    `Cannot tell which enrolled voice is yours at ${baseUrl}: ${describeVoices(ownerNamed.length > 0 ? ownerNamed : voices)}. ` +
       `Name your voice "${VCD_OWNER_VOICE_NAMES.join('" or "')}" in the voice service, or set voiceClone.voiceId in aideos.config.json (or AIDEOS_VCD_VOICE_ID).`,
   );
 }
