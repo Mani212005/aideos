@@ -11,7 +11,7 @@ Inventory verified on `2026-11-21` from git-tracked files:
 | Layer | Command | Tracked files | Notes |
 | --- | --- | --- | --- |
 | Static checks | `npm run ci -- static` | `scripts/check_headers.ts`, `scripts/check_tests_wired.ts`, `scripts/typecheck_tracked.ts`, eslint, oxlint, editor build, ruff | Runs on every PR and in `.no-mistakes.yaml` |
-| Unit and feature tests (Node) | `npm test` | 145 `backend/**/*.test.ts` + 9 `scripts/*.test.ts` | Run sequentially (`--test-concurrency=1`) against `test_fixtures/` |
+| Unit and feature tests (Node) | `npm test` | 146 `backend/**/*.test.ts` + 9 `scripts/*.test.ts` | Run sequentially (`--test-concurrency=1`) against `test_fixtures/` |
 | Native Rust tests | `cargo test --locked --manifest-path native/Cargo.toml` | 15 `native/*/tests/*.rs` integration test crates (+ `native/aideos-render/tests/common/mod.rs` helper) + 3 inline `#[cfg(test)]` modules (`native/aideos-render/src/raster/stage3d/{dots,face,pose}.rs`) | Render IR, Skia raster, 3D stage, dots, text parity, encode/mux, native goldens |
 | Headless E2E journeys | `npm run test:journeys` + `npm run smoke:studio` | 25 `backend/journeys/*.journey.ts` + `scripts/smoke_studio.ts` | Split across 3 CI shards by `scripts/ciJourneyShards.ts`; zero `todo` cases allowed |
 | Legacy golden frames | `npm run test:legacy` | 1 `backend/journeys/legacy.golden.ts` (`backend/journeys/goldens/MANIFEST.json`) | Linux CI baselines with `AIDEOS_GL=swangle` and `scripts/golden-fonts.conf` |
