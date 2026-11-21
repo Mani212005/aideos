@@ -5,7 +5,8 @@
  * tests must never read them, and a test that writes a package must never touch the owner's real
  * videos/ folder. Loaded with `node --import` by `npm test` and, idempotently, by any test file that
  * needs a fixture package when run on its own: it sets AIDEOS_VIDEOS_DIR before anything resolves it.
- * Inputs and outputs: test_fixtures/packages/ and audio/library.json -> isolated temporary video packages directory with a hash-locked synthetic audio cache, AIDEOS_VIDEOS_DIR and AIDEOS_AUDIO_LIBRARY set for the test process.
+ * It also makes the owner's voice the test narrator: the default vcd address is answered by a deterministic fake voice service (backend/testSupport/fakeVcd.ts), so no test reaches a real service.
+ * Inputs and outputs: test_fixtures/packages/ and audio/library.json -> isolated temporary video packages directory with a hash-locked synthetic audio cache, AIDEOS_VIDEOS_DIR and AIDEOS_AUDIO_LIBRARY set for the test process, and the fake owner voice service installed.
  * Used by: npm test (Node test preload module).
  */
 
@@ -13,6 +14,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { installVoiceOfChoiceForTests } from "./fakeVcd";
 
 const FIXTURES = path.resolve(__dirname, "../../test_fixtures/packages");
 const REAL_LIBRARY = path.resolve(__dirname, "../../audio/library.json");
@@ -117,3 +119,6 @@ function installFixtureVideosDir(): string {
 }
 
 export const TEST_VIDEOS_DIR = installFixtureVideosDir();
+
+// Every test process narrates in the voice of choice (the owner voice) through a deterministic fake voice service.
+installVoiceOfChoiceForTests();

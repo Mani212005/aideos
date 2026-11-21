@@ -33,6 +33,12 @@ Run `aideos audio fetch` once before the first design build, because the default
 
 ---
 
+## The voice of choice (every video)
+
+Every video is narrated with the owner's cloned voice (the local `vcd` service, Studio keys `vcd-my-voice` and `vcd-my-voice-hi`). It is the default and the voice of choice for every worker, run and test; no worker may swap to another voice without the captain's word, and a missing service fails plainly instead of changing voice. Start it with `vcd serve` on the Linux machine (loopback only), or from another machine through an SSH tunnel, `ssh -N -L 8740:127.0.0.1:8740 <the Linux machine>`. Tests use a deterministic fake of the service that reports the owner voice. The design check fails a film narrated by another voice unless the captain allowed it with `AIDEOS_ALLOW_OTHER_VOICE=1`. Details: [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice).
+
+---
+
 ## 2. End-to-End Workflow Diagram
 
 ```
@@ -87,7 +93,7 @@ Run `aideos audio fetch` once before the first design build, because the default
 
 ### Stage 2: Audio Synthesis & Alignment (`backend/audio.ts`, `backend/pcm.ts`, `backend/tts.ts`)
 1. **Shot-Scoped Segmentation**: Splits script text by Claude screenplay tags (`[NARRATION]`), paragraphs, or explicit shot arrays into discrete shot-scoped narration segments without slicing internal sentence punctuation or leaking visual tags.
-2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via the owner's cloned voice through the local `vcd` service (default; fails plainly when it is not reachable, never swaps voices), or by explicit choice Kokoro-82M ONNX (offline, default speed 0.75 for measured explainer pacing), Google Cloud Neural Audio, or macOS say using sentence-boundary splitting. Each narration line is stored under `videos/<slug>/voiceover_lines/` keyed by a content fingerprint (its words plus the voice, pace and chunk limit, `backend/voiceLines.ts`), so regenerating re-records only changed lines and reuses every other recording.
+2. **TTS Synthesis & Chunking**: Synthesizes speech per shot segment via the owner's cloned voice through the local `vcd` service (the voice of choice and the default; fails plainly when it is not reachable, never swaps voices), or, only with the captain's word, Kokoro-82M ONNX (offline, default speed 0.75 for measured explainer pacing), Google Cloud Neural Audio, or macOS say using sentence-boundary splitting. Each narration line is stored under `videos/<slug>/voiceover_lines/` keyed by a content fingerprint (its words plus the voice, pace and chunk limit, `backend/voiceLines.ts`), so regenerating re-records only changed lines and reuses every other recording.
 3. **Sample-Domain Assembly & Normalization**: Trims silence samples from Float32 buffers, applies short boundary fades to eliminate stitch clicks, inserts exact whole-sample pauses between shot boundaries, normalizes peak amplitude, applies loudness normalization to -16 integrated LUFS (-1 dB true peak), and writes `voiceover.wav`.
 4. **Alignment & Cues**: Derives exact word-level millisecond start/end timestamps, written to `captions.vtt` and `voiceover_words.json`.
 

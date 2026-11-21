@@ -17,6 +17,8 @@ import path from "node:path";
 import { lineFingerprint, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
 import { produceAudioPipeline } from "./audio";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
+import { vcdVoiceCacheKey } from "./vcdClient";
+import { FAKE_OWNER_BACKEND_NAME } from "./testSupport/fakeVcd";
 
 // Makes a fresh scratch package directory.
 function scratch(): string {
@@ -36,7 +38,7 @@ test("an unchanged line is not re-recorded, a changed line is", async () => {
   const pkg = scratch();
   try {
     const spoken: string[] = [];
-    const run = (texts: string[], voiceKey = "kokoro|af_heart") =>
+    const run = (texts: string[], voiceKey = FAKE_OWNER_BACKEND_NAME) =>
       synthesizeLines({ pkgDir: pkg, texts, voiceKey, synthesize: countingSynth(spoken) });
 
     const first = await run(["Caches make things fast.", "They also forget.", "Remember what is kept."]);
@@ -71,15 +73,15 @@ test("the fingerprint is the words plus the voice: another voice or pace records
   try {
     const spoken: string[] = [];
     const texts = ["One line.", "Another line."];
-    await synthesizeLines({ pkgDir: pkg, texts, voiceKey: "kokoro|af_heart|0.75", synthesize: countingSynth(spoken) });
+    await synthesizeLines({ pkgDir: pkg, texts, voiceKey: FAKE_OWNER_BACKEND_NAME, synthesize: countingSynth(spoken) });
     assert.equal(spoken.length, 2);
 
     spoken.length = 0;
-    await synthesizeLines({ pkgDir: pkg, texts, voiceKey: "kokoro|am_adam|0.75", synthesize: countingSynth(spoken) });
+    await synthesizeLines({ pkgDir: pkg, texts, voiceKey: vcdVoiceCacheKey("voice_other_fake", "auto"), synthesize: countingSynth(spoken) });
     assert.equal(spoken.length, 2, "a different voice is a different recording");
 
     spoken.length = 0;
-    await synthesizeLines({ pkgDir: pkg, texts, voiceKey: "kokoro|af_heart|0.75", synthesize: countingSynth(spoken) });
+    await synthesizeLines({ pkgDir: pkg, texts, voiceKey: FAKE_OWNER_BACKEND_NAME, synthesize: countingSynth(spoken) });
     assert.equal(spoken.length, 0, "the first voice's recordings were kept");
     assert.notEqual(lineFingerprint("One line.", "a"), lineFingerprint("One line.", "b"));
     assert.equal(lineFingerprint("One line.", "a"), lineFingerprint("One line.", "a"));

@@ -19,6 +19,10 @@ import { renderFormat } from "../pipeline/render";
 import { captionCardRect, DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT } from "../../src/dl/captionPlacement";
 import { openFilm } from "./remotionFrames";
 import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
+import { installVoiceOfChoiceForTests } from "../testSupport/fakeVcd";
+
+// Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
+installVoiceOfChoiceForTests();
 
 const SLUG = "journey-caption-placement";
 const SCRIPT =
@@ -170,7 +174,7 @@ journey(
       slug: SLUG,
       title: "Caption journey",
       script: SCRIPT,
-      ttsBackend: "tone",
+      ttsBackend: "vcd",
       design: "templates",
       broll: false,
       skipAgent: true,

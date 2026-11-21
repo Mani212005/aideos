@@ -10,6 +10,10 @@ Before you make or change any video: read this document, run deterministic check
 
 Every video, in both formats, has music, sound effects and the call to action end card. They are steps of making a video, not options: delivery is refused with a plain message when any is missing. Author the music and effects in the `soundtrack` block of `design/design.json` or let `aideos design build <film>` assign the default score and effects (run `aideos audio fetch` first). The end card is appended automatically and cannot be switched off. See [Compulsory finishing steps](WORKFLOW.md#compulsory-finishing-steps-every-video).
 
+## The voice of choice
+
+Every video is narrated with the owner's cloned voice (the local `vcd` service). It is the voice of choice for every worker, run and test, and no worker may swap to another voice without the captain's word. Start the service with `vcd serve` on the Linux machine, or through an SSH tunnel to it from another machine (loopback only). `aideos design check <film>` fails a film whose recorded narrator is another voice (rule `voice-of-choice`). See [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice).
+
 ## Pictures (the illustrated stage)
 
 A film may add generated pictures to its one stage. The format is fixed:

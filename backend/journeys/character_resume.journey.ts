@@ -1,6 +1,6 @@
 /**
  * File Description: Resume and hashing for character films (J6): an unchanged rerun reuses every stage, while editing the character a film names (its rig proportions, re-stamped) reopens exactly design and everything after it and leaves intake, narration and look reused; the look hash and the design fingerprint both carry the character.
- * Inputs and outputs: the real runProduction on the iona-receive fixture's look and design (tone narration, no engine, stopping before render) -> stage progress events, fingerprints and the compiled film's embedded spec.
+ * Inputs and outputs: the real runProduction on the iona-receive fixture's look and design (owner-voice narration (fake voice service), no engine, stopping before render) -> stage progress events, fingerprints and the compiled film's embedded spec.
  * Used by: npm run test:journeys and the CI journeys job.
  */
 import "../testSupport/fixtureVideosDir";
