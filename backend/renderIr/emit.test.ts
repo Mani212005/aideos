@@ -275,7 +275,9 @@ test("burned-in captions are emitted as the film's words with its per-shot place
     assert.equal(node.highlightColor, "#635BFF");
     const size = Math.round(1080 * 0.042);
     assert.equal(node.placement[format]?.fontSize, size);
-    assert.deepEqual(node.placement[format]?.spans, [{ fromFrame: 0, x: 0.5, y: 0.78 }]);
+    // Captain's reel caption safe-zone rule: widescreen defaults to (0.5, 0.78), 9:16 reel defaults to (0.45, 0.5).
+    const expectedSpan = format === "reel" ? { fromFrame: 0, x: 0.45, y: 0.5 } : { fromFrame: 0, x: 0.5, y: 0.78 };
+    assert.deepEqual(node.placement[format]?.spans, [expectedSpan]);
     // Captions draw above the rail and the end card and under the edge hairline, as Film.tsx orders them.
     const order = ir.overlay.map((n) => n.id);
     assert.ok(order.indexOf("captions") > order.indexOf("rail"));

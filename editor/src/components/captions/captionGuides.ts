@@ -6,9 +6,10 @@
 import type { CaptionPlacement } from "../../../../src/dl/schema";
 import {
   CAPTION_FRAMES,
-  DEFAULT_CAPTION_PLACEMENT,
-  DEFAULT_CAPTION_PLACEMENT_WIDTH,
+  DEFAULT_CAPTION_PLACEMENT_BY_FORMAT,
+  DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT,
   REEL_ACTION_ZONE,
+  REEL_CAPTION_SAFE_ZONE,
   captionBounds,
   captionCardHeight,
   clampCaptionPlacement,
@@ -58,7 +59,7 @@ function boundsFor(format: CaptionFormat, placement: CaptionPlacement) {
     format,
     width,
     height,
-    placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH,
+    placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format],
     placement.y,
     placement.w === undefined ? 0 : undefined,
   );
@@ -72,8 +73,9 @@ export function verticalSnapTargets(
   const { height } = CAPTION_FRAMES[format];
   const bounds = boundsFor(format, placement);
   const middle = (height - cardHeight) / 2 / height;
+  const formatDefault = DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format];
   const targets: SnapGuide[] = [
-    { axis: "y", value: DEFAULT_CAPTION_PLACEMENT.y, line: DEFAULT_CAPTION_PLACEMENT.y, label: "Default" },
+    { axis: "y", value: formatDefault.y, line: formatDefault.y, label: "Default" },
     { axis: "y", value: middle, line: 0.5, label: "Middle" },
     { axis: "y", value: bounds.minY, line: bounds.minY, label: "Top" },
   ];
@@ -154,7 +156,8 @@ export function dragWithGuides({
 export function safeAreaRects(format: CaptionFormat): SafeAreaRect[] {
   const { width, height } = CAPTION_FRAMES[format];
   const margins = getFrameMargins(format, width);
-  const middleHeight = height - margins.top - margins.bottom;
+  const bottomLimit = format === "reel" ? REEL_CAPTION_SAFE_ZONE.bottom * height : height - margins.bottom;
+  const middleHeight = bottomLimit - margins.top;
   const rects: SafeAreaRect[] = [
     { id: "top", kind: "margin", label: format === "reel" ? "Top of frame" : undefined, x: 0, y: 0, w: width, h: margins.top },
     {
@@ -162,9 +165,9 @@ export function safeAreaRects(format: CaptionFormat): SafeAreaRect[] {
       kind: "margin",
       label: format === "reel" ? "Reel title and description" : undefined,
       x: 0,
-      y: height - margins.bottom,
+      y: bottomLimit,
       w: width,
-      h: margins.bottom,
+      h: height - bottomLimit,
     },
     { id: "left", kind: "margin", x: 0, y: margins.top, w: margins.left, h: middleHeight },
     { id: "right", kind: "margin", x: width - margins.right, y: margins.top, w: margins.right, h: middleHeight },
@@ -178,7 +181,7 @@ export function safeAreaRects(format: CaptionFormat): SafeAreaRect[] {
       x: zoneX,
       y: REEL_ACTION_ZONE.y * height,
       w: width - margins.right - zoneX,
-      h: height - margins.bottom - REEL_ACTION_ZONE.y * height,
+      h: Math.max(0, bottomLimit - REEL_ACTION_ZONE.y * height),
     });
   }
   return rects;
@@ -188,11 +191,12 @@ export function limitLines(format: CaptionFormat, limits?: MoveLimits): { id: st
   if (!limits) return [];
   const { width, height } = CAPTION_FRAMES[format];
   const margins = getFrameMargins(format, width);
+  const bottomLimit = format === "reel" ? REEL_CAPTION_SAFE_ZONE.bottom * height : height - margins.bottom;
   const lines: { id: string; vertical: boolean; at: number }[] = [];
   if (limits.left) lines.push({ id: "left", vertical: true, at: margins.left });
   if (limits.right) lines.push({ id: "right", vertical: true, at: width - margins.right });
   if (limits.top) lines.push({ id: "top", vertical: false, at: margins.top });
-  if (limits.bottom) lines.push({ id: "bottom", vertical: false, at: height - margins.bottom });
+  if (limits.bottom) lines.push({ id: "bottom", vertical: false, at: bottomLimit });
   return lines;
 }
 // Describes which sideways or vertical limits a drag is pressing against, in plain words, or null when none.

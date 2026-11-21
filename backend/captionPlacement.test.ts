@@ -12,8 +12,9 @@ import type { Scene } from "../src/dl/scene/types";
 import { captionWordsForFilm } from "../src/dl/captionsParser";
 import { buildTimeline, shotAt } from "../src/dl/camera";
 import { checkCaptionPlacements } from "./designCheck/captionPlacement";
-import { SUBTITLE_BAND_TOP_RATIO, subtitleCardBottom } from "../src/dl/fullScreenHeroLayout";
+import { REEL_CAPTION_SAFE_ZONE, subtitleBandTopRatio, subtitleCardBottom } from "../src/dl/fullScreenHeroLayout";
 import {
+  DEFAULT_CAPTION_PLACEMENT_BY_FORMAT,
   resolveCaptionPlacement,
   dragCaption,
   resizeCaption,
@@ -234,9 +235,10 @@ test("move and resize use composition coordinates and preserve the opposite edge
     snap: false,
   });
   const rect = captionCardRect("reel", 1080, 1920, clamped, 2);
-  assert.ok(rect.x >= 64 && rect.x + rect.w <= 1080 - 64);
-  assert.ok(clamped.y >= 0.78);
-  assert.ok(rect.y + rect.h <= 1920 - 240);
+  // Captain's reel caption safe-zone rule: keep card inside x 6-84% and bottom <= 60% (default y = 0.50).
+  assert.ok(rect.x >= 1080 * REEL_CAPTION_SAFE_ZONE.left - 1e-6 && rect.x + rect.w <= 1080 * REEL_CAPTION_SAFE_ZONE.right + 1e-6);
+  assert.ok(clamped.y >= REEL_CAPTION_SAFE_ZONE.defaultY);
+  assert.ok(rect.y + rect.h <= 1920 * REEL_CAPTION_SAFE_ZONE.bottom + 1e-6);
   const snapped = dragCaption({
     placement: { ...top, x: 0.49 },
     format: "long",
@@ -341,25 +343,30 @@ test("shot caption scope targets the phrase owner across a shot cut", () => {
   assert.deepEqual(next.shots[1].captionPlacement?.long, nextShotPlacement);
 });
 
-// Keeps the approved default y reachable when dragging down in either output format.
+// Keeps the approved format default y reachable when dragging down in either output format (captain's reel safe-zone rule).
 test("bottom clamp never pushes a drag above the approved default position", () => {
   for (const format of ["long", "reel"] as const) {
     const frame = CAPTION_FRAMES[format];
+    const defaultY = DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format].y;
     const moved = dragCaption({
-      placement: { ...resolveCaptionPlacement(base, format), y: 0.78 },
+      placement: { ...resolveCaptionPlacement(base, format), y: defaultY },
       format,
       dx: 0,
       dy: 1,
       scale: 1,
       snap: false,
     });
-    assert.ok(moved.y >= 0.78, `${format}: ${moved.y}`);
+    assert.ok(moved.y >= defaultY, `${format}: ${moved.y}`);
     assert.ok(moved.y <= 1 - 96 / frame.height);
+    if (format === "reel") {
+      assert.ok(moved.y + captionCardHeight(frame.width, frame.height) / frame.height <= REEL_CAPTION_SAFE_ZONE.bottom + 1e-9);
+    }
   }
 });
 
 test("owner saves preserve unchanged positions while agent and movement writes clamp", () => {
   for (const format of ["long", "reel"] as const) {
+    const expectedDefault = DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format];
     const initial = resolveCaptionPlacement(base, format);
     const locked = setCaptionPlacement(base, {
       format,
@@ -367,10 +374,10 @@ test("owner saves preserve unchanged positions while agent and movement writes c
       placement: { ...initial, locked: true },
       owner: true,
     });
-    assert.equal(locked.captionPlacement?.[format]?.x, 0.5);
-    assert.equal(locked.captionPlacement?.[format]?.y, 0.78);
-    assert.equal(resolveCaptionPlacement(locked, format).x, 0.5);
-    assert.equal(resolveCaptionPlacement(locked, format).y, 0.78);
+    assert.equal(locked.captionPlacement?.[format]?.x, expectedDefault.x);
+    assert.equal(locked.captionPlacement?.[format]?.y, expectedDefault.y);
+    assert.equal(resolveCaptionPlacement(locked, format).x, expectedDefault.x);
+    assert.equal(resolveCaptionPlacement(locked, format).y, expectedDefault.y);
 
     const shotId = base.shots[0].id;
     const scoped = setCaptionPlacement(locked, {
@@ -379,10 +386,10 @@ test("owner saves preserve unchanged positions while agent and movement writes c
       placement: resolveCaptionPlacement(locked, format, shotId),
       owner: true,
     });
-    assert.equal(scoped.shots[0].captionPlacement?.[format]?.x, 0.5);
-    assert.equal(scoped.shots[0].captionPlacement?.[format]?.y, 0.78);
-    assert.equal(resolveCaptionPlacement(scoped, format, shotId).x, 0.5);
-    assert.equal(resolveCaptionPlacement(scoped, format, shotId).y, 0.78);
+    assert.equal(scoped.shots[0].captionPlacement?.[format]?.x, expectedDefault.x);
+    assert.equal(scoped.shots[0].captionPlacement?.[format]?.y, expectedDefault.y);
+    assert.equal(resolveCaptionPlacement(scoped, format, shotId).x, expectedDefault.x);
+    assert.equal(resolveCaptionPlacement(scoped, format, shotId).y, expectedDefault.y);
 
     const moved = dragCaption({
       placement: initial,
@@ -429,7 +436,8 @@ test("explicit default width is clamped while absent width stays auto", () => {
     ...base,
     captionPlacement: explicit.captionPlacement,
   }, "reel");
-  assert.equal(implicit.x, 0.5);
+  // Captain's reel caption safe-zone rule: default reel centre is 0.45 (x 6-84%).
+  assert.equal(implicit.x, REEL_CAPTION_SAFE_ZONE.centerX);
   assert.equal(implicit.w, undefined);
   assert.notEqual(fixed.w, 0.86);
   assert.equal(explicit.captionPlacement?.reel?.w, fixed.w);
@@ -660,10 +668,10 @@ test("shared caption words respect subtitles false and captions off", () => {
 });
 // Includes inline word margins on both lines and the card borders in the measured height.
 test("two-line card height includes word margins and borders", () => {
-  for (const [width, height] of [[1920, 1080], [1080, 1920]] as const)
+  for (const [format, width, height] of [["long", 1920, 1080], ["reel", 1080, 1920]] as const)
     assert.equal(
-      subtitleCardBottom(width, height),
-      height * SUBTITLE_BAND_TOP_RATIO + captionCardHeight(width, height),
+      subtitleCardBottom(width, height, format),
+      height * subtitleBandTopRatio(format) + captionCardHeight(width, height),
     );
 });
 
@@ -1203,16 +1211,19 @@ test("design rebuild keeps locked and unlocked owner placements", async () => {
       long: { ...top, locked: true },
       reel: top,
     });
+    // Reel placements in the Shorts action zone (y >= 0.4) stay inside x 6-84% and bottom <= 60% (captain's reel safe-zone rule).
+    const reelSafeMid = { ...top, x: REEL_CAPTION_SAFE_ZONE.centerX, y: 0.4 };
+    const reelSafeDefault = { ...top, x: REEL_CAPTION_SAFE_ZONE.centerX, y: REEL_CAPTION_SAFE_ZONE.defaultY };
     writeFilm(
       id,
-      { ...readFilm(id)!, captionPlacement: { long: { ...top, locked: true }, reel: { ...top, y: 0.4 } } },
+      { ...readFilm(id)!, captionPlacement: { long: { ...top, locked: true }, reel: reelSafeMid } },
       { owner: true },
     );
     const rebuilt = buildDesign(id);
     assert.equal(rebuilt.state, "passed", JSON.stringify(rebuilt.errors));
     assert.deepEqual(readFilm(id)?.captionPlacement, {
       long: { ...top, locked: true },
-      reel: { ...top, y: 0.4 },
+      reel: reelSafeMid,
     });
 
     const active = readFilm(id)!;
@@ -1221,7 +1232,7 @@ test("design rebuild keeps locked and unlocked owner placements", async () => {
       ...active,
       captionPlacement: { long: { ...top, locked: true }, reel: top },
       shots: active.shots.map((shot, index) => index === 0
-        ? { ...shot, captionPlacement: { long: { ...top, y: 0.3 }, reel: { ...top, y: 0.6 } } }
+        ? { ...shot, captionPlacement: { long: { ...top, y: 0.3 }, reel: reelSafeDefault } }
         : shot),
     };
     writeFilm(id, ownerPlaced, { owner: true });
@@ -1244,7 +1255,7 @@ test("design rebuild keeps locked and unlocked owner placements", async () => {
     const rebuiltChildren = readFilm(id)!.shots.filter((shot) => shot.id.startsWith(`${splitParentId}-`));
     assert.equal(rebuiltChildren.length, 2);
     assert.ok(rebuiltChildren.every((shot) =>
-      shot.captionPlacement?.long?.y === 0.3 && shot.captionPlacement?.reel?.y === 0.6,
+      shot.captionPlacement?.long?.y === 0.3 && shot.captionPlacement?.reel?.y === REEL_CAPTION_SAFE_ZONE.defaultY,
     ));
     assert.deepEqual(readFilm(id)?.captionPlacement, { long: { ...top, locked: true }, reel: top });
   } finally {

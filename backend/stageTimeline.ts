@@ -11,6 +11,7 @@ import type { Film } from "../src/dl/schema";
 import { compileScene, type CompiledScene, type CompiledEntity } from "../src/dl/scene/compile";
 import type { Scene } from "../src/dl/scene/types";
 import { stageProjection } from "../src/dl/scene/projection";
+import { adjustStageCameraForFormat } from "../src/dl/fullScreenHeroLayout";
 import { elementVisible, VISIBLE_OPACITY_MIN } from "../src/dl/scene/visibility";
 import { projectedSvgParts } from "./designCheck/insetRegion";
 import { prepareStageFacts } from "../src/dl/scene/stageFacts";
@@ -71,7 +72,12 @@ export function stageTimeline(film: Film, format: DeliveryFormat, options: { com
   // Projects only changed targets, preserving ancestor opacity and this output's crop.
   const inkAt = (entity: CompiledEntity, frame: number, targets?: ReadonlySet<string>) => {
     const current = compiled!.frames[frame];
-    const camera = current.camera ?? { center: { x: scene!.sceneSize.w / 2, y: scene!.sceneSize.h / 2 }, zoom: 1, rotation: 0 };
+    const camera = adjustStageCameraForFormat(
+      current.camera ?? { center: { x: scene!.sceneSize.w / 2, y: scene!.sceneSize.h / 2 }, zoom: 1, rotation: 0 },
+      width,
+      height,
+      scene!.sceneSize,
+    );
     const matrix = stageProjection(camera, width, height, scene!.sceneSize);
     return projectedSvgParts(entity, matrix, undefined, { includeAncestry: true, minOpacity: VISIBLE_OPACITY_MIN, targets })
       .filter((part) => part.bounds.x1 > 0 && part.bounds.y1 > 0 && part.bounds.x0 < width && part.bounds.y0 < height)

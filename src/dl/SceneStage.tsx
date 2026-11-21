@@ -55,7 +55,7 @@ export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, ac
   // Draws one SVG plane using the established square-stage cover transform.
   const plane = (data: FilmScene, transparentBackground = false) => (
     <div style={{ position: "absolute", left: (width - drawnWidth) / 2, top: (height - drawnHeight) / 2, width: drawnWidth, height: drawnHeight }}>
-      <SceneClip scene={data as unknown as Scene} svgSources={SVG_SOURCES} width={drawnWidth} height={drawnHeight} accent={accent} compileOptions={PINNED_COMPILE_OPTIONS} transparentBackground={transparentBackground} />
+      <SceneClip scene={data as unknown as Scene} svgSources={SVG_SOURCES} width={drawnWidth} height={drawnHeight} viewport={{ width, height }} accent={accent} compileOptions={PINNED_COMPILE_OPTIONS} transparentBackground={transparentBackground} />
     </div>
   );
   if (three) return <AbsoluteFill style={{ overflow: "hidden" }}>
@@ -79,6 +79,7 @@ export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, ac
           svgSources={SVG_SOURCES}
           width={drawnWidth}
           height={drawnHeight}
+          viewport={{ width, height }}
           accent={accent}
           compileOptions={PINNED_COMPILE_OPTIONS}
         />

@@ -11,7 +11,11 @@
 import type { LayeredFilm, Clip, Layer } from "../../src/dl/layeredSchema";
 import type { EditContext } from "../editContext/buildEditContext";
 import type { EditOp } from "./schema";
-import { setCaptionPlacement } from "../../src/dl/captionPlacement";
+import {
+  DEFAULT_CAPTION_PLACEMENT_BY_FORMAT,
+  REEL_CAPTION_SAFE_ZONE,
+  setCaptionPlacement,
+} from "../../src/dl/captionPlacement";
 import { animationPayloadSchema } from "../../src/dl/layeredSchema";
 import { convertLayeredFilmToFilm, CONVERTED_LAYER_IDS } from "../../src/dl/convertFilm";
 import {
@@ -505,8 +509,12 @@ function applySingleOp(
 
     case "set_caption_placement": {
       const source = convertLayeredFilmToFilm(film);
+      const formatDefault = DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[op.format];
+      const presetX = op.format === "reel" ? REEL_CAPTION_SAFE_ZONE.centerX : 0.5;
       const placement = "preset" in op.placement
-        ? { x: 0.5, y: op.placement.preset === "top" ? 0.12 : op.placement.preset === "middle" ? 0.45 : 0.78, locked: false }
+        ? op.placement.preset === "bottom"
+          ? { ...formatDefault, locked: false }
+          : { x: presetX, y: op.placement.preset === "top" ? 0.12 : 0.45, locked: false }
         : { x: op.placement.x, y: op.placement.y, ...(op.placement.w === undefined ? {} : { w: op.placement.w }), locked: false };
       const next = setCaptionPlacement(source, { format: op.format, scope: op.scope, placement, owner: false });
       working = { ...film, captionPlacement: next.captionPlacement, clips: film.clips.map((clip) => {

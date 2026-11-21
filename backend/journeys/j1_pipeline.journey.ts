@@ -16,7 +16,7 @@ import { reelForRender } from "../reelCut/store";
 import { createRenderJob } from "../renderJob";
 import { createNativeRenderer } from "../nativeRenderer";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
-import { SUBTITLE_BAND_TOP_RATIO } from "../../src/dl/fullScreenHeroLayout";
+import { subtitleBandTopRatio } from "../../src/dl/fullScreenHeroLayout";
 import type { Scene } from "../../src/dl/scene/types";
 
 const SLUG = "journey-iona";
@@ -76,7 +76,7 @@ journey("J4 character and prop stay in frame and clear of the caption band in wi
   for (const [format, width, height] of [["wide", 1920, 1080], ["reel", 1080, 1920]] as const) {
     const facts = prepareStageFacts(scene, width, height);
     try {
-      const captionTop = SUBTITLE_BAND_TOP_RATIO * height;
+      const captionTop = subtitleBandTopRatio(format === "reel" ? "reel" : "long") * height;
       // Every frame from the approach to the end of the recovery, not a sparse sample.
       for (let frame = Math.max(0, contact - 45); frame <= Math.min(scene.durationFrames - 1, contact + 80); frame++) {
         for (const state of facts.at(frame)) {

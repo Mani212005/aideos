@@ -123,13 +123,12 @@ see [Compulsory finishing steps](../../docs/WORKFLOW.md#compulsory-finishing-ste
 ### Frame safe areas
 
 - `src/dl/fullScreenHeroLayout.ts` owns all `fullScreenHero` geometry and is the single
-  definition of `SUBTITLE_BAND_TOP_RATIO`, the top of the burned-in caption card. Both
-  hero paths use it (`AnalogyInset` in `src/dl/devices.tsx` and `Dynamic3DHeroOverlay` in
-  `src/dl/Film.tsx`) and `KineticSubtitles` derives its "bottom" position from it, so caption
-  placement and the thing it must avoid come from one number (0.78, which is also where `CAPTION_SAFE_SQUARE` ends in the scene engine). Put new frame-safe-area geometry
+  definition of `SUBTITLE_BAND_TOP_RATIO` (0.78 for widescreen 16:9, aligned with `CAPTION_SAFE_SQUARE` in the scene engine) and `REEL_CAPTION_SAFE_ZONE` (`y 40-60%`, `defaultY = 0.50`, `x 6-84%`, `centerX = 0.45`, `width = 0.78`, plus `REEL_STAGE_CENTER_Y_RATIO = 0.29` so vertical 9:16 reels shift stage art cleanly above captions and clear of Shorts/Reels/TikTok chrome). Both
+  hero paths (`AnalogyInset` in `src/dl/devices.tsx` and `Dynamic3DHeroOverlay` in
+  `src/dl/Film.tsx`), `KineticSubtitles`, `captionPlacement.ts`, the Render IR emitter, the native renderer and measured review derive their placement and exclusion zones from these constants. Put new frame-safe-area geometry
   there rather than re-deriving it in a component: it is a plain module with no Remotion
   imports, which is what makes it unit testable in `backend/fullScreenHeroLayout.test.ts`.
-- A device beat shares a scene film's stage instead of covering it: `stage: "inset"` (scene films only, exactly one device or counter) draws the device in `getInsetRegion(format, w, h)` (right third in the long cut, lower-middle band in the reel, floor derived from `SUBTITLE_BAND_TOP_RATIO`) and never dims the scene. The design check's `inset` rule (`backend/designCheck/insetRegion.ts`) fails any visible scene art in that region while the shot plays, measured per drawn element through the compiled scene and camera in both formats. An anchor panel in a scene film grows from its own centre, not from the hidden node graph. `test_fixtures/packages/inset-stage/` is the worked example.
+- A device beat shares a scene film's stage instead of covering it: `stage: "inset"` (scene films only, exactly one device or counter) draws the device in `getInsetRegion(format, w, h)` (right third in the long cut, middle-upper band `y 27-47%` in the reel, floor derived from each format's caption band) and never dims the scene. The design check's `inset` rule (`backend/designCheck/insetRegion.ts`) fails any visible scene art in that region while the shot plays, measured per drawn element through the compiled scene and camera in both formats. An anchor panel in a scene film grows from its own centre, not from the hidden node graph. `test_fixtures/packages/inset-stage/` is the worked example.
 - `backend/design_language_palette.test.ts` walks `src/dl/**` and fails on colour literals
   outside the locked palette (6-digit hex, 3-digit hex and `rgb()`/`rgba()` alike) or on
   typefaces other than Geist and JetBrains Mono. Files that predate the guard are listed in its

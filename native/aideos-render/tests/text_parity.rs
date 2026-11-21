@@ -78,8 +78,9 @@ fn a_wrapped_caption_card_keeps_the_capped_width() {
     let mid = (0.78 * 1920.0) as u32 + 82;
     let (left, right) = card_edges(&frame, mid);
     let width = right - left + 1;
-    // 0.92 of the default 0.86 placement width of a 1080 px frame is 854.5 px; balanced rows alone would give about 530 px.
-    assert!((853..=858).contains(&width), "the wrapped card is {width} px wide, expected the capped 854.5");
+    // 0.92 of the default 0.78 reel safe-zone placement width (REEL_SAFE_CARD_WIDTH, captain's Shorts safe-zone rule)
+    // of a 1080 px frame is 775.0 px; balanced rows alone would give about 530 px.
+    assert!((773..=778).contains(&width), "the wrapped card is {width} px wide, expected the capped 775.0");
 }
 
 /// Text is drawn unhinted: a 45 px Geist capital H is 32 rows tall (cap height 0.71 em), not the 33 that slight hinting snaps it to.

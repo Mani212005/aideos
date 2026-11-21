@@ -384,6 +384,11 @@ function captions(i: ReviewInputs): CriterionResult {
   if (coverage < T.captions.coverageMin) failures.push(`captions on screen in ${Math.round(coverage * 100)}% of narrated moments (needs ${Math.round(T.captions.coverageMin * 100)}%)`);
   if (withCaption.length && tooTall / withCaption.length > 0.1) failures.push(`${tooTall} caption frames run past ${T.captions.maxLines} lines`);
   if (match !== null && match < 0.7) failures.push(`only ${Math.round(match * 100)}% of caption words are in the narration`);
+  const isReel = (i.format ?? (i.video.width < i.video.height ? "reel" : "long")) === "reel";
+  const z = T.captions.reelSafeZone;
+  const bandDesc = isReel
+    ? `9:16 reel safe zone (y ${Math.round(z.top * 100)}-${Math.round(z.bottom * 100)}%, x ${Math.round(z.left * 100)}-${Math.round(z.right * 100)}%)`
+    : "default bottom quarter";
   const missing = narratedSamples.filter((s) => !s.hasCaption).map((s) => s.t);
   return {
     id: 5, key: "captions", name: "Captions at placed position (default bottom)", gate: true,
@@ -391,8 +396,8 @@ function captions(i: ReviewInputs): CriterionResult {
     summary: failures.length ? failures.join("; ") : `captions present in ${Math.round(coverage * 100)}% of narrated moments`,
     metrics: { narratedSamples: narratedSamples.length, captionSamples: withCaption.length, coverage: round(coverage), overTwoLineFrames: tooTall, captionWordMatch: match === null ? null : round(match) },
     threshold: { coverageMin: T.captions.coverageMin, maxLines: T.captions.maxLines, wordHeightMinPx: T.captions.wordHeightMin, wordMatchMin: 0.7 },
-    evidence: spread(missing, 4).map((t) => ({ t, note: "narrated moment with no caption in the checked band (default bottom quarter)" })),
-    fix: failures.length ? "Burn in captions at their declared position (default bottom quarter, word-highlighted, two lines at most, 36 px or more at 1080p) for all narrated time; keep artwork out of that band." : undefined,
+    evidence: spread(missing, 4).map((t) => ({ t, note: `narrated moment with no caption in the checked band (${bandDesc})` })),
+    fix: failures.length ? `Burn in captions at their declared position (${bandDesc}, word-highlighted, two lines at most, 36 px or more at 1080p) for all narrated time; keep artwork out of that band.` : undefined,
   };
 }
 

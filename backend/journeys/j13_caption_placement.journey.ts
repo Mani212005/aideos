@@ -16,7 +16,7 @@ import { runProduction } from "../pipeline/run";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { renderFormat } from "../pipeline/render";
-import { captionCardRect, DEFAULT_CAPTION_PLACEMENT_WIDTH } from "../../src/dl/captionPlacement";
+import { captionCardRect, DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT } from "../../src/dl/captionPlacement";
 import { openFilm } from "./remotionFrames";
 import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 
@@ -110,7 +110,7 @@ async function assertCardGeometry(
   const width = format === "long" ? 1920 : 1080;
   const rect = captionCardRect(format, width, format === "long" ? 1080 : 1920, placement);
   const cardWidth = await page.eval<number>(`${previewSelector("[data-caption-card]")}.offsetWidth`);
-  assert.equal(rect.w, (placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH) * width);
+  assert.equal(rect.w, (placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format]) * width);
   assert.ok(Math.abs(cardWidth - rect.w) <= 1, "visible saved card matches collision width");
   await assertRingHugsCard(page);
 }
@@ -123,7 +123,7 @@ async function assertAutoCardGeometry(
   const width = format === "long" ? 1920 : 1080;
   const rect = captionCardRect(format, width, format === "long" ? 1080 : 1920, placement);
   assert.equal(placement.w, undefined);
-  assert.equal(rect.w, DEFAULT_CAPTION_PLACEMENT_WIDTH * width);
+  assert.equal(rect.w, DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format] * width);
   await assertRingHugsCard(page);
 }
 
@@ -314,7 +314,7 @@ journey(
         const resizedPlacement = resolveCaptionPlacement(film(), format);
         await assertCardGeometry(page, format, resizedPlacement);
         assert.ok(
-          resolveCaptionPlacement(film(), format).w! < DEFAULT_CAPTION_PLACEMENT_WIDTH,
+          resolveCaptionPlacement(film(), format).w! < DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format],
           "edge drag narrows the actual card",
         );
         // Decision 4: Lock only protects the captions from agents and rebuilds; the owner can still drag them.

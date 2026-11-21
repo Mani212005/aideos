@@ -11,7 +11,7 @@ import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { measureCaptionWords, measureCaptionWordsAsync } from "../review/captionMeasurements";
 import {
   CAPTION_FRAMES,
-  DEFAULT_CAPTION_PLACEMENT,
+  DEFAULT_CAPTION_PLACEMENT_BY_FORMAT,
   captionCardRect,
   captionRectsOverlap,
   resolveCaptionPlacement,
@@ -71,12 +71,13 @@ export function checkCaptionPlacements(
     ] as const) {
       if (!entry) continue;
       const safe = clampCaptionPlacement(entry, format);
-      const isLegacyDefaultPosition =
+      const formatDefault = DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format];
+      const isDefaultPosition =
         entry.w === undefined &&
-        entry.x === DEFAULT_CAPTION_PLACEMENT.x &&
-        entry.y === DEFAULT_CAPTION_PLACEMENT.y;
+        entry.x === formatDefault.x &&
+        entry.y === formatDefault.y;
       if (
-        !isLegacyDefaultPosition &&
+        !isDefaultPosition &&
         Math.abs(safe.x - entry.x) +
           Math.abs(safe.y - entry.y) +
           (entry.w === undefined ? 0 : Math.abs((safe.w ?? 0) - entry.w)) >
@@ -91,7 +92,7 @@ export function checkCaptionPlacements(
         });
     }
     const fontSize = Math.round(Math.min(width, height) * 0.042);
-    const hasCustomWidth = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width).fixed);
+    const hasCustomWidth = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width, format).fixed);
     const wordWidths = hasCustomWidth
       ? measureCaptionWords(words.map((word) => word.text), fontSize)
       : {};
@@ -99,6 +100,7 @@ export function checkCaptionPlacements(
       words,
       fps: timingFilm.fps,
       width,
+      format,
       fontSize,
       placementAt: (startFrame) => resolveCaptionPlacement(film, format, shotAt(timeline, startFrame)?.shot.id),
       measure: (text) => wordWidths[text],
@@ -200,7 +202,7 @@ export async function checkCaptionPlacementsAsync(
       if (sample && sample.format !== format) return false;
       const { width } = CAPTION_FRAMES[format];
       return timeline.some((timed) =>
-        resolveCaptionCardWidth(resolveCaptionPlacement(film, format, timed.shot.id), width).fixed,
+        resolveCaptionCardWidth(resolveCaptionPlacement(film, format, timed.shot.id), width, format).fixed,
       );
     });
     if (needsMeasurement)

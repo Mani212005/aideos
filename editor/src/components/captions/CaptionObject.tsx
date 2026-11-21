@@ -13,7 +13,7 @@ import type { CaptionPlacement, Film } from "../../../../src/dl/schema";
 import { shotAt, type TimedShot } from "../../../../src/dl/camera";
 import {
   CAPTION_FRAMES,
-  DEFAULT_CAPTION_PLACEMENT_WIDTH,
+  DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT,
   captionCardRect,
   captionRectsOverlap,
   clampCaptionPlacement,
@@ -132,7 +132,7 @@ export function CaptionObject({
   ]);
   // phraseLayoutKey is the only film-derived input that changes phrase wrapping, so it stands in for the film here.
   const phrases = useMemo(() => buildCaptionPhrases({
-    words, fps, width: CAPTION_FRAMES[format].width, fontSize: 45,
+    words, fps, width: CAPTION_FRAMES[format].width, format, fontSize: 45,
     placementAt: (startFrame) => resolveCaptionPlacement(shownFilmRef.current, format, shotAt(timeline, startFrame)?.shot.id),
     measure: (text) => measureText({ text, fontFamily: SANS, fontSize: 45, fontWeight: 700 }).width,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,7 +241,8 @@ export function CaptionObject({
   const ghost = selected && !cardBox;
   const sizeSource = cardBox ?? lastCardBox.current;
   const band = captionCardRect(format, width, height, effective);
-  const boxW = cardBox?.w ?? (sizeSource && effective.w === undefined ? sizeSource.w : (effective.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH) * width);
+  const defaultWidth = DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format];
+  const boxW = cardBox?.w ?? (sizeSource && effective.w === undefined ? sizeSource.w : (effective.w ?? defaultWidth) * width);
   const boxH = cardBox?.h ?? sizeSource?.h ?? band.h;
   const box = { x: effective.x * width - boxW / 2, y: effective.y * height, w: boxW, h: boxH };
   const visible = viewport && (cardBox || ghost);
@@ -415,7 +416,7 @@ export function CaptionObject({
       y: event.clientY,
       scale: viewport.scale,
       start: wholeVideo,
-      visibleWidth: (cardBox ?? lastCardBox.current)?.w ? (cardBox ?? lastCardBox.current)!.w / width : DEFAULT_CAPTION_PLACEMENT_WIDTH,
+      visibleWidth: (cardBox ?? lastCardBox.current)?.w ? (cardBox ?? lastCardBox.current)!.w / width : defaultWidth,
       cardHeight: (cardBox ?? lastCardBox.current)?.h ?? band.h,
       film,
       next: film,
@@ -478,7 +479,7 @@ export function CaptionObject({
     const horizontal = event.key === "ArrowLeft" || event.key === "ArrowRight";
     const direction = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
     const current = resolveCaptionPlacement(nudge.current?.next ?? film, format);
-    const visibleWidth = (cardBox ?? lastCardBox.current)?.w ? (cardBox ?? lastCardBox.current)!.w / width : DEFAULT_CAPTION_PLACEMENT_WIDTH;
+    const visibleWidth = (cardBox ?? lastCardBox.current)?.w ? (cardBox ?? lastCardBox.current)!.w / width : defaultWidth;
     const resizing = event.altKey && horizontal;
     const next = resizing
       ? ownerMove({ ...current, w: current.w ?? visibleWidth }, (unlocked) =>
@@ -622,7 +623,7 @@ export function CaptionObject({
                       {dragView && dragView.kind === "move"
                         ? `Y ${Math.round(dragView.placement.y * 100)}%${dragView.placement.x !== dragView.startX ? ` / X ${Math.round(dragView.placement.x * 100)}%` : ""}`
                         : dragView
-                          ? `W ${Math.round((dragView.placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH) * 100)}%`
+                          ? `W ${Math.round((dragView.placement.w ?? defaultWidth) * 100)}%`
                           : ghost
                             ? "No caption at this moment"
                             : shotException

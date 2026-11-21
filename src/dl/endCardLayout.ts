@@ -9,17 +9,20 @@
 
 import type { Format } from "./tokens";
 import type { CardWord, EndCardSpan } from "./delivery";
-import { getFrameMargins, getStageSafeRegion, subtitleCardBottom, SUBTITLE_BAND_TOP_RATIO } from "./fullScreenHeroLayout";
+import {
+  DEFAULT_CAPTION_PLACEMENT_BY_FORMAT,
+  DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT,
+  REEL_ACTION_ZONE,
+} from "./captionPlacement";
+import { getFrameMargins, getStageSafeRegion, subtitleCardBottom } from "./fullScreenHeroLayout";
 
 /** A rectangle in render pixels. */
 export type CardRect = { x: number; y: number; w: number; h: number };
 
 /**
- * The Shorts action-button strip (like, comment, share): the right of a vertical frame from x 0.88
- * of its width, in its lower half. Mirrors REEL_ACTION_ZONE in the movable-captions work; once that
- * lands this module should import it from src/dl/captionPlacement.ts instead of keeping a copy.
+ * The Shorts/Reels/TikTok action-button strip (like, comment, share), shared with `captionPlacement.ts`.
  */
-export const END_CARD_REEL_ACTION_ZONE = { x: 0.88, y: 0.5 } as const;
+export const END_CARD_REEL_ACTION_ZONE = REEL_ACTION_ZONE;
 
 /** Authored sizes at each format's reference width (1920 long, 1080 reel), in pixels. */
 const PARTS: Record<Format, {
@@ -66,10 +69,18 @@ export interface EndCardLayoutInput {
   headline: string;
 }
 
-// The caption card a shot shows by default: the bottom band, as wide as the subtitles may run.
+// The caption card a shot shows by default: format-specific safe band, as wide as the subtitles may run.
 export function defaultCaptionRect(width: number, height: number): CardRect {
-  const top = height * SUBTITLE_BAND_TOP_RATIO;
-  return { x: width * 0.07, y: top, w: width * 0.86, h: subtitleCardBottom(width, height) - top };
+  const format: Format = width < height ? "reel" : "long";
+  const placement = DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format];
+  const cardWidth = width * DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format];
+  const top = height * placement.y;
+  return {
+    x: placement.x * width - cardWidth / 2,
+    y: top,
+    w: cardWidth,
+    h: subtitleCardBottom(width, height, format) - top,
+  };
 }
 
 // The reel's action-button strip as a rectangle in render pixels.

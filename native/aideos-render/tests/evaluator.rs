@@ -211,7 +211,7 @@ fn phrase_tuples(w: Option<f64>) -> Vec<(usize, usize, u32, u32, Vec<usize>)> {
         w,
     }];
     let measure = |t: &str| t.chars().count() as f64 * 18.0;
-    build_phrases(&caption_words(), &spans, 30, 1920.0, &measure)
+    build_phrases(&caption_words(), &spans, 30, 1920.0, Format::Long, &measure)
         .into_iter()
         .map(|p| {
             (
@@ -257,7 +257,14 @@ fn a_caption_frame_highlights_the_spoken_word_and_fades_the_phrase() {
         y: 0.78,
         w: None,
     }];
-    let phrases = build_phrases(&words, &spans, 30, 1920.0, &|t: &str| t.len() as f64 * 18.0);
+    let phrases = build_phrases(
+        &words,
+        &spans,
+        30,
+        1920.0,
+        Format::Long,
+        &|t: &str| t.len() as f64 * 18.0,
+    );
     let at = |f: u32| caption_frame(&words, &phrases, 30, f).expect("a phrase shows");
     let f12 = at(12);
     assert_eq!(f12.phrase_index, 0);

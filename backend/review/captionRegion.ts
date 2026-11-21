@@ -57,7 +57,7 @@ export function prepareCaptionReview(
   const words = captionWordsForFilm(film);
   const variableWidth = timeline.some(
     (timed) =>
-      resolveCaptionCardWidth(resolveCaptionPlacement(film, format, timed.shot.id), width).fixed,
+      resolveCaptionCardWidth(resolveCaptionPlacement(film, format, timed.shot.id), width, format).fixed,
   );
   let widths: Record<string, number>;
   try {
@@ -76,6 +76,7 @@ export function prepareCaptionReview(
     words,
     fps: film.fps,
     width,
+    format,
     fontSize,
     placementAt: (frame) =>
       resolveCaptionPlacement(film, format, shotAt(timeline, frame)?.shot.id),

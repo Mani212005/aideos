@@ -9,35 +9,62 @@ import type {
   Film,
 } from "./schema";
 import {
+  REEL_CAPTION_SAFE_ZONE,
+  SUBTITLE_BAND_TOP_RATIO,
   getFrameMargins,
   subtitleCardHeight as captionCardHeight,
 } from "./fullScreenHeroLayout";
+export { REEL_CAPTION_SAFE_ZONE };
 export type CaptionFormat = "long" | "reel";
 export type CaptionScope = { kind: "film" } | { kind: "shot"; shotId: string };
 export type ResolvedCaptionPlacement = CaptionPlacement & {
   source: "shot" | "film" | "default";
 };
 export const DEFAULT_CAPTION_PLACEMENT_WIDTH = 0.86;
+export const DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT: Record<CaptionFormat, number> = {
+  long: DEFAULT_CAPTION_PLACEMENT_WIDTH,
+  reel: REEL_CAPTION_SAFE_ZONE.width,
+};
 export const DEFAULT_CAPTION_PLACEMENT: CaptionPlacement = {
   x: 0.5,
-  y: 0.78,
+  y: SUBTITLE_BAND_TOP_RATIO,
   locked: false,
+};
+export const DEFAULT_CAPTION_PLACEMENT_BY_FORMAT: Record<CaptionFormat, CaptionPlacement> = {
+  long: DEFAULT_CAPTION_PLACEMENT,
+  reel: {
+    x: REEL_CAPTION_SAFE_ZONE.centerX,
+    y: REEL_CAPTION_SAFE_ZONE.defaultY,
+    locked: false,
+  },
 };
 export const CAPTION_FRAMES = {
   long: { width: 1920, height: 1080 },
   reel: { width: 1080, height: 1920 },
 };
 export const MIN_CAPTION_WIDTH = { long: 0.4, reel: 0.6 };
-// Conservative lower-half right-hand action-button strip; the legacy default remains unchanged.
-export const REEL_ACTION_ZONE = { x: 0.88, y: 0.5 };
+// Right-hand platform action-button strip (Shorts, Reels, TikTok) derived from REEL_CAPTION_SAFE_ZONE.
+export const REEL_ACTION_ZONE = {
+  x: REEL_CAPTION_SAFE_ZONE.right,
+  y: REEL_CAPTION_SAFE_ZONE.top,
+};
 export type CaptionRect = { x: number; y: number; w: number; h: number };
 export { captionCardHeight };
+// Returns the default caption placement for a format.
+export function defaultCaptionPlacement(format: CaptionFormat = "long"): CaptionPlacement {
+  return DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format];
+}
+// Returns the default caption envelope width fraction for a format.
+export function defaultCaptionPlacementWidth(format: CaptionFormat = "long"): number {
+  return DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format];
+}
 // Keeps absent widths content-sized while reserving the default envelope for editor and collision geometry.
 export function resolveCaptionCardWidth(
   placement: CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] },
   frameWidth: number,
+  format: CaptionFormat = "long",
 ) {
-  const width = (placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH) * frameWidth;
+  const width = (placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format]) * frameWidth;
   const fixed = placement.w !== undefined;
   return { width, fixed, innerWidth: (fixed ? width : width * 0.92) - 58 };
 }
@@ -60,17 +87,27 @@ export function captionBounds(
     y + captionCardHeight(width, height) / height > REEL_ACTION_ZONE.y
       ? Math.min(1 - margins.right / width, REEL_ACTION_ZONE.x)
       : 1 - margins.right / width;
-  const left = margins.left / width;
+  const left =
+    format === "reel"
+      ? Math.max(margins.left / width, REEL_CAPTION_SAFE_ZONE.left)
+      : margins.left / width;
   const maxWidth = right - left;
   const safeWidth = clamp(w, minimumWidth, maxWidth);
+  const maxY =
+    format === "reel"
+      ? Math.max(
+          REEL_CAPTION_SAFE_ZONE.defaultY,
+          (height * REEL_CAPTION_SAFE_ZONE.bottom - captionCardHeight(width, height)) / height,
+        )
+      : Math.max(
+          SUBTITLE_BAND_TOP_RATIO,
+          (height - margins.bottom - captionCardHeight(width, height)) / height,
+        );
   return {
     minX: left + safeWidth / 2,
     maxX: right - safeWidth / 2,
     minY: margins.top / height,
-    maxY: Math.max(
-      0.78,
-      (height - margins.bottom - captionCardHeight(width, height)) / height,
-    ),
+    maxY,
     minW: minimumWidth,
     maxW: maxWidth,
     w: safeWidth,
@@ -87,7 +124,7 @@ export function clampCaptionPlacement(
     format,
     width,
     height,
-    placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH,
+    placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format],
     placement.y,
     hasExplicitWidth ? MIN_CAPTION_WIDTH[format] : 0,
   );
@@ -98,7 +135,7 @@ export function clampCaptionPlacement(
     locked: placement.locked,
   };
 }
-// Resolves shot, film and legacy default independently in each format.
+// Resolves shot, film and format-specific default independently in each format.
 export function resolveCaptionPlacement(
   film: Pick<Film, "captionPlacement" | "shots">,
   format: CaptionFormat,
@@ -108,7 +145,7 @@ export function resolveCaptionPlacement(
     format
   ];
   const entry = shot ?? film.captionPlacement?.[format];
-  if (!entry) return { ...DEFAULT_CAPTION_PLACEMENT, source: "default" };
+  if (!entry) return { ...DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format], source: "default" };
   const { width, height } = CAPTION_FRAMES[format];
   const normalizedWidth = entry.w === undefined
     ? undefined
@@ -119,15 +156,15 @@ export function resolveCaptionPlacement(
     source: shot ? "shot" : "film",
   };
 }
-// Returns a conservative reserved band for legacy defaults and the visible fixed box for saved placements.
+// Returns a conservative reserved band for default placements and the visible fixed box for saved placements.
 export function captionCardRect(
-  _format: CaptionFormat,
+  format: CaptionFormat,
   width: number,
   height: number,
   placement: CaptionPlacement,
   lines = 2,
 ): CaptionRect {
-  const card = resolveCaptionCardWidth(placement, width);
+  const card = resolveCaptionCardWidth(placement, width, format);
   return {
     x: placement.x * width - card.width / 2,
     y: placement.y * height,
@@ -170,15 +207,17 @@ export function dragCaption({
     x: placement.x + dx / scale / width,
     y: placement.y + dy / scale / height,
   };
+  const defaultWidth = DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format];
   const bounds = captionBounds(
     format,
     width,
     height,
-    next.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH,
+    next.w ?? defaultWidth,
     next.y,
     next.w === undefined ? 0 : undefined,
   );
-  next.x = snapTo(next.x, [bounds.minX, 0.5, bounds.maxX], snap && dx !== 0);
+  const centerX = format === "reel" ? REEL_CAPTION_SAFE_ZONE.centerX : 0.5;
+  next.x = snapTo(next.x, [bounds.minX, centerX, bounds.maxX], snap && dx !== 0);
   next.y = snapTo(next.y, [bounds.minY, 0.45, bounds.maxY], snap && dy !== 0);
   const clamped = clampCaptionPlacement(next, format);
   return {
@@ -198,15 +237,19 @@ export function resizeCaption({
 }: Gesture & { edge: "left" | "right" }): CaptionPlacement {
   if (placement.locked) return placement;
   const { width, height } = CAPTION_FRAMES[format];
-  const baseWidth = placement.w ?? DEFAULT_CAPTION_PLACEMENT_WIDTH;
+  const defaultWidth = DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format];
+  const baseWidth = placement.w ?? defaultWidth;
   const bounds = captionBounds(format, width, height, baseWidth, placement.y);
   const opposite = placement.x + ((edge === "left" ? 1 : -1) * baseWidth) / 2;
-  const margin = getFrameMargins(format, width).left / width;
+  const margin =
+    format === "reel"
+      ? Math.max(getFrameMargins(format, width).left / width, REEL_CAPTION_SAFE_ZONE.left)
+      : getFrameMargins(format, width).left / width;
   const limit =
     edge === "left" ? opposite - margin : bounds.maxX + bounds.w / 2 - opposite;
   const delta = (dx / scale / width) * (edge === "left" ? -1 : 1);
   const w = clamp(
-    snapTo(baseWidth + delta, [DEFAULT_CAPTION_PLACEMENT_WIDTH], snap && dx !== 0),
+    snapTo(baseWidth + delta, [defaultWidth], snap && dx !== 0),
     bounds.minW,
     Math.max(bounds.minW, limit),
   );

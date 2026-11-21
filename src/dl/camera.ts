@@ -7,6 +7,7 @@
 import type { CanvasNode, Film, Shot, CameraAngle } from "./schema";
 import { easeExpo, MS } from "./motion";
 import { holdPushAt, holdPushPeak, type HoldRun } from "./holdPush";
+import { REEL_CAPTION_SAFE_ZONE, stageCenterY } from "./fullScreenHeroLayout";
 
 /**
  * ---------------------------------------------------------------------------
@@ -78,8 +79,12 @@ export const solveCam = (
   frame: { width: number; height: number },
   zoom: number,
 ): Cam => {
+  // In 9:16 reels, fit the stage into the upper band above the reel caption safe zone.
+  const fitHeight = frame.width < frame.height
+    ? frame.height * (REEL_CAPTION_SAFE_ZONE.defaultY - 0.08)
+    : frame.height;
   const ppu =
-    Math.min(frame.width / (box.w + PAD * 2), frame.height / (box.h + PAD * 2)) * zoom;
+    Math.min(frame.width / (box.w + PAD * 2), fitHeight / (box.h + PAD * 2)) * zoom;
   return { cx: box.x + box.w / 2, cy: box.y + box.h / 2, ppu };
 };
 
@@ -319,8 +324,9 @@ export const camTransform = (
   angle: CameraAngle = "flat",
   frame: number = 0,
 ) => {
+  const cyScreen = stageCenterY(frameSize.width, frameSize.height);
   const base = `translate(${frameSize.width / 2 - cam.cx * cam.ppu}px, ${
-    frameSize.height / 2 - cam.cy * cam.ppu
+    cyScreen - cam.cy * cam.ppu
   }px) scale(${cam.ppu})`;
   const persp = getCameraPerspective(angle, frame);
   if (persp.transform === "none") return base;
@@ -334,7 +340,7 @@ export const projectBox = (
   frameSize: { width: number; height: number },
 ): Box => ({
   x: frameSize.width / 2 + (box.x - cam.cx) * cam.ppu,
-  y: frameSize.height / 2 + (box.y - cam.cy) * cam.ppu,
+  y: stageCenterY(frameSize.width, frameSize.height) + (box.y - cam.cy) * cam.ppu,
   w: box.w * cam.ppu,
   h: box.h * cam.ppu,
 });

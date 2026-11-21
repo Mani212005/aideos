@@ -417,6 +417,7 @@ fn caption_phrases(
                 &placement.spans,
                 ir.film.fps.0,
                 f64::from(size.width.0),
+                format,
                 &measure,
             );
             out.insert((c.id.clone(), format), phrases);

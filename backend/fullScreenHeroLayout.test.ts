@@ -9,9 +9,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CAPTION_SAFE_SQUARE, FORMAT_WINDOWS } from "./sceneKit";
 import {
+  REEL_CAPTION_SAFE_ZONE,
   SUBTITLE_BAND_TOP_RATIO,
   getFullScreenHeroLayout,
   getInsetRegion,
+  subtitleBandTopRatio,
   subtitleCardBottom,
   heroScrimGradient,
 } from "../src/dl/fullScreenHeroLayout";
@@ -53,24 +55,24 @@ test("a landscape hero fills the horizontal frame", () => {
   assert.equal(layout.media.height, "100%");
 });
 
-// Verifies that the reel hero caption never overlaps the burned-in subtitle card.
+// Verifies that the reel hero caption never overlaps the burned-in subtitle card (captain's reel safe-zone rule).
 test("a reel hero caption clears the burned-in subtitle band", () => {
   const layout = getFullScreenHeroLayout(REEL);
 
   assert.equal(layout.caption.top, REEL.margin.top);
   assert.equal(layout.caption.bottom, undefined);
-  assert.equal(layout.subtitleBandTop, REEL.height * SUBTITLE_BAND_TOP_RATIO);
+  assert.equal(layout.subtitleBandTop, REEL.height * subtitleBandTopRatio("reel"));
   assert.ok(
     layout.captionBand.bottom < layout.subtitleBandTop,
     `caption band ends at ${layout.captionBand.bottom} but the subtitle card starts at ${layout.subtitleBandTop}`,
   );
 
-  // The old placement anchored the caption to the bottom margin, which lands inside the
-  // subtitle band on a 1080x1920 frame. That is the collision this test exists to prevent.
+  // The old placement anchored the caption to the bottom margin, which lands below the
+  // subtitle band inside Shorts bottom chrome on a 1080x1920 frame.
   const oldCaptionBottom = REEL.height - REEL.margin.bottom;
   assert.ok(
     oldCaptionBottom > layout.subtitleBandTop,
-    "the old bottom-margin placement should be inside the subtitle band",
+    "the old bottom-margin placement should be below the subtitle band",
   );
 });
 
@@ -152,7 +154,7 @@ test("the scene caption-safe square ends where the subtitle band starts", () => 
 test("the inset region sits inside the margins and above the caption band in both formats", () => {
   for (const frame of [LONG, REEL]) {
     const region = getInsetRegion(frame.format, frame.width, frame.height);
-    const bandTop = frame.height * SUBTITLE_BAND_TOP_RATIO;
+    const bandTop = frame.height * subtitleBandTopRatio(frame.format);
     assert.ok(region.x >= frame.margin.left - 1e-6, `${frame.format} left edge ${region.x}`);
     assert.ok(region.x + region.w <= frame.width - frame.margin.right + 1e-6, `${frame.format} right edge`);
     assert.ok(region.y >= frame.margin.top - 1e-6, `${frame.format} top edge ${region.y}`);
@@ -161,13 +163,13 @@ test("the inset region sits inside the margins and above the caption band in bot
   }
 });
 
-// The wide cut gives the device the right third and the reel gives it the lower-middle band.
-test("the inset region is the right third in the long cut and the lower-middle band in the reel", () => {
+// The wide cut gives the device the right third and the reel gives it the middle-upper band above the 50% caption zone (captain's reel safe-zone rule).
+test("the inset region is the right third in the long cut and the middle-upper band in the reel", () => {
   const long = getInsetRegion("long", LONG.width, LONG.height);
   assert.ok(long.x >= LONG.width * 0.55 && long.x + long.w <= LONG.width, "long cut region hugs the right side");
   assert.ok(long.w < LONG.width / 2, "long cut region leaves most of the stage uncovered");
   const reel = getInsetRegion("reel", REEL.width, REEL.height);
-  assert.ok(reel.y >= REEL.height * 0.45, "reel region starts below the middle of the frame");
+  assert.ok(reel.y >= REEL.height * 0.25 && reel.y + reel.h < REEL.height * REEL_CAPTION_SAFE_ZONE.defaultY, "reel region sits above the reel caption safe zone");
   assert.ok(reel.w > REEL.width * 0.8, "reel region spans the safe width");
 });
 

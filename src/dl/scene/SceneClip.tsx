@@ -14,6 +14,7 @@ import type { Scene } from "./types";
 import type { CompileOptions, CompiledScene } from "./compile";
 import { compileScene } from "./compile";
 import { SceneView } from "./SceneView";
+import { adjustStageCameraForFormat } from "../fullScreenHeroLayout";
 
 export interface SceneClipProps {
   transparentBackground?: boolean;
@@ -25,6 +26,8 @@ export interface SceneClipProps {
   /** Output size in pixels. Defaults to the scene's own coordinate space. */
   width?: number;
   height?: number;
+  /** Composition viewport size, so 9:16 reels shift the stage camera clear of the reel caption safe zone. */
+  viewport?: { width: number; height: number };
   accent?: string;
   compileOptions?: CompileOptions;
   /** Called once per compile with the compiled scene, for callers that want its warnings. */
@@ -84,6 +87,7 @@ export const SceneClip: React.FC<SceneClipProps> = ({
   startFrame = 0,
   width,
   height,
+  viewport,
   accent,
   compileOptions,
   onCompiled,
@@ -106,9 +110,18 @@ export const SceneClip: React.FC<SceneClipProps> = ({
 
   useSvgPaintReady(localFrame, scene, width, height);
 
+  const rawFrame = compiled.frames[localFrame];
+  const displayFrame =
+    viewport && rawFrame.camera
+      ? {
+          ...rawFrame,
+          camera: adjustStageCameraForFormat(rawFrame.camera, viewport.width, viewport.height, scene.sceneSize),
+        }
+      : rawFrame;
+
   return (
     <SceneView
-      frame={compiled.frames[localFrame]}
+      frame={displayFrame}
       width={width ?? scene.sceneSize.w}
       height={height ?? scene.sceneSize.h}
       sceneSize={scene.sceneSize}

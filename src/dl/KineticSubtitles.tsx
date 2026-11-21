@@ -43,18 +43,21 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   placementAt,
 }) => {
   const frame = useCurrentFrame();
-  const { fps, width } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
+  const format = width < height ? "reel" : "long";
   const measureWord = React.useCallback(
-    (text: string) => measureText({ text, fontFamily, fontSize, fontWeight: 700 }).width,
+    (text: string) => typeof (globalThis as { document?: unknown }).document === "undefined"
+      ? Number.NaN
+      : measureText({ text, fontFamily, fontSize, fontWeight: 700 }).width,
     [fontFamily, fontSize],
   );
 
   // Compute every phrase once so neither position nor wrapping can change during a phrase.
   const phrases = useMemo(() => buildCaptionPhrases({
-    words, fps, fontSize, width,
+    words, fps, fontSize, width, format,
     placementAt,
     measure: measureWord,
-  }), [words, fps, fontSize, width, measureWord, placementAt]);
+  }), [words, fps, fontSize, width, format, measureWord, placementAt]);
 
   // If no words, don't render
   if (!words || words.length === 0) return null;
@@ -66,7 +69,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
 
   if (!activePhrase) return null;
   const activePlacement = placementAt(activePhrase.startFrame);
-  const card = resolveCaptionCardWidth(activePlacement, width);
+  const card = resolveCaptionCardWidth(activePlacement, width, format);
 
   // Find active word index within the global words array
   let activeWordIndex = words.findIndex(
