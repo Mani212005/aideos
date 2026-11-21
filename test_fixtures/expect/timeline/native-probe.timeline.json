@@ -1,0 +1,32 @@
+{
+  "film": {
+    "id": "native-probe",
+    "fps": 30,
+    "shots": [{"id":"arrival","dur":3},{"id":"between","dur":3},{"id":"count","dur":3.5},{"id":"closing","dur":3}],
+    "narrationSec": null
+  },
+  "timeline": [
+    {"shot":"arrival","from":0,"to":90,"durationInFrames":90,"chapter":0},
+    {"shot":"between","from":90,"to":180,"durationInFrames":90,"chapter":0},
+    {"shot":"count","from":180,"to":285,"durationInFrames":105,"chapter":1},
+    {"shot":"closing","from":285,"to":375,"durationInFrames":90,"chapter":1}
+  ],
+  "delivery": {
+    "long": {
+      "format": "long",
+      "fps": 30,
+      "storyFrames": 375,
+      "card": {"from":375,"to":555,"durationInFrames":180,"lineFrom":null},
+      "totalFrames": 555,
+      "cardWords": []
+    },
+    "reel": {
+      "format": "reel",
+      "fps": 30,
+      "storyFrames": 375,
+      "card": {"from":375,"to":465,"durationInFrames":90,"lineFrom":null},
+      "totalFrames": 465,
+      "cardWords": []
+    }
+  }
+}
