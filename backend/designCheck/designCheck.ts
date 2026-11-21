@@ -677,7 +677,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
 }
 
 // Reads the narrator a package recorded (narration.json) for the voice-of-choice rule; empty when there is none or it is unreadable.
-function narratorContext(pkg: string): Pick<DesignCheckContext, "narration" | "allowOtherVoice"> {
+export function narratorContext(pkg: string): Pick<DesignCheckContext, "narration" | "allowOtherVoice"> {
   const file = path.join(pkg, "narration.json");
   if (!fs.existsSync(file)) return {};
   try {

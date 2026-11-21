@@ -19,9 +19,6 @@ export const VOICE_OF_CHOICE_STUDIO_KEYS: readonly string[] = [VCD_DEFAULT_VOICE
 /** Environment switch that lets a run keep another narrator; only the captain may say to set it. */
 export const OTHER_VOICE_OVERRIDE_ENV = "AIDEOS_ALLOW_OTHER_VOICE";
 
-/** Narrator kinds that are known not to be the voice of choice (backends and Studio provider prefixes). */
-const OTHER_NARRATOR_KINDS: readonly string[] = ["kokoro", "google", "say", "tone", "aura", "deepgram", "macos"];
-
 /** A design check message about a narrator that is not the voice of choice. */
 export interface VoiceOfChoiceFinding {
   severity: "error" | "warning";
@@ -45,11 +42,13 @@ export function otherVoiceOverrideActive(env: NodeJS.ProcessEnv = process.env): 
   return value === "1" || value === "true";
 }
 
-// Judges one recorded narrator: null when it is the voice of choice (or unknown), an error for another voice, a warning when an override allows it.
+// Judges the narrator an existing narration.json recorded: null for the voice of choice, an error for any other or missing narrator, a warning when an override allows it.
 export function voiceOfChoiceFinding(ttsBackend: unknown, allowOther: boolean): VoiceOfChoiceFinding | null {
-  const kind = narratorKind(ttsBackend);
-  if (!OTHER_NARRATOR_KINDS.includes(kind)) return null;
-  const spoken = `narrated by "${String(ttsBackend).trim()}", not the voice of choice (the owner's cloned voice, vcd)`;
+  if (isVoiceOfChoiceNarrator(ttsBackend)) return null;
+  const recorded = typeof ttsBackend === "string" ? ttsBackend.trim() : "";
+  const spoken = recorded
+    ? `narrated by "${recorded}", not the voice of choice (the owner's cloned voice, vcd)`
+    : "records no narrator (ttsBackend is missing or not a string), so it is not shown to be the voice of choice (the owner's cloned voice, vcd)";
   if (allowOther) {
     return { severity: "warning", message: `${spoken}; kept because ${OTHER_VOICE_OVERRIDE_ENV} is set. Only the captain may allow another voice.` };
   }

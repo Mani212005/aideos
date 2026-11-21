@@ -35,7 +35,7 @@ Run `aideos audio fetch` once before the first design build, because the default
 
 ## The voice of choice (every video)
 
-Every video is narrated with the owner's cloned voice (the local `vcd` service, Studio keys `vcd-my-voice` and `vcd-my-voice-hi`). It is the default and the voice of choice for every worker, run and test; no worker may swap to another voice without the captain's word, and a missing service fails plainly instead of changing voice. Start it with `vcd serve` on the Linux machine (loopback only), or from another machine through an SSH tunnel, `ssh -N -L 8740:127.0.0.1:8740 <the Linux machine>`. Tests use a deterministic fake of the service that reports the owner voice. The design check fails a film narrated by another voice unless the captain allowed it with `AIDEOS_ALLOW_OTHER_VOICE=1`. Details: [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice).
+Every video is narrated with the owner's cloned voice (the local `vcd` service, Studio keys `vcd-my-voice` and `vcd-my-voice-hi`). It is the default and the voice of choice for every worker, run and test; no worker may swap to another voice without the captain's word, and a missing service fails plainly instead of changing voice. Start it with `vcd serve` on the Linux machine (loopback only), or from another machine through an SSH tunnel, `ssh -N -L 8740:127.0.0.1:8740 <the Linux machine>`. Tests use a deterministic fake of the service that reports the owner voice. The design check (also run by the design stage and the reel build) fails a film narrated by another voice unless the captain allowed it with `AIDEOS_ALLOW_OTHER_VOICE=1`. Details: [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice).
 
 ---
 

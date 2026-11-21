@@ -330,8 +330,10 @@ the default address, reports the owner voice id and the real `vcd:<voice id>:<la
 fingerprints and `narration.json` carry the real shapes, and returns a quiet tone sized from the word count, never
 speech. A test never reaches a real service and never commits voice audio.
 
-The design check (`aideos design check <film>`, rule `voice-of-choice`) fails when a package's `narration.json`
-records another narrator than the voice of choice. Only the captain may allow one, by setting
+The design check (rule `voice-of-choice`) fails when a package's `narration.json` records any narrator other
+than the voice of choice (`vcd`), or records none (a missing or non-string `ttsBackend`). It runs in
+`aideos design check <film>`, in the design stage of `runProduction` (`buildDesign`) and in the reel build, so a
+film narrated by another voice is not built or rendered. Only the captain may allow one, by setting
 `AIDEOS_ALLOW_OTHER_VOICE=1` for the run, which downgrades the finding to a warning that stays in the report.
 
 Other backends exist only for the captain's explicit choice. Kokoro-82M runs locally through ONNX with no

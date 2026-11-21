@@ -82,7 +82,7 @@ test("voice of choice: the fake keeps the real service's rules (unknown voice, e
 
 test("voice of choice: narrators are read from what the pipeline and Studio really record", () => {
   const owner = [FAKE_OWNER_BACKEND_NAME, "vcd-my-voice", "vcd-my-voice-hi", "vcd:voice_abc123:hi"];
-  const other = ["kokoro:af_heart", "kokoro-am_adam", "kokoro|af_heart|0.75", "google:en-US-Journey-F", "say:Samantha", "macos-samantha", "aura-asteria-en", "tone"];
+  const other = ["kokoro:af_heart", "kokoro-am_adam", "kokoro|af_heart|0.75", "google:en-US-Journey-F", "say:Samantha", "macos-samantha", "aura-asteria-en", "tone", "futurevoice:v2"];
   for (const name of owner) assert.equal(isVoiceOfChoiceNarrator(name), true, name);
   for (const name of other) assert.equal(isVoiceOfChoiceNarrator(name), false, name);
   assert.equal(narratorKind(undefined), "");
@@ -91,7 +91,11 @@ test("voice of choice: narrators are read from what the pipeline and Studio real
   for (const name of other) assert.equal(voiceOfChoiceFinding(name, false)?.severity, "error", name);
   for (const name of other) assert.equal(voiceOfChoiceFinding(name, true)?.severity, "warning", name);
   for (const name of owner) assert.equal(voiceOfChoiceFinding(name, false), null, name);
-  assert.equal(voiceOfChoiceFinding(undefined, false), null, "a package that never recorded its narrator is not accused");
+  for (const missing of [undefined, null, "", "   ", 7, {}]) {
+    assert.equal(voiceOfChoiceFinding(missing, false)?.severity, "error", `a recorded narrator of ${JSON.stringify(missing)} is not shown to be the voice of choice`);
+    assert.match(voiceOfChoiceFinding(missing, false)?.message ?? "", /records no narrator/);
+    assert.equal(voiceOfChoiceFinding(missing, true)?.severity, "warning");
+  }
 });
 
 test("voice of choice: the design check fails a film narrated by another voice, passes the owner voice, and an override stays visible", () => {
@@ -132,6 +136,11 @@ test("voice of choice: the design check by film id reads narration.json and hono
     assert.equal(overridden.ok, true);
     assert.equal(overridden.findings.find((f) => f.rule === "voice-of-choice")?.severity, "warning");
     assert.equal(withOverride("0", () => checkFilmDesignById("still-talking")).ok, false, "only an explicit 1 or true allows another voice");
+
+    fs.writeFileSync(narrationFile, JSON.stringify({ voice: "af_heart" }));
+    const unrecorded = withOverride(undefined, () => checkFilmDesignById("still-talking"));
+    assert.equal(unrecorded.ok, false, "an existing narration.json with no ttsBackend is reported, not passed silently");
+    assert.match(unrecorded.findings.find((f) => f.rule === "voice-of-choice")?.message ?? "", /records no narrator/);
 
     fs.writeFileSync(narrationFile, "{ not json");
     assert.deepEqual(withOverride(undefined, voiceFindings), [], "unreadable narration.json is left to the stages that own it");
