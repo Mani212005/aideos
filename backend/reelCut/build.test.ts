@@ -27,7 +27,10 @@ import { ProductionError } from "../pipeline/types";
 import { runProduction } from "../pipeline/run";
 import { setMockShotVisualHandler, clearMockShotVisualHandler } from "../jev";
 import { buildDesign } from "../designSpec/build";
-import { stageNativePackage } from "../journeys/nativeFrames";
+import { emitRenderIr, type Measurer } from "../renderIr/emit";
+import { resolveRepoPath } from "../nativeRenderer";
+import { loadSceneAssets } from "../scene/loadSceneAssets";
+import type { Scene } from "../../src/dl/scene/types";
 import { narration, picturePackage, stretchPastReelCap, writePictureCut } from "../testSupport/pictureReelCut";
 
 // Builds a small legacy node-graph package with a measured long narration and no external media.
@@ -241,7 +244,7 @@ test("runProduction assemble: B-roll wired into a condensed reel keeps the reel 
   assert.ok(events.includes("skipped"), `the reel is reused after assembly, saw ${events.join(", ")}`);
 });
 
-test("a picture film builds a reel cut that carries the pinned plate and objects, and stages for native drawing", async () => {
+test("a picture film builds a reel cut that carries the pinned plate and objects, and emits them as aideos.render/3 image nodes", async () => {
   const slug = "reel-pictures-cut";
   const { long } = picturePackage(slug);
   const synthesize = writePictureCut(slug, stretchPastReelCap(slug, long));
@@ -249,8 +252,11 @@ test("a picture film builds a reel cut that carries the pinned plate and objects
   const rasters = (film: Film) => [film.scene!.background, ...film.scene!.props].flatMap((asset) => asset.raster ? [{ id: asset.assetId, ...asset.raster }] : []);
   assert.equal(rasters(long).length, 3, "the long carries the plate and both objects");
   assert.deepEqual(rasters(reel), rasters(long), "the reel carries the same pinned pictures as the long");
-  const staged = stageNativePackage(reel, "reel", path.join(TEST_VIDEOS_DIR, `${slug}-native`), { pictureOnly: true });
-  assert.equal((JSON.parse(fs.readFileSync(staged.irPath, "utf8")) as { schema: string }).schema, "aideos.render/3");
+  // The IR is emitted with a stub text measurer (the real one is the native binary, which the unit job does not build); the pictures do not depend on text metrics.
+  const measure: Measurer = (request) => ({ widths: request.runs.map((r) => r.text.length * r.size * 0.5), metrics: request.metrics.map((m) => ({ baseline: m.size * 0.8, height: m.size * 1.2, ascent: m.size, descent: m.size * 0.2 })) });
+  const emitted = emitRenderIr({ film: reel, format: "reel", svgSources: loadSceneAssets(reel.scene as unknown as Scene).svgSources, measure, resolvePath: resolveRepoPath });
+  assert.equal(emitted.ir.schema, "aideos.render/3");
+  assert.equal(emitted.ir.stage.filter((node) => node.kind === "image").length, 3, "the cut reel draws the plate and both objects");
 });
 
 test("a picture film's reel cut refuses an unpinned or changed picture with the long build's own message", async () => {

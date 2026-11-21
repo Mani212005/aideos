@@ -262,7 +262,7 @@ narration instead of reusing the long) resolves its pictures the way the long de
 reel names the same cached, sha256-pinned plate and objects as the long and refuses a missing, unapproved or changed
 picture with the same message and fix. Nothing is generated there. An identity reel reuses the long film and needs no
 step. `backend/reelCut/build.test.ts` builds the cut reel of the synthetic picture film (long past the cap, tighter narration)
-and checks its pictures, its staging as `/3` and the refusals; `pictures_stage.journey.ts` draws that cut reel natively
+and checks its pictures, its emission as `/3` image nodes and the refusals; `pictures_stage.journey.ts` draws that cut reel natively
 and on Remotion and gates the stage at the same SSIM.
 
 **Speed.** Measured on the Linux laptop (12 threads, x264 `final`, 480 frames of 1920 x 1080, alternating runs with a
