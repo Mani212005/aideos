@@ -98,7 +98,7 @@ Run `aideos audio fetch` once before the first design build, because the default
    - Highlighting big performance numbers -> `StatCounter`
    - Showing token sequences -> `TokenStrip`
 2. **Custom SVG Animation (`src/dl/scene/`)**:
-   - For custom vector scenes, animates static SVG documents via declarative element-level timelines (`src/dl/scene/svgAnimation.ts`) with audio-first retiming (`src/dl/scene/sceneTiming.ts`).
+   - For custom vector scenes, animates static SVG documents via declarative element-level timelines (`src/dl/scene/svgAnimation.ts`).
 3. **Pacing Invariant Verification (`src/dl/schema.ts`, `scripts/validate_film.ts`)**:
    - First shot must cut (`move: "cut"`).
    - No device hold exceeds 25 seconds.

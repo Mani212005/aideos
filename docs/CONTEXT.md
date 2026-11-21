@@ -285,7 +285,6 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `trimSilence(samples, threshold)`: Re-exported from `backend/pcm.ts`; trims silence samples below amplitude threshold from raw Float32Array audio.
 * `chunkTextForTTS(text, maxChars)`: Splits text blocks exceeding maxChars (~800 chars) at sentence boundaries for Kokoro ONNX.
 * `splitScriptIntoSegments(script)`: Splits a narration script into distinct shot-scoped segments (strictly by narration beats for Claude-tagged scripts, or blank-line paragraphs for untagged prose).
-* `measureAudioDuration(filePath)`: Measures exact audio file duration using ffprobe.
 * `produceAudioPipeline(script, outDir, options)`: Synthesizes script into sample-domain audio timing spine with line-by-line caching under `voiceover_lines/`, emitting `voiceover.wav`, `captions.vtt`, and `voiceover_words.json`.
 * `normalizeNarrationLoudness(inputPath, outputPath)`: Normalizes a narration WAV to the review loudness target (-16 integrated LUFS, -1 dB true peak) without changing duration.
 * `NARRATION_LOUDNESS_TARGET`: Loudness target (`{ integratedLufs: -16, truePeakDb: -1 }`) inside the review window with safe true-peak headroom.
@@ -338,8 +337,6 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `draftStopAfter(stopAfter, finalExport)` (`backend/pipeline/types.ts`): Resolves run stop stage, defaulting to stopping after `assemble` (draft) unless `finalExport: true` or an explicit `stopAfter` is supplied.
 * `runDirector(request, onProgress)` (`backend/pipeline/director.ts`): Auto-prompt entry point above `runProduction` that drafts a Claude screenplay from a raw prompt with an LLM and produces a draft film (or renders verified mp4s when `--final-export` is passed).
 * `draftScreenplay(prompt, options)` (`backend/pipeline/director.ts`): Drafts and validates a Claude screenplay from a natural language prompt, retrying rejected drafts with feedback.
-* `transformProseToScreenplay(prose, options)` (`backend/pipeline/director.ts`): Deprecated and unused. A plain-text story is converted by `plainTextToTaggedScript`, never by a model.
-* `buildProseTransformSystemInstruction()` (`backend/pipeline/director.ts`): Deprecated and unused (see `transformProseToScreenplay`).
 * `compileFilmFromScreenplayAsync(script, narration, shotDurations, options, jevOptions)` (`backend/pipeline/design.ts`): The design stage's compile path. Compiles screenplay and narration spine into a validated `Film`, asking Jev `selectShotVisual` (see `backend/jev.ts`) only for beats that could take a device, and emitting a device only when `backend/shotVisualCues.ts` finds its data in the narration and the beat has on-screen copy to headline it.
 * `renderFormat(slug, format, options)` (`backend/pipeline/render.ts`): Drives Remotion render with headless verification and contact sheet generation.
 * `startMcpServer(options)` / `createMcpServer(options)` (`backend/mcp/server.ts`): Exposes the production pipeline, design tools, agent bridge, and remote agent link loop (`aideos_wait_for_task`) as an MCP stdio/HTTP server with tools `aideos_produce_film` (defaults to stopping after `assemble` as a draft unless `finalExport: true` is passed), `aideos_run_status`, `aideos_list_runs`, `aideos_list_films`, `aideos_get_film`, `aideos_edit_film`, `aideos_list_edit_log`, `aideos_get_pending_tasks`, `aideos_claim_task`, `aideos_complete_task`, `aideos_report_step`, `aideos_look_brief`, `aideos_look_check`, `aideos_design_brief`, `aideos_read_file`, `aideos_write_file`, `aideos_design_build`, `aideos_design_check`, `aideos_frame_stills`, `aideos_submit_frame_review`, and `aideos_wait_for_task`.
@@ -492,7 +489,6 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `svgDocument.ts`: Pure dependency-free SVG document parser (`parseSvgDocument`), element ID discovery (`collectSvgElementIds`), and bounds calculation.
 * `svgReact.tsx`: React SVG renderer (`renderSvgDocumentToReact`) with instance namespacing and per-frame element state transforms.
 * `SceneClip.tsx`: Remotion composition entry point with single compilation and current frame selection.
-* `sceneTiming.ts`: Audio-first retiming helpers (`framesForAudioMs`, `audioSyncDriftMs`, `alignSceneToAudio`, `retimeSvgTimeline`).
 * `SceneView.tsx`: Pure browser-safe SVG scene renderer for background and prop assets with camera transform support and no filesystem imports; character rigs render through the separate Three stage.
 * `compile.ts`: Pure deterministic compiler (`compileScene`) threading custom animation timelines and camera tracks onto frames for environment assets (background and props).
 * `cameraTrack.ts`: Camera track compiler (`compileCameraTrack`, with the opt-in `holdPush` push-in over camera holds) and motion stats (`measureCameraMotion`) measuring peak pan speed, per-frame zoom step, pan acceleration, hold share, and continuous move duration, exporting pacing constants (`MIN_CAMERA_HOLD_SHARE`, `MAX_CAMERA_CONTINUOUS_MOVE_SECONDS`, `CAMERA_CUE_LANDING_TOLERANCE_SECONDS`).
@@ -517,7 +513,6 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `wrapBalanced(marked, options)` (`wrap.ts`): Balanced line wrapping algorithm for display type.
 * `corners(inset, bottom, len, color)`, `backdropSvg(options)`, `hudTag(label, x, y, anchor)`, `readoutSeries(canvas, prefix, x, y, values)` (`chrome.ts`): Frame furniture and chrome elements for scene films.
 * `produceVoiceover(config)`, `readVoiceoverTiming(slug, spineFile, rootDir)` (`voiceover.ts`): Audio-first narration synthesis, mastering, Whisper word alignment, and shot-spine persistence.
-* `previewFrames(source, frames, rootDir)`, `framesFromArgs(args)` (`preview.ts`): Fast headless Chrome preview frames rasterizer.
 * `reviewFilmFrames(slug, frames, scale)` (`reviewFrames.ts`): Renders Remotion composition review stills for any scene film.
 * `midShotPicks(spans, composition)`, `renderReviewStills(picks, outDir, scale)` (`reviewStills.ts`): Renders review still picks via Remotion bundler and renderer.
 * `displayWords(lines, extra)`, `unmeasuredWords(words, table)`, `measureWords(words, file)` (`measureWords.ts`): Measures unmeasured words in headless Chrome and merges them into `wordWidths.json`.

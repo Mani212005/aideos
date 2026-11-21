@@ -32,7 +32,6 @@ CompiledFrame.camera              dense per-frame camera state
 | Renderer (with camera transform) | `SceneView.tsx` |
 | Remotion entry point | `SceneClip.tsx` |
 | Whole-film stage | `../SceneStage.tsx` |
-| Audio-first retiming | `sceneTiming.ts` |
 | Stage camera projection & output viewports | `projection.ts` |
 | Scene-film kit (Canvas, Timeline builder, camera authoring) | `../../../backend/sceneKit/` |
 | Picture assets (the illustrated stage): element id, drawn box, declaration checks | `raster.ts` |
@@ -245,10 +244,8 @@ docs/GOOD_VIDEO.md, "Pictures".
 
 ## Audio-first timing
 
-Scene length is derived from the narration, never chosen. `framesForAudioMs` converts a segment
-length to frames; `alignSceneToAudio` re-clocks a whole scene to a new take, retiming keyframe
-tracks and every animation clip proportionally so visuals stay on their beats instead of
-drifting. Validation Rule 14 holds the two within 50ms.
+Scene length is derived from the narration, never chosen. Validation Rule 14 holds the scene's
+frame duration within 50ms of its audio duration.
 
 ## Scene engine and scene film rules (moved from AGENTS.md)
 
@@ -296,8 +293,8 @@ drifting. Validation Rule 14 holds the two within 50ms.
   `wordWidths.json` (kerned Geist word widths measured in Chrome; add a film's new words with
   `measureWords.ts`, which merges rather than replaces), `wrap.ts` (`wrapBalanced`), `chrome.ts`
   (corners, backdrop, readouts), and the Node-only tools `voiceover.ts` (`produceVoiceover({slug,
-  beats, alignment})`: synthesize, master, optional Whisper word alignment, write the spine),
-  `preview.ts` (fast Chrome frames) and `reviewFrames.ts` (`npx tsx backend/sceneKit/reviewFrames.ts
+  beats, alignment})`: synthesize, master, optional Whisper word alignment, write the spine) and
+  `reviewFrames.ts` (`npx tsx backend/sceneKit/reviewFrames.ts
   <slug>`). A film supplies its beats, artwork and accent; topic scenes stay in the film's own folder.
 - Aim a cue at a spoken word, not at a fraction of its shot: the payoff word of a sentence is
   usually near its end. The kit's `createCues(timing).word()` reads the narration's own offsets and throws

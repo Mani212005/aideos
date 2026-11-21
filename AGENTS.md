@@ -147,7 +147,6 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Drive a film through `runProduction` in `backend/pipeline/run.ts`. It is the one programmatic entry point from a script to finished mp4s.
 - `runDirector` in `backend/pipeline/director.ts` drafts a screenplay from a raw prompt.
 - `runDirector` checks the draft with the `scriptIntake.ts` parser. It passes a good draft to `runProduction` unchanged.
-- Never use `transformProseToScreenplay`. It is deprecated and unused.
 - Convert a user's plain-text story with `plainTextToTaggedScript`. Never let a model reformat it.
 - Use `generateScreenplay` only as the test injection point.
 - The real path always calls the model. Never use a canned or templated plan.

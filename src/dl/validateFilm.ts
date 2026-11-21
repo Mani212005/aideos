@@ -4,7 +4,7 @@
  * anchor card geometry.
  * 100% pure TypeScript data validator with zero Node runtime imports.
  * Inputs and outputs: Film manifest object -> validation diagnostics against cinematic invariants.
- * Used by: src/dl/runtime.ts, src/dl/validateFilmNode.ts, scripts/validate_film.ts.
+ * Used by: src/dl/runtime.ts, scripts/validate_film.ts.
  */
 import { parseFilm, type Film } from "./schema";
 import { buildTimeline, camAt, lookBox, projectBox } from "./camera";
