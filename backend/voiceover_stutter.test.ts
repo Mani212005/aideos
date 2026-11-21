@@ -28,6 +28,7 @@ import {
   longestSilenceSec,
   maxSampleStep,
   normalizePeak,
+  timeStretch,
   type AssembleOptions,
   type PcmChunk,
 } from "./pcm";
@@ -320,6 +321,28 @@ test("encodeWav/decodeWav: round-trips mono PCM at the declared sample rate with
   let worst = 0;
   for (let i = 0; i < samples.length; i++) worst = Math.max(worst, Math.abs(decoded.samples[i] - samples[i]));
   assert.ok(worst < 1 / 32767 + 1e-9, `16-bit round trip drifted by ${worst}`);
+});
+
+// House pace (captain, 2026-11-21): "I feel that 1.2x of the speed would really fit this nicely." A voice with no
+// speaking-rate setting is re-paced by a pitch-preserving stretch, so it must sound faster, not higher.
+test("timeStretch: 1.2x keeps a voice's pitch, lands on round(n / 1.2) samples and leaves no seam", () => {
+  const sr = 24000;
+  const voice = new Float32Array(sr * 2);
+  for (let i = 0; i < voice.length; i++) voice[i] = 0.5 * Math.sin((2 * Math.PI * 180 * i) / sr) * (0.6 + 0.4 * Math.sin((2 * Math.PI * 1.7 * i) / sr));
+  // Pitch from zero crossings, in Hz.
+  const pitch = (a: Float32Array) => {
+    let crossings = 0;
+    for (let i = 1; i < a.length; i++) if (a[i - 1] < 0 !== a[i] < 0) crossings++;
+    return crossings / 2 / (a.length / sr);
+  };
+  for (const rate of [1.2, 0.8]) {
+    const out = timeStretch(voice, rate, sr);
+    assert.equal(out.length, Math.round(voice.length / rate), `${rate}x length`);
+    assert.ok(Math.abs(pitch(out) - 180) < 1, `${rate}x pitch ${pitch(out)} Hz`);
+    assert.ok(maxSampleStep(out) <= maxSampleStep(voice) * 1.05, `${rate}x seam: step ${maxSampleStep(out)} vs ${maxSampleStep(voice)}`);
+  }
+  assert.deepEqual(timeStretch(voice, 1, sr), voice, "rate 1 is the voice as spoken");
+  assert.throws(() => timeStretch(voice, 0, sr), /positive/);
 });
 
 // Regression test: normalization must raise level without ever clipping

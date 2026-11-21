@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { characterSpecSchema, type CharacterSpec } from "../../src/dl/characters/schema";
+import { seeded } from "./propertyTest";
 
 const ROOT = path.resolve(__dirname, "../..");
 /** Every committed character: the approved library Iona and the two fixtures. */
@@ -26,17 +27,8 @@ export function characterPin(name: FixtureCharacter): { id: string; version: num
   return { id, version, hash };
 }
 
-// Returns a deterministic uniform random source (mulberry32) so a failing property case is reproducible by seed.
-export function seeded(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+// Re-exported so every character test keeps its import: the one seeded random source lives in propertyTest.ts.
+export { seeded };
 
 /** The proportion knobs a random variant draws, kept for failure messages. */
 export interface ProportionDraw { seed: number; leg: number; thigh: number; arm: number; upper: number; torso: number; shoulders: number; hips: number }

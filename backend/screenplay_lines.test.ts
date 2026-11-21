@@ -34,6 +34,10 @@ import { runProduction } from "./pipeline/run";
 import { FILMS_DIR, VIDEOS_DIR } from "./pipeline/filmStore";
 import { checkVoiceoverIntake } from "./voiceoverIntake";
 import { startEditor } from "../scripts/studioDriver";
+import { installVoiceOfChoiceForTests } from "./testSupport/fakeVcd";
+
+// Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
+installVoiceOfChoiceForTests();
 
 // The 0.5.0 defect: a bare chapter title sits directly above the paragraph it opens.
 const CLOSING_STORY = `The Middle
@@ -158,7 +162,7 @@ test("the shared synthesis boundary rejects a leaked title before any voice is s
           script: "## 0:00-0:20 - The Closing\n\n[NARRATION]\nThe Closing does this mean harnesses are useless?\n",
           title: "M6",
           slug,
-          ttsBackend: "tone",
+          ttsBackend: "vcd",
           design: "templates",
           broll: false,
           resume: false,

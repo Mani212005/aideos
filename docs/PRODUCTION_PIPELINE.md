@@ -288,8 +288,8 @@ chunk limit and sample rate; see `backend/voiceLines.ts`), so regenerating voice
 only changed lines and reuses every other recording untouched. Trimming, boundary fades, gap insertion
 and peak normalization all happen on samples rather than on encoded files, so the reported segment
 offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. The
-default pause is 200 ms between narration segments and 900 ms before a segment that opens a new
-chapter. For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
+default pause is 170 ms between narration segments and 750 ms before a segment that opens a new
+chapter (the [house pace](GOOD_VIDEO.md#house-pace) gaps, `HOUSE_PACE` in `backend/pacingProfile.ts`). For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
 scene-film voiceover beats can provide chapter names explicitly. Both pause lengths and explicit
 chapter-start flags can be overridden through the audio options. The longer chapter breath gives
 later music changes room to land between spoken lines. The assembled audio is then normalized to
@@ -305,14 +305,44 @@ and a design cue on the first word of a later shot would resolve to nothing. Sum
 the lengths land exactly on that shot's narrated start, the same millisecond its first word is
 timed on.
 
-Backends live in `backend/tts.ts`. The default is `vcd` (My voice): the owner's cloned voice served by the
-local `vcd` service on loopback (`backend/vcdClient.ts`, `voiceClone` in `aideos.config.json`; `AIDEOS_VCD_URL`,
-`AIDEOS_VCD_VOICE_ID` and `AIDEOS_VCD_LANGUAGE` override it, `--language auto|en|hi` per run). When it is not
-reachable the run fails plainly and never swaps to another voice. Kokoro-82M runs locally through ONNX with no
-API key and is an explicit option, configured with a default pace multiplier of 0.75 (`DEFAULT_KOKORO_SPEED`)
-to keep explainer narration within the measured review pacing limit (`AIDEOS_TTS_SPEED` or `--speed` overrides);
+### Voice of choice
+
+The owner's cloned voice is the voice of choice: every film is narrated with it, by every worker, in every
+run and test. Backends live in `backend/tts.ts` and the default is `vcd` (My voice, Studio keys `vcd-my-voice`
+and `vcd-my-voice-hi`), served by the local `vcd` service on loopback (`backend/vcdClient.ts`, `voiceClone`
+in `aideos.config.json`; `AIDEOS_VCD_URL`, `AIDEOS_VCD_VOICE_ID` and `AIDEOS_VCD_LANGUAGE` override it,
+`--language auto|en|hi` per run). When the service is not reachable the run fails with a plain reason and
+never swaps to another voice. No worker may switch to another voice (Kokoro, Google, Deepgram, macOS `say` or
+the `tone` placeholder) without the captain's word.
+
+Starting the voice service:
+
+- On the Linux machine that holds the enrolled voice: run `vcd serve`. It listens on `127.0.0.1:8740` only.
+- From any other machine: open an SSH tunnel to that service and leave it running,
+  `ssh -N -L 8740:127.0.0.1:8740 <the Linux machine>`. Aideos talks only to loopback addresses (it refuses any
+  other URL), so the tunnel is the one way to reach a remote service. Voice recordings and enrolled-voice data
+  never leave the Linux machine and are never committed.
+- Check it with `curl -s http://127.0.0.1:8740/v1/voices`, which lists the enrolled voice names and ids (no audio).
+
+Tests and CI have no voice service and no recordings. The `npm test` preload (`backend/testSupport/fixtureVideosDir.ts`)
+installs a deterministic fake of the service (`backend/testSupport/fakeVcd.ts`): it answers the same loopback API on
+the default address, reports the owner voice id and the real `vcd:<voice id>:<language>` backend name, so cache
+fingerprints and `narration.json` carry the real shapes, and returns a quiet tone sized from the word count, never
+speech. A test never reaches a real service and never commits voice audio.
+
+The design check (rule `voice-of-choice`) fails when a package's `narration.json` records any narrator other
+than the voice of choice (`vcd`), or records none (a missing or non-string `ttsBackend`). It runs in
+`aideos design check <film>`, in the design stage of `runProduction` (`buildDesign`) and in the reel build, so a
+film narrated by another voice is not built or rendered. Only the captain may allow one, by setting
+`AIDEOS_ALLOW_OTHER_VOICE=1` for the run, which downgrades the finding to a warning that stays in the report.
+
+Other backends exist only for the captain's explicit choice. Kokoro-82M runs locally through ONNX with no
+API key and is configured with a default pace multiplier of 1.05 (`DEFAULT_KOKORO_SPEED`:
+the smallest 0.05 step whose fixture take clears the [house pace](GOOD_VIDEO.md#house-pace) wpm floor, measured; `AIDEOS_TTS_SPEED` or `--speed` overrides);
 `AIDEOS_TTS` or the `ttsBackend` option pins `kokoro`, `google`, `say` or the offline `tone`
-placeholder instead. Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because it
+placeholder instead. A backend without its own speaking-rate setting (`vcd`, `google`, `say`, `tone`) is
+re-paced to the house narration rate line by line with a pitch-preserving time-stretch (`timeStretch` in
+`backend/pcm.ts`, `narrationRate` on `ProduceAudioOptions`), and the rate is part of each line's cache key. Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because it
 resolves its voice files relative to its own module directory and because the ONNX thread pool
 aborts the process on teardown when loaded inside the TypeScript loader.
 

@@ -1,6 +1,6 @@
 /**
  * File Description: Journey J7: shared Three stage facts describe the Iona film in the wide and reel crops, including contact against the decisive word, projected presence, camera and what remains unmeasured.
- * Inputs and outputs: the iona-receive fixture through runProduction (contact-window wide and reel renders, tone narration) -> assertions on film-derived stage truth and Gemini stage facts for each output crop.
+ * Inputs and outputs: the iona-receive fixture through runProduction (contact-window wide and reel renders, owner-voice narration (fake voice service)) -> assertions on film-derived stage truth and Gemini stage facts for each output crop.
  * Used by: npm run test:journeys (the CI journeys job).
  */
 

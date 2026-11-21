@@ -16,7 +16,8 @@ import type { ProduceAudioResult } from "../audio";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { FILMS_DIR } from "../pipeline/generatedFiles";
 import { loadFixtureFilm } from "../testSupport/fixtureFilms";
-import { endCardLineFingerprint, ensureEndCardVoice, narrationVoiceOf, readNarrationVoice, type LineSynthesizer } from "./voice";
+import { FAKE_OWNER_BACKEND_NAME, FAKE_OWNER_VOICE_ID } from "../testSupport/fakeVcd";
+import { endCardLineFingerprint, ensureEndCardVoice, narrationVoiceOf, readNarrationVoice, type LineSynthesizer, type NarrationVoice } from "./voice";
 
 // Creates a package with a narrated fixture film and, optionally, a narration.json.
 function makePackage(tag: string, narration?: Record<string, unknown>): string {
@@ -44,16 +45,18 @@ function stubSynth(calls: Array<{ text: string; options: unknown }>): LineSynthe
   };
 }
 
-const KOKORO = { ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 0.75 };
+const OWNER = { ttsBackend: FAKE_OWNER_BACKEND_NAME, voice: FAKE_OWNER_VOICE_ID, speed: 0.75 };
+const OWNER_VOICE: NarrationVoice = { backend: "vcd", voice: FAKE_OWNER_VOICE_ID, speed: 0.75, language: "auto" };
 
 test("end card voice: the narration voice is read from what narration.json records", () => {
-  assert.deepEqual(narrationVoiceOf(KOKORO), { backend: "kokoro", voice: "af_heart", speed: 0.75 });
+  assert.deepEqual(narrationVoiceOf(OWNER), OWNER_VOICE);
+  assert.deepEqual(narrationVoiceOf({ ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 0.75 }), { backend: "kokoro", voice: "af_heart", speed: 0.75 }, "an explicitly chosen other voice is still read");
   assert.deepEqual(narrationVoiceOf({ ttsBackend: "tone", voice: null, speed: null }), { backend: "tone", voice: null, speed: null });
   assert.equal(narrationVoiceOf({ ttsBackend: "mystery:x", voice: null, speed: null }), null);
-  const known = makePackage("known", KOKORO);
-  const legacy = makePackage("legacy", { ttsBackend: "kokoro:af_heart", segments: [] });
+  const known = makePackage("known", OWNER);
+  const legacy = makePackage("legacy", { ttsBackend: FAKE_OWNER_BACKEND_NAME, segments: [] });
   try {
-    assert.deepEqual(readNarrationVoice(path.join(getVideosDir(), known)), { backend: "kokoro", voice: "af_heart", speed: 0.75 });
+    assert.deepEqual(readNarrationVoice(path.join(getVideosDir(), known)), OWNER_VOICE);
     assert.equal(readNarrationVoice(path.join(getVideosDir(), legacy)), null, "a package narrated before voice was recorded has no known voice");
   } finally {
     for (const slug of [known, legacy]) cleanPackage(slug);
@@ -61,7 +64,7 @@ test("end card voice: the narration voice is read from what narration.json recor
 });
 
 test("end card voice: the line is synthesized once in the narration voice and attached to the film", async () => {
-  const slug = makePackage("spoken", KOKORO);
+  const slug = makePackage("spoken", OWNER);
   const calls: Array<{ text: string; options: unknown }> = [];
   try {
     const first = await ensureEndCardVoice(slug, { synthesize: stubSynth(calls) });
@@ -69,10 +72,10 @@ test("end card voice: the line is synthesized once in the narration voice and at
     assert.equal(first.changed, true);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].text, "If this helped, like and subscribe.");
-    assert.deepEqual(calls[0].options, { backend: "kokoro", voice: "af_heart", speed: 0.75 });
+    assert.deepEqual(calls[0].options, OWNER_VOICE);
     const onDisk = readFilm(slug)!;
     assert.equal(onDisk.endCardVoice?.src, `videos/${slug}/endcard/voiceover.wav`);
-    assert.equal(onDisk.endCardVoice?.fingerprint, endCardLineFingerprint("If this helped, like and subscribe.", { backend: "kokoro", voice: "af_heart", speed: 0.75 }));
+    assert.equal(onDisk.endCardVoice?.fingerprint, endCardLineFingerprint("If this helped, like and subscribe.", OWNER_VOICE));
     assert.equal(onDisk.endCardVoice?.words[onDisk.endCardVoice.words.length - 1]?.word, "subscribe.");
 
     // Already current: nothing is synthesized or written.
@@ -98,7 +101,7 @@ test("end card voice: the line is synthesized once in the narration voice and at
 });
 
 test("end card voice: an unknown voice keeps the card silent with a notice instead of guessing", async () => {
-  const slug = makePackage("unknown", { ttsBackend: "kokoro:af_heart" });
+  const slug = makePackage("unknown", { ttsBackend: FAKE_OWNER_BACKEND_NAME });
   const calls: Array<{ text: string; options: unknown }> = [];
   try {
     const result = await ensureEndCardVoice(slug, { synthesize: stubSynth(calls) });
@@ -113,7 +116,7 @@ test("end card voice: an unknown voice keeps the card silent with a notice inste
 });
 
 test("end card voice: no card, no line and no narration all leave the card silent", async () => {
-  const slug = makePackage("off", KOKORO);
+  const slug = makePackage("off", OWNER);
   const calls: Array<{ text: string; options: unknown }> = [];
   try {
     await ensureEndCardVoice(slug, { synthesize: stubSynth(calls) });

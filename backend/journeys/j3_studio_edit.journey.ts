@@ -1,7 +1,7 @@
 /**
  * File Description: J3 studio edit journeys in a real headless Chrome: (1) the AI edit Apply gesture, (2) start a film from the Start box, script save and reload, (3) the story inputs staying unavailable until the stored script has loaded. Before this, Apply Edits rolled back in the browser on a Node-only import (`path.resolve` externalized by Vite) while every Node test passed, and the script-save path had no browser coverage at all.
  * The journey makes the model-backed `/api/ai-edit` endpoint deterministic by answering it from the test (a valid `set_accent` plan) and leaves every other request real: the click on Apply Edits runs the real interpreter in the page, and the save, the edit log and the reload hit the real dev server and disk.
- * Inputs and outputs: a throwaway videos folder with a film made by the real pipeline (tone narration, template design, no model or key) -> asserts the edit is applied, written to film.json, logged, and still there after a reload; a new project's script is on disk and in the editor after a reload.
+ * Inputs and outputs: a throwaway videos folder with a film made by the real pipeline (owner voice through the fake voice service, template design, no model or key) -> asserts the edit is applied, written to film.json, logged, and still there after a reload; a new project's script is on disk and in the editor after a reload.
  * Used by: npm run test:journeys and npm run ci journeys (needs Chrome; AIDEOS_SMOKE_REQUIRED=1 turns a missing Chrome into a failure).
  */
 import assert from "node:assert/strict";
@@ -11,6 +11,10 @@ import path from "node:path";
 import { journey } from "./harness";
 import { findChromeBinary } from "../scene/renderStill";
 import { startEditor, StudioPage } from "../../scripts/studioDriver";
+import { installVoiceOfChoiceForTests } from "../testSupport/fakeVcd";
+
+// Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
+installVoiceOfChoiceForTests();
 
 const ROOT = path.resolve(__dirname, "../..");
 const AI_SLUG = "journey-ai-edit";
@@ -40,7 +44,7 @@ async function withStudio(slugs: string[], body: (studio: { page: StudioPage; ur
   let page: StudioPage | undefined;
   try {
     const { runProduction } = await import("../pipeline/run");
-    const produced = await runProduction({ script: SCRIPT, title: "Journey studio", slug: AI_SLUG, ttsBackend: "tone", design: "templates", broll: false, skipAgent: true, stopAfter: "design", syncToPreview: false, deviceCaller: null });
+    const produced = await runProduction({ script: SCRIPT, title: "Journey studio", slug: AI_SLUG, ttsBackend: "vcd", design: "templates", broll: false, skipAgent: true, stopAfter: "design", syncToPreview: false, deviceCaller: null });
     assert.equal(produced.status, "stopped", `could not prepare the journey film: ${produced.status} ${produced.warnings.join("; ")}`);
     server = await startEditor(videosDir);
     page = await StudioPage.open(chrome);

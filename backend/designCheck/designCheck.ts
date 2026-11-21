@@ -8,9 +8,10 @@
  * continuity (no motion snaps while visible, one origin per element), camera (speed limits,
  * move-then-hold pacing, cue landing, and subject focus framing), carry-over change holds,
  * audio lock, honest on-screen data, a clear inset region while a device shot shares the stage, and for pictures
- * (the illustrated stage) provenance, palette on pixels, no text (OCR), label contrast and resolution (pictures.ts).
+ * (the illustrated stage) provenance, palette on pixels, no text (OCR), label contrast and resolution (pictures.ts),
+ * and the voice of choice (a package narrated by another voice than the owner's cloned voice fails unless overridden).
  * Inputs and outputs: Film or Scene data -> standard-layer design rule violations and warnings.
- * Used by: backend/cli.ts, backend/pipeline/run.ts.
+ * Used by: backend/cli.ts, backend/pipeline/run.ts, backend/designSpec/build.ts, backend/reelCut/build.ts.
  */
 
 import { stageTimeline, STORY_HOLD_MAX_SEC } from "../stageTimeline";
@@ -48,6 +49,7 @@ import { checkThreeStage } from "./threeStage";
 import { checkSoundtrack } from "./soundtrack";
 import { checkPictures, type PictureOcr } from "./pictures";
 import type { AudioLibrary } from "../audioLibrary/schema";
+import { otherVoiceOverrideActive, voiceOfChoiceFinding } from "../voiceOfChoice";
 
 /** The standard layer rules a finding can belong to. */
 export type DesignRule =
@@ -73,7 +75,8 @@ export type DesignRule =
   | "provenance"
   | "picture-text"
   | "contrast"
-  | "resolution";
+  | "resolution"
+  | "voice-of-choice";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
 export interface DesignFinding {
@@ -100,6 +103,10 @@ export interface DesignCheckContext {
   library?: AudioLibrary;
   /** Reads words in a picture for the no-text rule; tesseract by default. */
   pictureOcr?: PictureOcr;
+  /** What the package recorded about its narrator (narration.json), for the voice-of-choice rule; absent when there is no narration yet. */
+  narration?: { ttsBackend?: unknown } | null;
+  /** True when the run is explicitly allowed to keep a narrator other than the voice of choice (the captain's word). */
+  allowOtherVoice?: boolean;
 }
 
 /** The locked design-system palette (src/dl/README.md); a film may add its own accent. */
@@ -656,6 +663,10 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
   checkAudioLock(film, findings);
   checkHonestData(film, findings);
   checkSoundtrack(film, findings, context);
+  if (context.narration) {
+    const voice = voiceOfChoiceFinding(context.narration.ttsBackend, context.allowOtherVoice === true);
+    if (voice) findings.push({ rule: "voice-of-choice", where: "narration.json", ...voice });
+  }
 
   return {
     filmId: film.id,
@@ -665,16 +676,29 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
   };
 }
 
+// Reads the narrator a package recorded (narration.json) for the voice-of-choice rule; empty when there is none or it is unreadable.
+export function narratorContext(pkg: string): Pick<DesignCheckContext, "narration" | "allowOtherVoice"> {
+  const file = path.join(pkg, "narration.json");
+  if (!fs.existsSync(file)) return {};
+  try {
+    const raw = JSON.parse(fs.readFileSync(file, "utf8")) as { ttsBackend?: unknown };
+    return { narration: { ttsBackend: raw?.ttsBackend }, allowOtherVoice: otherVoiceOverrideActive() };
+  } catch {
+    return {};
+  }
+}
+
 // Loads the film.json of a video package (personal videos dir, else examples/) and checks it.
 export function checkFilmDesignById(filmId: string): DesignReport {
   const file = path.join(resolvePackageDir(filmId), "film.json");
   if (!fs.existsSync(file)) throw new Error(`no film at ${path.relative(REPO_ROOT, file)}`);
   const film = parseFilm(JSON.parse(fs.readFileSync(file, "utf8")));
   const pkg = resolvePackageDir(filmId);
+  const narrator = narratorContext(pkg);
   const lookFile = path.join(pkg, "design", "look.json");
-  if (!fs.existsSync(lookFile)) return checkFilmDesign(film);
+  if (!fs.existsSync(lookFile)) return checkFilmDesign(film, narrator);
   const parsed = safeParseLookPlan(JSON.parse(fs.readFileSync(lookFile, "utf8")));
-  if (!parsed.success) return checkFilmDesign(film);
+  if (!parsed.success) return checkFilmDesign(film, narrator);
   const wordsFile = path.join(pkg, "voiceover_words.json");
   const words: TimedWord[] = fs.existsSync(wordsFile) ? JSON.parse(fs.readFileSync(wordsFile, "utf8")).words ?? [] : [];
   const designFile = path.join(pkg, "design", "design.json");
@@ -699,7 +723,7 @@ export function checkFilmDesignById(filmId: string): DesignReport {
   } catch {
     cameraTargets = [];
   }
-  return checkFilmDesign(film, { lookPlan: parsed.data, cameraTargets });
+  return checkFilmDesign(film, { ...narrator, lookPlan: parsed.data, cameraTargets });
 }
 
 // Formats a report as plain text an agent or a person can act on.

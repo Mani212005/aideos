@@ -18,7 +18,7 @@ import { boundTheme } from "../../src/projectTheme";
 import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { writeFilm } from "../pipeline/filmStore";
 import { buildSvgSources } from "../scene/buildSvgSources";
-import { checkFilmDesign, type DesignFinding, type DesignCheckContext } from "../designCheck/designCheck";
+import { checkFilmDesign, narratorContext, type DesignFinding, type DesignCheckContext } from "../designCheck/designCheck";
 import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
 import { designSpecSchema, type DesignSpec } from "./spec";
 import { checkLookPlan, packageCharacterResolver, parseLookPlan, type LookPlan } from "../lookPlan";
@@ -275,6 +275,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent", opti
     return fail([`camera cue resolution: ${err instanceof Error ? err.message : String(err)}`]);
   }
   const report = checkFilmDesign(builtFilm, {
+    ...narratorContext(pkg),
     ...(cameraTargets.length ? { cameraTargets } : {}),
     ...(lookPlan ? { lookPlan } : {}),
   });

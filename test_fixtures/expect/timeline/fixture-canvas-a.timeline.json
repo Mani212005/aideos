@@ -1,0 +1,32 @@
+{
+  "film": {
+    "id": "fixture-canvas-a",
+    "fps": 30,
+    "shots": [{"id":"shot-1","dur":6.06},{"id":"shot-2","dur":4.12},{"id":"shot-3","dur":5.92},{"id":"shot-4","dur":4.28}],
+    "narrationSec": 73.4
+  },
+  "timeline": [
+    {"shot":"shot-1","from":0,"to":655,"durationInFrames":655,"chapter":0},
+    {"shot":"shot-2","from":655,"to":1100,"durationInFrames":445,"chapter":0},
+    {"shot":"shot-3","from":1100,"to":1740,"durationInFrames":640,"chapter":0},
+    {"shot":"shot-4","from":1740,"to":2202,"durationInFrames":462,"chapter":0}
+  ],
+  "delivery": {
+    "long": {
+      "format": "long",
+      "fps": 30,
+      "storyFrames": 2202,
+      "card": {"from":2202,"to":2382,"durationInFrames":180,"lineFrom":null},
+      "totalFrames": 2382,
+      "cardWords": []
+    },
+    "reel": {
+      "format": "reel",
+      "fps": 30,
+      "storyFrames": 2202,
+      "card": {"from":2202,"to":2292,"durationInFrames":90,"lineFrom":null},
+      "totalFrames": 2292,
+      "cardWords": []
+    }
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * File Description: Journey J6: resume reopens exactly the right stages on a real character film. Running the same request again reuses every production stage (verify re-probes the outputs) and keeps the rendered reel byte for byte; giving the film its own edited copy of Iona (re-stamped) reuses intake, narration and look, and reruns design, reel, broll, assembly, render and verify into a reel whose pixels show the new art.
- * Inputs and outputs: the iona-receive fixture through runProduction three times (contact-window reel renders, tone narration) -> assertions on stages reused and run, the rendered files and the decoded contact frame.
+ * Inputs and outputs: the iona-receive fixture through runProduction three times (contact-window reel renders, owner-voice narration (fake voice service)) -> assertions on stages reused and run, the rendered files and the decoded contact frame.
  * Used by: npm run test:journeys (the CI journeys job).
  */
 
