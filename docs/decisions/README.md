@@ -37,6 +37,7 @@ Every entry has this shape:
 | 2026-11-21 | [Delete weak tests at about 60 to 70 percent confidence](2026-11-21-delete-weak-tests-policy.md) | owner | In force |
 | 2026-11-21 | [A reusable verify skill with a Feature Map and evidence log](2026-11-21-verify-skill.md) | owner | In force |
 | 2026-11-21 | [Purge recurring bad code habits in 16 small slices](2026-11-21-habits-purge-slicing.md) | owner | In force (slices 1 to 3 merged, slice 4 open) |
+| 2026-11-22 | [Owner video feedback for the next video (music, narrator, SVG with pictures)](2026-11-22-video-feedback-next-video.md) | owner | Decided, not yet on main |
 
 ## Adding an entry
 
