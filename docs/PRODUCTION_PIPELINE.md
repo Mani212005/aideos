@@ -312,7 +312,11 @@ run and test. Backends live in `backend/tts.ts` and the default is `vcd` (My voi
 and `vcd-my-voice-hi`), served by the local `vcd` service on loopback (`backend/vcdClient.ts`, `voiceClone`
 in `aideos.config.json`; `AIDEOS_VCD_URL`, `AIDEOS_VCD_VOICE_ID` and `AIDEOS_VCD_LANGUAGE` override it,
 `--language auto|en|hi` per run). When the service is not reachable the run fails with a plain reason and
-never swaps to another voice. No worker may switch to another voice (Kokoro, Google, Deepgram, macOS `say` or
+never swaps to another voice. The voice is never guessed: a configured id or name must match an enrolled voice;
+with none configured, the one voice named `my-voice` or `me` is used, else the only enrolled voice; anything else
+fails listing the enrolled choices. One `timeoutMs` deadline bounds a whole vcd synthesis (discovery, submit retries,
+polling, audio download); `backend/httpDeadline.ts` holds the shared, injectable deadline policy that also bounds
+speech-provider and audio library download requests. No worker may switch to another voice (Kokoro, Google, Deepgram, macOS `say` or
 the `tone` placeholder) without the captain's word.
 
 Starting the voice service:
