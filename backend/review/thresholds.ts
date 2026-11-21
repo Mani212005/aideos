@@ -2,12 +2,15 @@
  * File Description: The thresholds `aideos review` holds a video to.
  * Every number here was set from the calibration videos (see scripts/calibrate_review.ts and the
  * table in the review README), not guessed. Change a value only by re-running the calibration and
- * keeping the recorded reference ordering.
+ * keeping the recorded reference ordering. The pace numbers (pacing.deadAirMaxSec, the pacing wpm window,
+ * pacing.meanBeatMaxSec, camera.movePerSec and the story hold) are the exception: they come from the house pacing
+ * profile (backend/pacingProfile.ts), the captain's 2026-11-21 pace decision, not from calibration.
  * Inputs and outputs: none -> calibrated threshold constants for review criteria.
  * Used by: backend/review/criteria.ts.
  */
 
 import { STORY_HOLD_MAX_SEC } from "../stageTimeline";
+import { HOUSE_PACE } from "../pacingProfile";
 import { VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
 import { REEL_CAPTION_SAFE_ZONE } from "../../src/dl/fullScreenHeroLayout";
 
@@ -79,14 +82,17 @@ export const THRESHOLDS = {
     staticRunMaxSec: STORY_HOLD_MAX_SEC,
     /** Frame difference (0 to 255) below which two frames count as unchanged. */
     staticDiff: 0.05,
-    /** Silence longer than this inside narrated speech is dead air, seconds. */
-    deadAirMaxSec: 0.7,
-    /** Narration pace window, words per minute. */
-    wpmMin: 120,
-    wpmMax: 180,
+    /** Silence longer than this inside narrated speech is dead air, seconds (house pace). */
+    deadAirMaxSec: HOUSE_PACE.deadAirMaxSec,
+    /** Narration pace window, words per minute (house pace: 1.2x the 120 to 180 window before 2026-11-21). */
+    wpmMin: HOUSE_PACE.wpmWindow[0],
+    wpmMax: HOUSE_PACE.wpmWindow[1],
+    /** Longest the mean shot (beat) length may be, seconds (house pace); shorter is fine. */
+    meanBeatMaxSec: HOUSE_PACE.meanBeatMaxSec,
     /** Hard cuts (frame difference above this at 10 fps) allowed per minute. */
     hardCutDiff: 12,
-    hardCutsPerMinMax: 2,
+    /** Hard cuts allowed per minute (house pace: 2 before 2026-11-21, scaled by the narration rate). */
+    hardCutsPerMinMax: HOUSE_PACE.hardCutsPerMinMax,
   },
   /**
    * Reel hook (reel reviews only, non-gating). Set from the reference-video study
@@ -96,8 +102,8 @@ export const THRESHOLDS = {
    * ordering is untouched; re-measure on real reels before tightening any value.
    */
   hook: {
-    /** The first spoken word must start before this many seconds. */
-    firstWordMaxSec: 0.3,
+    /** The first spoken word must start before this many seconds (house pace: 0.3 s before 2026-11-21). */
+    firstWordMaxSec: HOUSE_PACE.hookFirstWordMaxSec,
     /** The first sentence has at least this many words. */
     sentenceWordsMin: 10,
     /** The first sentence has at most this many words. */
@@ -106,12 +112,12 @@ export const THRESHOLDS = {
   /**
    * Named narration pace windows for criterion 9. `default` mirrors `pacing.wpmMin`/`wpmMax` and is what
    * every review uses. `reel-fast` is opt-in (a reel review that names it) and only raises the upper bound to
-   * about 200 words per minute, from the study's measured references (192 and 202 wpm); the lower bound is
-   * not loosened. It never applies to a long review.
+   * 240 words per minute (the 200 it allowed before the 2026-11-21 house pace, scaled by the narration rate);
+   * the lower bound is the house floor, not loosened. It never applies to a long review.
    */
   pacingProfiles: {
-    default: { wpmMin: 120, wpmMax: 180 },
-    "reel-fast": { wpmMin: 120, wpmMax: 200 },
+    default: { wpmMin: HOUSE_PACE.wpmWindow[0], wpmMax: HOUSE_PACE.wpmWindow[1] },
+    "reel-fast": { wpmMin: HOUSE_PACE.wpmWindow[0], wpmMax: HOUSE_PACE.reelFastWpmMax },
   },
   loudness: {
     lufsMin: -18,
@@ -121,8 +127,8 @@ export const THRESHOLDS = {
     musicUnderVoiceTargetDb: 18,
   },
   camera: {
-    /** At least one purposeful move per this many seconds. */
-    movePerSec: 20,
+    /** At least one purposeful move per this many seconds (house pace). */
+    movePerSec: HOUSE_PACE.cameraMovePerSec,
     /** No move faster than this share of the frame width per second. */
     maxSpeedWidthPerSec: 0.2,
     /** A move must change the framing by at least this share of the frame width (or zoom ratio). */

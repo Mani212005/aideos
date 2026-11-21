@@ -318,9 +318,12 @@ pub fn render_video(ir_path: &Path, package_dir: Option<&Path>, out: &Path, mut 
     let stage = probe.shared_assets();
     drop(probe);
     let duration = ir.film.duration_frames.0;
-    let (first, last) = opts.frames.unwrap_or((0, duration - 1));
+    let Some(last_frame) = duration.checked_sub(1) else {
+        return Err("the film has no frames (durationFrames is 0), so there is nothing to render".to_string());
+    };
+    let (first, last) = opts.frames.unwrap_or((0, last_frame));
     if first > last || last >= duration {
-        return Err(format!("frames {first}-{last} are not inside the film (frames 0 to {})", duration - 1));
+        return Err(format!("frames {first}-{last} are not inside the film (frames 0 to {last_frame})"));
     }
     let plan = audio_plan(&ir, &package, first, last)?;
     let mut source = ParallelSource::start(ir_path, &package, &opts, (first, last), size, ir.film.fps.0, stage);

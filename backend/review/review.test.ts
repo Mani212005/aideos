@@ -641,11 +641,11 @@ test("criteria: the end card is part of the delivered length, its line is captio
   assert.equal(ok.metrics.captionWordMatch, 1);
   assert.equal(byKey(evaluateCriteria(inputs({ narration, film: { ...story, endCard: { ...card, words: [] } } }, uncaptioned)), "captions").status, "pass", "a silent card needs no caption");
 
-  // A 40 s video whose last 6 s are the card owes one move, not two.
+  // A 36 s video whose last 6 s are the card owes one move (one per 17 s at the 2026-11-21 house pace), not two.
   const moving = readFilmFacts(nodeFilm([{ look: "a" }, { look: "a", zoom: 1.1 }]));
-  const forty = { ...VIDEO, durationSec: 40, audioDurationSec: 40 };
-  assert.equal(byKey(evaluateCriteria(inputs({ film: { ...moving, endCard: { startSec: 34, endSec: 40, words: [] } }, video: forty })), "camera").metrics.movesNeeded, 1);
-  assert.equal(byKey(evaluateCriteria(inputs({ film: { ...moving, endCard: null }, video: forty })), "camera").metrics.movesNeeded, 2);
+  const thirtySix = { ...VIDEO, durationSec: 36, audioDurationSec: 36 };
+  assert.equal(byKey(evaluateCriteria(inputs({ film: { ...moving, endCard: { startSec: 30, endSec: 36, words: [] } }, video: thirtySix })), "camera").metrics.movesNeeded, 1);
+  assert.equal(byKey(evaluateCriteria(inputs({ film: { ...moving, endCard: null }, video: thirtySix })), "camera").metrics.movesNeeded, 2);
 });
 
 test("criteria: untimed silence on a delayed end-card line is excluded while story dead air still fails", () => {

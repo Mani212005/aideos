@@ -79,7 +79,8 @@ import { narrationLines } from '../backend/storyScript.ts'
 import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
 import { bodyLimitFor, declaredBodyTooLarge, isSafeId, readJsonBody, SAFE_ID } from '../backend/studioRequest.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
-import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, type LineAudio } from '../backend/voiceLines.ts'
+import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, pacedVoiceKey, unpacedVoiceKey, type LineAudio } from '../backend/voiceLines.ts'
+import { NARRATION_RATE } from '../backend/pacingProfile.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
 import {
   assembleSegments,
@@ -88,6 +89,7 @@ import {
   distributeWordTimings,
   encodeWav,
   normalizePeak,
+  timeStretch,
   DEFAULT_ASSEMBLE_OPTIONS,
 } from '../backend/pcm.ts'
 import {
@@ -121,7 +123,7 @@ const DEFAULT_VOICE_KEY = VCD_DEFAULT_VOICE_KEY;
 
 // Maps a stored narration backend or voiceLines voiceKey back to a Studio voice selector id.
 function mapStoredVoiceToStudioId(raw: string): string | null {
-  const key = raw.trim();
+  const key = unpacedVoiceKey(raw.trim());
   if (!key) return null;
   if (key === VCD_DEFAULT_VOICE_KEY || key === VCD_HINDI_VOICE_KEY) return key;
   if (key.startsWith('vcd:')) return key.endsWith(':hi') ? VCD_HINDI_VOICE_KEY : VCD_DEFAULT_VOICE_KEY;
@@ -1237,7 +1239,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 );
               }
             }
-            const recorded = recordedStatus(pkgDir, lines, cacheVoiceKey);
+            const recorded = recordedStatus(pkgDir, lines, pacedVoiceKey(cacheVoiceKey, NARRATION_RATE));
             sendJson(res, 200, {
               ok: true,
               revision: createHash('sha1').update(text).digest('hex').slice(0, 12),
@@ -1893,9 +1895,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   synthDeps,
                 );
                 const wav = decodeWav(spoken.wav);
-                return { sampleRate: wav.sampleRate, chunks: [{ text, samples: wav.samples }] };
+                // Studio voices have no speaking-rate setting here, so every line is re-paced to the house rate.
+                return { sampleRate: wav.sampleRate, chunks: [{ text, samples: timeStretch(wav.samples, NARRATION_RATE, wav.sampleRate) }] };
               };
-              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: cacheVoiceKey, synthesize: recordLine });
+              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: pacedVoiceKey(cacheVoiceKey, NARRATION_RATE), synthesize: recordLine });
               lineSummary = { total: lineResult.lines.length, recorded: lineResult.recorded, reused: lineResult.reused };
 
               const rate = lineResult.lines[0].audio.sampleRate;

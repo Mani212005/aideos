@@ -288,8 +288,8 @@ chunk limit and sample rate; see `backend/voiceLines.ts`), so regenerating voice
 only changed lines and reuses every other recording untouched. Trimming, boundary fades, gap insertion
 and peak normalization all happen on samples rather than on encoded files, so the reported segment
 offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. The
-default pause is 200 ms between narration segments and 900 ms before a segment that opens a new
-chapter. For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
+default pause is 170 ms between narration segments and 750 ms before a segment that opens a new
+chapter (the [house pace](GOOD_VIDEO.md#house-pace) gaps, `HOUSE_PACE` in `backend/pacingProfile.ts`). For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
 scene-film voiceover beats can provide chapter names explicitly. Both pause lengths and explicit
 chapter-start flags can be overridden through the audio options. The longer chapter breath gives
 later music changes room to land between spoken lines. The assembled audio is then normalized to
@@ -337,10 +337,12 @@ film narrated by another voice is not built or rendered. Only the captain may al
 `AIDEOS_ALLOW_OTHER_VOICE=1` for the run, which downgrades the finding to a warning that stays in the report.
 
 Other backends exist only for the captain's explicit choice. Kokoro-82M runs locally through ONNX with no
-API key and is configured with a default pace multiplier of 0.75 (`DEFAULT_KOKORO_SPEED`)
-to keep explainer narration within the measured review pacing limit (`AIDEOS_TTS_SPEED` or `--speed` overrides);
+API key and is configured with a default pace multiplier of 1.05 (`DEFAULT_KOKORO_SPEED`:
+the smallest 0.05 step whose fixture take clears the [house pace](GOOD_VIDEO.md#house-pace) wpm floor, measured; `AIDEOS_TTS_SPEED` or `--speed` overrides);
 `AIDEOS_TTS` or the `ttsBackend` option pins `kokoro`, `google`, `say` or the offline `tone`
-placeholder instead. Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because it
+placeholder instead. A backend without its own speaking-rate setting (`vcd`, `google`, `say`, `tone`) is
+re-paced to the house narration rate line by line with a pitch-preserving time-stretch (`timeStretch` in
+`backend/pcm.ts`, `narrationRate` on `ProduceAudioOptions`), and the rate is part of each line's cache key. Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because it
 resolves its voice files relative to its own module directory and because the ONNX thread pool
 aborts the process on teardown when loaded inside the TypeScript loader.
 

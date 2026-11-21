@@ -35,12 +35,12 @@ function screenplayFor(topic: string): string {
 
 [VISUAL] a bold title card naming the idea
 [ON SCREEN] ${topic}
-[NARRATION] Today we explain ${topic} from first principles, and why it matters.
+[NARRATION] Today we explain ${topic} from first principles, and why it matters to anyone who builds, runs or simply relies on these systems every single day.
 
 ## The Mechanism
 
 [VISUAL] a diagram of the mechanism
-[NARRATION] Here is exactly how it works, laid out step by step for the viewer.
+[NARRATION] Here is exactly how it works, laid out step by step for the viewer, so each part can be seen on its own before the whole picture comes together at the end.
 `;
 }
 
@@ -215,6 +215,6 @@ test("director prompts: assembled system instruction carries the guide's reel ho
   const prompt = buildDirectorSystemInstruction();
   assert.match(prompt, /^## Reel hook$/m);
   assert.match(prompt, /10 to 16 words/);
-  assert.match(prompt, /first word begins under 0\.3 s/);
+  assert.match(prompt, /first word begins under 0\.25 s/);
   assert.equal(prompt.split("## Reel hook").length - 1, 1, "the rule appears once, from the guide only");
 });

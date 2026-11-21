@@ -15,7 +15,7 @@
       "id": "2",
       "name": "Carry-over with transformation",
       "gate": false,
-      "target": ">= 1 per 20 s",
+      "target": ">= 1 per 17 s",
       "anchors": {
         "0": "Absent",
         "2": "Partly",
