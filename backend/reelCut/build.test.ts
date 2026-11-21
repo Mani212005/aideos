@@ -13,7 +13,7 @@ import { loadFixtureFilm } from "../testSupport/fixtureFilms";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { clampCaptionPlacement } from "../../src/dl/captionPlacement";
 import { deliveryTimeline } from "../../src/dl/delivery";
-import { buildCaptionsVtt, splitScriptIntoSegments, type ProduceAudioResult } from "../audio";
+import { splitScriptIntoSegments, type ProduceAudioResult } from "../audio";
 import { designSpecSchema } from "../designSpec/spec";
 import { createCues } from "../sceneKit/timing";
 import { narrationTimingForFilm } from "../designSpec/compile";
@@ -26,22 +26,9 @@ import { assertReelCap, reelForRender, reelSourceFingerprint } from "./store";
 import { ProductionError } from "../pipeline/types";
 import { runProduction } from "../pipeline/run";
 import { setMockShotVisualHandler, clearMockShotVisualHandler } from "../jev";
-
-// Makes a narration spine with exact shot boundaries and words for the actual cue matcher.
-function narration(texts: string[], durations: number[], dir = ""): ProduceAudioResult {
-  let cursor = 0;
-  const segments = texts.map((text, index) => {
-    const startOffset = cursor, duration = durations[index];
-    const tokens = text.split(/\s+/);
-    const words = tokens.map((word, k) => ({ word, punctuated_word: word, start: k * duration / tokens.length, end: (k + 1) * duration / tokens.length }));
-    cursor += duration;
-    return { text, duration, startOffset, words, utterances: [] };
-  });
-  const words = segments.flatMap((s) => s.words.map((w) => ({ ...w, start: s.startOffset + w.start, end: s.startOffset + w.end })));
-  return { segments, words, shotDurations: durations, totalAudioDuration: cursor,
-    captionsVttContent: buildCaptionsVtt(words), ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 0.75,
-    voiceoverPath: path.join(dir, "voiceover.wav"), wordsPath: path.join(dir, "voiceover_words.json"), captionsPath: path.join(dir, "captions.vtt") };
-}
+import { buildDesign } from "../designSpec/build";
+import { stageNativePackage } from "../journeys/nativeFrames";
+import { narration, picturePackage, stretchPastReelCap, writePictureCut } from "../testSupport/pictureReelCut";
 
 // Builds a small legacy node-graph package with a measured long narration and no external media.
 function packageFilm(slug: string, duration = 210): Film {
@@ -252,4 +239,37 @@ test("runProduction assemble: B-roll wired into a condensed reel keeps the reel 
   const resumed = await runProduction({ ...request, ...refuse, stopAfter: "assemble" }, (event) => { if (event.stage === "reel") events.push(event.status); });
   assert.equal(resumed.stoppedAfter, "assemble", JSON.stringify(resumed));
   assert.ok(events.includes("skipped"), `the reel is reused after assembly, saw ${events.join(", ")}`);
+});
+
+test("a picture film builds a reel cut that carries the pinned plate and objects, and stages for native drawing", async () => {
+  const slug = "reel-pictures-cut";
+  const { long } = picturePackage(slug);
+  const synthesize = writePictureCut(slug, stretchPastReelCap(slug, long));
+  const reel = await buildReel(slug, { synthesize });
+  const rasters = (film: Film) => [film.scene!.background, ...film.scene!.props].flatMap((asset) => asset.raster ? [{ id: asset.assetId, ...asset.raster }] : []);
+  assert.equal(rasters(long).length, 3, "the long carries the plate and both objects");
+  assert.deepEqual(rasters(reel), rasters(long), "the reel carries the same pinned pictures as the long");
+  const staged = stageNativePackage(reel, "reel", path.join(TEST_VIDEOS_DIR, `${slug}-native`), { pictureOnly: true });
+  assert.equal((JSON.parse(fs.readFileSync(staged.irPath, "utf8")) as { schema: string }).schema, "aideos.render/3");
+});
+
+test("a picture film's reel cut refuses an unpinned or changed picture with the long build's own message", async () => {
+  const slug = "reel-pictures-refused";
+  const { pkg, long } = picturePackage(slug);
+  const synthesize = writePictureCut(slug, stretchPastReelCap(slug, long));
+  const specFile = path.join(pkg, "design/design.json");
+  const spec = JSON.parse(fs.readFileSync(specFile, "utf8"));
+  const pinned: string = spec.pictures.items[1].sha256;
+  spec.pictures.items[1].sha256 = "0".repeat(64);
+  fs.writeFileSync(specFile, JSON.stringify(spec));
+  const refused = buildDesign(slug, "hand-built");
+  assert.equal(refused.state, "failed");
+  assert.match(refused.errors.join("\n"), /picture "orb" is pinned to 0{64} but its prompt now gives/);
+  await assert.rejects(buildReel(slug, { synthesize }), (error: unknown) => error instanceof ProductionError && error.stage === "reel" && error.message.includes(refused.errors.join("\n")));
+  delete spec.pictures.items[1].sha256;
+  fs.writeFileSync(specFile, JSON.stringify(spec));
+  await assert.rejects(buildReel(slug, { synthesize }), /picture "orb" is not approved yet: look at videos\/reel-pictures-refused\/visuals\/generated\/.* and pin it with "sha256": "[0-9a-f]{64}"/);
+  spec.pictures.items[1].sha256 = pinned;
+  fs.writeFileSync(specFile, JSON.stringify(spec));
+  assert.ok(await buildReel(slug, { synthesize }), "restoring the approved pin lets the reel build");
 });
