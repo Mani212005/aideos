@@ -22,6 +22,7 @@ import { createReelContext } from "./constraints";
 import { compileReel } from "./build";
 import { SPLICE_DEFAULT_FRAMES, SPLICE_EASING, SPLICE_MIN_FRAMES } from "./splice";
 import type { ReelCut } from "./schema";
+import { FAKE_OWNER_BACKEND_NAME, FAKE_OWNER_VOICE_ID } from "../testSupport/fakeVcd";
 
 const SLUG = "reel-splice-fixture";
 const SHOTS = 12;
@@ -44,7 +45,7 @@ function narration(texts: string[], durations: number[]): ProduceAudioResult {
     return { text, duration, startOffset, words, utterances: [] };
   });
   const words = segments.flatMap((s) => s.words.map((w) => ({ ...w, start: s.startOffset + w.start, end: s.startOffset + w.end })));
-  return { segments, words, shotDurations: durations, totalAudioDuration: cursor, captionsVttContent: buildCaptionsVtt(words), ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 0.75,
+  return { segments, words, shotDurations: durations, totalAudioDuration: cursor, captionsVttContent: buildCaptionsVtt(words), ttsBackend: FAKE_OWNER_BACKEND_NAME, voice: FAKE_OWNER_VOICE_ID, speed: 0.75,
     voiceoverPath: "voiceover.wav", wordsPath: "voiceover_words.json", captionsPath: "captions.vtt" };
 }
 

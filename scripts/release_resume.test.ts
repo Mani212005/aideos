@@ -13,7 +13,7 @@ import { fileEvidence, dirEvidence, GateLedger, hashTree, loadGateRecord, RECORD
 import { adoptProduction, ciInputs, geminiInputs, productionInputs, reviewInputs, SOURCE_EXCLUDED, type GateEnvironment, type ProducedOutput } from "./releaseGateInputs";
 
 const ENV: GateEnvironment = {
-  platform: "linux", arch: "x64", node: "v20.0.0", browser: null, ttsBackend: "kokoro", renderConcurrency: 2, aideosConfig: sha256("config-1"),
+  platform: "linux", arch: "x64", node: "v20.0.0", browser: null, ttsBackend: "vcd", renderConcurrency: 2, aideosConfig: sha256("config-1"),
   thresholds: { persistence: 0.65 }, reviewer: { agent: "agy", model: "gemini-test" }, verdictPolicy: { bar: 9, band: 0.5, maxDraws: 2, failedGateCap: 8.5 },
 };
 const ALL: GateId[] = ["ci", "production", "review", "gemini-long", "gemini-reel"];

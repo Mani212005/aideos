@@ -1,6 +1,7 @@
 /**
  * File Description: Audio-first narration pipeline. Splits a script into shot-scoped segments,
- * synthesizes each through a pluggable TTS backend with per-line caching (voiceover_lines/),
+ * synthesizes each through a pluggable TTS backend with per-line caching (voiceover_lines/), re-paces a
+ * backend that has no speaking-rate setting to the house narration rate (pitch-preserving, per line),
  * assembles the result in the sample domain (trim, fade, exact-offset concatenation, loudness
  * and peak normalization), and emits voiceover.wav, captions.vtt, voiceover_words.json and the
  * shot duration spine the film timeline is locked to. Script-to-synthesis callers share the
@@ -22,9 +23,10 @@ import { type Film, parseFilm } from "../src/dl/schema";
 import { getRetimedAudioFilename } from "../src/dl/audio/retime";
 import { assertScriptReadyForSynthesis, detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags, plainTextToTaggedScript } from "./scriptIntake";
 import type { ScriptIssue } from "./screenplayLines";
-import { synthesizeLines } from "./voiceLines";
+import { pacedVoiceKey, synthesizeLines } from "./voiceLines";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import type { VcdLanguagePreference } from "./vcdClient";
+import { HOUSE_PACE } from "./pacingProfile";
 import * as fsSync from "fs";
 import {
   assembleSegments,
@@ -34,6 +36,7 @@ import {
   decodeWav,
   shotDurationsOnMillisecondGrid,
   normalizePeak,
+  timeStretch,
   DEFAULT_ASSEMBLE_OPTIONS,
   type PcmChunk,
 } from "./pcm";
@@ -79,6 +82,8 @@ export interface ProduceAudioResult {
   voice: string | null;
   /** The pace multiplier the synthesizer applied (null when it has no pace control). */
   speed: number | null;
+  /** The pitch-preserving time-stretch applied to every line, when the synthesizer has no pace control of its own. */
+  timeStretch?: number;
   /** How many lines were recorded in this run and how many reused a stored recording. */
   lines?: { recorded: number; reused: number };
 }
@@ -108,6 +113,13 @@ export interface ProduceAudioOptions {
   language?: VcdLanguagePreference;
   /** Narration pace multiplier. Below 1 slows delivery, which reads better for explainer copy. */
   speed?: number;
+  /**
+   * Narration speed for a synthesizer with no speaking-rate setting of its own (the cloned voice, say, Google,
+   * the tone placeholder), applied to every line by a pitch-preserving time-stretch before the line is cached.
+   * Defaults to the house rate (backend/pacingProfile.ts); 1 leaves the audio as the synthesizer spoke it.
+   * A synthesizer that sets its own pace (Kokoro, through `speed`) is never stretched.
+   */
+  narrationRate?: number;
   /** Called once per synthesized chunk so long runs can report progress. */
   onProgress?: (done: number, total: number, label: string) => void;
   /** A synthesizer to use instead of creating one from `backend` (tests inject a counting one). */
@@ -260,14 +272,34 @@ export function formatTime(seconds: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms, 3)}`;
 }
 
-/** Synthesizes one segment's text as its chunks, each within the backend's length limit. */
-async function synthesizeChunks(text: string, backend: TtsBackend, onChunk?: (text: string) => void): Promise<PcmChunk[]> {
+/**
+ * The time-stretch a backend's lines get: the requested narration rate when the backend has no pace control of
+ * its own, otherwise 1 (Kokoro already spoke at the house pace through its speed setting).
+ */
+export function lineStretchFor(backend: Pick<TtsBackend, "speed">, narrationRate: number | undefined): number {
+  const rate = narrationRate ?? HOUSE_PACE.narrationRate;
+  if (!Number.isFinite(rate) || rate < 0.5 || rate > 2) throw new Error(`narration rate must be between 0.5 and 2, got ${rate}`);
+  return backend.speed === undefined ? rate : 1;
+}
+
+/**
+ * The per-line cache key for one synthesizer setup. The time-stretch is part of it, so a line re-paced at another
+ * rate is a different recording; an unstretched line keeps the key it had before stretching existed.
+ */
+export function lineVoiceKey(backend: Pick<TtsBackend, "name" | "voice" | "speed" | "maxChars">, stretch: number): string {
+  return pacedVoiceKey(`${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}`, stretch);
+}
+
+/** Synthesizes one segment's text as its chunks, each within the backend's length limit, re-paced by `stretch`. */
+async function synthesizeChunks(text: string, backend: TtsBackend, stretch: number, onChunk?: (text: string) => void): Promise<PcmChunk[]> {
   const synthesized: PcmChunk[] = [];
   for (const chunk of chunkTextForTTS(text, backend.maxChars)) {
-    const samples = await backend.synthesize(chunk);
-    if (samples.length === 0) {
+    const spoken = await backend.synthesize(chunk);
+    if (spoken.length === 0) {
       throw new Error(`TTS backend "${backend.name}" returned no audio for: "${chunk.slice(0, 60)}..."`);
     }
+    // Stretch the chunk with its own edge silence still on, so the frames at the first and last word are whole.
+    const samples = Math.abs(stretch - 1) < 1e-6 ? spoken : timeStretch(spoken, stretch, PCM_SAMPLE_RATE);
     synthesized.push({ text: chunk, samples });
     onChunk?.(chunk);
   }
@@ -282,6 +314,7 @@ async function synthesizeChunks(text: string, backend: TtsBackend, onChunk?: (te
 async function synthesizeSegments(
   segmentTexts: string[],
   backend: TtsBackend,
+  stretch: number,
   onProgress?: ProduceAudioOptions["onProgress"],
   store?: { pkgDir: string },
 ): Promise<{ chunks: PcmChunk[][]; lines?: { recorded: number; reused: number } }> {
@@ -294,16 +327,16 @@ async function synthesizeSegments(
 
   if (!store) {
     const out: PcmChunk[][] = [];
-    for (const text of segmentTexts) out.push(await synthesizeChunks(text, backend, report));
+    for (const text of segmentTexts) out.push(await synthesizeChunks(text, backend, stretch, report));
     return { chunks: out };
   }
 
-  const voiceKey = `${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}`;
+  const voiceKey = lineVoiceKey(backend, stretch);
   const result = await synthesizeLines({
     pkgDir: store.pkgDir,
     texts: segmentTexts,
     voiceKey,
-    synthesize: async (text) => ({ sampleRate: PCM_SAMPLE_RATE, chunks: await synthesizeChunks(text, backend, report) }),
+    synthesize: async (text) => ({ sampleRate: PCM_SAMPLE_RATE, chunks: await synthesizeChunks(text, backend, stretch, report) }),
     onLine: (_n, _total, text, reused) => {
       if (reused) for (const chunk of chunkTextForTTS(text, backend.maxChars)) report(chunk);
     },
@@ -368,12 +401,19 @@ export async function produceAudioPipeline(
       speed: options?.speed,
       language: options?.language,
     }));
-  console.error(`[narration] synthesizing ${segmentTexts.length} segment(s) with ${backend.name}`);
+  let stretch: number;
+  try {
+    stretch = lineStretchFor(backend, options?.narrationRate);
+  } catch (err) {
+    await backend.close?.();
+    throw err;
+  }
+  console.error(`[narration] synthesizing ${segmentTexts.length} segment(s) with ${backend.name}${stretch !== 1 ? ` at ${stretch}x (pitch-preserving stretch)` : ""}`);
 
   let segmentChunks: PcmChunk[][];
   let lineCounts: { recorded: number; reused: number } | undefined;
   try {
-    const synthesized = await synthesizeSegments(segmentTexts, backend, options?.onProgress, { pkgDir: outDir });
+    const synthesized = await synthesizeSegments(segmentTexts, backend, stretch, options?.onProgress, { pkgDir: outDir });
     segmentChunks = synthesized.chunks;
     lineCounts = synthesized.lines;
     if (lineCounts) console.error(`[narration] ${lineCounts.recorded} line(s) recorded, ${lineCounts.reused} reused`);
@@ -463,6 +503,7 @@ export async function produceAudioPipeline(
     ttsBackend: backend.name,
     voice: backend.voice ?? null,
     speed: backend.speed ?? null,
+    ...(stretch !== 1 ? { timeStretch: stretch } : {}),
     ...(lineCounts ? { lines: lineCounts } : {}),
   };
 }
@@ -710,15 +751,6 @@ export function retimeAudioSync(
   }
 
   return { filePath: outPath, durationSec };
-}
-
-/** Retimes an audio file using FFmpeg WSOLA-based atempo filter and caches the result. */
-export async function retimeAudio(
-  src: string,
-  speed: number,
-  options?: { cacheDir?: string; outPath?: string }
-): Promise<RetimedAudioResult> {
-  return retimeAudioSync(src, speed, options);
 }
 
 /** Pre-renders all retimed audio tracks in a film so Remotion CLI can access them statically. */

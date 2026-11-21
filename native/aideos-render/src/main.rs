@@ -1,6 +1,6 @@
 //! File Description: The `aideos-render` command line: renders one frame of a Render IR file to a PNG on the deterministic CPU rasterizer (or, built with the `gpu` feature and given `--gpu`, on an EGL OpenGL surface); `video` renders a whole film or a frame range to an mp4 through the R3 encoder; `measure` reports text widths and line metrics with the renderer's own fonts; `check` loads a film and its assets exactly as a render would and draws nothing (the renderer choice asks it before rendering).
 //! Inputs and outputs: `aideos-render <ir.json> --frame N [--format long|reel] [--package DIR] [--gpu] --out frame.png` -> the PNG and one line on stdout; `aideos-render video <ir.json> --format F --out x.mp4 [...]` -> the mp4, progress lines and a JSON report; `aideos-render measure <request.json>` -> JSON on stdout; `aideos-render check <ir.json> [--package DIR]` -> `ok ...` or the refusal. Exit 0 on success, 1 when loading, rendering or encoding fails, 2 on a usage error.
-//! Used by: people and agents rendering stills, backend/nativeRenderer.ts and backend/renderIr/measure.ts, tests/cli.rs and tests/video.rs.
+//! Used by: people and agents rendering stills, backend/nativeRenderer.ts (including text measurement for backend/renderIr/emit.ts), tests/cli.rs, tests/video.rs and tests/measure.rs.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -263,7 +263,8 @@ fn run_measure(raw: Vec<String>) -> Result<String, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let request: aideos_render::measure::MeasureRequest =
         serde_json::from_str(&text).map_err(|e| format!("{} is not a measure request: {e}", path.display()))?;
-    let base = path.parent().unwrap_or_else(|| Path::new("."));
+    // A bare file name has the empty path as its parent: its directory is the current one.
+    let base = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
     let report = aideos_render::measure::measure(&request, base)?;
     serde_json::to_string(&report).map_err(|e| e.to_string())
 }

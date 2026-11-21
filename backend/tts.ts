@@ -28,15 +28,24 @@ import { resampleLinear } from "./voiceLines";
 /** The one sample rate every backend normalizes to before assembly. Kokoro's native rate. */
 export const PCM_SAMPLE_RATE = 24000;
 
-/** Kokoro default chosen to keep explainer narration within the measured pacing limit. */
-export const DEFAULT_KOKORO_SPEED = 0.75;
+/**
+ * Kokoro default pace multiplier, applied natively because Kokoro has its own speaking-rate setting (backends
+ * without one are re-paced by time-stretch in backend/audio.ts instead). It is 1.05 because that is the smallest
+ * 0.05 step whose take of the sample-explainer fixture clears the house wpm floor (backend/pacingProfile.ts):
+ * measured with local Kokoro af_heart at the house gaps, 0.9 gave 135 wpm, 0.95 gave 140, 1.0 gave 144 and 1.05
+ * gave 147 wpm (floor 145). It is not the old 0.75 times the house narration rate, which lands below the floor.
+ */
+export const DEFAULT_KOKORO_SPEED = 1.05;
 
 /** A synthesis backend: text in, mono Float32 PCM at PCM_SAMPLE_RATE out. */
 export interface TtsBackend {
   name: string;
   /** The voice id this backend actually speaks with, when it has voices. */
   voice?: string;
-  /** The pace multiplier this backend actually applies, when it has pace control. */
+  /**
+   * The pace multiplier this backend applies natively, when it has its own speaking-rate setting. A backend that
+   * leaves this unset has no pace control, and the narration pipeline re-paces its audio by time-stretch.
+   */
   speed?: number;
   /** The language preference applied by this backend, when it supports multiple languages. */
   language?: VcdLanguagePreference;

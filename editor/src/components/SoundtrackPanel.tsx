@@ -133,7 +133,7 @@ export function SoundtrackPanel({ film, selectedSection, onCommit, onClose, onPr
         <Button size="sm" aria-label="Close mix panel" onClick={onClose}><X className="h-3.5 w-3.5" /></Button>
       </div>
       <div className="space-y-5 overflow-y-auto p-3">
-        <p className="text-xs leading-relaxed text-muted">Music and effects stay under the narration. Changes save with your film.</p>
+        <p className="text-xs leading-relaxed text-ink-mute">Music and effects stay under the narration. Changes save with your film.</p>
         {error ? <p role="alert" className="whitespace-pre-wrap border border-line bg-paper-2 p-2 text-xs leading-relaxed">{error}</p> : null}
         {(["music", "sfx"] as const).map((channel) => {
           const value = channel === "music" ? draftMusic ?? music : draftEffects ?? sfx;
@@ -149,7 +149,7 @@ export function SoundtrackPanel({ film, selectedSection, onCommit, onClose, onPr
         })}
         <section aria-label="Music sections" className="space-y-2">
           <h3 className="text-xs font-semibold">Music</h3>
-          {!sections.length ? <p className="text-xs text-muted">No music sections. Add a soundtrack in Look.</p> : sections.map((section, index) => {
+          {!sections.length ? <p className="text-xs text-ink-mute">No music sections. Ask your agent to add a soundtrack.</p> : sections.map((section, index) => {
             const title = library.items.find((item) => item.id === section.item)?.title ?? section.item;
             const choices = library.items.filter((item) => item.kind === "music" && item.roles.includes(section.role));
             return <div key={`${index}-${section.item}`} className="border border-line bg-paper-2 p-2">
@@ -157,13 +157,13 @@ export function SoundtrackPanel({ film, selectedSection, onCommit, onClose, onPr
               <p className="my-1 break-words text-xs font-semibold leading-relaxed" title={title}>{title}</p>
               <Button size="sm" disabled={busy} aria-expanded={swapping === index} onClick={() => setSwapping(swapping === index ? null : index)}>Swap track</Button>
               {swapping === index ? <div className="mt-2 space-y-2 border-t border-line pt-2">
-                {!choices.length ? <p className="text-xs text-muted">No library tracks match this role.</p> : choices.map((item) => <div key={item.id} className="flex items-start gap-1">
+                {!choices.length ? <p className="text-xs text-ink-mute">No library tracks match this role.</p> : choices.map((item) => <div key={item.id} className="flex items-start gap-1">
                   <Button size="sm" disabled={busy || previewLoading !== null} aria-label={`${previewing === item.id ? "Stop" : "Preview"} ${item.title}`} onClick={() => void preview(item.id)}>
                     {previewing === item.id ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                   </Button>
                   <button type="button" disabled={busy || item.id === section.item} onClick={() => void apply({ kind: "swap", section: index, item: item.id })}
                     className="min-w-0 flex-1 break-words border border-transparent px-1 py-1 text-left text-xs leading-relaxed hover:border-line hover:bg-paper disabled:opacity-50">
-                    {item.title}<span className="mt-0.5 block font-mono text-xs text-muted">{previewLoading === item.id ? "Loading preview..." : item.id === section.item ? "Current track" : `${timeLabel(item.durationSec)} / ${item.artist}`}</span>
+                    {item.title}<span className="mt-0.5 block font-mono text-xs text-ink-mute">{previewLoading === item.id ? "Loading preview..." : item.id === section.item ? "Current track" : `${timeLabel(item.durationSec)} / ${item.artist}`}</span>
                   </button>
                 </div>)}
               </div> : null}
@@ -172,14 +172,14 @@ export function SoundtrackPanel({ film, selectedSection, onCommit, onClose, onPr
         </section>
         <section aria-label="Sound effect events" className="space-y-2">
           <h3 className="text-xs font-semibold">Sound effects</h3>
-          {!effects.length ? <p className="text-xs text-muted">No sound effects.</p> : effects.map((effect, index) => <div key={index} className="flex items-start justify-between gap-2 text-xs">
+          {!effects.length ? <p className="text-xs text-ink-mute">No sound effects.</p> : effects.map((effect, index) => <div key={index} className="flex items-start justify-between gap-2 text-xs">
             <span className="min-w-0 break-words" title={effect.item}>{effect.event ?? "Unbound event"}</span><span className="shrink-0 font-mono text-xs">{timeLabel(effect.timeSec)}</span>
           </div>)}
         </section>
         <label className="block space-y-2 text-xs font-semibold">Credits
-          <textarea name="soundtrack-credits" aria-label="Credits text" readOnly rows={3} value={creditsText} placeholder="No credits required" className="block w-full resize-none border border-line bg-paper-2 p-2 font-sans text-xs font-normal normal-case leading-relaxed tracking-normal placeholder:text-muted" />
+          <textarea name="soundtrack-credits" aria-label="Credits text" readOnly rows={3} value={creditsText} placeholder="No credits required" className="block w-full resize-none border border-line bg-paper-2 p-2 font-sans text-xs font-normal normal-case leading-relaxed tracking-normal placeholder:text-ink-mute" />
         </label>
-        {busy ? <p role="status" className="text-xs text-muted">Checking and rebuilding soundtrack...</p> : null}
+        {busy ? <p role="status" className="text-xs text-ink-mute">Checking and rebuilding soundtrack...</p> : null}
       </div>
     </aside>
   );

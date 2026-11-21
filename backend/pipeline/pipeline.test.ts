@@ -39,6 +39,10 @@ import { generationCaller } from "../aideosConfig";
 import { buildDirectorRequest, buildFilmProductionRequest, program } from "../cli";
 import { spawnSync } from "node:child_process";
 import type { ProductionProgress, ProductionRequest } from "./types";
+import { FAKE_OWNER_BACKEND_NAME, FAKE_OWNER_VOICE_ID, installVoiceOfChoiceForTests, voiceOfChoiceChildEnv } from "../testSupport/fakeVcd";
+
+// Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
+installVoiceOfChoiceForTests();
 
 const SCRIPT = `# Probe Film
 
@@ -301,7 +305,7 @@ test("runProduction: never touches the b-roll engine unless b-roll was asked for
         script: SCRIPT,
         title: "Probe Film",
         slug,
-        ttsBackend: "tone",
+        ttsBackend: "vcd",
         design: "templates",
         brollEngine: "engine-that-does-not-exist",
         stopAfter: "assemble",
@@ -340,7 +344,7 @@ test("runProduction: writes a package whose film matches the narration it synthe
 
   try {
     const result = await runProduction(
-      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", design: "templates", broll: false, stopAfter: "design", resume: false, syncToPreview: false },
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd", design: "templates", broll: false, stopAfter: "design", resume: false, syncToPreview: false },
       () => undefined,
     );
 
@@ -380,7 +384,7 @@ test("runProduction: writes a package whose film matches the narration it synthe
 test("runProduction: a package with narration for its script keeps its voiceover.wav, one without is narrated", async () => {
   const slug = `probe-recorded-${Date.now().toString(36)}`;
   const pkgDir = path.join(VIDEOS_DIR, slug);
-  const request = { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone" as const, design: "templates" as const, broll: false, stopAfter: "narrate" as const, resume: true, syncToPreview: false };
+  const request = { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd" as const, design: "templates" as const, broll: false, stopAfter: "narrate" as const, resume: true, syncToPreview: false };
 
   try {
     const first: ProductionProgress[] = [];
@@ -436,7 +440,7 @@ function writeRecordedNarration(pkgDir: string): ProduceAudioResult {
     segments, shotDurations: deriveShotDurations(placed, totalSec), totalAudioDuration: totalSec,
     voiceoverPath: path.join(pkgDir, "voiceover.wav"), captionsPath: path.join(pkgDir, "captions.vtt"),
     captionsVttContent: buildCaptionsVtt(words), words, wordsPath: path.join(pkgDir, "voiceover_words.json"),
-    ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 1,
+    ttsBackend: FAKE_OWNER_BACKEND_NAME, voice: FAKE_OWNER_VOICE_ID, speed: null,
   };
   fs.mkdirSync(pkgDir, { recursive: true });
   fs.writeFileSync(result.voiceoverPath, encodeWav(new Float32Array(PCM_SAMPLE_RATE / 10), PCM_SAMPLE_RATE));
@@ -482,13 +486,13 @@ test("runProduction: resuming reuses the stages whose inputs have not changed", 
 
   try {
     await runProduction(
-      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", design: "templates", broll: false, stopAfter: "design", resume: false, syncToPreview: false },
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd", design: "templates", broll: false, stopAfter: "design", resume: false, syncToPreview: false },
       () => undefined,
     );
 
     const events: ProductionProgress[] = [];
     await runProduction(
-      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", design: "templates", broll: false, stopAfter: "design", resume: true, syncToPreview: false },
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd", design: "templates", broll: false, stopAfter: "design", resume: true, syncToPreview: false },
       (event) => events.push(event),
     );
 
@@ -511,7 +515,7 @@ test("runProduction: a run that stops before rendering leaves the active film al
 
   try {
     await runProduction(
-      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", design: "templates", broll: false, stopAfter: "assemble", resume: false, syncToPreview: false },
+      { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd", design: "templates", broll: false, stopAfter: "assemble", resume: false, syncToPreview: false },
       () => undefined,
     );
     assert.equal(readActiveFilmSource(), before, "src/dl/activeFilm.ts must be untouched by a partial run");
@@ -589,7 +593,7 @@ function cleanProbe(slug: string): void {
 
 // Supplies deterministic production inputs while forbidding server and live-agent work.
 function inlineRequest(slug: string): ProductionRequest {
-  return { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "tone", brollEngine: "null", broll: false,
+  return { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd", brollEngine: "null", broll: false,
     skipAgent: true, deviceCaller: null, designLlmCaller: async () => { throw new Error("inline must never call the server"); },
     syncToPreview: false, stopAfter: "assemble" };
 }
@@ -600,7 +604,7 @@ test("runProduction rechecks title leaks at synthesis when intake was cached and
     script: "## Closing\n[NARRATION]\nClosing.",
     title: "Probe Film",
     slug,
-    ttsBackend: "tone",
+    ttsBackend: "vcd",
     broll: false,
     syncToPreview: false,
     resume: true,
@@ -733,11 +737,12 @@ test("runProduction: narration records its voice and speed; the end card line is
     await runProduction(request);
     const pkg = path.join(VIDEOS_DIR, slug);
     const narration = JSON.parse(fs.readFileSync(path.join(pkg, "narration.json"), "utf8"));
-    assert.equal(narration.ttsBackend, "tone");
+    assert.equal(narration.ttsBackend, FAKE_OWNER_BACKEND_NAME, "the film is narrated by the owner voice");
+    assert.equal(narration.voice, FAKE_OWNER_VOICE_ID);
     assert.ok("voice" in narration && "speed" in narration, "narration.json records the voice and speed it was made with");
     const line = JSON.parse(fs.readFileSync(path.join(pkg, "endcard/line.json"), "utf8"));
     assert.equal(line.text, "If this helped, like and subscribe.");
-    assert.equal(line.ttsBackend, "tone");
+    assert.equal(line.ttsBackend, FAKE_OWNER_BACKEND_NAME);
     assert.ok(fs.existsSync(path.join(pkg, "endcard/voiceover.wav")));
 
     writeProbeDesign(slug);
@@ -891,8 +896,8 @@ test("CLI: the direct executable and launcher preserve exit 3 and continuation i
   for (const executable of ["tsx", "launcher"]) {
     const slug = `probe-cli-${executable}-${Date.now().toString(36)}`;
     try {
-      const args = ["film", "--script", SCRIPT, "--title", "Probe Film", "--slug", slug, "--tts", "tone", "--stop-after", "assemble"];
-      const env = { ...process.env, NODE_TEST_CONTEXT: "child-v8" };
+      const args = ["film", "--script", SCRIPT, "--title", "Probe Film", "--slug", slug, "--tts", "vcd", "--stop-after", "assemble"];
+      const env = voiceOfChoiceChildEnv({ ...process.env, NODE_TEST_CONTEXT: "child-v8" });
       const child = executable === "tsx"
         ? spawnSync(process.execPath, ["--import", "tsx", "backend/cli.ts", ...args], { cwd: root, env, encoding: "utf8" })
         : spawnSync("bash", ["bin/aideos", ...args], { cwd: root, env, encoding: "utf8" });
@@ -918,8 +923,8 @@ test("CLI: aideos film stops at a draft by default and writes no final mp4", () 
   const slug = `probe-cli-draft-${Date.now().toString(36)}`;
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-draft-out-"));
   try {
-    const args = ["film", "--script", SCRIPT, "--title", "Probe Film", "--slug", slug, "--tts", "tone", "--design", "templates", "--out", out];
-    const env = { ...process.env, NODE_TEST_CONTEXT: "child-v8" };
+    const args = ["film", "--script", SCRIPT, "--title", "Probe Film", "--slug", slug, "--tts", "vcd", "--design", "templates", "--out", out];
+    const env = voiceOfChoiceChildEnv({ ...process.env, NODE_TEST_CONTEXT: "child-v8" });
     const child = spawnSync(process.execPath, ["--import", "tsx", "backend/cli.ts", ...args], { cwd: root, env, encoding: "utf8" });
     assert.equal(child.status, 0, child.stdout + child.stderr);
     assert.match(child.stdout, /draft only: stopped after the assemble stage; pass --final-export/);

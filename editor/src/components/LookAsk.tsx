@@ -11,7 +11,7 @@ import type { Film } from "../../../src/dl/schema";
 import { FilmView } from "../../../src/dl/Film";
 import { buildTimeline } from "../../../src/dl/camera";
 import { captionWordsForFilm } from "../../../src/dl/captionsParser";
-import { DEFAULT_PROJECT_ACCENT } from "../../../src/projectTheme";
+import { previewAccent } from "../../../src/projectTheme";
 import { Badge, Button, Input, Panel, PanelBody, Select, Spinner, type NoteTone } from "./ui";
 
 interface AskRequest {
@@ -177,7 +177,7 @@ export function LookAsk({ film, shotId, onShotChange, notify }: LookAskProps) {
               inputProps={{
                 film,
                 timeline,
-                accent: film.accent ?? DEFAULT_PROJECT_ACCENT,
+                accent: previewAccent(film),
                 showGrid: film.theme?.videoType === "case-study",
                 showRail: true,
                 captionWords,

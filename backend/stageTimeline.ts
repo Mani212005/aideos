@@ -16,12 +16,13 @@ import { elementVisible, VISIBLE_OPACITY_MIN } from "../src/dl/scene/visibility"
 import { projectedSvgParts } from "./designCheck/insetRegion";
 import { prepareStageFacts } from "../src/dl/scene/stageFacts";
 import { partsInViewport } from "../src/dl/scene/stageGeometry";
+import { HOUSE_PACE } from "./pacingProfile";
 
 export type StageState = { motion: "moving" | "holding"; segment: "story" | "end-card" };
 export interface StageSpan extends StageState { from: number; to: number }
 export interface TimeRange { start: number; end: number }
-/** Shared maximum story stillness, seconds, for preflight and measured review. */
-export const STORY_HOLD_MAX_SEC = 3;
+/** Shared maximum story stillness, seconds, for preflight and measured review (the house pace: 3 s before 2026-11-21). */
+export const STORY_HOLD_MAX_SEC = HOUSE_PACE.storyHoldMaxSec;
 
 // Applies the legal forward transitions; returning from the end card to the story is impossible.
 export function transitionStage(state: StageState, next: StageState): StageState {

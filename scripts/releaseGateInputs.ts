@@ -42,7 +42,7 @@ export async function loadGateEnvironment(env: NodeJS.ProcessEnv = process.env):
   const config = await import("../backend/aideosConfig");
   return {
     platform: process.platform, arch: process.arch, node: process.version, browser: env.AIDEOS_BROWSER_EXECUTABLE || null,
-    ttsBackend: process.platform === "darwin" ? "say" : "kokoro", renderConcurrency: 2,
+    ttsBackend: "vcd", renderConcurrency: 2,
     aideosConfig: sha256(fs.readFileSync(config.configPath(env))),
     thresholds: THRESHOLDS,
     reviewer: { agent: config.loadAideosConfig().videoModels.reviewer.agent, model: config.reviewerModel(undefined, env) },

@@ -9,10 +9,11 @@
  * Used by: editor/vite.config.ts,
  * backend/agentBridge/contextBuilder.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
  * backend/designCheck/designCheck.ts, backend/pipeline/design.ts, backend/designSpec/build.ts,
- * editor/src/components/LookChoices.tsx, and (for
+ * editor/src/components/LookChoices.tsx, editor/src/App.tsx, editor/src/components/LookAsk.tsx and
+ * editor/src/components/ReelPanel.tsx (filmAccent, the one accent every preview draws with), and (for
  * DEFAULT_PROJECT_ACCENT, the fallback when a film names no accent) backend/designSpec/shotTools.ts,
  * backend/editPlanner/validator.ts, backend/sceneKit/svg.ts, src/dl/convertFilm.ts,
- * editor/src/App.tsx, editor/src/components/LookAsk.tsx, editor/src/state/placeholderFilm.ts.
+ * editor/src/state/placeholderFilm.ts.
  */
 
 import type { BackgroundPreset, ThemeConfig } from "./dl/schema";
@@ -102,4 +103,11 @@ export function sameColour(a: string, b: string): boolean {
 /** The accent a film draws with: its chosen one, else its manifest accent, else the default theme's accent. */
 export function filmAccent(film: { accent?: string; theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): string {
   return boundTheme(film)?.accent ?? (film?.accent && HEX.test(film.accent) ? film.accent : DEFAULT_PROJECT_ACCENT);
+}
+
+/** The accent a Studio preview draws with, matching the render conversion: the chosen one, else the manifest accent, else the film's own theme accent, else the default theme's accent; always a real #rrggbb colour. */
+export function previewAccent(film: { accent?: string; theme?: { background?: string; accent?: string; accentChosen?: boolean } } | null | undefined): string {
+  const chosen = boundTheme(film)?.accent;
+  if (chosen) return chosen;
+  return [film?.accent, film?.theme?.accent].find((c): c is string => typeof c === "string" && HEX.test(c)) ?? DEFAULT_PROJECT_ACCENT;
 }

@@ -15,6 +15,10 @@ import path from "path";
 import { buildDirectorSystemInstruction, draftScreenplay, runDirector, type GenerateScreenplayFn } from "./director";
 import { readFilm, slugify, VIDEOS_DIR, FILMS_DIR } from "./filmStore";
 import { clearMockShotVisualHandler, heuristicShotVisualSelection, setMockShotVisualHandler } from "../jev";
+import { installVoiceOfChoiceForTests } from "../testSupport/fakeVcd";
+
+// Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
+installVoiceOfChoiceForTests();
 
 // The end-to-end runs reach the design stage, so pin its shot-visual choice to the deterministic
 // heuristic rather than a live Jev request, whatever keys the environment holds.
@@ -31,12 +35,12 @@ function screenplayFor(topic: string): string {
 
 [VISUAL] a bold title card naming the idea
 [ON SCREEN] ${topic}
-[NARRATION] Today we explain ${topic} from first principles, and why it matters.
+[NARRATION] Today we explain ${topic} from first principles, and why it matters to anyone who builds, runs or simply relies on these systems every single day.
 
 ## The Mechanism
 
 [VISUAL] a diagram of the mechanism
-[NARRATION] Here is exactly how it works, laid out step by step for the viewer.
+[NARRATION] Here is exactly how it works, laid out step by step for the viewer, so each part can be seen on its own before the whole picture comes together at the end.
 `;
 }
 
@@ -150,7 +154,7 @@ test("runDirector: a prompt is drafted and produced through the real pipeline en
         prompt,
         slug,
         generateScreenplay: fakeGenerator(),
-        ttsBackend: "tone",
+        ttsBackend: "vcd",
         syncToPreview: false,
         broll: false,
         stopAfter: "design",
@@ -191,7 +195,7 @@ test("runDirector: an explicit title overrides the one the screenplay drafts for
         slug,
         title: "The Overridden Title",
         generateScreenplay: fakeGenerator(),
-        ttsBackend: "tone",
+        ttsBackend: "vcd",
         syncToPreview: false,
         broll: false,
         stopAfter: "design",
@@ -211,6 +215,6 @@ test("director prompts: assembled system instruction carries the guide's reel ho
   const prompt = buildDirectorSystemInstruction();
   assert.match(prompt, /^## Reel hook$/m);
   assert.match(prompt, /10 to 16 words/);
-  assert.match(prompt, /first word begins under 0\.3 s/);
+  assert.match(prompt, /first word begins under 0\.25 s/);
   assert.equal(prompt.split("## Reel hook").length - 1, 1, "the rule appears once, from the guide only");
 });

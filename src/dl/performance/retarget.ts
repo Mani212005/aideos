@@ -113,14 +113,16 @@ function enforceRotations(action: ReceiveAction, rig: CharacterRig, policy: Reac
     const limit = rig.limits.rotation[joint];
     if (!limit) continue;
     let excess = 0;
-    const next = track.map((key) => ({ frame: key.frame, value: key.value.map((v, axis) => {
+    // Clamps one axis of one key into the joint's limit, recording how far it moved (or failing under the "fail" policy).
+    const clampAxis = (v: number, axis: 0 | 1 | 2, frame: number): number => {
       const clamped = Math.min(limit.max[axis], Math.max(limit.min[axis], v));
       if (Math.abs(clamped - v) > EPSILON) {
-        if (policy === "fail") throw new ReceiveRetargetError(`limits.rotation.${joint}`, `the receive turns ${joint} to ${v.toFixed(3)} rad about ${"xyz"[axis]} at frame ${key.frame.toFixed(1)}, outside the allowed [${limit.min[axis]}, ${limit.max[axis]}]`);
+        if (policy === "fail") throw new ReceiveRetargetError(`limits.rotation.${joint}`, `the receive turns ${joint} to ${v.toFixed(3)} rad about ${"xyz"[axis]} at frame ${frame.toFixed(1)}, outside the allowed [${limit.min[axis]}, ${limit.max[axis]}]`);
         excess = Math.max(excess, Math.abs(clamped - v));
       }
       return clamped;
-    }) as unknown as Vec3 }));
+    };
+    const next: VectorTrack = track.map((key) => ({ frame: key.frame, value: [clampAxis(key.value[0], 0, key.frame), clampAxis(key.value[1], 1, key.frame), clampAxis(key.value[2], 2, key.frame)] }));
     if (excess > 0) {
       write(next);
       warnings.push({ kind: "rotation", field: `limits.rotation.${joint}`, message: `${joint} rotation clamped by up to ${excess.toFixed(3)} rad to stay inside its limits` });

@@ -77,8 +77,10 @@ import {
 } from '../backend/scriptIntake.ts'
 import { narrationLines } from '../backend/storyScript.ts'
 import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
+import { bodyLimitFor, declaredBodyTooLarge, isSafeId, readJsonBody, SAFE_ID } from '../backend/studioRequest.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
-import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, type LineAudio } from '../backend/voiceLines.ts'
+import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, pacedVoiceKey, unpacedVoiceKey, type LineAudio } from '../backend/voiceLines.ts'
+import { NARRATION_RATE } from '../backend/pacingProfile.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
 import {
   assembleSegments,
@@ -87,6 +89,7 @@ import {
   distributeWordTimings,
   encodeWav,
   normalizePeak,
+  timeStretch,
   DEFAULT_ASSEMBLE_OPTIONS,
 } from '../backend/pcm.ts'
 import {
@@ -120,7 +123,7 @@ const DEFAULT_VOICE_KEY = VCD_DEFAULT_VOICE_KEY;
 
 // Maps a stored narration backend or voiceLines voiceKey back to a Studio voice selector id.
 function mapStoredVoiceToStudioId(raw: string): string | null {
-  const key = raw.trim();
+  const key = unpacedVoiceKey(raw.trim());
   if (!key) return null;
   if (key === VCD_DEFAULT_VOICE_KEY || key === VCD_HINDI_VOICE_KEY) return key;
   if (key.startsWith('vcd:')) return key.endsWith(':hi') ? VCD_HINDI_VOICE_KEY : VCD_DEFAULT_VOICE_KEY;
@@ -177,7 +180,7 @@ const examplesDir = getExamplesDir();
 
 // The schema's own id rule. It also happens to make traversal unrepresentable:
 // a film can only ever be written as `<id>.ts` inside src/dl/films.
-const FILM_ID = /^[a-z0-9-]+$/;
+const FILM_ID = SAFE_ID;
 
 // `kv-cache` → `kvCacheFilm`. Film ids may contain dashes; identifiers may not.
 // Must match backend/pipeline/filmStore.ts: a leading digit is not a valid identifier start.
@@ -320,20 +323,8 @@ const publicApiUrl = (req: IncomingMessage): string => {
   return `${proto}://${host}`;
 };
 
-const readBody = (req: IncomingMessage) =>
-  new Promise<unknown>((resolve, reject) => {
-    let raw = '';
-    req.setEncoding('utf8');
-    req.on('data', (chunk: string) => { raw += chunk; });
-    req.on('end', () => {
-      try {
-        resolve(JSON.parse(raw));
-      } catch {
-        reject(new Error('body is not JSON'));
-      }
-    });
-    req.on('error', reject);
-  });
+/** Reads the request's JSON body, refusing more than the route's byte cap (see backend/studioRequest.ts). */
+const readBody = (req: IncomingMessage) => readJsonBody(req, bodyLimitFor(req.url));
 
 const ASSET_MIME_TYPES: Record<string, string> = {
   '.mp4': 'video/mp4',
@@ -730,6 +721,13 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
       return;
     }
 
+    // Refuse a body that announces more than its route accepts before reading a byte of it.
+    if (declaredBodyTooLarge(req.headers, req.url)) {
+      res.setHeader('Connection', 'close');
+      sendJson(res, 413, { error: `Request body is larger than the ${Math.round(bodyLimitFor(req.url) / (1024 * 1024))} MB this route accepts`, code: 'body_too_large' });
+      return;
+    }
+
     if (url === '/api/release-channel' && (req.method === 'GET' || req.method === 'HEAD')) {
       sendJson(res, 200, releaseChannel(path.resolve(__dirname, '..')));
       return;
@@ -1097,12 +1095,21 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 sendJson(res, 400, { error: 'filmId is required' });
                 return;
               }
+              if (!isSafeId(filmId) || (shotId !== undefined && !isSafeId(shotId))) {
+                sendJson(res, 400, { error: 'filmId and shotId must be lowercase letters, digits and dashes' });
+                return;
+              }
 
               // Load film definition (prefer clientFilm if provided)
               let filmObj: Film | null = clientFilm || readFilm(filmId);
 
               if (!filmObj) {
                 sendJson(res, 404, { error: `Film ${filmId} not found` });
+                return;
+              }
+              // Every shot id becomes a footage file name below, including those of a film the client posted.
+              if (filmObj.shots.some((s) => !isSafeId(s.id))) {
+                sendJson(res, 400, { error: 'every shot id must be lowercase letters, digits and dashes' });
                 return;
               }
 
@@ -1171,8 +1178,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         if (url === '/api/broll/status' && req.method === 'GET') {
           const parsedUrl = new URL(req.url || '', 'http://localhost');
           const filmId = parsedUrl.searchParams.get('filmId');
-          if (!filmId) {
-            sendJson(res, 400, { error: 'filmId query parameter is required' });
+          if (!isSafeId(filmId)) {
+            sendJson(res, 400, { error: 'filmId query parameter is required and must be lowercase letters, digits and dashes' });
             return;
           }
 
@@ -1232,7 +1239,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 );
               }
             }
-            const recorded = recordedStatus(pkgDir, lines, cacheVoiceKey);
+            const recorded = recordedStatus(pkgDir, lines, pacedVoiceKey(cacheVoiceKey, NARRATION_RATE));
             sendJson(res, 200, {
               ok: true,
               revision: createHash('sha1').update(text).digest('hex').slice(0, 12),
@@ -1510,7 +1517,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const mediaDir = path.resolve(__dirname, '../public/media');
             if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
 
-            const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+            if (/^\.+$/.test(safeName)) {
+              sendJson(res, 400, { error: 'filename must name a file' });
+              return;
+            }
             const filePath = path.join(mediaDir, safeName);
             const buffer = Buffer.from(base64Data, 'base64');
             fs.writeFileSync(filePath, buffer);
@@ -1618,6 +1629,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const { film, request, agentHints, transcript: providedTranscript, dryRun = true } = body || {};
             if (!film || !request) {
               sendJson(res, 400, { error: 'film and request are required' });
+              return;
+            }
+            if (film.id !== undefined && !isSafeId(film.id)) {
+              sendJson(res, 400, { error: 'film.id must be lowercase letters, digits and dashes' });
               return;
             }
 
@@ -1880,9 +1895,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   synthDeps,
                 );
                 const wav = decodeWav(spoken.wav);
-                return { sampleRate: wav.sampleRate, chunks: [{ text, samples: wav.samples }] };
+                // Studio voices have no speaking-rate setting here, so every line is re-paced to the house rate.
+                return { sampleRate: wav.sampleRate, chunks: [{ text, samples: timeStretch(wav.samples, NARRATION_RATE, wav.sampleRate) }] };
               };
-              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: cacheVoiceKey, synthesize: recordLine });
+              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: pacedVoiceKey(cacheVoiceKey, NARRATION_RATE), synthesize: recordLine });
               lineSummary = { total: lineResult.lines.length, recorded: lineResult.recorded, reused: lineResult.reused };
 
               const rate = lineResult.lines[0].audio.sampleRate;

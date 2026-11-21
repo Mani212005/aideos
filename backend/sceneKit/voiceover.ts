@@ -15,6 +15,7 @@ import * as path from "path";
 import { spawnSync } from "child_process";
 import dotenv from "dotenv";
 import { produceAudioPipeline } from "../audio";
+import { HOUSE_PACE, NARRATION_RATE } from "../pacingProfile";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import type { NarrationTiming } from "./timing";
 import { norm } from "./text";
@@ -70,7 +71,12 @@ export interface HeardWord {
   end: number;
 }
 
-const DEFAULTS = { speed: 1, gapMs: 420, tailMs: 2200, targetLufs: -16, truePeakDb: -1, alignment: "synthesizer", spineFile: "shot-spine.json" } as const;
+/**
+ * Scene-film narration defaults. Pace and line gap are the house pace (backend/pacingProfile.ts): Kokoro spoke
+ * scene films at speed 1 and left 420 ms between lines before the 2026-11-21 decision, and both scale by the
+ * house rate; a synthesizer without its own speed setting is re-paced by the narration pipeline instead.
+ */
+const DEFAULTS = { speed: NARRATION_RATE, gapMs: HOUSE_PACE.sceneLineGapMs, tailMs: 2200, targetLufs: -16, truePeakDb: -1, alignment: "synthesizer", spineFile: "shot-spine.json" } as const;
 
 // Absolute path to a film's video package.
 export function packageDir(slug: string, rootDir?: string): string {

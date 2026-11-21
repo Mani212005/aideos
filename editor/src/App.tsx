@@ -37,7 +37,7 @@ import { EditStage } from "./screens/EditStage";
 import { CheckStage } from "./screens/CheckStage";
 import { useExportJob } from "./state/useExportJob";
 import type { ExportJobSnapshot } from "../../backend/exportJobTypes";
-import { DEFAULT_PROJECT_ACCENT } from "../../src/projectTheme";
+import { previewAccent } from "../../src/projectTheme";
 
 /**
  * The project list comes from the dev server at runtime. The editor deliberately does not import
@@ -116,7 +116,7 @@ export default function App() {
 
   const timelineApi = useLayeredTimeline({ film, commit, onReject: handleReject });
 
-  const accent = film.accent || film.theme?.accent || DEFAULT_PROJECT_ACCENT;
+  const accent = previewAccent(film);
 
   /** Change the accent colour on the film itself rather than holding a parallel copy in the shell. */
   const setAccent = useCallback(
@@ -200,10 +200,16 @@ export default function App() {
       }
       if (typing) return;
 
+      // The one owner of undo and redo; no lens registers its own handler for these keys.
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (e.shiftKey) project.redo();
         else project.undo();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        project.redo();
         return;
       }
       if (e.key === "]" || e.key === "[") {

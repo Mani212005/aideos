@@ -51,7 +51,7 @@ Aideos solves this with **Video as Pure Data**:
 
 ## Key Features
 
-- **Audio-First Master Clock**: Narration is the single source of truth for time. Pluggable speech backends (My voice via the local `vcd` voice-clone service as the default, offline Kokoro-82M ONNX, Google Cloud TTS, or macOS say) synthesize narration per shot. Silence trimming and sample-domain assembly guarantee that visual transitions align to speech within +-50ms.
+- **Audio-First Master Clock**: Narration is the single source of truth for time. Pluggable speech backends (My voice via the local `vcd` voice-clone service is the voice of choice and the default; offline Kokoro-82M ONNX, Google Cloud TTS and macOS say exist only for the captain's explicit choice) synthesize narration per shot. Silence trimming and sample-domain assembly guarantee that visual transitions align to speech within +-50ms.
 - **Word-Level Kinetic Subtitles**: Phrase-locked captions reveal words in sync with voiceover audio, using active semantic theme tokens. Caption placement can be repositioned and locked per format in the Studio preview.
 - **Aideos Studio Web Editor**: Interactive web app (React 19 + Tailwind CSS + Remotion Player) running locally. Features 4 dedicated stages: Words (script) authoring, Look styling with Ask, Non-linear multi-track Cut (edit) with caption words, and Check (gates, fix list and Export). When it detects a concurrent film change, it offers the choice to keep the open version or use the newer version.
 - **Non-Linear Timeline Geometry**: OpenShot-grade timeline with transaction-grouped edits, magnetic ripple editing (toggle via `R` key), sticky boundary snapping, audio waveforms, and atomic undo/redo (`Cmd + Z`).
@@ -75,7 +75,7 @@ Aideos solves this with **Video as Pure Data**:
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 2. AUDIO-FIRST TIMING ENGINE                                                │
-│ • Synthesizes speech per segment via My voice (vcd), Kokoro, Google, or say │
+│ • Synthesizes speech per segment via My voice (vcd), the voice of choice    │
 │ • Normalizes audio (-16 LUFS) and aligns word timestamps                    │
 │ • Writes voiceover.wav, captions.vtt, and voiceover_words.json              │
 └──────────────────────────────────────┬──────────────────────────────────────┘
@@ -83,7 +83,7 @@ Aideos solves this with **Video as Pure Data**:
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 3. SEMANTIC VISUAL SELECTION & SPATIAL CANVAS                               │
-│ • Selects visual blocks (DeviceCard, MatrixGrid, StatCounter, TokenStrip)   │
+│ • Selects visual blocks (LayerStack, MatrixGrid, StatCounter, TokenStrip)   │
 │ • Computes continuous 2D coordinates (x, y, w, h) and directed graph edges  │
 │ • Derives smooth camera trajectories and enforces pacing rules              │
 └──────────────────────────────────────┬──────────────────────────────────────┘
@@ -102,7 +102,7 @@ Aideos solves this with **Video as Pure Data**:
 ## Quick Start
 
 ### 1. Prerequisites
-- **Node.js**: v20.x or higher
+- **Node.js**: v22.5 or higher (required for `node:sqlite`)
 - **FFmpeg**: Required for audio normalization, waveform extraction, and video mastering
 - **Operating System**: Linux or macOS
 
@@ -121,6 +121,9 @@ Start the interactive web editor:
 npm run editor
 ```
 Open [http://localhost:3001](http://localhost:3001) in your browser. The editor lets you inspect scenes, scrub the timeline, reposition captions, and review films.
+
+### 3b. Start the voice of choice
+Films are narrated with your cloned voice (the voice of choice). Start the local `vcd` voice service with `vcd serve` (it listens on `127.0.0.1:8740` only), or, from another machine, open an SSH tunnel to the Linux service: `ssh -N -L 8740:127.0.0.1:8740 <the Linux machine>`. If the service is not reachable a run fails with a plain reason and never switches voice; no one may switch to another voice without the captain's word. Tests need no service: they use a deterministic fake that reports the same voice. See [Voice of choice](docs/PRODUCTION_PIPELINE.md#voice-of-choice).
 
 ### 4. Render Video Deliverables
 Render the active video package to MP4:
@@ -211,7 +214,7 @@ Promotion requires passing full CI, dual-format production, measured rubric revi
 
 ## Documentation
 
-- [Architecture Context & Schemas](docs/CONTEXT.md): Data types, schemas (`Film`, `Shot`, `Block`), and engine reference.
+- [Film Schema & Data Types](src/dl/schema.ts): Authoritative Zod schemas and TypeScript types (`Film`, `Shot`, `Block`, `Soundtrack`).
 - [Web Editor Architecture](docs/DESIGN.md): Studio frontend design system, timeline drag machine, and stage specifications.
 - [Production Pipeline Reference](docs/PRODUCTION_PIPELINE.md): Stages from intake to render, resume behavior, and MCP tools.
 - [Video Production Workflow](docs/WORKFLOW.md): Design axioms, 7-rule pacing gate, and complete CLI command table.
@@ -224,6 +227,7 @@ Promotion requires passing full CI, dual-format production, measured rubric revi
 - [Video Design System](src/dl/README.md): Token palettes, contrast requirements, and motion easing specs.
 - [Vector Scene Engine](src/dl/scene/README.md): Declarative SVG animation clips, scene stages, and continuous camera tracks.
 - [Verification Skill](.agents/skills/verify/SKILL.md): Reusable verification workflow (E2E, property, differential, protected suites, independent review, and evidence logs) backed by the [Feature Map](docs/verify/FEATURE_MAP.md).
+- [Decision Log](docs/decisions/README.md): One file per owner or agent decision with its context, reasons, rejected alternatives and pull requests.
 
 ---
 
@@ -236,7 +240,7 @@ Traditional video editors store video as static media slices on a timeline. Aide
 No. The 9:16 Vertical Reel is compiled from the same canvas, camera, and visual scene data as the 16:9 Landscape Film. If the film is under 179 seconds, it reuses the long narration directly. If longer, Aideos condenses the script to fit mobile limits while preserving key hooks, numbers, and decisive visual moments.
 
 #### Can I run Aideos completely offline without paid API keys?
-Yes. Speech synthesis defaults to your local cloned voice (`vcd` on `127.0.0.1:8740`, supporting English and Hindi/Hinglish), with offline Kokoro-82M ONNX and macOS `say` available as explicit choices without network access. Screenplays can be authored by hand in markdown, and rendering uses local Remotion and FFmpeg. Paid API keys (Google Gemini, Claude) are only required when using autonomous LLM director drafting or automated multimodal video reviews.
+Yes. Speech synthesis defaults to your local cloned voice (`vcd` on `127.0.0.1:8740`, supporting English and Hindi/Hinglish), which is the voice of choice for every film. Offline Kokoro-82M ONNX and macOS `say` exist only as explicit choices that need the captain's word. Screenplays can be authored by hand in markdown, and rendering uses local Remotion and FFmpeg. Paid API keys (Google Gemini, Claude) are only required when using autonomous LLM director drafting or automated multimodal video reviews.
 
 #### How does audio-first timing work when the script changes?
 The synthesized narration audio track serves as the master clock for the film. Total shot durations must sum to the voiceover length within +-50ms. When dialogue changes, narration is stored per line by content fingerprint (`voiceover_lines/`) so only changed lines are re-recorded. The synthesizer updates the audio spine, measures exact word boundaries, and retimes all camera transitions and subtitle reveals accordingly.

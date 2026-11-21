@@ -65,7 +65,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - The 7 animated primitives are TextReveal, StatCounter, CodeBlock, Card, Divider, IconLabel and ProgressBar.
 - Canvas: one 2D infinite spatial canvas with continuous camera motion and wide payoff zooms.
 - Read colour through `useTokens()` from `src/dl/tokens.ts`.
-- Do not use the module-level `PALETTE`, `rule()`, `FAINT` or `SUNKEN` constants.
+- Do not use the module-level `PALETTE` or `rule()` constants.
 - Keep `src/dl/camera.ts` rounding the cumulative timeline position, not single shot durations.
 - Keep `transform-origin: 0 0` on the `CanvasGraph` camera transform.
 - Both camera items are load-bearing. Read the comments at each site before you change them.
@@ -114,8 +114,6 @@ File Description: This file defines the core guidelines, coding principles, and 
 
 ## Transcription and edit context
 
-- `transcribe()` returns the same `TranscribedWord[]` shape for Deepgram and for Whisper.
-- Keep the network fetch, the API key, ffmpeg and the Whisper subprocess injectable through `deps`.
 - Never let a test touch the network, .env files or a real ASR process.
 - Keep the `backend/editContext/` modules pure: plain data in, typed result out, no I/O.
 - `detectFillers` always flags the fixed strong-filler words.
@@ -215,7 +213,6 @@ File Description: This file defines the core guidelines, coding principles, and 
 - `deviceData.ts` refuses a block that shows a word or number the beat never says.
 - `buildBlocksForPrimitive` never invents stand-ins.
 - StatCounter needs narrated numbers. CodeBlock needs inline code. ProgressBar needs explicit percentages. If not, fall back to TextReveal.
-- The studio Look > Design swap and redesign use the same honesty check.
 - Detail: `docs/REVIEW.md`, section "Agent rules detail (moved from AGENTS.md)".
 
 ## Frame safe areas and the palette guard

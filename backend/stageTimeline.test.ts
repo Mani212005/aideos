@@ -61,7 +61,8 @@ test("stage timeline: motion settles, resumes and enters the format's end card",
     assert.equal(failures.length, 2);
     assert.equal(failures[0].severity, "error");
     assert.match(failures[0].where, /story-one, story-two/);
-    assert.match(failures[0].message, /3.00s to 8.00s \(5.00s; max 3s\)/);
+    // House pace (captain, 2026-11-21): the story hold limit is 2.5 s, down from 3 s.
+    assert.match(failures[0].message, /3.00s to 8.00s \(5.00s; max 2.5s\)/);
     const facts = readFilmFacts(film);
     assert.deepEqual(facts.stageSpans, long.spans);
   });
@@ -167,12 +168,13 @@ test("stage policy: an inset counter over a held stage is motion, the bare hold 
   });
 });
 
-test("stage policy: exactly three seconds is allowed, a longer story hold blocks", () => {
-  withFilm(ART, [move(0, 100, 90, 269)], (film) => {
+// House pace (captain, 2026-11-21): "the story needs to pace up", so the story hold limit is 2.5 s, down from 3 s.
+test("stage policy: exactly two and a half seconds is allowed, a longer story hold blocks", () => {
+  withFilm(ART, [move(0, 100, 75, 284)], (film) => {
     assert.equal(stageTimeline(film, "long").holds.length, 0);
     const scene = film.scene as Scene;
-    scene.background.animation!.clips[0] = move(0, 100, 91, 268);
-    assert.equal(stageTimeline(film, "long").holds[0].end, 91 / 30);
+    scene.background.animation!.clips[0] = move(0, 100, 76, 283);
+    assert.equal(stageTimeline(film, "long").holds[0].end, 76 / 30);
   });
 });
 

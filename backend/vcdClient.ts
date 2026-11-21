@@ -87,7 +87,7 @@ const DEFAULT_TIMEOUT_MS = 5 * 60_000;
 const MAX_QUEUE_RETRIES = 6;
 const SHORT_REQUEST_TIMEOUT_MS = 5_000;
 const LONG_REQUEST_TIMEOUT_MS = 60_000;
-const VCD_START_HINT = "Start the local voice service with `vcd serve` on 127.0.0.1:8740, or choose another voice explicitly (such as Kokoro or macOS in Studio, or `--tts kokoro` / `--tts say` in the CLI).";
+const VCD_START_HINT = "Start the local voice service with `vcd serve` on 127.0.0.1:8740 (or open an SSH tunnel to the Linux voice service on that port). My voice is the voice of choice; do not switch to another voice without the captain's word.";
 
 // Waits for the given number of milliseconds.
 function defaultSleep(ms: number): Promise<void> {
@@ -235,7 +235,7 @@ export async function resolveVcdVoiceId(
       throw new VcdUnavailableError(
         "voice_not_found",
         baseUrl,
-        `Configured voice "${configured}" is not enrolled in the local voice service at ${baseUrl}.${known} Set voiceClone.voiceId in aideos.config.json (or AIDEOS_VCD_VOICE_ID), or choose another voice.`,
+        `Configured voice "${configured}" is not enrolled in the local voice service at ${baseUrl}.${known} Set voiceClone.voiceId in aideos.config.json (or AIDEOS_VCD_VOICE_ID). Do not switch to another voice without the captain's word.`,
       );
     }
     return { voiceId: match.id, voiceName: match.name, url: baseUrl };
@@ -245,7 +245,7 @@ export async function resolveVcdVoiceId(
     throw new VcdUnavailableError(
       "no_voice_enrolled",
       baseUrl,
-      `Local voice service at ${baseUrl} is running, but no voice is enrolled yet. Enroll your own voice with POST /v1/consents and POST /v1/voices, or choose another voice explicitly.`,
+      `Local voice service at ${baseUrl} is running, but no voice is enrolled yet. Enroll your own voice with POST /v1/consents and POST /v1/voices, or ask the captain before using another voice.`,
     );
   }
 
@@ -346,7 +346,7 @@ export async function synthesizeWithVcd(
       throw new VcdUnavailableError(
         "voice_not_found",
         baseUrl,
-        `Voice "${voiceId}" was not found in the local voice service at ${baseUrl}. Check voiceClone.voiceId in aideos.config.json (or AIDEOS_VCD_VOICE_ID), enroll your voice, or choose another voice.`,
+        `Voice "${voiceId}" was not found in the local voice service at ${baseUrl}. Check voiceClone.voiceId in aideos.config.json (or AIDEOS_VCD_VOICE_ID) and enroll your voice. Do not switch to another voice without the captain's word.`,
       );
     }
 

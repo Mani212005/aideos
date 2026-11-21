@@ -18,7 +18,9 @@ import {
   type TimelineTransaction,
   TimelineTransactionManager,
   generateUUID,
+  uniqueSuffixedId,
 } from "./updates";
+import { freeLayerNumber } from "./layer_manager";
 import { type SnapTarget, type SnapResult } from "./snap";
 
 export { TimelineTransactionManager, type UpdateAction, type TimelineTransaction, type SnapTarget, type SnapResult };
@@ -182,6 +184,7 @@ export function importMediaAssetToLayeredFilm(
 
   /** Append a layer to the working copy and record the insert action for it. */
   const appendLayer = (layer: Layer, label: string) => {
+    layer.number = freeLayerNumber(newLayers, layer.number);
     newLayers.push(layer);
     actions.push({
       type: "insert",
@@ -249,8 +252,8 @@ export function importMediaAssetToLayeredFilm(
       appendLayer(audioLayer, "Create footage audio layer");
     }
 
-    const videoClipId = `clip-video-${slug}-${generateUUID().slice(0, 4)}`;
-    const audioClipId = `clip-audio-${slug}-${generateUUID().slice(0, 4)}`;
+    const videoClipId = uniqueSuffixedId(`clip-video-${slug}`, newClips.map((c) => c.id));
+    const audioClipId = uniqueSuffixedId(`clip-audio-${slug}`, newClips.map((c) => c.id));
 
     const videoClip: Clip = {
       id: videoClipId,
@@ -320,7 +323,7 @@ export function importMediaAssetToLayeredFilm(
     const isSfxLane = audioLayer.id === "layer-audio-sfx";
     const channel: "voiceover" | "music" | "sfx" | "external" = isMusicLane ? "music" : isSfxLane ? "sfx" : "external";
 
-    const audioClipId = `clip-audio-${slug}-${generateUUID().slice(0, 4)}`;
+    const audioClipId = uniqueSuffixedId(`clip-audio-${slug}`, newClips.map((c) => c.id));
     const audioClip: Clip = {
       id: audioClipId,
       layerId: audioLayer.id,
@@ -350,7 +353,7 @@ export function importMediaAssetToLayeredFilm(
   }
 
   const imageLayer = explicitLayer ?? newLayers.find((l) => l.number > 0) ?? newLayers[0];
-  const imageClipId = `clip-image-${slug}-${generateUUID().slice(0, 4)}`;
+  const imageClipId = uniqueSuffixedId(`clip-image-${slug}`, newClips.map((c) => c.id));
   const imageClip: Clip = {
     id: imageClipId,
     layerId: imageLayer.id,

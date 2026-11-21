@@ -11,7 +11,7 @@ import { carryCaptionPlacement } from "../../src/dl/captionPlacement";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { readNarrationVoice, type LineSynthesizer } from "../endCard/voice";
-import { checkFilmDesign, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_PAN_WIDTHS, MAX_CAMERA_ZOOM_STEP, type DesignFinding } from "../designCheck/designCheck";
+import { checkFilmDesign, narratorContext, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_PAN_WIDTHS, MAX_CAMERA_ZOOM_STEP, type DesignFinding } from "../designCheck/designCheck";
 import { checkDesignAgainstLook, resolveDesignCharacters } from "../designSpec/build";
 import { compileDesign, narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
@@ -220,7 +220,7 @@ export function compileReel(input: {
   const activeLook = look?.schema === "aideos.look/2"
     ? { ...look, shots: look.shots.filter((s) => keptIds.has(s.id)) }
     : look ? { ...look, shots: look.shots.filter((s) => keptIds.has(s.id)) } : undefined;
-  const report = checkFilmDesign(reel, { formats: ["reel"], collapsedClips, cameraTargets, lookPlan: activeLook });
+  const report = checkFilmDesign(reel, { ...narratorContext(pkg), formats: ["reel"], collapsedClips, cameraTargets, lookPlan: activeLook });
   return { film: report.ok ? reel : undefined, errors: [], findings: report.findings };
 }
 

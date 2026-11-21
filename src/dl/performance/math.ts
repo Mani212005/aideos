@@ -48,7 +48,7 @@ export function normalizeQ(q: Quat): Quat {
   const n = Math.hypot(...q);
   if (!Number.isFinite(n) || n < 1e-12)
     throw new Error("Undefined zero-length quaternion.");
-  return q.map((v) => v / n) as unknown as Quat;
+  return [q[0] / n, q[1] / n, q[2] / n, q[3] / n];
 }
 // Composes two unit quaternion rotations in parent-to-child order.
 export function multiply(a: Quat, b: Quat): Quat {
@@ -100,18 +100,19 @@ export function between(a: Vec3, b: Vec3): Quat {
 // Interpolates rotations along their shortest quaternion arc.
 export function slerp(a: Quat, b: Quat, t: number): Quat {
   let cosine = a.reduce((n, v, i) => n + v * b[i], 0);
-  const end = cosine < 0 ? (b.map((v) => -v) as unknown as Quat) : b;
+  const end: Quat = cosine < 0 ? [-b[0], -b[1], -b[2], -b[3]] : b;
   cosine = Math.abs(cosine);
-  if (cosine > 0.9995)
-    return normalizeQ(a.map((v, i) => v + (end[i] - v) * t) as unknown as Quat);
+  if (cosine > 0.9995) {
+    // Linear blend of one component, used when the arc is too short for the sine form.
+    const lerp = (i: 0 | 1 | 2 | 3) => a[i] + (end[i] - a[i]) * t;
+    return normalizeQ([lerp(0), lerp(1), lerp(2), lerp(3)]);
+  }
   const theta = Math.acos(Math.min(1, cosine)),
-    s = Math.sin(theta);
-  return normalizeQ(
-    a.map(
-      (v, i) =>
-        (v * Math.sin((1 - t) * theta) + end[i] * Math.sin(t * theta)) / s,
-    ) as unknown as Quat,
-  );
+    s = Math.sin(theta),
+    // Spherical blend of one component.
+    blend = (i: 0 | 1 | 2 | 3) =>
+      (a[i] * Math.sin((1 - t) * theta) + end[i] * Math.sin(t * theta)) / s;
+  return normalizeQ([blend(0), blend(1), blend(2), blend(3)]);
 }
 // Transforms a point from local to parent space.
 export const point = (t: Transform, v: Vec3): Vec3 =>

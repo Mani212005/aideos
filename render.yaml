@@ -22,8 +22,8 @@ services:
         sync: false
       - key: DEEPGRAM_API_KEY
         sync: false
-      - key: AIDEOS_GEMINI_MODEL
-        value: gemini-3.5-flash
+      # AIDEOS_GEMINI_MODEL (the Gemini text model of screenplay intake, the director and the edit planner)
+      # is left unset on purpose: backend/modelClient.ts owns its default. It is not the video review model.
       # The address a paired `aideos connect` dials (the studio shows it in its pairing command).
       - key: AIDEOS_PUBLIC_API_URL
         value: https://aideos-backend.onrender.com
