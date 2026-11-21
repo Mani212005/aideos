@@ -4,8 +4,6 @@
  * retimes the design and a cue naming a phrase that is no longer spoken fails with a clear reason.
  * Inputs and outputs: narration word timings and keywords -> synchronized visual animation cues.
  * Used by: backend/designSpec/compile.ts.
- * Inputs and outputs: narration word timings and keywords -> synchronized visual animation cues.
- * Used by: backend/designSpec/compile.ts.
  */
 
 import type { Cues } from "../sceneKit";

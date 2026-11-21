@@ -83,7 +83,7 @@ Aideos solves this with **Video as Pure Data**:
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 3. SEMANTIC VISUAL SELECTION & SPATIAL CANVAS                               │
-│ • Selects visual blocks (DeviceCard, MatrixGrid, StatCounter, TokenStrip)   │
+│ • Selects visual blocks (LayerStack, MatrixGrid, StatCounter, TokenStrip)   │
 │ • Computes continuous 2D coordinates (x, y, w, h) and directed graph edges  │
 │ • Derives smooth camera trajectories and enforces pacing rules              │
 └──────────────────────────────────────┬──────────────────────────────────────┘
@@ -102,7 +102,7 @@ Aideos solves this with **Video as Pure Data**:
 ## Quick Start
 
 ### 1. Prerequisites
-- **Node.js**: v20.x or higher
+- **Node.js**: v22.5 or higher (required for `node:sqlite`)
 - **FFmpeg**: Required for audio normalization, waveform extraction, and video mastering
 - **Operating System**: Linux or macOS
 
@@ -211,7 +211,7 @@ Promotion requires passing full CI, dual-format production, measured rubric revi
 
 ## Documentation
 
-- [Architecture Context & Schemas](docs/CONTEXT.md): Data types, schemas (`Film`, `Shot`, `Block`), and engine reference.
+- [Film Schema & Data Types](src/dl/schema.ts): Authoritative Zod schemas and TypeScript types (`Film`, `Shot`, `Block`, `Soundtrack`).
 - [Web Editor Architecture](docs/DESIGN.md): Studio frontend design system, timeline drag machine, and stage specifications.
 - [Production Pipeline Reference](docs/PRODUCTION_PIPELINE.md): Stages from intake to render, resume behavior, and MCP tools.
 - [Video Production Workflow](docs/WORKFLOW.md): Design axioms, 7-rule pacing gate, and complete CLI command table.

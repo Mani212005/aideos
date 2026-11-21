@@ -1,6 +1,6 @@
 //! File Description: The `aideos-render` command line: renders one frame of a Render IR file to a PNG on the deterministic CPU rasterizer (or, built with the `gpu` feature and given `--gpu`, on an EGL OpenGL surface); `video` renders a whole film or a frame range to an mp4 through the R3 encoder; `measure` reports text widths and line metrics with the renderer's own fonts; `check` loads a film and its assets exactly as a render would and draws nothing (the renderer choice asks it before rendering).
 //! Inputs and outputs: `aideos-render <ir.json> --frame N [--format long|reel] [--package DIR] [--gpu] --out frame.png` -> the PNG and one line on stdout; `aideos-render video <ir.json> --format F --out x.mp4 [...]` -> the mp4, progress lines and a JSON report; `aideos-render measure <request.json>` -> JSON on stdout; `aideos-render check <ir.json> [--package DIR]` -> `ok ...` or the refusal. Exit 0 on success, 1 when loading, rendering or encoding fails, 2 on a usage error.
-//! Used by: people and agents rendering stills, backend/nativeRenderer.ts and backend/renderIr/measure.ts, tests/cli.rs and tests/video.rs.
+//! Used by: people and agents rendering stills, backend/nativeRenderer.ts (including text measurement for backend/renderIr/emit.ts), tests/cli.rs, tests/video.rs and tests/measure.rs.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
