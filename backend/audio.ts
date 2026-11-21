@@ -712,15 +712,6 @@ export function retimeAudioSync(
   return { filePath: outPath, durationSec };
 }
 
-/** Retimes an audio file using FFmpeg WSOLA-based atempo filter and caches the result. */
-export async function retimeAudio(
-  src: string,
-  speed: number,
-  options?: { cacheDir?: string; outPath?: string }
-): Promise<RetimedAudioResult> {
-  return retimeAudioSync(src, speed, options);
-}
-
 /** Pre-renders all retimed audio tracks in a film so Remotion CLI can access them statically. */
 export function ensureRetimedAudio(film: Film): void {
   if (film.voiceover?.src && film.voiceover.speed && Math.abs(film.voiceover.speed - 1.0) > 0.001) {

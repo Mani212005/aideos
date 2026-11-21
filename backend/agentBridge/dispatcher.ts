@@ -55,7 +55,7 @@ taskQueue.addListener((event, task) => {
   if (event === "completed" || event === "failed") paneDelivery.release(task.id);
 });
 
-/** Reads the current active agent session configuration. */
+/** Reads the active agent session that bin/aideos recorded in .aideos_session.json, or the default tmux session when none is recorded. */
 export function getAgentSession(): AgentSessionInfo {
   if (fs.existsSync(SESSION_FILE)) {
     try {
@@ -77,24 +77,6 @@ export function getAgentSession(): AgentSessionInfo {
     tmuxSession: "aideos",
     updatedAt: new Date().toISOString(),
   };
-}
-
-/** Updates and persists the active agent session info. */
-export function setAgentSession(info: Partial<AgentSessionInfo>): AgentSessionInfo {
-  const current = getAgentSession();
-  const next: AgentSessionInfo = {
-    ...current,
-    ...info,
-    updatedAt: new Date().toISOString(),
-  };
-
-  try {
-    fs.writeFileSync(SESSION_FILE, JSON.stringify(next, null, 2), "utf8");
-  } catch (err) {
-    console.warn("[AgentBridge] Failed to save session info:", err);
-  }
-
-  return next;
 }
 
 /** Cancels any active fallback timer registered for a specific task. */

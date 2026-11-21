@@ -18,7 +18,6 @@ import {
   produceAudioPipeline,
   formatTime,
   buildFilmFromAudioResult,
-  retimeAudio,
   retimeAudioSync,
   ensureRetimedAudio,
   buildAtempoFilter,
@@ -226,14 +225,14 @@ test("resolveAudioSourcePath finds a public/ source even when process.cwd() is n
   }
 });
 
-test("retimeAudio retimes audio across 0.8x, 1.2x, 1.5x, 2.0x speeds with WSOLA duration scaling", async () => {
+test("retimeAudioSync retimes audio across 0.8x, 1.2x, 1.5x, 2.0x speeds with WSOLA duration scaling", () => {
   const sourcePath = testAudioPath;
   const orig = retimeAudioSync(sourcePath, 1.0);
   assert.ok(orig.durationSec > 0);
 
   const speeds = [0.8, 1.2, 1.5, 2.0];
   for (const speed of speeds) {
-    const retimed = await retimeAudio(sourcePath, speed);
+    const retimed = retimeAudioSync(sourcePath, speed);
     assert.ok(retimed.filePath.endsWith(".wav"));
     // Expected duration is original duration divided by speed, within 2% tolerance
     const expectedDur = orig.durationSec / speed;
