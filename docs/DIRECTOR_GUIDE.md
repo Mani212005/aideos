@@ -17,7 +17,7 @@ You have complete creative autonomy. The browser canvas is your viewport; the de
   may sit in an inset beside that stage, or be redrawn as SVG parts on it; never cover the stage
   with a full panel or card.
 - **Rhythm & Breathing**: Film is music for the eyes. Alternate between tight analytical focus shots and wide canvas camera pull-backs to let the viewer breathe and re-anchor the big picture.
-- **Move, focus, hold**: Each camera move should read as a deliberate turn toward the object the narration is about to discuss. Arrive about one beat before its cue word, name that object as the pose's focus, then hold on it for about 3 to 5 seconds. Avoid continuous drift between subjects.
+- **Move, focus, hold**: Each camera move should read as a deliberate turn toward the object the narration is about to discuss. Arrive about one beat before its cue word, name that object as the pose's focus, then hold on it for about 2.5 to 4 seconds (the [house pace](GOOD_VIDEO.md#house-pace)). Avoid continuous drift between subjects.
 - **Readable carry-over**: When a carried object changes, plan a distinct resulting state and a substantial visible transformation. Finish the change while the camera holds on that object, then keep it framed and readable for at least about 2 seconds.
 - **Reel hook**: A reel (9:16 short) opens on a measurable hook, not a generic high-energy opening; see [Reel hook](#reel-hook) below.
 - **Good Video Standard**: Every film must satisfy the authoritative quality rubric in [`docs/GOOD_VIDEO.md`](GOOD_VIDEO.md) (persistent stage, carry-over with transformation, visible cause and effect, camera movement, captions at their placed position with bottom as the default, and honest data).
@@ -31,7 +31,7 @@ While your artistic choices are completely free, your screenplay must respect th
 1. **Structure**: 1 to 12 story chapters on one persistent scene stage, with carried objects
    connected logically in space.
 2. **Camera Transitions**: Use short, slow, purposeful pans and zooms to guide focus across the
-   stage, with a 3 to 5 second hold on each subject before moving again; do not clear the stage or
+   stage, with a 2.5 to 4 second hold on each subject before moving again; do not clear the stage or
    switch to a disconnected visual world.
 3. **Pacing Rhythm**:
    - Let the stage and its objects evolve continuously. A precise device is secondary to the
@@ -39,6 +39,8 @@ While your artistic choices are completely free, your screenplay must respect th
    - Use a small text treatment only when the stage still remains visible; never use a full-panel
      or stage-covering card as a device.
    - Limit visual density to at most 3 focal accents per frame to avoid cognitive overload.
+   - Keep beats brisk: each narration line is one beat, and at the house pace beats average 4 to 10 s
+     (roughly 12 to 30 spoken words). Split a longer line at a sentence so the picture can change with it.
 4. **Audio Sync**: Every shot duration (`dur`) locks to the measured narration audio timing (+-50ms).
 
 ---

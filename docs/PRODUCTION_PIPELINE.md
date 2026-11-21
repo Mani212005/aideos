@@ -337,10 +337,12 @@ film narrated by another voice is not built or rendered. Only the captain may al
 `AIDEOS_ALLOW_OTHER_VOICE=1` for the run, which downgrades the finding to a warning that stays in the report.
 
 Other backends exist only for the captain's explicit choice. Kokoro-82M runs locally through ONNX with no
-API key and is configured with a default pace multiplier of 0.75 (`DEFAULT_KOKORO_SPEED`)
-to keep explainer narration within the measured review pacing limit (`AIDEOS_TTS_SPEED` or `--speed` overrides);
+API key and is configured with a default pace multiplier of 0.9 (`DEFAULT_KOKORO_SPEED`: the
+[house pace](GOOD_VIDEO.md#house-pace), 1.2x the 0.75 it replaced; `AIDEOS_TTS_SPEED` or `--speed` overrides);
 `AIDEOS_TTS` or the `ttsBackend` option pins `kokoro`, `google`, `say` or the offline `tone`
-placeholder instead. Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because it
+placeholder instead. A backend without its own speaking-rate setting (`vcd`, `google`, `say`, `tone`) is
+re-paced to the house narration rate line by line with a pitch-preserving time-stretch (`timeStretch` in
+`backend/pcm.ts`, `narrationRate` on `ProduceAudioOptions`), and the rate is part of each line's cache key. Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because it
 resolves its voice files relative to its own module directory and because the ONNX thread pool
 aborts the process on teardown when loaded inside the TypeScript loader.
 

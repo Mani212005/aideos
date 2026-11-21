@@ -1,12 +1,15 @@
 /**
  * File Description: Pure sample-domain helpers for the narration pipeline - silence trimming,
+ * pitch-preserving time-stretch (WSOLA),
  * boundary fades, peak normalization, exact-offset concatenation, word-timing distribution and
  * 16-bit PCM WAV encode/decode. Everything here is deterministic and dependency-free so the
  * voiceover regression tests can assert on sample counts and boundary amplitudes directly,
  * which is the only way to prove there is no click, gap or drift at a stitch point.
- * Inputs and outputs: raw Float32 PCM samples and WAV buffers -> trimmed, normalized, concatenated audio samples and WAV files.
- * Used by: backend/audio.ts, backend/tts.ts, backend/pipeline/design.ts.
+ * Inputs and outputs: raw Float32 PCM samples and WAV buffers -> trimmed, re-paced, normalized, concatenated audio samples and WAV files.
+ * Used by: backend/audio.ts, backend/tts.ts, backend/pipeline/design.ts, editor/vite.config.ts.
  */
+
+import { HOUSE_PACE } from "./pacingProfile";
 
 /** One synthesized piece of narration and the text it speaks. */
 export interface PcmChunk {
@@ -79,6 +82,97 @@ export function applyEdgeFades(samples: Float32Array, sampleRate: number, fadeMs
   return out;
 }
 
+/** WSOLA analysis frame: 30 ms holds two to four pitch periods of a speaking voice. */
+const STRETCH_FRAME_MS = 30;
+/** How far WSOLA may slide a frame from its nominal position to find the best waveform match. */
+const STRETCH_TOLERANCE_MS = 10;
+
+// Periodic Hann window: at 50% overlap consecutive windows sum to exactly 1.
+function periodicHann(length: number): Float32Array {
+  const w = new Float32Array(length);
+  for (let i = 0; i < length; i++) w[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / length);
+  return w;
+}
+
+// Normalized cross-correlation of `a` from `ai` and `b` from `bi` over `length` samples.
+function similarity(a: Float32Array, ai: number, b: Float32Array, bi: number, length: number): number {
+  let dot = 0;
+  let energy = 0;
+  for (let i = 0; i < length; i++) {
+    const x = a[ai + i];
+    dot += x * b[bi + i];
+    energy += x * x;
+  }
+  return energy > 1e-12 ? dot / Math.sqrt(energy) : 0;
+}
+
+/**
+ * Changes the speed of speech without changing its pitch (rate 1.2 plays 1.2x faster, rate 0.9 slower),
+ * by waveform-similarity overlap-add (WSOLA). Output frames are laid down at a fixed hop; each one is read
+ * from near where the faster (or slower) timeline says it should come from, slid by up to 10 ms to the
+ * position whose waveform best continues the frame before it. Overlapping in phase is what keeps the voice
+ * free of the warble and doubled-pitch artefacts a plain overlap-add or a resample would leave.
+ * Deterministic and pure; the output length is round(input length / rate).
+ */
+export function timeStretch(samples: Float32Array, rate: number, sampleRate: number): Float32Array {
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error(`timeStretch: rate must be a positive number, got ${rate}`);
+  if (!Number.isInteger(sampleRate) || sampleRate <= 0) throw new Error(`timeStretch: invalid sample rate ${sampleRate}`);
+  if (Math.abs(rate - 1) < 1e-6) return Float32Array.from(samples);
+  const frame = 2 * Math.round((STRETCH_FRAME_MS / 1000) * sampleRate / 2);
+  const hop = frame / 2;
+  const tolerance = Math.round((STRETCH_TOLERANCE_MS / 1000) * sampleRate);
+  const outLength = Math.round(samples.length / rate);
+  // Too short to hold one frame: nothing is spoken here that a resample would hurt.
+  if (samples.length < frame * 2) return resampleNearest(samples, outLength);
+
+  const window = periodicHann(frame);
+  const out = new Float32Array(outLength + frame);
+  const weight = new Float32Array(outLength + frame);
+  const lastStart = samples.length - frame;
+  let previous = 0;
+  for (let k = 0; k * hop < outLength; k++) {
+    const nominal = Math.min(lastStart, Math.round(k * hop * rate));
+    let start = nominal;
+    if (k > 0) {
+      // The samples that would naturally follow the previous frame are the template to match.
+      const template = Math.min(lastStart, previous + hop);
+      const lo = Math.max(0, nominal - tolerance);
+      const hi = Math.min(lastStart, nominal + tolerance);
+      let best = -Infinity;
+      // Coarse search every second sample, then refine around the winner.
+      for (let s = lo; s <= hi; s += 2) {
+        const score = similarity(samples, s, samples, template, hop);
+        if (score > best) { best = score; start = s; }
+      }
+      const coarse = start;
+      for (let s = Math.max(lo, coarse - 1); s <= Math.min(hi, coarse + 1); s++) {
+        const score = similarity(samples, s, samples, template, hop);
+        if (score > best) { best = score; start = s; }
+      }
+    }
+    const at = k * hop;
+    for (let i = 0; i < frame; i++) {
+      // Nothing overlaps the first frame's rising half, so it is taken at full weight rather than faded in.
+      const w = k === 0 && i < hop ? 1 : window[i];
+      out[at + i] += samples[start + i] * w;
+      weight[at + i] += w;
+    }
+    previous = start;
+  }
+  const result = new Float32Array(outLength);
+  for (let i = 0; i < outLength; i++) result[i] = weight[i] > 1e-6 ? out[i] / weight[i] : 0;
+  return result;
+}
+
+// Nearest-sample length change for clips too short to stretch frame by frame.
+function resampleNearest(samples: Float32Array, length: number): Float32Array {
+  const out = new Float32Array(length);
+  if (samples.length === 0) return out;
+  const step = samples.length / Math.max(1, length);
+  for (let i = 0; i < length; i++) out[i] = samples[Math.min(samples.length - 1, Math.floor(i * step))];
+  return out;
+}
+
 /** Scales the buffer so its loudest sample sits at targetPeak, leaving headroom below clipping. */
 export function normalizePeak(samples: Float32Array, targetPeak = 0.89): Float32Array {
   let peak = 0;
@@ -112,14 +206,15 @@ export interface AssembleOptions {
   silenceThreshold: number;
 }
 
-// Decision D4: narration breath at chapter cuts so music changes can land in a pause instead of under speech.
-export const CHAPTER_BREATH_GAP_MS = 900;
+// Decision D4: narration breath at chapter cuts so music changes can land in a pause instead of under speech,
+// shortened with every other timeline silence by the 2026-11-21 house pace (backend/pacingProfile.ts).
+export const CHAPTER_BREATH_GAP_MS = HOUSE_PACE.chapterGapMs;
 
-/** The defaults the production pipeline runs with. */
+/** The defaults the production pipeline runs with: the house pace's silences between lines and chunks. */
 export const DEFAULT_ASSEMBLE_OPTIONS: Omit<AssembleOptions, "sampleRate"> = {
-  segmentGapMs: 200,
+  segmentGapMs: HOUSE_PACE.segmentGapMs,
   chapterGapMs: CHAPTER_BREATH_GAP_MS,
-  chunkGapMs: 110,
+  chunkGapMs: HOUSE_PACE.chunkGapMs,
   fadeMs: 6,
   silenceThreshold: 0.005,
 };

@@ -110,6 +110,41 @@ test("shared audio entry reports fragments, rejects title leaks, and still synth
   }
 });
 
+// House pace (captain, 2026-11-21): "I feel that 1.2x of the speed would really fit this nicely." A voice without its
+// own speaking-rate setting is re-paced per line, and the rate is part of the per-line cache fingerprint.
+test("house pace: a voice without its own speed is stretched 1.2x per line, and the rate is part of the line cache key", async () => {
+  const pkg = await fs.mkdtemp(path.join(os.tmpdir(), "aideos-pace-audio-"));
+  let calls = 0;
+  // Speaks every line as three seconds of a steady 180 Hz voice.
+  const speak = async () => {
+    calls += 1;
+    const out = new Float32Array(PCM_SAMPLE_RATE * 3);
+    for (let i = 0; i < out.length; i++) out[i] = 0.3 * Math.sin((2 * Math.PI * 180 * (i + 0.25)) / PCM_SAMPLE_RATE + 0.5);
+    return out;
+  };
+  const plain: TtsBackend = { name: "pace-test", maxChars: 800, synthesize: speak };
+  const lines = ["The first line of the story.", "The second line of the story."];
+  const near = (actual: number, expected: number) => assert.ok(Math.abs(actual - expected) < 0.01, `${actual} s, expected ${expected} s`);
+  try {
+    const fast = await produceAudioPipeline(lines, pkg, { ttsBackendInstance: plain });
+    assert.equal(fast.timeStretch, 1.2);
+    assert.deepEqual(fast.lines, { recorded: 2, reused: 0 });
+    near(fast.segments[0].duration, 2.5);
+    const again = await produceAudioPipeline(lines, pkg, { ttsBackendInstance: plain });
+    assert.deepEqual(again.lines, { recorded: 0, reused: 2 }, "the same rate reuses the stored lines");
+    const asSpoken = await produceAudioPipeline(lines, pkg, { ttsBackendInstance: plain, narrationRate: 1 });
+    assert.deepEqual(asSpoken.lines, { recorded: 2, reused: 0 }, "another rate is another recording");
+    assert.equal(asSpoken.timeStretch, undefined);
+    near(asSpoken.segments[0].duration, 3);
+    const native = await produceAudioPipeline(lines, pkg, { ttsBackendInstance: { ...plain, name: "native-pace-test", speed: 1.2 } });
+    assert.equal(native.timeStretch, undefined, "a voice that sets its own pace is never stretched on top");
+    near(native.segments[0].duration, 3);
+    assert.equal(calls, 6);
+  } finally {
+    await fs.rm(pkg, { recursive: true, force: true });
+  }
+});
+
 test("caption offset math correctly shifts timestamps by segment start offset", () => {
   const segStartOffset = 4.25; // 4.25 seconds into timeline
   const relativeUtteranceStart = 0.50; // 0.50s within segment

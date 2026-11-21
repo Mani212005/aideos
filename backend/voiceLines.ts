@@ -1,6 +1,7 @@
 /**
  * File Description: Line-by-line voice-over storage. Each narration line is recorded once and kept under
- * videos/<slug>/voiceover_lines/ keyed by a content fingerprint (its words plus the voice that spoke them),
+ * videos/<slug>/voiceover_lines/ keyed by a content fingerprint (its words plus the voice that spoke them and the
+ * rate any pitch-preserving stretch re-paced it to),
  * so regenerating the voice-over re-records only the lines whose fingerprint changed and reuses every other
  * recording untouched. Synthesis is injected, so the logic is tested without any speech engine.
  * Inputs and outputs: narration lines, a voice key and a one-line synthesizer -> per-line audio (reused or fresh) and counts.
@@ -47,6 +48,24 @@ const STORE_VERSION = 1;
 /** The directory a package keeps its per-line recordings in. */
 export function voiceLinesDir(pkgDir: string): string {
   return path.join(pkgDir, "voiceover_lines");
+}
+
+/** The suffix a re-paced line's voice key carries: a line stretched to another rate is another recording. */
+const STRETCH_KEY_MARK = "|stretch=";
+
+/**
+ * The voice key of lines re-paced by a pitch-preserving time-stretch. Rate 1 keeps the plain key, so an
+ * unstretched line keeps the recording it had before stretching existed.
+ */
+export function pacedVoiceKey(voiceKey: string, stretch: number): string {
+  if (!Number.isFinite(stretch) || stretch <= 0) throw new Error(`pacedVoiceKey: stretch must be a positive number, got ${stretch}`);
+  return Math.abs(stretch - 1) < 1e-6 ? voiceKey : `${voiceKey}${STRETCH_KEY_MARK}${stretch}`;
+}
+
+/** The voice key a line was recorded with, without any re-pacing suffix (to recognise the voice itself). */
+export function unpacedVoiceKey(voiceKey: string): string {
+  const at = voiceKey.lastIndexOf(STRETCH_KEY_MARK);
+  return at < 0 ? voiceKey : voiceKey.slice(0, at);
 }
 
 /** The content fingerprint of one line: its words plus the voice key that speaks them. */

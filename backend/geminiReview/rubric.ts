@@ -6,6 +6,7 @@
  */
 
 import type { CriterionEvaluation } from "./types";
+import { HOUSE_PACE } from "../pacingProfile";
 
 export interface RubricCriterionDefinition {
   name: string;
@@ -85,8 +86,8 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     title: "Pacing",
     isGate: false,
     description:
-      "Dynamic visual rhythm: no static frame held unchanged for > 3s in the story (the end card's held, dimmed final stage is intentional), mean beat length 5-12s, no dead air > 0.7s, narration delivery pace 130-170 words per minute.",
-    passTarget: "Continuous visual motion; no static freezes > 3s; natural delivery",
+      `Dynamic visual rhythm at the brisk house pace: no static frame held unchanged for > ${HOUSE_PACE.storyHoldMaxSec}s in the story (the end card's held, dimmed final stage is intentional), mean beat length ${HOUSE_PACE.meanBeatSec[0]}-${HOUSE_PACE.meanBeatSec[1]}s, no dead air > ${HOUSE_PACE.deadAirMaxSec}s, narration delivery pace ${HOUSE_PACE.wpmTarget[0]}-${HOUSE_PACE.wpmTarget[1]} words per minute, every word still clearly intelligible.`,
+    passTarget: `Continuous visual motion; no static freezes > ${HOUSE_PACE.storyHoldMaxSec}s; brisk but clear delivery`,
   },
   {
     name: "storyline",

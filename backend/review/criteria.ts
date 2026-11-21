@@ -14,7 +14,7 @@ import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
 import { captionMatch, chanceNearWordStarts, cutsThroughWords, normalizeWord, pauses, phraseFrame, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
 import type { MusicUnderVoice } from "./music";
-import { THRESHOLDS as T, type PacingProfileName } from "./thresholds";
+import { THRESHOLDS as T } from "./thresholds";
 import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 import type { CriterionKey, CriterionResult, Evidence, VideoFacts } from "./types";
 
@@ -28,8 +28,6 @@ export interface ReviewInputs {
   loudness: Loudness | null;
   silences: Silence[];
   musicUnderVoice?: MusicUnderVoice;
-  /** Opt-in narration pace window; honoured on reel reviews only, the default window applies otherwise. */
-  pacingProfile?: PacingProfileName;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -358,7 +356,7 @@ function camera(i: ReviewInputs): CriterionResult {
     summary: failures.length ? failures.join("; ") : `${cam.moves.length} purposeful camera moves`,
     metrics, threshold,
     evidence: spread(cam.moves.map((m) => m.t), 3).map((t) => ({ t: t + 0.5, note: "camera move" })),
-    fix: failures.length ? "Add a slow camera move that changes what is framed at least once every 20 s (push in on the detail being explained, pull back for the payoff), none faster than 20% of the frame width per second." : undefined,
+    fix: failures.length ? `Add a slow camera move that changes what is framed at least once every ${T.camera.movePerSec} s (push in on the detail being explained, pull back for the payoff), none faster than 20% of the frame width per second.` : undefined,
   };
 }
 
@@ -472,8 +470,8 @@ function audioSync(i: ReviewInputs): CriterionResult {
   };
 }
 
-// Criterion 9: pacing (stillness, cuts, dead air, speaking rate); `profile` picks the narration pace window.
-function pacing(i: ReviewInputs, profile: PacingProfileName): CriterionResult {
+// Criterion 9: pacing (stillness, cuts, dead air, speaking rate, beat length) at the house pace.
+function pacing(i: ReviewInputs): CriterionResult {
   const { render, video, narration, film, silences } = i;
   const failures: string[] = [];
   const storyEnd = film?.endCard?.startSec ?? video.durationSec;
@@ -491,17 +489,18 @@ function pacing(i: ReviewInputs, profile: PacingProfileName): CriterionResult {
   else if (video.audioDurationSec !== null) deadAir = storyRanges(silences, storyEnd).filter((s) => s.start > 1 && s.end < storyEnd - 1 && s.end - s.start > T.pacing.deadAirMaxSec).length;
   if (deadAir > 0) failures.push(`${deadAir} stretches of dead air longer than ${T.pacing.deadAirMaxSec} s inside the narration`);
   const wpm = narration?.timed ? wordsPerMinute(narration.words) : narration ? (narration.text.split(/\s+/).filter(Boolean).length / video.durationSec) * 60 : null;
-  const band = T.pacingProfiles[profile];
-  if (wpm !== null && (wpm < band.wpmMin || wpm > band.wpmMax) && narration?.timed) failures.push(`narration runs at ${Math.round(wpm)} words per minute (window ${band.wpmMin} to ${band.wpmMax})`);
-  const meanBeat = film ? film.shotDurations.reduce((a, b) => a + b, 0) / film.shotDurations.length : null;
+  if (wpm !== null && (wpm < T.pacing.wpmMin || wpm > T.pacing.wpmMax) && narration?.timed) failures.push(`narration runs at ${Math.round(wpm)} words per minute (window ${T.pacing.wpmMin} to ${T.pacing.wpmMax})`);
+  const meanBeat = film && film.shotDurations.length ? film.shotDurations.reduce((a, b) => a + b, 0) / film.shotDurations.length : null;
+  const [beatMin, beatMax] = T.pacing.meanBeatSec;
+  if (meanBeat !== null && (meanBeat < beatMin || meanBeat > beatMax)) failures.push(`the mean beat lasts ${round(meanBeat, 1)} s (window ${beatMin} to ${beatMax} s)`);
   return {
     id: 9, key: "pacing", name: "Pacing", gate: false,
     status: failures.length ? "fail" : "pass", score: Math.round(clamp(4 - failures.length * 1.5, 0, 4) * 10) / 10,
     summary: failures.length ? failures.join("; ") : "no static holds, cuts or dead air; narration pace is in range",
-    metrics: { longestStaticSec: round(longest, 1), hardCuts: render.hardCutTimes.length, hardCutsPerMin: round(cutsPerMin, 1), deadAirStretches: deadAir, wordsPerMinute: wpm === null ? null : Math.round(wpm), meanBeatSec: meanBeat === null ? null : round(meanBeat, 1), ...(profile === "default" ? {} : { pacingProfile: profile }) },
-    threshold: { staticRunMaxSec: T.pacing.staticRunMaxSec, hardCutsPerMinMax: T.pacing.hardCutsPerMinMax, deadAirMaxSec: T.pacing.deadAirMaxSec, wpmMin: band.wpmMin, wpmMax: band.wpmMax },
+    metrics: { longestStaticSec: round(longest, 1), hardCuts: render.hardCutTimes.length, hardCutsPerMin: round(cutsPerMin, 1), deadAirStretches: deadAir, wordsPerMinute: wpm === null ? null : Math.round(wpm), meanBeatSec: meanBeat === null ? null : round(meanBeat, 1) },
+    threshold: { staticRunMaxSec: T.pacing.staticRunMaxSec, hardCutsPerMinMax: T.pacing.hardCutsPerMinMax, deadAirMaxSec: T.pacing.deadAirMaxSec, wpmMin: T.pacing.wpmMin, wpmMax: T.pacing.wpmMax, meanBeatMinSec: beatMin, meanBeatMaxSec: beatMax },
     evidence: [...staticRuns.slice(0, 2).map((r) => ({ t: (r.start + r.end) / 2, note: "picture unchanged here" })), ...spread(render.hardCutTimes, 3).map((t) => ({ t, note: "hard cut" }))],
-    fix: failures.length ? "Replace cuts with continuous transforms of the same stage, give every beat something that moves, and trim pauses over 0.7 s." : undefined,
+    fix: failures.length ? `Replace cuts with continuous transforms of the same stage, give every beat something that moves, trim pauses over ${T.pacing.deadAirMaxSec} s, and split or merge narration lines so beats average ${beatMin} to ${beatMax} s.` : undefined,
   };
 }
 
@@ -572,7 +571,7 @@ function loudness(i: ReviewInputs): CriterionResult {
 // Computes every criterion's verdict from the measured inputs, in rubric order.
 export function evaluateCriteria(i: ReviewInputs): CriterionResult[] {
   const reel = (i.format ?? (i.video.width < i.video.height ? "reel" : "long")) === "reel";
-  const criteria = [persistentStage(i), carryOver(i), planAdherence(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i, reel ? i.pacingProfile ?? "default" : "default"), grounding(i), loudness(i)];
+  const criteria = [persistentStage(i), carryOver(i), planAdherence(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i), grounding(i), loudness(i)];
   if (reel) criteria.push(reelLength(Math.max(i.video.durationSec, i.video.containerDurationSec ?? 0, i.video.audioDurationSec ?? 0)), reelHook(i.narration));
   return criteria;
 }

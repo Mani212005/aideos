@@ -25,8 +25,7 @@ aideos review hnsw-explainer                       # slug: reviews every rendere
 aideos review hnsw-explainer --format reel          # explicit format (long or reel)
 aideos review path/to/video.mp4 --film film.json --words voiceover_words.json
 aideos review video.mp4 --words script.json        # narration text only: caption match and number grounding, no timings
-aideos review hnsw-explainer --format reel --pacing-profile reel-fast   # opt-in reel pace window (up to 200 wpm)
-npm run review -- <slug|mp4> [--format long|reel] [--pacing-profile reel-fast] [--json] [--no-ocr] [--out dir]
+npm run review -- <slug|mp4> [--format long|reel] [--json] [--no-ocr] [--out dir]
 ```
 
 Exit code: `0` all gates passed, `1` a gate failed, `2` the review could not run (missing file,
@@ -42,12 +41,12 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 2 | Carry-over with transformation | film data only: an element stays across a beat boundary and is transformed | >= 1 per 20 s |
 | 13 | Look plan adherence | when `design/look.json` is available, scene motion, carried objects, camera poses, device spacing and stage treatment are checked against the plan as a non-gate score; on a character film each planned performance is checked by its evaluated contact frame against its decisive word (anticipation may start earlier, no clip at the cue is needed), its character id and version, and its actor and prop on stage in this output | all planned shots follow the plan; this rendered-output score remains non-gating until calibrated on the proof and two or three more films. Design build acceptance is a separate gate; see [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery) |
 | 3 | Cues aimed at spoken words | film clips against word timings, compared with chance; declared Three performances contribute their evaluated contact events | clip starts and performance contacts land on word starts clearly more often than chance |
-| 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 20 s, none faster than 20% of the frame width per second (a scene camera also fails the design check on a zoom jump over 0.8% a frame or a pan acceleration over 0.3 widths per second squared) |
+| 4 | **Camera that does something** | film data only (the solved framing of each shot, or a scene camera track) | >= 1 move per 17 s, none faster than 20% of the frame width per second (a scene camera also fails the design check on a zoom jump over 0.8% a frame or a pan acceleration over 0.3 widths per second squared) |
 | 5 | **Captions at placed position (default bottom)** | OCR of full-resolution frames every 2 s | caption band in its declared rectangle (widescreen: bottom quarter `y > 75%`; 9:16 reel: platform safe zone `REEL_CAPTION_SAFE_ZONE`, `y 40-60%`, `x 6-84%`) in >= 60% of narrated moments, <= 2 lines, words match the narration |
 | 6 | **Readability** | OCR box height (normalised to a 1080 short side) and pixel contrast | <= 58% of words under 18 px, <= 10% under 3:1 contrast |
 | 7 | **No overlap or clipping** | OCR boxes overlapping, text inside the edge margin, canvas node overlap | <= 10% of sampled frames affected |
 | 8 | **Audio sync** | audio vs video length, film length, shot boundaries vs word timings | lengths within 0.1 s, no shot boundary through a spoken word |
-| 9 | Pacing | compiled stage motion plus frame difference (static holds, hard cuts), word timings or silence (dead air, pace) | no story hold over 3 s, <= 2 hard cuts per minute, no pause over 0.7 s, 120 to 180 wpm |
+| 9 | Pacing | compiled stage motion plus frame difference (static holds, hard cuts), word timings or silence (dead air, pace), film shot lengths (mean beat) | [house pace](GOOD_VIDEO.md#house-pace): no story hold over 2.5 s, <= 2 hard cuts per minute, no pause over 0.6 s, 145 to 215 wpm, mean beat 4 to 10 s |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms windows overlapping speech on the shared voice activity timeline | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
 | 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
@@ -57,7 +56,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 
 `backend/stageTimeline.ts` owns `moving` / `holding` spans inside `story` / `end-card`
 segments. It reads compiled scene and camera data in each output crop, so no video render is needed.
-Design checks reject a story hold longer than three seconds with its times, format and shot ids.
+Design checks reject a story hold longer than 2.5 seconds (the house pace) with its times, format and shot ids.
 Hidden or off-frame SVG animation does not count as motion. SVG rendering uses the shared
 authored/animated opacity resolver; continuity and stage/review visibility use that resolver with
 the shared 0.05 cutoff.
@@ -88,14 +87,13 @@ The thresholds come from the reference-video study (first word at 0.0 s, 10 to 1
 statements), not from the three calibration videos, which are long cuts the check never runs on. Re-measure
 on real reels before changing a value.
 
-### Reel pacing profile (opt-in)
+### House pace
 
-Criterion 9 keeps its 120 to 180 words per minute window for every review. A reel review may opt into
-the `reel-fast` profile (`--pacing-profile reel-fast`, or `pacingProfile` on a `ReviewRequest`), which
-raises only the upper bound to 200 words per minute (the study measured references at 192 and 202 wpm).
-The lower bound is unchanged, the profile is ignored on a long review, and a report that used it records
-`pacingProfile` in the pacing metrics and the window in its thresholds. Profiles live in
-`THRESHOLDS.pacingProfiles`.
+Criterion 9 reviews every format at the [house pace](GOOD_VIDEO.md#house-pace) (the captain's 2026-11-21
+decision): 145 to 215 words per minute, a mean beat of 4 to 10 s, no pause over 0.6 s and no story hold over
+2.5 s. The window is 1.2x the 120 to 180 wpm it replaced, so it now covers the study's reference reels (192 and
+202 wpm) by default and the opt-in `reel-fast` profile is gone. The numbers come from
+`backend/pacingProfile.ts`, not from the calibration videos.
 
 A character film (Three stage) is measured in the reviewed output's own crop: a cast member is on
 stage when at least half of its projected posed box (outline included) lies inside that output, a
@@ -353,12 +351,12 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 1 | **persistent_stage** | Yes | One unified visual stage; elements persist and evolve across beats; stage-clears <= 1 per 30s. |
 | 2 | carry_over_transform | No | Named elements carry over across beat boundaries and change position, scale, shape, or role. |
 | 3 | visible_cause_effect | No | Mechanism claims have animations starting within 0.4s of spoken keywords that visually demonstrate the claim. |
-| 4 | **camera_purpose** | Yes | Active, purposeful camera moves (>= 1 move per 20s) framing content naturally without disorienting drift. |
+| 4 | **camera_purpose** | Yes | Active, purposeful camera moves (>= 1 move per 17s) framing content naturally without disorienting drift. |
 | 5 | **bottom_captions** | Yes | Clean burned-in captions at the owner-declared card position (default: bottom 20-22% of the frame) for >= 95% of speech, readable size (>= 36px), matching spoken audio. |
 | 6 | **readability** | Yes | High contrast (>= 4.5:1), clear font hierarchy (>= 24px), sufficient reading duration (>= 0.35s per word). |
 | 7 | **no_overlap_clipping** | Yes | No text-text or text-artwork overlapping; all essential elements stay within the 96px safe margin. |
 | 8 | **audio_sync** | Yes | Story cues synchronize with voiceover within 120ms; the audio and delivered picture durations agree within 100ms, including the end card. |
-| 9 | pacing | No | Dynamic progression (see [Stage timeline and stillness](#stage-timeline-and-stillness)), mean beat length 5-12s, no dead air > 0.7s, speech 130-170 wpm. |
+| 9 | pacing | No | Dynamic progression at the [house pace](GOOD_VIDEO.md#house-pace) (see [Stage timeline and stillness](#stage-timeline-and-stillness)), mean beat length 4-10s, no dead air > 0.6s, speech 155-205 wpm and clearly intelligible. |
 | 10 | storyline | No | Clear problem statement, logical progression where beats build on previous content, satisfying payoff beat. |
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
@@ -427,7 +425,7 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 
 ### Design check (the standard layer)
 
-- `aideos design check <film...>` (`npm run design:check -- <film> [--all] [--stills] [--json]`, `backend/designCheck/`) is the single gate every film's design passes, however it was made: film schema, scene engine validity, static self-contained artwork, locked palette plus the film's own accent (for a project whose theme the user chose, `theme.accentChosen`, that chosen accent is the only accent and the check fails any other one), Geist/JetBrains Mono only, no motion snaps while an element is visible, story holds over three seconds in compiled scene/camera data, one transform origin per element, picture locked to the narration, safe-area clearance from the caption band, on-screen counters showing a number that is actually spoken, a narrator that is the voice of choice (rule `voice-of-choice`, see [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice)), and smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration). Leave `easing` off camera keyframes: `src/dl/scene/cameraTrack.ts` then flows a monotone spline through them, while easing every keyframe stops and bursts at each one and reads as jitter. Findings name the rule, the place and the fix, so an agent can be handed the report and repair its own design. `--stills` renders review stills into `.frames/<id>/` and restores the active film.
+- `aideos design check <film...>` (`npm run design:check -- <film> [--all] [--stills] [--json]`, `backend/designCheck/`) is the single gate every film's design passes, however it was made: film schema, scene engine validity, static self-contained artwork, locked palette plus the film's own accent (for a project whose theme the user chose, `theme.accentChosen`, that chosen accent is the only accent and the check fails any other one), Geist/JetBrains Mono only, no motion snaps while an element is visible, story holds over 2.5 seconds in compiled scene/camera data, one transform origin per element, picture locked to the narration, safe-area clearance from the caption band, on-screen counters showing a number that is actually spoken, a narrator that is the voice of choice (rule `voice-of-choice`, see [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice)), and smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration). Leave `easing` off camera keyframes: `src/dl/scene/cameraTrack.ts` then flows a monotone spline through them, while easing every keyframe stops and bursts at each one and reads as jitter. Findings name the rule, the place and the fix, so an agent can be handed the report and repair its own design. `--stills` renders review stills into `.frames/<id>/` and restores the active film.
 - Bespoke designs are data: `videos/<id>/design/design.json` (schema `backend/designSpec/spec.ts`: brief, accent, assets, cue-timed clips, camera poses, per-shot block overrides) plus SVGs in `visuals/`. `aideos design brief <id>` writes the designer's brief (`design/BRIEF.md`, the whole contract); `aideos design build <id>` resolves cues against the narration, compiles the scene through the kit, runs the design check and writes the film only on PASS, recording the outcome in `design/status.json`. Builds always start from `design/base-film.json` (the undesigned film, saved on the first build). `test_fixtures/packages/speculative-decoding-designed/` is the worked example.
 - Look planning and design delivery live in `backend/designSpec/designer.ts`; `ProductionRequest.design`
   (`backend/pipeline/types.ts`) selects inline, agent, server or explicit templates. Inline is the
