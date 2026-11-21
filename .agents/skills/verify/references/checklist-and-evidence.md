@@ -64,7 +64,9 @@ Save dated records under `docs/evidence/verify/YYYY-MM-DD-<short-slug>.md` (or a
 | No sleeps in tests | PASS / N/A | <verified> |
 | No mocks of thing under test | PASS / N/A | <verified> |
 | Protected suites unloosened | PASS | <confirmed> |
+| Weak-test audit | PASS / N/A | <removals listed below, or none> |
 | Independent review | PASS / PENDING | <separate model or pipeline name + verdict> |
+| Evidence log written | PASS | <this file> |
 
 ## Commands run and results
 
