@@ -5,7 +5,7 @@
 # The code comments in this repo run long; match the existing style rather than reflowing them.
 line-length = 120
 target-version = "py39"
-extend-exclude = ["**/*.md", "node_modules", "editor/node_modules", "videos", ".frames", "out"]
+extend-exclude = ["**/*.md", "node_modules", "editor/node_modules", "videos", ".frames", "out", "scripts/local"]
 
 [lint]
 # pycodestyle, pyflakes, import order, bugbear: the small set that catches real mistakes.

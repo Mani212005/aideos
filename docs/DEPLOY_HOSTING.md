@@ -90,14 +90,14 @@ Before deploying, ensure you have:
 1. Log into your Vercel dashboard.
 2. Click **Add New...** -> **Project**.
 3. Import the `aideos` GitHub repository.
-4. Update the destination URL in `vercel.json` (or `editor/vercel.json`) with your live Render backend URL:
+4. Update the destination URL in `vercel.json` with your live Render backend URL:
    - Replace `https://aideos-backend.onrender.com` in `vercel.json` with your actual Render service URL.
 5. Configure the Project Settings on Vercel:
    - **Framework Preset**: `Vite`
-   - **Root Directory**: `./` (leave default, or set to `editor` if deploying standalone)
+   - **Root Directory**: `./` (leave default)
    - **Build Command**: `cd editor && npm run build` (automatic from `vercel.json`)
    - **Output Directory**: `editor/dist` (automatic from `vercel.json`)
-   - **Install Command**: `npm --prefix editor ci` (automatic from `vercel.json`)
+   - **Install Command**: `npm ci` (automatic from `vercel.json`)
 6. Click **Deploy**.
 7. Once deployment finishes, open your Vercel deployment URL (e.g. `https://aideos.vercel.app`).
 

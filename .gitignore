@@ -70,15 +70,8 @@ public/footage/
 # Runtime and local conversation state
 data/
 
-# Temporary and local user scripts
-scripts/*.md
-scripts/*.txt
-scripts/*.json
-scripts/*.py
-scripts/*.mjs
-# The agent connector is served to users at /api/agent-link/connect.mjs, so it must ship.
-!scripts/aideos-connect.mjs
-!scripts/ciChanges.mjs
+# Temporary and local user scripts (put personal scratch files under scripts/local/)
+/scripts/local/
 
 # Local Agent Director session and dispatch state backend/agentBridge/dispatcher.ts and
 # bin/aideos write to the repo root: which coding agent/tmux pane is connected, and the log

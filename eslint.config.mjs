@@ -39,7 +39,7 @@ const LEGACY_ANY = [
 export default [
   ...remotionConfig,
   {
-    ignores: ["editor/dist/**", ".frames/**", "videos/**", "public/**", "src/dl/films/**"],
+    ignores: ["editor/dist/**", ".frames/**", "videos/**", "public/**", "src/dl/films/**", "scripts/local/**"],
   },
   {
     // A best-effort cleanup (a temp file that is already gone, a probe that may fail) is a normal empty catch.
