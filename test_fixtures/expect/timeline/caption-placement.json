@@ -1,0 +1,29 @@
+{
+  "long": {
+    "frame": {"width":1920,"height":1080},
+    "default": {"x":0.5,"y":0.78,"locked":false},
+    "bounds": {"minX":0.48,"maxX":0.52,"minY":0.08888888888888889,"maxY":0.78,"minW":0.4,"maxW":0.8999999999999999,"w":0.86},
+    "clamped": [
+      {"in":{"x":0.5,"y":0.5,"locked":false},"out":{"x":0.5,"y":0.5,"locked":false}},
+      {"in":{"x":-2,"y":-2,"locked":false},"out":{"x":0.48,"y":0.08888888888888889,"locked":false}},
+      {"in":{"x":3,"y":3,"locked":true},"out":{"x":0.52,"y":0.78,"locked":true}},
+      {"in":{"x":0.5,"y":0.9,"w":0.2,"locked":false},"out":{"x":0.5,"y":0.78,"w":0.4,"locked":false}},
+      {
+        "in": {"x":0.1,"y":0.7,"w":0.95,"locked":false},
+        "out": {"x":0.49999999999999994,"y":0.7,"w":0.8999999999999999,"locked":false}
+      }
+    ]
+  },
+  "reel": {
+    "frame": {"width":1080,"height":1920},
+    "default": {"x":0.45,"y":0.5,"locked":false},
+    "bounds": {"minX":0.45,"maxX":0.44999999999999996,"minY":0.0625,"maxY":0.51484375,"minW":0.6,"maxW":0.78,"w":0.78},
+    "clamped": [
+      {"in":{"x":0.5,"y":0.5,"locked":false},"out":{"x":0.45,"y":0.5,"locked":false}},
+      {"in":{"x":-2,"y":-2,"locked":false},"out":{"x":0.45,"y":0.0625,"locked":false}},
+      {"in":{"x":3,"y":3,"locked":true},"out":{"x":0.45,"y":0.51484375,"locked":true}},
+      {"in":{"x":0.5,"y":0.9,"w":0.2,"locked":false},"out":{"x":0.5,"y":0.51484375,"w":0.6,"locked":false}},
+      {"in":{"x":0.1,"y":0.7,"w":0.95,"locked":false},"out":{"x":0.45,"y":0.51484375,"w":0.78,"locked":false}}
+    ]
+  }
+}

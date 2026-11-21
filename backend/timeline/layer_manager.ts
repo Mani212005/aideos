@@ -14,7 +14,20 @@ import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";
 import {
   type UpdateAction,
   generateUUID,
+  uniqueSuffixedId,
 } from "./updates";
+
+/**
+ * The z-order number to give a new layer: `preferred` when no layer has it, else the nearest free
+ * slot above it, else the nearest free slot below. Layer numbers must stay unique (Rule 2 of the
+ * layered film schema), so a layer made with a fixed number must not land on a user layer's number.
+ */
+export function freeLayerNumber(layers: ReadonlyArray<Pick<Layer, "number">>, preferred: number): number {
+  const used = new Set(layers.map((l) => l.number));
+  for (let n = preferred; n <= 100; n++) if (!used.has(n)) return n;
+  for (let n = preferred - 1; n >= 0; n--) if (!used.has(n)) return n;
+  throw new Error("Cannot add another layer: all 101 z-order slots are in use");
+}
 
 /**
  * Add a new user-created layer to the film (U-2).
@@ -40,7 +53,7 @@ export function addLayer(
   }
 
   const slug = label.toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 16);
-  const newLayerId = `layer-${slug}-${generateUUID().slice(0, 4)}`;
+  const newLayerId = uniqueSuffixedId(`layer-${slug}`, newLayers.map((l) => l.id));
 
   const newLayer: Layer = {
     id: newLayerId,
@@ -93,7 +106,11 @@ export function deleteLayer(
 
   const deletedLayer = film.layers[layerIdx];
   const newLayers = film.layers.filter((l) => l.id !== layerId);
-  const newClips = film.clips.filter((c) => c.layerId !== layerId);
+  const removedClipIds = new Set(film.clips.filter((c) => c.layerId === layerId).map((c) => c.id));
+  // A clip whose linked partner was on the deleted layer keeps playing on its own: it must not point at a clip that no longer exists.
+  const newClips = film.clips
+    .filter((c) => c.layerId !== layerId)
+    .map((c) => (c.linkedClipId && removedClipIds.has(c.linkedClipId) ? { ...c, linkedClipId: null } : c));
   const txId = generateUUID();
 
   const actions: UpdateAction[] = [

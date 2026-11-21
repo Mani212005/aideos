@@ -33,6 +33,24 @@ export function generateUUID(): string {
   return "tx-" + Math.random().toString(36).substring(2, 9) + "-" + Date.now().toString(36);
 }
 
+/**
+ * Makes a new layer or clip id from a base name that is never one of `taken`.
+ * Ids built from only a slice of generateUUID() kept a single random character, so two layers or
+ * clips made from the same label collided about one time in 36 and the film held duplicate ids.
+ */
+export function uniqueSuffixedId(base: string, taken: Iterable<string>): string {
+  const used = new Set(taken);
+  for (let attempt = 0; attempt < 32; attempt++) {
+    const id = `${base}-${Math.random().toString(36).slice(2, 6).padEnd(4, "0")}`;
+    if (!used.has(id)) return id;
+  }
+  // Random draws kept colliding (a crowded film): count up, which always ends.
+  for (let n = 2; ; n++) {
+    const id = `${base}-${n}`;
+    if (!used.has(id)) return id;
+  }
+}
+
 export class TimelineTransactionManager<T = any> {
   private undoStack: TimelineTransaction<T>[] = [];
   private redoStack: TimelineTransaction<T>[] = [];
