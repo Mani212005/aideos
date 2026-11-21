@@ -90,7 +90,14 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
 
 ## Setup that every job shares
 
-* Every workflow job uses Node 22 and `npm ci` (npm cache keyed on both lockfiles). Jobs that render
+* Every workflow job uses Node 22 and installs through the `.github/actions/install-dependencies` composite
+  action. It restores `node_modules` and `editor/node_modules` from one cache keyed on the OS, the CPU, the
+  exact Node version, both `package.json` files, both lockfiles and `.npmrc`, then runs only
+  `npm run ensure:generated`. On a miss it runs `npm ci` (npm cache keyed on both lockfiles) and saves the
+  cache right after the install, before any step writes into `node_modules`. Why: `npm ci` took about 41 s
+  per job on CI since 17 Nov (extract and link of about 1 GB; dependency install scripts are about 4 s), while
+  the restore takes about 5 s. A pull request branch cannot read a cache that another pull request created, so
+  its first run is a miss; caches made by `main` are readable everywhere. Jobs that render
   install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`. APT packages
   are cached across runs under `/home/runner/.apt-cache` with retry-hardened installs (detailed under
   [Runner hardening and red-main alert](#runner-hardening-and-red-main-alert)).
