@@ -36,7 +36,9 @@ A film may add generated pictures to its one stage. The format is fixed:
   between the plate and the label) and samples the middle of each shot only, so a label that fails must be moved or
   recoloured, or the plate quieted.
 - **Where pictures come from.** aideos never calls an image service. Pictures are made on the captain's Mac through
-  Codex image generation and stored with `aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin]`;
+  Codex image generation and stored with `aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin] [--replace]`;
+  adding a different image for an existing prompt is refused without `--replace`, and with it the previous original and
+  record stay beside it as `<fingerprint>.<sha256>.png|json`;
   `aideos pictures status <film>` lists what is cached, pinned or still to make, with each prompt.
 
 Both renderers draw pictures: the native renderer natively (Render IR `aideos.render/3`, [docs/RENDER_IR.md](RENDER_IR.md)),

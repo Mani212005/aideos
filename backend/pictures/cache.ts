@@ -1,5 +1,5 @@
 /**
- * File Description: The picture cache of the illustrated stage, built like the per-line voice cache (backend/voiceLines.ts). Each picture a design declares (the plate or one generated object) is kept under videos/<slug>/visuals/generated/ as `<fingerprint>.png`, the original generated file byte for byte (its provenance data and invisible watermark included), beside `<fingerprint>.json`, a small record of how it was made (prompt, date, seconds, tool, sha256, size). The fingerprint is the hash of the film's one style paragraph, the object's prompt, its aspect ratio, the tool label and the cut-out settings, so a rebuild with unchanged prompts makes no request and changing one object's prompt regenerates only that object. Generation is injected: aideos never calls an image service itself (pictures are made on the captain's Mac through Codex image generation and stored with `storePicture`). Nothing here deletes a picture: originals are kept.
+ * File Description: The picture cache of the illustrated stage, built like the per-line voice cache (backend/voiceLines.ts). Each picture a design declares (the plate or one generated object) is kept under videos/<slug>/visuals/generated/ as `<fingerprint>.png`, the original generated file byte for byte (its provenance data and invisible watermark included), beside `<fingerprint>.json`, a small record of how it was made (prompt, date, seconds, tool, sha256, size). The fingerprint is the hash of the film's one style paragraph, the object's prompt, its aspect ratio, the tool label and the cut-out settings, so a rebuild with unchanged prompts makes no request and changing one object's prompt regenerates only that object. Generation is injected: aideos never calls an image service itself (pictures are made on the captain's Mac through Codex image generation and stored with `storePicture`). Nothing here deletes or overwrites a picture: originals are kept. Storing a different image under a fingerprint that already has one is refused unless `replace` is given, and then the previous PNG and record stay beside it under sha256-suffixed names (`<fingerprint>.<sha256>.png` and `.json`) so the old pin can be restored.
  * Inputs and outputs: a package directory, the design's `pictures` block and an optional generator -> each picture's cached file and record, newly stored pictures, and the pictures still to make.
  * Used by: backend/designSpec/build.ts, backend/cli.ts (`aideos pictures`), backend/designCheck/pictures.ts, backend/pictures/cache.test.ts.
  */
@@ -87,16 +87,55 @@ export function readCachedPicture(pkgDir: string, request: PictureRequest): Cach
   }
 }
 
+/** The package-relative paths a replaced picture's PNG and record are kept under: the fingerprint's names with the replaced image's sha256 added. */
+export function archivedPictureFiles(fingerprint: string, sha256: string): { png: string; record: string } {
+  return { png: `${PICTURE_DIR}/${fingerprint}.${sha256}.png`, record: `${PICTURE_DIR}/${fingerprint}.${sha256}.json` };
+}
+
+/** The sha256 of the PNG already stored under a fingerprint, or null when there is none. */
+export function storedPictureSha256(pkgDir: string, fingerprint: string): string | null {
+  const file = path.join(pkgDir, pictureFiles(fingerprint).png);
+  return fs.existsSync(file) ? sha256Hex(fs.readFileSync(file)) : null;
+}
+
 /**
  * Stores one generated picture under its fingerprint: the PNG exactly as the generator returned it (never
  * re-encoded, so its provenance metadata and watermark stay) and its record, each written atomically.
- * Refuses bytes that are not a PNG. Returns the stored record.
+ * Refuses bytes that are not a PNG. Storing the same bytes again changes nothing. Storing a different image
+ * where one is already stored throws unless `options.replace` is set; then the previous PNG (and its record,
+ * when it has one) are first kept as `<fingerprint>.<previous sha256>.png|json`, so the approved original
+ * is never lost and its pin can be restored by copying those files back. Returns the stored record.
  */
-export function storePicture(pkgDir: string, request: PictureRequest, png: Uint8Array, made: { seconds: number; createdAt?: Date }): PictureRecord {
+export function storePicture(
+  pkgDir: string,
+  request: PictureRequest,
+  png: Uint8Array,
+  made: { seconds: number; createdAt?: Date },
+  options: { replace?: boolean } = {},
+): PictureRecord {
   const header = readPngHeader(png);
   if (!Number.isFinite(made.seconds) || made.seconds < 0) throw new Error(`seconds must be a non-negative number, got ${made.seconds}`);
   const fingerprint = pictureFingerprint(request);
   const files = pictureFiles(fingerprint);
+  const previousSha = storedPictureSha256(pkgDir, fingerprint);
+  const sha256 = sha256Hex(png);
+  const recordPath = path.join(pkgDir, files.record);
+  if (previousSha === sha256) {
+    const kept = readCachedPicture(pkgDir, request);
+    if (kept) return kept.record;
+  }
+  if (previousSha !== null && previousSha !== sha256) {
+    if (!options.replace) {
+      throw new Error(
+        `${files.png} already holds a different image (sha256 ${previousSha}); the new one is sha256 ${sha256}. Originals are never overwritten: rerun with --replace to store the new image and keep the previous one as ${archivedPictureFiles(fingerprint, previousSha).png}, or change the picture's prompt to give it a new fingerprint.`,
+      );
+    }
+    const archived = archivedPictureFiles(fingerprint, previousSha);
+    const archivedPng = path.join(pkgDir, archived.png);
+    const archivedRecord = path.join(pkgDir, archived.record);
+    if (!fs.existsSync(archivedPng)) fs.copyFileSync(path.join(pkgDir, files.png), archivedPng);
+    if (fs.existsSync(recordPath) && !fs.existsSync(archivedRecord)) fs.copyFileSync(recordPath, archivedRecord);
+  }
   const record: PictureRecord = {
     schema: "aideos.picture/1",
     fingerprint,
@@ -108,7 +147,7 @@ export function storePicture(pkgDir: string, request: PictureRequest, png: Uint8
     cutout: request.cutout.trim(),
     createdAt: (made.createdAt ?? new Date()).toISOString(),
     seconds: Math.round(made.seconds * 100) / 100,
-    sha256: sha256Hex(png),
+    sha256,
     width: header.width,
     height: header.height,
   };
