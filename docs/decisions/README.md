@@ -37,7 +37,6 @@ Every entry has this shape:
 | 2026-11-21 | [Delete weak tests at about 60 to 70 percent confidence](2026-11-21-delete-weak-tests-policy.md) | owner | In force |
 | 2026-11-21 | [A reusable verify skill with a Feature Map and evidence log](2026-11-21-verify-skill.md) | owner | In force |
 | 2026-11-21 | [Purge recurring bad code habits in 16 small slices](2026-11-21-habits-purge-slicing.md) | owner | In force (slices 1 to 3 merged, slice 4 open) |
-| 2026-11-21 | [Neon sign-in lives in the desktop keyring, no SSH marker](2026-11-21-neon-sign-in-desktop-keyring.md) | owner and agent | In force |
 
 ## Adding an entry
 

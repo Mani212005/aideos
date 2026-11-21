@@ -4,7 +4,7 @@
 
 - **Date**: 2026-11-21
 - **Branch / PR**: `fm/aideos-decision-log` (PR URL assigned when pushed by `no-mistakes`)
-- **Scope**: Docs only. New `docs/decisions/` (index `README.md` plus 12 decision files) and one pointer line in the `README.md` Documentation list. Feature Map row: `CI, Test Wiring & Static Enforcement` (docs-only; no runtime code or test changes, so no Feature Map edit).
+- **Scope**: Docs only. New `docs/decisions/` (index `README.md` plus 11 decision files) and one pointer line in the `README.md` Documentation list. Feature Map row: `CI, Test Wiring & Static Enforcement` (docs-only; no runtime code or test changes, so no Feature Map edit).
 - **Risk tier**: Low (docs-only change)
 
 ## Reliability checklist
@@ -39,13 +39,12 @@ Each seeded decision was checked against main and the merged pull requests befor
 | Delete weak tests policy | `.agents/skills/verify/references/test-policy.md`; PR 256 merged | Confirmed |
 | Verify skill | `.agents/skills/verify/` present; PR 256 merged | Confirmed |
 | Habits purge slicing | PR 253, 255, 258 merged, PR 257 open | Confirmed |
-| Neon sign-in in the desktop keyring | Not a repository fact (machine and fleet operations) | Recorded from the fleet launch shim note and Firstmate's task brief; no repository check possible |
 
 ## Commands run and results
 
 | Command | Result | Notes / artifacts |
 | --- | --- | --- |
-| Python audit over `docs/decisions/*.md` and `README.md` | PASS (exit 0) | 14 files; 0 long dashes (U+2013 or U+2014); every relative link resolves; every decision file is listed in the index. |
+| Python audit over `docs/decisions/*.md` and `README.md` | PASS (exit 0) | 13 files; 0 long dashes (U+2013 or U+2014); every relative link resolves; every decision file is listed in the index. |
 | `npx tsx scripts/check_headers.ts` | PASS (exit 0) | 661 code files, all three-field headers present (docs carry no code header). |
 | `npx tsx scripts/check_tests_wired.ts` | PASS (exit 0) | All tracked test files are run by a package.json script. |
 
@@ -53,7 +52,7 @@ The full `npm run ci -- static` was not run: the change adds only Markdown, whic
 
 ## Fix attempts
 
-- Attempts used: 0 / 3. One self-review pass replaced reasons I had inferred (hosted Studio, habits slicing, Neon) with what the record actually says.
+- Attempts used: 0 / 3. One self-review pass replaced reasons I had inferred (hosted Studio, habits slicing) with what the record actually says.
 
 ## Weak-test removals
 
