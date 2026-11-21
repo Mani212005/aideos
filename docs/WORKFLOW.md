@@ -69,7 +69,7 @@ Run `aideos audio fetch` once before the first design build, because the default
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  STAGE 5: REMOTION RENDER ENGINE & INTERACTIVE STUDIO                        │
-│  • Web Editor UI (dev: 3001, stable: 3002) with 80% Scene Inspector          │
+│  • Web Editor UI (dev: 3001, stable: 3002): Words, Look, Cut, Check lenses   │
 │  • Landscape Long Render (videos/<slug>/renders/long.mp4, 1920x1080 @ 30 FPS) │
 │  • Vertical Reel Render (videos/<slug>/renders/reel.mp4, 1080x1920 @ 30 FPS)  │
 │  • Kinetic Subtitle Karaoke + Dynamic Audio Music Ducking                    │
@@ -93,7 +93,7 @@ Run `aideos audio fetch` once before the first design build, because the default
 
 ### Stage 3: Semantic Visual Choice (`backend/pipeline/design.ts`, `backend/jev.ts`)
 1. **Semantic Match**: Inspects each spoken sentence to determine the best visual presentation:
-   - Showing a browser, terminal, or UI -> `DeviceCard`
+   - Showing code or terminal commands -> `CodeBlock`
    - Explaining memory allocation or arrays -> `MatrixGrid`
    - Highlighting big performance numbers -> `StatCounter`
    - Showing token sequences -> `TokenStrip`
@@ -127,11 +127,11 @@ Run `aideos audio fetch` once before the first design build, because the default
 
 The Aideos Web Studio runs locally on `http://localhost:3001` for dev and `http://localhost:3002` for stable (launched with `npm run editor` or the channel launchers; see [Local releases](RELEASES.md)), presenting one shell: a Films home (every film with its state chip, and the Start box: one story field that names the film from the first words and opens Words) and a 4-lens editing interface (Words, Look, Cut, Check) with an Agent sheet in the header:
 
-1. **Stage 1: Script (`ScriptStage.tsx`)**: Write the story as plain paragraphs (the tagged form stays internal, and Aideos converts plain text itself, never an agent), with the agent's visual and on-screen notes as collapsible notes beside each paragraph, a visible narration change list, automatic Remotion sub-shot compilation and per-line multi-provider TTS voiceover generation that re-records only changed lines (Kokoro, Deepgram, Google Cloud TTS, macOS say).
+1. **Stage 1: Script (`ScriptStage.tsx`)**: Write the story as plain paragraphs (the tagged form stays internal, and Aideos converts plain text itself, never an agent), with the agent's visual and on-screen notes as collapsible notes beside each paragraph, a visible narration change list, automatic Remotion sub-shot compilation and per-line multi-provider TTS voiceover generation that re-records only changed lines (My voice via local `vcd`, Kokoro, Deepgram, Google Cloud TTS, macOS say).
 2. **Stage 2: Look (`LookStage.tsx`)**: one lens with Ask (`LookAsk.tsx`, one box under the chosen shot's picture), the look plan (`DesignView.tsx`: stage, cast, captain approval via `approveLookPlan`, the shots with their artwork), the film's accent and background (`LookChoices.tsx`) and the footage action for a shot that needs footage (`LookFootage.tsx`).
 3. **Stage 3: Cut (`EditStage.tsx`, hash `#cut`)**: Non-linear multi-track timeline displaying audio waveforms, track controls (lock, mute, hide), clip dragging with sticky snapping, a clip panel (a selected caption word clip shows one text control to edit that word), and model-driven AI edit panel connected to Agent Bridge. Its Reel controls show delivered length against the 179-second cap, the kept/dropped shots and condensed narration, backend reel checks, and a 9:16 preview; owners can rebuild through the existing reel delivery path.
 4. **Stage 4: Check (`CheckStage.tsx`)**: The state of the film, the 6 hard gates and the 9.0 bar from `acceptance.json`, a fix list, and Export in the same lens.
-5. **Persistent Preview & Controls**: 60 FPS Remotion preview player with 16:9 Long and 9:16 Vertical Reel aspect ratio toggling, transport controls, and live studio hot-reload reflecting agent updates in real time.
+5. **Persistent Preview & Controls**: Remotion preview player (at `film.fps`, standard 30 FPS) with 16:9 Long and 9:16 Vertical Reel aspect ratio toggling, transport controls, and live studio hot-reload reflecting agent updates in real time.
 6. **Studio Export (`CheckExport.tsx`, `useExportJob.ts`)**: The header Export button and the header progress chip open the Check lens. In the lens, Export arms the export and shows Start. When a fix item refuses the export (footage, a hidden visual lane, missing music, sound effects or end card), Export is disabled and the reason shows beside it. Nothing renders until Start is pressed. Progress follows actual renderer frame counts, Cancel stops the render and deletes the partial video at any time, and a finished render shows an explicit Download button (no automatic download). A failed export keeps its full log under a Log fold. The verdict above it comes from `POST /api/acceptance/:id`, which answers with the Check view of the posted film. It shows the state word, the 6 gates and the score against the 9.0 bar. See [Review](REVIEW.md#3-the-whole-check-in-a-background-agent-aideos-all-check) for acceptance record semantics.
 
 ---

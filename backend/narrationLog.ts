@@ -6,7 +6,7 @@
  * the studio is recorded the same way. The first sync only sets the baseline, so the user's own story is never
  * listed as a change.
  * Inputs and outputs: a package directory and a source ("user" or "agent") -> new change entries, persisted.
- * Used by: editor/vite.config.ts (api/scripts, api/narration, api/projects/new), backend/narrationLog.test.ts.
+ * Used by: editor/vite.config.ts (api/scripts, api/narration, api/projects/new), backend/story_script.test.ts.
  */
 
 import fs from "node:fs";

@@ -5,7 +5,7 @@
  * the narration into a change list. Pure and isomorphic: no Node imports, so the studio editor, the
  * backend change log and the tests share one implementation.
  * Inputs and outputs: script text or story sections -> story sections, tagged script text, narration changes.
- * Used by: editor/src/components/ScriptEditor.tsx, backend/narrationLog.ts, backend/storyScript.test.ts.
+ * Used by: editor/src/components/ScriptEditor.tsx, editor/vite.config.ts, backend/narrationLog.ts, backend/story_script.test.ts.
  */
 
 import {
