@@ -1,5 +1,5 @@
 /**
- * File Description: Journey for the illustrated stage, phase 1, encoding the captain's acceptance (option A of the mixed-media research): the synthetic picture fixture film (pictures-stage: a plate and two objects with alpha, pinned through the picture cache, SVG labels and captions over them) is built through the real design build, emitted as `aideos.render/3`, drawn by the release `aideos-render` binary and compared with its committed native golden frames under the strict golden tolerance; the same frames rendered by Remotion match the native frames on the stage (SSIM at least 0.995, the bar of the earlier native parity reports); and the latent fault the research measured is reproduced end to end and shown fixed: a PNG wrapped inside SVG artwork is refused by the design check, and when a render is asked for anyway the renderer choice falls back to Remotion visibly, naming the native loader's refusal, instead of failing.
+ * File Description: Journey for the illustrated stage, phase 1, encoding the captain's acceptance (option A of the mixed-media research): the synthetic picture fixture film (pictures-stage: a plate and two objects with alpha, pinned through the picture cache, SVG labels and captions over them) is built through the real design build, emitted as `aideos.render/3`, drawn by the release `aideos-render` binary and compared with its committed native golden frames under the strict golden tolerance; the same frames rendered by Remotion match the native frames on the stage (SSIM at least 0.995, the bar of the earlier native parity reports); a picture film whose reel must be cut (a long past the 179 s cap) builds its reel cut with the same pinned pictures and draws it natively matching Remotion; and the latent fault the research measured is reproduced end to end and shown fixed: a PNG wrapped inside SVG artwork is refused by the design check, and when a render is asked for anyway the renderer choice falls back to Remotion visibly, naming the native loader's refusal, instead of failing.
  * Inputs and outputs: test_fixtures/packages/pictures-stage, the native golden frames, the release binary and Remotion -> pass, or a failure naming the film, format and frame with both frames and the difference saved under .ci-artifacts/.
  * Used by: npm run test:journeys and the CI journeys job (which builds the binary and installs tesseract first). Skips when the binary is not built unless CI or AIDEOS_NATIVE_TESTS_REQUIRED=1.
  */
@@ -19,6 +19,8 @@ import { checkFilmDesign } from "../designCheck/designCheck";
 import { createSelectedRenderer } from "../rendererSelection";
 import { createNativeRenderer } from "../nativeRenderer";
 import { encodePng } from "../pictures/png";
+import { buildReel } from "../reelCut/build";
+import { picturePackage, stretchPastReelCap, writePictureCut } from "../testSupport/pictureReelCut";
 import { offPalettePicture } from "../testSupport/pictureFixtures";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import type { Renderer } from "../renderJob";
@@ -122,5 +124,34 @@ journey("pictures stage: a PNG wrapped inside SVG fails the design check, and a 
     await renderer.cleanup?.();
   } finally {
     fs.writeFileSync(label, original);
+  }
+});
+
+journey("pictures stage: a cut reel of a picture film draws its pinned pictures natively and matches Remotion on the stage", async (ctx) => {
+  if (skip) return;
+  const slug = "pictures-stage-cut";
+  const { long } = picturePackage(slug);
+  const synthesize = writePictureCut(slug, stretchPastReelCap(slug, long));
+  const reel = await buildReel(slug, { synthesize });
+  assert.equal(reel.voiceover?.src, `videos/${slug}/reel/voiceover.wav`, "the reel is the cut build, not the long reused");
+  const staged = stageNativePackage(reel, "reel", path.join(ctx.workDir, "pkg-reel-cut"), { pictureOnly: true });
+  const ir = JSON.parse(fs.readFileSync(staged.irPath, "utf8")) as { schema: string; stage: Array<{ kind: string }> };
+  assert.equal(ir.schema, "aideos.render/3", "the cut reel is emitted as aideos.render/3");
+  assert.equal(ir.stage.filter((n) => n.kind === "image").length, 3, "the cut reel draws the plate and both objects");
+  const film = await openFilm(slug);
+  try {
+    // The orb has arrived at frame 150 and the chip has joined it by frame 270 of the cut reel.
+    for (const frame of [150, 270]) {
+      const nativePng = path.join(ctx.workDir, `native-cut-${frame}.png`);
+      const remotionPng = path.join(ctx.workDir, `remotion-cut-${frame}.png`);
+      renderNativeFrame(staged, "reel", frame, nativePng);
+      ctx.keep(nativePng);
+      await film.still("Reel", frame, remotionPng);
+      ctx.keep(remotionPng);
+      const score = ssim(nativePng, remotionPng, STAGE_CROP.reel);
+      assert.ok(score >= STAGE_SSIM_MIN, `cut reel frame ${frame}: the native stage matches Remotion at SSIM ${score.toFixed(5)}, below ${STAGE_SSIM_MIN}`);
+    }
+  } finally {
+    await film.close();
   }
 });

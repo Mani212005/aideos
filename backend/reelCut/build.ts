@@ -18,6 +18,7 @@ import { resolveCue } from "../designSpec/cues";
 import { resolveSoundtrack } from "../designSpec/soundtrack";
 import { prepareDefaultSoundtrack } from "../defaultSoundtrack";
 import { designSpecSchema, type DesignSpec } from "../designSpec/spec";
+import { resolvePinnedPictures } from "../pictures/cache";
 import { lookPlanSchema, type LookPlan } from "../lookPlan/schema";
 import { createCues } from "../sceneKit/timing";
 import { ProductionError } from "../pipeline/types";
@@ -188,7 +189,10 @@ export function compileReel(input: {
     if (!spec) return { errors: ["scene reel needs the shared design/design.json to re-resolve its narration cues"], findings: [] };
     const resolved = resolveDesignCharacters(spec, pkg);
     if (resolved.errors.length) return { errors: resolved.errors, findings: [] };
-    const compiled = compileDesign(reel, spec, words, long.design?.source === "server-model" ? "server-model" : "agent", { characters: resolved.characters, collapsed, format: "reel", splice: spliceOptionsFor(cut.splice, GLIDE_LIMITS) });
+    // The reel draws the same pinned pictures as the long: same cache, same pin check, same refusals (never generated here).
+    const pictures = "pictures" in spec && spec.pictures ? resolvePinnedPictures(pkg, spec.pictures, `videos/${long.id}`) : { sources: {}, errors: [] };
+    if (pictures.errors.length) return { errors: pictures.errors, findings: [] };
+    const compiled = compileDesign(reel, spec, words, long.design?.source === "server-model" ? "server-model" : "agent", { characters: resolved.characters, pictures: pictures.sources, collapsed, format: "reel", splice: spliceOptionsFor(cut.splice, GLIDE_LIMITS) });
     if (!compiled.film) return { errors: compiled.errors, findings: [] };
     reel = compiled.film;
     collapsedClips = compiled.collapsedClips ?? [];
