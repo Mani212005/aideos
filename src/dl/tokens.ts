@@ -196,16 +196,26 @@ export interface ThemeTokens {
   sunken: string;
 }
 
-/** Splits a #rrggbb string into its three channel values. */
-const channels = (hex: string): string => {
-  const n = parseInt(hex.replace("#", ""), 16);
-  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
-};
+/**
+ * Splits a #rrggbb (or #rgb) colour into its red, green and blue values. Anything else is a bug in
+ * the caller, such as a CSS variable name handed in as a colour, and fails loudly: a silent
+ * parse of `var(--x)` yields NaN channels that paint black.
+ */
+function hexChannels(hex: string): [number, number, number] {
+  const match = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(hex);
+  if (!match) throw new Error(`Expected a #rrggbb colour, got ${JSON.stringify(hex)}`);
+  const full = match[1].length === 3 ? match[1].replace(/./g, "$&$&") : match[1];
+  const n = parseInt(full, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Splits a #rrggbb string into its three channel values as a CSS list. */
+const channels = (hex: string): string => hexChannels(hex).join(", ");
 
 /**
  * The palette of the theme currently rendering.
  *
- * The module-level `PALETTE`, `ink`, `rule`, `FAINT` and `SUNKEN` constants are all derived from
+ * The module-level `PALETTE`, `ink` and `rule` constants are all derived from
  * the paper-white theme, so a component that reads them paints archival-paper ink no matter what
  * canvas it is sitting on. On the dark themes every film in this repository actually uses, that
  * put #111827 text on a #0A0A0B background and hairlines at an alpha of black on near-black -
@@ -236,17 +246,8 @@ export function tokensFor(theme: BackgroundTheme): ThemeTokens {
  */
 export const rule = (strength = 1) => ink(0.12 * strength);
 
-/** Muted, dimmed. Axis ticks and legend text that must sit under the labels. */
-export const FAINT = "#94A3B8";
-
-/** Surface, dimmed. A card inside a card - the only nesting depth allowed. */
-export const SUNKEN = "#F1EFEA";
-
-/** Accent at an alpha. Fills behind an active border are always this at ~0.10. */
-export const accentAt = (hex: string, alpha: number) => {
-  const n = parseInt(hex.replace("#", ""), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-};
+/** Accent at an alpha. Fills behind an active border are always this at ~0.10. Throws when `hex` is not a #rrggbb colour. */
+export const accentAt = (hex: string, alpha: number) => `rgba(${channels(hex)}, ${alpha})`;
 
 /**
  * There are exactly two deliverables and they are the same film. `reel` is a

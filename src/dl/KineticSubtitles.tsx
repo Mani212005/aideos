@@ -10,7 +10,7 @@ import {
   SUBTITLE_CARD_PADDING_Y,
   SUBTITLE_LINE_HEIGHT,
 } from "./fullScreenHeroLayout";
-import { SANS } from "./tokens";
+import { accentAt, SANS } from "./tokens";
 import { measureText } from "@remotion/layout-utils";
 import { buildCaptionPhrases } from "./captionPhrases";
 import type { CaptionPlacement } from "./schema";
@@ -174,7 +174,7 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
                         }
                       : {}),
                     textShadow: isActive
-                      ? `0 0 20px ${highlightColor}88, 0 2px 6px rgba(0,0,0,0.8)`
+                      ? `0 0 20px ${accentAt(highlightColor, 0.53)}, 0 2px 6px rgba(0,0,0,0.8)`
                       : isPast
                       ? "0 2px 4px rgba(0,0,0,0.5)"
                       : "none",

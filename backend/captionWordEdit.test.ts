@@ -20,7 +20,7 @@ function makeFilm(): Film {
 
 // Reads the caption words of a film.
 function wordsOf(film: Film) {
-  return generateWordsFromFilm(film as unknown as Record<string, unknown>);
+  return generateWordsFromFilm(film);
 }
 
 // Saves and reloads a film the way the project file does.
@@ -52,13 +52,20 @@ test("Caption word edit: a timing edit keeps number words and the new times afte
   assert.deepEqual(after, before.map((w, i) => (i === 3 ? { ...w, endFrame: 28 } : w)));
 });
 
-test("Caption word edit: an edit that cannot be read back returns an error and no film", () => {
+test("Caption word edit: a number word keeps its own timing after a reload, alone in its cue or not", () => {
   const film = makeFilm();
+  const before = wordsOf(film);
+  // "007" (index 4) gets a length no neighbour shares, so it must be written as a single-word cue made only of digits.
   const result = editCaptionWord(film, 4, { endFrame: 34 });
-  assert.equal(result.ok, false);
-  if (result.ok) return;
-  assert.match(result.error, /number word/i);
-  assert.deepEqual(wordsOf(film).map((w) => w.text), TEXTS);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  const after = wordsOf(reload(result.film));
+  assert.deepEqual(after, before.map((w, i) => (i === 4 ? { ...w, endFrame: 34 } : w)));
+  // Retyping a word into a number is saved as well, whatever neighbours it has.
+  const typed = editCaptionWord(film, 3, { text: "2026", endFrame: 23 });
+  assert.equal(typed.ok, true);
+  if (!typed.ok) return;
+  assert.deepEqual(wordsOf(reload(typed.film)).map((w) => w.text), ["In", "2024", "we", "2026", "007", "bonds", "today"]);
 });
 
 test("Caption word edit: text with a space or no text is refused", () => {

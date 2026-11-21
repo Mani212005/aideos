@@ -3,7 +3,7 @@
  * Every editor screen imports its controls from here so the design system stays a single owned
  * surface rather than ad-hoc utility classes scattered across components.
  * Inputs and outputs: UI primitive modules -> centralized barrel export of UI components.
- * Used by: editor screens, inspectors, and modals.
+ * Used by: editor screens and inspectors.
  */
 
 export { cn } from "./cn";
@@ -34,7 +34,6 @@ export {
   type NumberStepperProps,
 } from "./Field";
 export { Badge, Stat, KeyHint, type BadgeProps, type BadgeTone, type StatProps, type KeyHintProps } from "./Badge";
-export { Modal, type ModalProps } from "./Modal";
 export { SegmentedTabs, type SegmentedTabItem, type SegmentedTabsProps } from "./Tabs";
 export {
   EmptyState,

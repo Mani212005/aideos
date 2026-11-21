@@ -27,40 +27,35 @@ export interface VttCue {
 }
 
 // Parses raw WebVTT content into structured cues with start and end times.
+// A timing line ("a --> b") opens a cue and the lines below it, up to the next blank line, are its text.
+// That includes a line of digits such as a narrated year or count: only a line outside any cue (the
+// header, a NOTE block or a cue identifier above a timing line) is dropped.
 export function parseVtt(vttContent: string): VttCue[] {
   const cues: VttCue[] = [];
-  const lines = vttContent.split(/\r?\n/);
-  let currentStart = 0;
-  let currentEnd = 0;
-  let textAccum = "";
+  let open: { startSec: number; endSec: number; lines: string[] } | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+  // Closes the open cue, keeping it only when it has text and a positive length.
+  const flush = () => {
+    if (open && open.lines.length > 0 && open.endSec > open.startSec) {
+      cues.push({ startSec: open.startSec, endSec: open.endSec, text: open.lines.join(" ") });
+    }
+    open = null;
+  };
+
+  for (const raw of vttContent.split(/\r?\n/)) {
+    const line = raw.trim();
     if (line.includes("-->")) {
-      if (textAccum && currentEnd > currentStart) {
-        cues.push({
-          startSec: currentStart,
-          endSec: currentEnd,
-          text: textAccum.trim(),
-        });
-        textAccum = "";
-      }
+      flush();
       const [startStr, endStr] = line.split("-->");
-      currentStart = timeToSeconds(startStr);
-      currentEnd = timeToSeconds(endStr);
-    } else if (line && !line.startsWith("WEBVTT") && !/^\d+$/.test(line)) {
-      textAccum += (textAccum ? " " : "") + line;
+      // Anything after the end time on the timing line is a cue setting such as "align:start".
+      open = { startSec: timeToSeconds(startStr), endSec: timeToSeconds(endStr.trim().split(/\s+/)[0]), lines: [] };
+    } else if (line === "") {
+      flush();
+    } else if (open) {
+      open.lines.push(line);
     }
   }
-
-  if (textAccum && currentEnd > currentStart) {
-    cues.push({
-      startSec: currentStart,
-      endSec: currentEnd,
-      text: textAccum.trim(),
-    });
-  }
-
+  flush();
   return cues;
 }
 
@@ -89,57 +84,54 @@ export function vttToCaptionWords(cues: VttCue[], fps = 30): CaptionWord[] {
   return words;
 }
 
-// Dynamically extracts and computes word-level frame timestamps across all shots in a film.
-export function generateWordsFromFilm(film: Record<string, unknown>): CaptionWord[] {
-  const fps = (film?.fps as number) || 30;
+/** The parts of a film the caption reader looks at. Every field is optional: a bare caption track (`{ fps, captions }`) and a film still being authored are both valid input. */
+export interface CaptionSourceFilm {
+  fps?: number;
+  captions?: string;
+  shots?: ReadonlyArray<{
+    position?: number;
+    startSec?: number;
+    dur?: number;
+    scriptText?: string;
+    blocks?: ReadonlyArray<{ c: string; text?: unknown }>;
+  }>;
+}
 
-  if (film?.captions && typeof film.captions === "string") {
-    if (film.captions.includes("-->")) {
-      const cues = parseVtt(film.captions);
-      if (cues.length > 0) {
-        return vttToCaptionWords(cues, fps);
-      }
-    }
+// Dynamically extracts and computes word-level frame timestamps across all shots in a film.
+export function generateWordsFromFilm(film: CaptionSourceFilm): CaptionWord[] {
+  const fps = film.fps || 30;
+
+  if (film.captions?.includes("-->")) {
+    const cues = parseVtt(film.captions);
+    if (cues.length > 0) return vttToCaptionWords(cues, fps);
   }
 
   const words: CaptionWord[] = [];
   let currentStartSec = 0;
 
-  if (film?.shots && Array.isArray(film.shots)) {
-    for (const shot of film.shots) {
-      const explicitPos = (shot.position as number | undefined) ?? (shot.startSec as number | undefined);
-      const shotStartSec = explicitPos !== undefined ? explicitPos : currentStartSec;
-      const shotDurationSec = (shot.dur as number) || (shot.duration as number) || 3;
-      let shotText = ((shot.scriptText as string) || "").trim();
-      if (!shotText && shot.blocks && Array.isArray(shot.blocks)) {
-        const textBlock = shot.blocks.find((b: Record<string, unknown>) => b.c === "TextReveal");
-        if (textBlock && typeof textBlock.text === "string") {
-          shotText = textBlock.text;
-        }
-      }
-
-      const rawWords = shotText.split(/\s+/).filter(Boolean);
-      if (rawWords.length > 0) {
-        const wordDur = shotDurationSec / rawWords.length;
-        rawWords.forEach((w: string, idx: number) => {
-          const wStart = shotStartSec + idx * wordDur;
-          const wEnd = wStart + wordDur;
-          words.push({
-            text: w,
-            startFrame: Math.round(wStart * fps),
-            endFrame: Math.round(wEnd * fps),
-          });
-        });
-      }
-      currentStartSec = shotStartSec + shotDurationSec;
+  for (const shot of film.shots ?? []) {
+    const shotStartSec = shot.position ?? shot.startSec ?? currentStartSec;
+    const shotDurationSec = shot.dur || 3;
+    let shotText = (shot.scriptText ?? "").trim();
+    if (!shotText) {
+      const textBlock = shot.blocks?.find((b) => b.c === "TextReveal");
+      if (typeof textBlock?.text === "string") shotText = textBlock.text;
     }
+
+    const rawWords = shotText.split(/\s+/).filter(Boolean);
+    const wordDur = shotDurationSec / Math.max(1, rawWords.length);
+    rawWords.forEach((w, idx) => {
+      const wStart = shotStartSec + idx * wordDur;
+      words.push({
+        text: w,
+        startFrame: Math.round(wStart * fps),
+        endFrame: Math.round((wStart + wordDur) * fps),
+      });
+    });
+    currentStartSec = shotStartSec + shotDurationSec;
   }
 
-  if (words.length > 0) {
-    return words;
-  }
-
-  return [];
+  return words;
 }
 
 // Returns the shared enabled caption track for preview and export.

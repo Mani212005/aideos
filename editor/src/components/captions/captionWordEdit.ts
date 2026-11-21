@@ -35,25 +35,24 @@ function readTrack(vtt: string, fps: number): CaptionWord[] {
   return generateWordsFromFilm({ fps, captions: vtt });
 }
 
-/** Writes words as one VTT track, or returns null when some word would not read back with its exact text, start and end. */
+/** The VTT cue for `words[from .. from+size)` when it reads back with the exact text, start and end of each word, else null. A cue shares its time evenly between its words, so only words of equal length can share one. */
+function cueOf(words: CaptionWord[], from: number, size: number, fps: number): string | null {
+  const group = words.slice(from, from + size);
+  const track = captionWordsToVtt(group, fps, size);
+  return sameWords(readTrack(track, fps), group) ? track.slice(VTT_HEADER.length) : null;
+}
+
+/** Writes words as one VTT track, or returns null when some word would not read back with its exact text, start and end. Each cue takes as many words as still read back exactly; one word per cue always does. */
 function writeCaptionTrack(words: CaptionWord[], fps: number): string | null {
-  const cueOf = (from: number, size: number): string | null => {
-    const group = words.slice(from, from + size);
-    const cue = captionWordsToVtt(group, fps, size).slice(VTT_HEADER.length);
-    return sameWords(readTrack(VTT_HEADER + cue, fps), group) ? cue : null;
-  };
-  const sizeAt: number[] = new Array(words.length + 1).fill(0);
-  for (let i = words.length - 1; i >= 0; i--) {
-    for (let size = Math.min(MAX_WORDS_PER_CUE, words.length - i); size >= 1; size--) {
-      if ((i + size === words.length || sizeAt[i + size] > 0) && cueOf(i, size) !== null) {
-        sizeAt[i] = size;
-        break;
-      }
-    }
-    if (sizeAt[i] === 0) return null;
-  }
   const cues: string[] = [];
-  for (let i = 0; i < words.length; i += sizeAt[i]) cues.push(cueOf(i, sizeAt[i]) as string);
+  for (let i = 0; i < words.length; ) {
+    let size = Math.min(MAX_WORDS_PER_CUE, words.length - i);
+    let cue = cueOf(words, i, size, fps);
+    while (cue === null && size > 1) cue = cueOf(words, i, --size, fps);
+    if (cue === null) return null;
+    cues.push(cue);
+    i += size;
+  }
   const vtt = VTT_HEADER + cues.join("\n\n");
   return sameWords(readTrack(vtt, fps), words) ? vtt : null;
 }
@@ -61,7 +60,7 @@ function writeCaptionTrack(words: CaptionWord[], fps: number): string | null {
 /** Returns the film with caption word `index` edited, or an error message. An edit that changes nothing returns the same film object. */
 export function editCaptionWord(film: Film, index: number, edit: CaptionWordEdit): CaptionWordEditResult {
   if (film.captions === "off" || film.subtitles === false) return { ok: false, error: "Captions are off. Turn them on first." };
-  const words = generateWordsFromFilm(film as unknown as Record<string, unknown>);
+  const words = generateWordsFromFilm(film);
   if (!Number.isInteger(index) || index < 0 || index >= words.length) return { ok: false, error: "That word is gone." };
   const word = words[index];
 
@@ -86,14 +85,6 @@ export function editCaptionWord(film: Film, index: number, edit: CaptionWordEdit
   if (text === word.text && startFrame === word.startFrame && endFrame === word.endFrame) return { ok: true, film };
   const edited = words.map((w, i) => (i === index ? { text, startFrame, endFrame } : w));
   const vtt = writeCaptionTrack(edited, film.fps || 30);
-  if (vtt === null) {
-    const hasNumber = edited.some((w) => /^\d+$/.test(w.text));
-    return {
-      ok: false,
-      error: hasNumber
-        ? "A number word needs a neighbour word of the same length. Change its Start or End first."
-        : "This word cannot be saved. Use another word.",
-    };
-  }
+  if (vtt === null) return { ok: false, error: "This word cannot be saved. Use another word." };
   return { ok: true, film: { ...film, captions: vtt } };
 }

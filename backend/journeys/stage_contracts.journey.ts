@@ -74,7 +74,7 @@ test("late receive shifts every timed channel, keeps recovery, and holds outside
 test("strict serialization preserves performance and rejects unknown v2 fields and legacy actors", () => {
   const film = compiled();
   assert.deepEqual(parseFilm(JSON.parse(JSON.stringify(film))).scene, film.scene);
-  const caption = generateWordsFromFilm(film as unknown as Record<string, unknown>).find((w) => w.text === "catches");
+  const caption = generateWordsFromFilm(film).find((w) => w.text === "catches");
   assert.equal(caption?.startFrame, film.scene!.performances![0].decisive.frame);
   assert.throws(() => parseFilm({ ...film, scene: { ...film.scene, poseHistory: [] } }));
   assert.throws(() => stageDesignSchema.parse({ ...read("design/design.json"), mixer: {} }));

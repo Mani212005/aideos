@@ -9,10 +9,11 @@
  * Used by: editor/vite.config.ts,
  * backend/agentBridge/contextBuilder.ts, backend/designSpec/brief.ts, backend/lookPlan/brief.ts,
  * backend/designCheck/designCheck.ts, backend/pipeline/design.ts, backend/designSpec/build.ts,
- * editor/src/components/LookChoices.tsx, and (for
+ * editor/src/components/LookChoices.tsx, editor/src/App.tsx, editor/src/components/LookAsk.tsx and
+ * editor/src/components/ReelPanel.tsx (filmAccent, the one accent every preview draws with), and (for
  * DEFAULT_PROJECT_ACCENT, the fallback when a film names no accent) backend/designSpec/shotTools.ts,
  * backend/editPlanner/validator.ts, backend/sceneKit/svg.ts, src/dl/convertFilm.ts,
- * editor/src/App.tsx, editor/src/components/LookAsk.tsx, editor/src/state/placeholderFilm.ts.
+ * editor/src/state/placeholderFilm.ts.
  */
 
 import type { BackgroundPreset, ThemeConfig } from "./dl/schema";

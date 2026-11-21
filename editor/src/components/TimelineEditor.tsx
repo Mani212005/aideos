@@ -749,19 +749,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         return;
       }
 
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        if (e.shiftKey) onRedo();
-        else onUndo();
-        return;
-      }
-      if (mod && e.key.toLowerCase() === "y") {
-        e.preventDefault();
-        onRedo();
-        return;
-      }
-      if (mod) return;
+      // Undo and redo (Cmd/Ctrl+Z, Shift+Z, Y) are the app shell's: a second handler here would undo twice per press.
+      if (e.metaKey || e.ctrlKey) return;
 
       switch (e.key) {
         case " ":
@@ -831,10 +820,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
     deleteSelection,
     fps,
     nudgePlayhead,
-    onRedo,
     onSeekFrame,
     onTogglePlay,
-    onUndo,
     selectedClipIds.length,
     splitAtPlayhead,
     zoomBy,

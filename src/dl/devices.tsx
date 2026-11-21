@@ -491,79 +491,111 @@ export const Distribution: React.FC<
 /* LayerStack - depth                                                          */
 /* -------------------------------------------------------------------------- */
 
+/** One named layer of a stack: a bare label, or a label with a short dimension such as "128 GB". */
+export type LayerStackEntry = string | { label: string; dim?: string };
+
+/** Splits a layer entry into the label and the optional dimension it draws. */
+function layerParts(entry: LayerStackEntry): { label: string; dim?: string } {
+  return typeof entry === "string" ? { label: entry } : entry;
+}
+
+/** A stack of layers seen in profile: named layers when the beat names them, else anonymous bars swept by depth. */
 export const LayerStack: React.FC<
-  BlockProps & { count: number; bottomLabel?: string; topLabel?: string }
-> = ({ count, bottomLabel, topLabel, start, index, durationInFrames }) => {
+  BlockProps & { count: number; bottomLabel?: string; topLabel?: string; layers?: LayerStackEntry[]; prompt?: string }
+> = ({ count, bottomLabel, topLabel, layers, prompt, start, index, durationInFrames }) => {
   const layout = useLayout();
   const palette = useTokens();
   const accent = useAccent();
   const enter = useEntrance(start, index, layout.px(12));
   const travel = useSweep(start, durationInFrames);
-  const lit = Math.min(count - 1, Math.floor(travel * count));
+  // Named layers are authored bottom first and drawn top to bottom, so the stack is reversed
+  // and the sweep climbs from the bottom layer; an unnamed stack keeps its top-down sweep.
+  const named = (layers ?? []).map(layerParts);
+  const rows = named.length > 0 ? named.length : count;
+  const litStep = Math.min(rows - 1, Math.floor(travel * rows));
+  const lit = named.length > 0 ? rows - 1 - litStep : litStep;
+  const shown = [...named].reverse();
 
   return (
-    <div
-      style={{
-        ...enter,
-        display: "flex",
-        justifyContent: "center",
-        gap: layout.grid * 2.5,
-        width: "100%",
-        flex: 1,
-        minHeight: 0,
-      }}
-    >
-      {/* Narrow on purpose: this is a stack seen in profile, and a full-width
-          one reads as hatching rather than as depth. The bars flex so 32 of
-          them fit whatever height the panel has left. */}
+    <div style={{ ...enter, display: "flex", flexDirection: "column", gap: layout.grid, width: "100%", flex: 1, minHeight: 0 }}>
+      {prompt ? <div style={layout.label()}>{prompt}</div> : null}
       <div
         style={{
-          position: "relative",
-          width: layout.px(460),
-          maxWidth: "60%",
           display: "flex",
-          flexDirection: "column",
-          gap: layout.px(3),
+          justifyContent: "center",
+          gap: layout.grid * 2.5,
+          width: "100%",
+          flex: 1,
           minHeight: 0,
         }}
       >
-        {Array.from({ length: count }, (_, i) => (
+        {/* Narrow on purpose: this is a stack seen in profile, and a full-width
+            one reads as hatching rather than as depth. The bars flex so 32 of
+            them fit whatever height the panel has left. Named layers get a wider
+            column because each bar carries its label. */}
+        <div
+          style={{
+            position: "relative",
+            width: layout.px(named.length > 0 ? 640 : 460),
+            maxWidth: named.length > 0 ? "80%" : "60%",
+            display: "flex",
+            flexDirection: "column",
+            gap: layout.px(named.length > 0 ? 6 : 3),
+            minHeight: 0,
+          }}
+        >
+          {Array.from({ length: rows }, (_, i) => {
+            const part = shown[i];
+            return (
+              <span
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: layout.grid,
+                  flex: 1,
+                  minHeight: layout.px(part ? 28 : 3),
+                  padding: part ? `0 ${layout.grid * 1.5}px` : 0,
+                  borderRadius: layout.px(2),
+                  border: `1px solid ${i === lit ? accent : palette.rule()}`,
+                  background: i === lit ? accentAt(accent, 0.3) : palette.inkAt(0.03),
+                  fontFamily: MONO,
+                  fontSize: layout.type("body").fontSize * 0.85,
+                  color: i === lit ? palette.ink : palette.muted,
+                  whiteSpace: "pre",
+                }}
+              >
+                {part ? <span>{part.label}</span> : null}
+                {part?.dim ? <span style={{ color: i === lit ? accent : palette.muted }}>{part.dim}</span> : null}
+              </span>
+            );
+          })}
           <span
-            key={i}
             style={{
-              display: "block",
-              flex: 1,
-              minHeight: layout.px(3),
-              borderRadius: layout.px(2),
-              border: `1px solid ${i === lit ? accent : palette.rule()}`,
-              background: i === lit ? accentAt(accent, 0.3) : palette.inkAt(0.03),
+              position: "absolute",
+              left: layout.px(-14),
+              top: `${(lit / rows) * 100}%`,
+              width: layout.px(5),
+              height: layout.px(10),
+              borderRadius: layout.px(1),
+              background: accent,
             }}
           />
-        ))}
-        <span
+        </div>
+        <div
           style={{
-            position: "absolute",
-            left: layout.px(-14),
-            top: `${(lit / count) * 100}%`,
-            width: layout.px(5),
-            height: layout.px(10),
-            borderRadius: layout.px(1),
-            background: accent,
+            flex: "none",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            ...layout.label(),
           }}
-        />
-      </div>
-      <div
-        style={{
-          flex: "none",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          ...layout.label(),
-        }}
-      >
-        <span>{topLabel ?? ""}</span>
-        <span style={{ color: accent }}>{`${lit + 1} / ${count}`}</span>
-        <span>{bottomLabel ?? ""}</span>
+        >
+          <span>{topLabel ?? ""}</span>
+          <span style={{ color: accent }}>{`${named.length > 0 ? litStep + 1 : lit + 1} / ${rows}`}</span>
+          <span>{bottomLabel ?? ""}</span>
+        </div>
       </div>
     </div>
   );

@@ -296,7 +296,7 @@ test("Finding 7: generateWordsFromFilm calculates word timestamps using explicit
     },
   ]);
 
-  const words = generateWordsFromFilm(film as unknown as Record<string, unknown>);
+  const words = generateWordsFromFilm(film);
   const s2FirstWord = words.find((w) => w.text === "Second");
   assert.ok(s2FirstWord, "Should contain words from second shot");
   // 6s * 30fps = frame 180

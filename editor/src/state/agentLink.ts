@@ -3,7 +3,7 @@
  * Pairing gives this browser an owner key; it is kept in localStorage and sent as X-Aideos-Owner
  * with every studio API request, which is how the server knows a task may go to the owner's
  * connected agent. Installed once, as a fetch wrapper, so no call site has to remember it.
- * Inputs and outputs: agent pairing code and polling loop -> reactive agent connection and task status hook.
+ * Inputs and outputs: owner key and studio fetch calls -> the key kept in localStorage and an X-Aideos-Owner header on every studio API request.
  * Used by: editor/src/App.tsx, editor/src/components/shell/AgentSheet.tsx.
  */
 

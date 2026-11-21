@@ -15,7 +15,7 @@ The editor chrome uses a dedicated design system, entirely decoupled from the re
 - **Feedback**: Colour and opacity changes on hover and press, a 2px accent focus ring, and ease-out-expo motion (`cubic-bezier(0.16, 1, 0.3, 1)`, 160ms).
 - **Typography**: Geist for words at 12, 13, 15, 20 and 28 px, and JetBrains Mono at 12 px for all numeric timecodes, frame counters, durations, and system metrics.
 - **Film accent**: The film's own accent (`theme.accentChosen`) is bound inline by the components that draw it, such as the AI edit Plan button. It is not an editor token.
-- **Shared Primitives (`src/components/ui/`)**: All components consume handcrafted UI primitives (`Button`, `Panel`, `Modal`, `Field`, `Feedback`, `Badge`, `Tabs`, `Toolbar`) styled via CSS variables in `src/styles/tokens.css` and configured in `tailwind.config.js`.
+- **Shared Primitives (`src/components/ui/`)**: All components consume handcrafted UI primitives (`Button`, `Panel`, `Field`, `Feedback`, `Badge`, `Tabs`, `Toolbar`) styled via CSS variables in `src/styles/tokens.css` and configured in `tailwind.config.js`.
 
 ---
 

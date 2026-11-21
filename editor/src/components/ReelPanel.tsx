@@ -15,6 +15,7 @@ import type { ReelCut } from "../../../backend/reelCut/schema";
 import type { ReelCheckReport } from "../../../backend/reelCut/check";
 import type { DesignFinding } from "../../../backend/designCheck/designCheck";
 import { FilmView } from "../../../src/dl/Film";
+import { filmAccent } from "../../../src/projectTheme";
 import { Button, Badge, Stat } from "./ui";
 
 interface ReelPanelData {
@@ -108,7 +109,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
       </div>
       <div className="space-y-4 overflow-y-auto p-3">
         {error ? <p role="alert" className="whitespace-pre-wrap border border-danger bg-paper-2 p-2 text-xs leading-relaxed">{error}</p> : null}
-        {!data && !error ? <div role="status" className="flex items-center gap-2 text-xs text-muted"><Loader2 className="h-4 w-4 animate-spin" />Loading reel checks...</div> : null}
+        {!data && !error ? <div role="status" className="flex items-center gap-2 text-xs text-ink-mute"><Loader2 className="h-4 w-4 animate-spin" />Loading reel checks...</div> : null}
         {data ? <>
           <section aria-label="Reel status" className="space-y-2 border border-line bg-paper-2 p-2">
             <div className="flex items-center justify-between gap-2">
@@ -125,17 +126,17 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
                 <Play className="h-3.5 w-3.5" />{previewing ? "Hide preview" : "Preview 9:16"}
               </Button>
             </div>
-            {!data.writable ? <p className="text-xs leading-relaxed text-muted">Example films are read-only. Copy this film into your videos folder to rebuild its reel.</p> : null}
-            {data.status?.state === "passed" ? <p className="text-xs leading-relaxed text-muted">Last build passed{data.status.at ? ` · ${new Date(data.status.at).toLocaleString()}` : ""}.</p> : null}
-            {busy ? <p role="status" className="text-xs leading-relaxed text-muted">Checking the cut, synthesizing narration and rebuilding the reel.</p> : null}
+            {!data.writable ? <p className="text-xs leading-relaxed text-ink-mute">Example films are read-only. Copy this film into your videos folder to rebuild its reel.</p> : null}
+            {data.status?.state === "passed" ? <p className="text-xs leading-relaxed text-ink-mute">Last build passed{data.status.at ? ` · ${new Date(data.status.at).toLocaleString()}` : ""}.</p> : null}
+            {busy ? <p role="status" className="text-xs leading-relaxed text-ink-mute">Checking the cut, synthesizing narration and rebuilding the reel.</p> : null}
           </section>
 
           {previewing && preview && timeline ? <section aria-label="Reel format preview" className="space-y-2">
-            <div className="flex items-center justify-between"><h3 className="text-xs font-semibold">9:16 preview</h3><span className="font-mono text-xs text-muted">{timeLabel(data.durationSec ?? 0)}</span></div>
+            <div className="flex items-center justify-between"><h3 className="text-xs font-semibold">9:16 preview</h3><span className="font-mono text-xs text-ink-mute">{timeLabel(data.durationSec ?? 0)}</span></div>
             <div className="mx-auto aspect-[9/16] w-full max-w-[220px] overflow-hidden border border-line bg-matte">
               <Player
                 component={FilmView}
-                inputProps={{ film: preview, timeline, accent: preview.accent || preview.theme?.accent || "var(--nb-primary)", showGrid: preview.theme?.videoType === "case-study", showRail: true, captionWords: words }}
+                inputProps={{ film: preview, timeline, accent: filmAccent(preview), showGrid: preview.theme?.videoType === "case-study", showRail: true, captionWords: words }}
                 durationInFrames={Math.max(1, durationFrames)}
                 initialFrame={Math.min(preview.fps, Math.max(0, durationFrames - 1))}
                 fps={preview.fps}
@@ -151,10 +152,10 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
 
           <section aria-label="Reel cut" className="space-y-2">
             <h3 className="text-xs font-semibold">Shot cut and condensed narration</h3>
-            {data.identity ? <p className="text-xs leading-relaxed text-muted">This film fits the cap, so its reel keeps the full narration and every shot.</p> : !data.cut ? <p className="text-xs leading-relaxed text-muted">No reel cut is available yet. Rebuild uses the saved cut and reports what needs attention.</p> : <ol className="space-y-2">
+            {data.identity ? <p className="text-xs leading-relaxed text-ink-mute">This film fits the cap, so its reel keeps the full narration and every shot.</p> : !data.cut ? <p className="text-xs leading-relaxed text-ink-mute">No reel cut is available yet. Rebuild uses the saved cut and reports what needs attention.</p> : <ol className="space-y-2">
               {data.cut.shots.map((entry, index) => "drop" in entry ? <li key={entry.id} className="border border-line bg-sunken p-2 text-xs">
                 <div className="flex items-center justify-between gap-2"><span className="font-mono font-semibold">{index + 1}. {entry.id}</span><Badge tone="quiet">Dropped</Badge></div>
-                <p className="mt-1 text-muted">{entry.reason}</p>
+                <p className="mt-1 text-ink-mute">{entry.reason}</p>
               </li> : <li key={entry.id} className="border border-line bg-paper-2 p-2 text-xs">
                 <div className="flex items-center justify-between gap-2"><span className="font-mono font-semibold">{index + 1}. {entry.id}</span><Badge tone="success">Kept</Badge></div>
                 <p className="mt-1 leading-relaxed">{entry.narration}</p>
@@ -171,7 +172,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
             {data.identity ? <p className="flex items-center gap-1.5 text-xs"><CheckCircle2 className="h-3.5 w-3.5 text-success" />No separate narration cut required.</p> : report ? <p className="flex items-center gap-1.5 text-xs">
               {report.ok ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <CircleAlert className="h-3.5 w-3.5 text-danger" />}
               Reel cut check: {report.ok ? "pass" : "needs attention"}
-            </p> : <p className="text-xs text-muted">Cut checks are unavailable until a reel cut exists.</p>}
+            </p> : <p className="text-xs text-ink-mute">Cut checks are unavailable until a reel cut exists.</p>}
             {report?.findings.map((finding, index) => <div key={`${finding.rule}-${finding.shotId ?? "film"}-${index}`} className="border border-line bg-paper-2 p-2 text-xs">
               <div className="flex items-center justify-between gap-2"><span className="font-mono font-semibold">{finding.rule}{finding.shotId ? ` · ${finding.shotId}` : ""}</span><Badge tone={finding.severity === "error" ? "danger" : "warn"}>{finding.severity}</Badge></div>
               <p className="mt-1 leading-relaxed">{finding.message}</p>
@@ -181,7 +182,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
               <p className="mt-1 leading-relaxed">{finding.message}</p>
             </div>)}
             {errors.map((message, index) => <p key={`error-${index}`} className="border border-danger bg-paper-2 p-2 text-xs leading-relaxed">{message}</p>)}
-            {!report?.findings.length && !designFindings.length && !errors.length && report?.ok ? <p className="text-xs text-muted">No reel cut or design findings.</p> : null}
+            {!report?.findings.length && !designFindings.length && !errors.length && report?.ok ? <p className="text-xs text-ink-mute">No reel cut or design findings.</p> : null}
           </section>
         </> : null}
       </div>
