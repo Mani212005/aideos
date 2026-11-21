@@ -12,6 +12,10 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { findChromeBinary } from "../backend/scene/renderStill";
 import { startEditor, StudioPage } from "./studioDriver";
+import { installVoiceOfChoiceForTests } from "../backend/testSupport/fakeVcd";
+
+// Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
+installVoiceOfChoiceForTests();
 
 const ROOT = path.resolve(__dirname, "..");
 const SLUG = "smoke-studio";
@@ -148,7 +152,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  // The film is made by the real pipeline (tone narration, template design) in a throwaway videos
+  // The film is made by the real pipeline (owner voice through the fake voice service, template design) in a throwaway videos
   // folder, so the journey never touches anyone's own videos and needs no model or key.
   const videosDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-smoke-videos-"));
   process.env.AIDEOS_VIDEOS_DIR = videosDir;
@@ -160,7 +164,7 @@ async function main(): Promise<void> {
   let page: StudioPage | undefined;
   try {
     const { runProduction } = await import("../backend/pipeline/run");
-    const produced = await runProduction({ script: SCRIPT, title: "Smoke studio", slug: SLUG, ttsBackend: "tone", design: "templates", broll: false, skipAgent: true, stopAfter: "design", syncToPreview: false, deviceCaller: null });
+    const produced = await runProduction({ script: SCRIPT, title: "Smoke studio", slug: SLUG, ttsBackend: "vcd", design: "templates", broll: false, skipAgent: true, stopAfter: "design", syncToPreview: false, deviceCaller: null });
     if (produced.status !== "stopped") throw new Error(`could not prepare the smoke film: ${produced.status} ${produced.warnings.join("; ")}`);
 
     server = await startEditor(videosDir);

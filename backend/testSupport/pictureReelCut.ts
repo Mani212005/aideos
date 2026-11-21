@@ -13,6 +13,7 @@ import { buildDesign } from "../designSpec/build";
 import { readFilm } from "../pipeline/filmStore";
 import { createReelContext } from "../reelCut/constraints";
 import type { ReelCut } from "../reelCut/schema";
+import { FAKE_OWNER_BACKEND_NAME, FAKE_OWNER_VOICE_ID } from "./fakeVcd";
 
 const FIXTURE = path.resolve(__dirname, "../../test_fixtures/packages/pictures-stage");
 /** How many times the fixture's 10 s story is stretched, so its reel (story plus end card) is over the 179 s cap and must be cut. */
@@ -34,7 +35,7 @@ export function narration(texts: string[], durations: number[], dir = ""): Produ
   });
   const words = segments.flatMap((s) => s.words.map((w) => ({ ...w, start: s.startOffset + w.start, end: s.startOffset + w.end })));
   return { segments, words, shotDurations: durations, totalAudioDuration: cursor,
-    captionsVttContent: buildCaptionsVtt(words), ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 0.75,
+    captionsVttContent: buildCaptionsVtt(words), ttsBackend: FAKE_OWNER_BACKEND_NAME, voice: FAKE_OWNER_VOICE_ID, speed: 0.75,
     voiceoverPath: path.join(dir, "voiceover.wav"), wordsPath: path.join(dir, "voiceover_words.json"), captionsPath: path.join(dir, "captions.vtt") };
 }
 
@@ -59,7 +60,7 @@ export function stretchPastReelCap(slug: string, long: Film): Film {
     voiceover: long.voiceover && { ...long.voiceover, durationSec: (long.voiceover.durationSec ?? 10) * STRETCH } };
   const pkg = resolvePackageDir(slug);
   fs.writeFileSync(path.join(pkg, "film.json"), JSON.stringify(stretched));
-  fs.writeFileSync(path.join(pkg, "narration.json"), JSON.stringify({ ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 0.75 }));
+  fs.writeFileSync(path.join(pkg, "narration.json"), JSON.stringify({ ttsBackend: FAKE_OWNER_BACKEND_NAME, voice: FAKE_OWNER_VOICE_ID, speed: 0.75 }));
   return stretched;
 }
 

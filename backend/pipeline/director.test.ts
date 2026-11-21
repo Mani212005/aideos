@@ -15,6 +15,10 @@ import path from "path";
 import { buildDirectorSystemInstruction, draftScreenplay, runDirector, type GenerateScreenplayFn } from "./director";
 import { readFilm, slugify, VIDEOS_DIR, FILMS_DIR } from "./filmStore";
 import { clearMockShotVisualHandler, heuristicShotVisualSelection, setMockShotVisualHandler } from "../jev";
+import { installVoiceOfChoiceForTests } from "../testSupport/fakeVcd";
+
+// Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
+installVoiceOfChoiceForTests();
 
 // The end-to-end runs reach the design stage, so pin its shot-visual choice to the deterministic
 // heuristic rather than a live Jev request, whatever keys the environment holds.
@@ -150,7 +154,7 @@ test("runDirector: a prompt is drafted and produced through the real pipeline en
         prompt,
         slug,
         generateScreenplay: fakeGenerator(),
-        ttsBackend: "tone",
+        ttsBackend: "vcd",
         syncToPreview: false,
         broll: false,
         stopAfter: "design",
@@ -191,7 +195,7 @@ test("runDirector: an explicit title overrides the one the screenplay drafts for
         slug,
         title: "The Overridden Title",
         generateScreenplay: fakeGenerator(),
-        ttsBackend: "tone",
+        ttsBackend: "vcd",
         syncToPreview: false,
         broll: false,
         stopAfter: "design",

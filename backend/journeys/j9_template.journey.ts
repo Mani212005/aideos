@@ -1,6 +1,6 @@
 /**
  * File Description: Journey J9 through the real pipeline: a film made with the explicit template path (no character, no 3D stage, no look plan) still produces a valid, drawn mp4, so the character work cannot break the films that existed before it. Pixel-level regression for the same films lives in legacy.golden.ts.
- * Inputs and outputs: a three-beat screenplay with tone narration and design "templates" -> a rendered long mp4 whose size, frame count, audio and picture are checked.
+ * Inputs and outputs: a three-beat screenplay with owner-voice narration (fake voice service) and design "templates" -> a rendered long mp4 whose size, frame count, audio and picture are checked.
  * Used by: npm run test:journeys (the CI journeys job).
  */
 

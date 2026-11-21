@@ -32,6 +32,7 @@ import { resolveRepoPath } from "../nativeRenderer";
 import { loadSceneAssets } from "../scene/loadSceneAssets";
 import type { Scene } from "../../src/dl/scene/types";
 import { narration, picturePackage, stretchPastReelCap, writePictureCut } from "../testSupport/pictureReelCut";
+import { FAKE_OWNER_BACKEND_NAME, FAKE_OWNER_VOICE_ID } from "../testSupport/fakeVcd";
 
 // Builds a small legacy node-graph package with a measured long narration and no external media.
 function packageFilm(slug: string, duration = 210): Film {
@@ -43,7 +44,7 @@ function packageFilm(slug: string, duration = 210): Film {
   const dir = path.join(TEST_VIDEOS_DIR, slug);
   fs.mkdirSync(path.join(dir, "reel"), { recursive: true });
   fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify(film));
-  fs.writeFileSync(path.join(dir, "narration.json"), JSON.stringify({ ttsBackend: "kokoro:af_heart", voice: "af_heart", speed: 0.75 }));
+  fs.writeFileSync(path.join(dir, "narration.json"), JSON.stringify({ ttsBackend: FAKE_OWNER_BACKEND_NAME, voice: FAKE_OWNER_VOICE_ID, speed: 0.75 }));
   return film;
 }
 
@@ -164,8 +165,8 @@ test("reel delivery: server validates and retries measured cap failures using th
     prompts.push(prompt);
     return JSON.stringify(cutFor(long));
   }, synthesize: async (script, dir, options) => {
-    assert.equal(options.backend, "kokoro");
-    assert.equal(options.voice, "af_heart");
+    assert.equal(options.backend, "vcd");
+    assert.equal(options.voice, FAKE_OWNER_VOICE_ID);
     assert.equal(options.speed, 0.75);
     syntheses++;
     return narration(splitScriptIntoSegments(script), syntheses === 1 ? [60, 60, 60] : [40, 40, 40], dir);
@@ -185,7 +186,7 @@ test("runProduction reel stage: inline stop resumes with an injected writer and 
   const slug = "reel-pipeline-resume";
   const text = "Paper moves and stays in your hands. ".repeat(13);
   const script = `# Reel pipeline\n## The Hands\n${`[ON SCREEN]\nPaper moves.\n[NARRATION]\n${text}\n`.repeat(6)}`;
-  const request = { script, slug, title: "Reel pipeline", ttsBackend: "tone" as const, design: "templates" as const,
+  const request = { script, slug, title: "Reel pipeline", ttsBackend: "vcd" as const, design: "templates" as const,
     stopAfter: "reel" as const, skipAgent: true, deviceCaller: null };
   const first = await runProduction(request);
   assert.equal(first.status, "needs_reel_cut", JSON.stringify(first));
@@ -217,7 +218,7 @@ test("runProduction assemble: B-roll wired into a condensed reel keeps the reel 
   const text = "Paper moves and stays in your hands. ".repeat(5);
   const script = `# Reel broll\n## The Hands\n${`[ON SCREEN]\nPaper moves.\n[NARRATION]\n${text}\n`.repeat(14)}`;
   const synth = async (s: string, dir: string) => { const texts = splitScriptIntoSegments(s); return narration(texts, texts.map(() => 8), dir); };
-  const request = { script, slug, title: "Reel broll", ttsBackend: "tone" as const, design: "templates" as const,
+  const request = { script, slug, title: "Reel broll", ttsBackend: "vcd" as const, design: "templates" as const,
     skipAgent: true, deviceCaller: null, broll: true, brollMaxClips: 1, brollSeconds: 120, brollEngine: "null" };
   const first = await runProduction({ ...request, stopAfter: "reel", reel: "server",
     reelLlmCaller: async () => JSON.stringify(cutFor(parseFilm(JSON.parse(fs.readFileSync(path.join(pkg, "film.json"), "utf8"))))),

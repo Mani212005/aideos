@@ -1,6 +1,6 @@
 /**
  * File Description: Journey J2: the narration changes after the film was designed and rendered. The same request with the new script re-narrates, rebuilds the design so the contact moves to where "catches" is now spoken, and renders a new reel instead of reusing the stale one; stage truth derived from the film and timed words confirms the contact remains on the cue.
- * Inputs and outputs: the iona-receive fixture through runProduction twice (original and retimed screenplay, tone narration, contact-window reel renders) -> assertions on stages run, contact frames against the timed words, the rendered files and stage truth from film data.
+ * Inputs and outputs: the iona-receive fixture through runProduction twice (original and retimed screenplay, owner-voice narration (fake voice service), contact-window reel renders) -> assertions on stages run, contact frames against the timed words, the rendered files and stage truth from film data.
  * Used by: npm run test:journeys (the CI journeys job).
  */
 

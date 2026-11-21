@@ -1,5 +1,5 @@
 /**
- * File Description: Drives the real production pipeline on the committed iona-receive fixture's look and design with tone narration and no GPU engine, so a journey test gets a finished 3D-stage film without any model, key or login.
+ * File Description: Drives the real production pipeline on the committed iona-receive fixture's look and design with the owner voice (through the fake voice service) and no GPU engine, so a journey test gets a finished 3D-stage film without any model, key or login.
  * Inputs and outputs: render options (frame window, formats, stop stage) -> a ProductionResult plus the slug of the throwaway package it was built in.
  * Used by: backend/journeys/*.journey.ts.
  */
@@ -11,6 +11,10 @@ import { buildDesign } from "../designSpec/build";
 import { readFilm } from "../pipeline/filmStore";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import type { ProductionRequest, ProductionResult } from "../pipeline/types";
+import { installVoiceOfChoiceForTests } from "../testSupport/fakeVcd";
+
+// Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
+installVoiceOfChoiceForTests();
 
 const FIXTURE = path.resolve(__dirname, "../../test_fixtures/packages/iona-receive");
 /** A design or look plan edited as loose JSON, so a test can break any field at any depth. */
@@ -21,7 +25,7 @@ export type Loose = Record<string, any>;
 const BEAT_IDS: Record<string, string> = { approach: "beat-01", catch: "beat-02", receipt: "beat-03" };
 
 /**
- * The fixture's three narration beats, padded so tone narration (about 0.4 s a word) reaches the
+ * The fixture's three narration beats, padded so the fake owner voice (about 0.4 s a word) reaches the
  * 10 s the film schema asks for. "catches" and the other cue phrases the fixture's look and design
  * bind to are kept verbatim, so the contact moment still lands on the spoken word.
  */
@@ -59,13 +63,13 @@ export function writeIonaDesign(slug: string, edit: (design: Loose) => void = ()
   fs.copyFileSync(path.join(FIXTURE, "visuals/canvas.svg"), path.join(pkg, "visuals/canvas.svg"));
 }
 
-/** The request every journey shares (the Iona screenplay unless overridden): tone voice, no engine, no live agent, no server model; AIDEOS_BROWSER_EXECUTABLE renders with a local Chrome. */
+/** The request every journey shares (the Iona screenplay unless overridden): owner voice (fake service), no engine, no live agent, no server model; AIDEOS_BROWSER_EXECUTABLE renders with a local Chrome. */
 export function journeyRequest(slug: string, overrides: Partial<ProductionRequest> = {}): ProductionRequest {
   return {
     script: ionaScript(),
     title: "Iona receives a message",
     slug,
-    ttsBackend: "tone",
+    ttsBackend: "vcd",
     brollEngine: "null",
     broll: false,
     skipAgent: true,

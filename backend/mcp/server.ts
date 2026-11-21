@@ -239,7 +239,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         ttsBackend: z
           .enum(["vcd", "kokoro", "google", "say", "tone"])
           .optional()
-          .describe("Pin the speech synthesizer. Defaults to vcd (My voice, local cloned voice)."),
+          .describe("Pin the speech synthesizer. Defaults to vcd (My voice, the local cloned voice and the voice of choice); use another only with the captain's word."),
         voice: z.string().optional().describe("Voice id for the chosen synthesizer (for example an enrolled vcd voice_... id or Kokoro af_heart)."),
         language: z
           .enum(["auto", "en", "hi"])

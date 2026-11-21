@@ -12,6 +12,7 @@ import { produceIona, type IonaProduction } from "./ionaFilm";
 import { openFilm } from "./remotionFrames";
 import { nativeJourneyProblem, nativeJourneysRequired, psnrDb, renderNativeFrame, stageNativePackage } from "./nativeFrames";
 import { readFilm } from "../pipeline/filmStore";
+import { FAKE_OWNER_BACKEND_NAME } from "../testSupport/fakeVcd";
 import { reelForRender } from "../reelCut/store";
 import { createRenderJob } from "../renderJob";
 import { createNativeRenderer } from "../nativeRenderer";
@@ -41,7 +42,7 @@ journey("J1 script to wide and reel mp4s through the real pipeline, with no mode
     result.stages.map((s) => `${s.stage}:${s.status}`),
     ["intake", "narrate", "look", "design", "reel", "broll", "assemble", "render", "verify"].map((s) => `${s}:done`),
   );
-  assert.equal(result.ttsBackend, "tone");
+  assert.equal(result.ttsBackend, FAKE_OWNER_BACKEND_NAME, "the journey film is narrated by the owner voice");
   // Captain-approved edit (Option 1, 2026-11-01): music and effects are compulsory and the test environment caches a synthetic audio library, so no cache-miss warning remains.
   assert.deepEqual(result.warnings, [], "the default music and effects are assigned from the synthetic test library, so no warning is expected");
 

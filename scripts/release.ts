@@ -178,7 +178,7 @@ async function acceptance(source: string, evidence: string, context: AcceptanceC
           slug: film.id, title: film.title, script, formats: ["long", "reel"],
           resume: true, force: ["render", "verify"], broll: false, skipAgent: true,
           design: "inline", deviceCaller: null, renderConcurrency: 2,
-          ttsBackend: process.platform === "darwin" ? "say" : "kokoro",
+          ttsBackend: "vcd",
           ...(process.env.AIDEOS_BROWSER_EXECUTABLE ? { browserExecutable: process.env.AIDEOS_BROWSER_EXECUTABLE } : {}),
         }, (event) => console.log(`[acceptance] ${event.stage}: ${event.message}`));
         fs.writeFileSync(path.join(evidence, "production.json"), JSON.stringify(result, null, 2));

@@ -69,13 +69,13 @@ test("MCP produce resumes inline after a checked fixture look and reports needs_
   const packageDir = path.join(TEST_VIDEOS_DIR, filmId);
   try {
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
-    // Starts and polls a public MCP production run using deterministic tone narration.
+    // Starts and polls a public MCP production run using the deterministic fake owner voice.
     const produce = async () => {
       const started = await client.callTool({ name: "aideos_produce_film", arguments: {
         script: "# MCP Look Test\n\n## Opening\n[NARRATION] A cache keeps useful data close to the processor.\n\n[NARRATION] When the processor asks again, the cache answers without fetching the data from memory.\n\n[NARRATION] That saves time because the processor spends less of each cycle waiting for a slow transfer.",
         title: "MCP Look Test",
         slug: filmId,
-        ttsBackend: "tone",
+        ttsBackend: "vcd",
         design: "inline",
         broll: false,
         stopAfter: "design",
