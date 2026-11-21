@@ -41,10 +41,30 @@ export interface RotatingSubGroup {
   track?: Track;
 }
 
+/**
+ * A picture (the illustrated stage's plate or one of its generated objects): one PNG drawn centred on
+ * its asset's origin at one scene unit per pixel, then placed, scaled and faded like an SVG asset. The
+ * picture is the asset's single animatable element, so a clip targets it by the asset's own id. Pictures
+ * carry no words, numbers or lines: SVG keeps all of those. See src/dl/scene/raster.ts.
+ */
+export interface RasterSource {
+  /** Repo-relative path to the PNG, e.g. "videos/<slug>/visuals/generated/<fingerprint>.png". */
+  src: string;
+  /** Pixel width of the PNG, which is also its drawn width in scene units at scale 1. */
+  width: number;
+  /** Pixel height of the PNG, which is also its drawn height in scene units at scale 1. */
+  height: number;
+  /** sha256 of the approved file (lowercase hex): the design pins it, and both renderers refuse other bytes. */
+  sha256: string;
+}
+
 export interface EnvironmentAsset {
   plane?: "background" | "foreground";
   assetId: string; // unique within scene
-  svgSource: string; // path to committed SVG file
+  /** Path to the committed SVG artwork. Exactly one of `svgSource` and `raster` is set. */
+  svgSource?: string;
+  /** A picture instead of SVG artwork. Exactly one of `svgSource` and `raster` is set. */
+  raster?: RasterSource;
   /** D5: omit to derive from position.y per frame. Present = explicit override. */
   layer?: number;
   position: Vec2; // scene-space pixels

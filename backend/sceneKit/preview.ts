@@ -47,7 +47,7 @@ export function previewFrames(source: PreviewSource, frames: Array<{ frame: numb
   const out: string[] = [];
   for (const { frame, name } of frames) {
     const f = Math.min(frame, compiled.frames.length - 1);
-    const svg = renderFrameSvgMarkup(compiled.frames[f], { width: 1920, height: 1920, sceneSize: source.scene.sceneSize, svgSources: assets.svgSources });
+    const svg = renderFrameSvgMarkup(compiled.frames[f], { width: 1920, height: 1920, sceneSize: source.scene.sceneSize, svgSources: assets.svgSources, rasterUrls: assets.rasterUrls });
     const htmlPath = path.join(outDir, `${name}.html`);
     const png = path.join(outDir, `${name}.png`);
     fs.writeFileSync(htmlPath, previewPage(svg));

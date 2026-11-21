@@ -24,6 +24,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import { stageProjection } from "../../src/dl/scene/projection";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
 import { getExamplesDir, getVideosDir, resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { pictureLocalBox } from "../pictures/bounds";
 import {
   apply,
   IDENTITY,
@@ -134,8 +135,14 @@ function collectLeaves(svgSource: string, packageSlug?: string): Leaf[] {
   return leaves;
 }
 
+// A picture's one drawn element: its visible (alpha-trimmed) box, named and animated by the asset id.
+function rasterLeaves(entity: CompiledEntity): Leaf[] {
+  const box = entity.raster ? pictureLocalBox(entity.raster) : null;
+  return box ? [{ name: entity.entityId, box, strokeOnly: false, chain: [{ id: entity.entityId, transform: IDENTITY, opacity: 1 }] }] : [];
+}
+
 // The matrix an element's animated state adds on top of its authored transform (the renderer's order).
-function stateMatrix(state: NonNullable<CompiledEntity["elementStates"]>[string]): Affine {
+export function stateMatrix(state: NonNullable<CompiledEntity["elementStates"]>[string]): Affine {
   let m = IDENTITY;
   if (state.translateX !== 0 || state.translateY !== 0) m = multiply(m, translation(state.translateX, state.translateY));
   if (state.scaleX !== 1 || state.scaleY !== 1 || state.rotate !== 0) {
@@ -148,7 +155,7 @@ function stateMatrix(state: NonNullable<CompiledEntity["elementStates"]>[string]
 }
 
 // Maps scene coordinates to a format's frame pixels: the scene camera, then the cover window SceneStage uses.
-function sceneToFrame(frame: CompiledFrame, scene: Scene, width: number, height: number): Affine {
+export function sceneToFrame(frame: CompiledFrame, scene: Scene, width: number, height: number): Affine {
   const sw = scene.sceneSize.w;
   const sh = scene.sceneSize.h;
   const cam = adjustStageCameraForFormat(
@@ -175,14 +182,14 @@ export function projectedSvgParts(
   options: { includeAncestry?: boolean; minOpacity?: number; targets?: ReadonlySet<string> } = {},
 ): Array<{ name: string; bounds: Box; ancestors?: string[] }> {
   const minOpacity = options.minOpacity ?? VISIBLE_OPACITY_MIN;
-  if (!entity.svgSource || entity.transform.opacity <= minOpacity) return [];
+  if ((!entity.svgSource && !entity.raster) || entity.transform.opacity <= minOpacity) return [];
   const parts: Array<{ name: string; bounds: Box; ancestors?: string[] }> = [];
   const placed = multiply(
     frameToPx,
     multiply(multiply(translation(entity.transform.x, entity.transform.y), scaling(entity.transform.scale, entity.transform.scale)), rotation(entity.transform.rotation)),
   );
   const states = entity.elementStates ?? {};
-  for (const leaf of collectLeaves(entity.svgSource, packageSlug)) {
+  for (const leaf of entity.raster ? rasterLeaves(entity) : collectLeaves(entity.svgSource!, packageSlug)) {
     if (options.targets && !leaf.chain.some((link) => link.id && options.targets!.has(link.id))) continue;
     let m = placed;
     let opacity = entity.transform.opacity;

@@ -340,6 +340,60 @@
       "width": 270,
       "height": 480,
       "bytes": 20600
+    },
+    {
+      "name": "frames/pictures-stage/long-45.png",
+      "film": "pictures-stage",
+      "format": "long",
+      "frame": 45,
+      "width": 480,
+      "height": 270,
+      "bytes": 25497
+    },
+    {
+      "name": "frames/pictures-stage/long-135.png",
+      "film": "pictures-stage",
+      "format": "long",
+      "frame": 135,
+      "width": 480,
+      "height": 270,
+      "bytes": 28271
+    },
+    {
+      "name": "frames/pictures-stage/long-225.png",
+      "film": "pictures-stage",
+      "format": "long",
+      "frame": 225,
+      "width": 480,
+      "height": 270,
+      "bytes": 29416
+    },
+    {
+      "name": "frames/pictures-stage/long-285.png",
+      "film": "pictures-stage",
+      "format": "long",
+      "frame": 285,
+      "width": 480,
+      "height": 270,
+      "bytes": 28462
+    },
+    {
+      "name": "frames/pictures-stage/reel-135.png",
+      "film": "pictures-stage",
+      "format": "reel",
+      "frame": 135,
+      "width": 270,
+      "height": 480,
+      "bytes": 27897
+    },
+    {
+      "name": "frames/pictures-stage/reel-285.png",
+      "film": "pictures-stage",
+      "format": "reel",
+      "frame": 285,
+      "width": 270,
+      "height": 480,
+      "bytes": 26325
     }
   ]
 }

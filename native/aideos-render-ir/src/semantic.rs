@@ -1,4 +1,4 @@
-//! File Description: The cross-reference and range rules a JSON Schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, and the Three stage's graph, channels, parts, textures and face programs). Implements the same rules, issue codes and JSON Pointers as backend/renderIr/validate.ts; both are tested against the same fixtures.
+//! File Description: The cross-reference and range rules a JSON Schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, the Three stage's graph, channels, parts, textures and face programs, and a picture's pinned image asset, its one element and the properties that element may animate). Implements the same rules, issue codes and JSON Pointers as backend/renderIr/validate.ts; both are tested against the same fixtures.
 //! Inputs and outputs: a structurally valid `RenderIr` -> every `Issue` found, in document order.
 //! Used by: crate::load.
 
@@ -167,8 +167,8 @@ impl<'a> Checker<'a> {
             }
             let allowed = match (node, space) {
                 (Node::Stage3d(_), _) => space == Space::Stage && top,
-                (_, Space::Stage) => matches!(node, Node::Svg(_) | Node::Group(_)),
-                (_, Space::Overlay) => !matches!(node, Node::Svg(_)),
+                (_, Space::Stage) => matches!(node, Node::Svg(_) | Node::Image(_) | Node::Group(_)),
+                (_, Space::Overlay) => !matches!(node, Node::Svg(_) | Node::Image(_)),
             };
             if !allowed {
                 let message = if matches!(node, Node::Stage3d(_)) {
@@ -201,6 +201,7 @@ impl<'a> Checker<'a> {
                     self.check_stage3d(&p, n, mesh);
                 }
                 Node::Svg(n) => self.check_svg(&p, n),
+                Node::Image(n) => self.check_image(&p, n),
                 Node::Rect(n) => {
                     self.check_node_tracks(&p, &n.tracks);
                     self.check_formats(&at(&p, &[&"placement"]), &n.placement);
@@ -256,15 +257,42 @@ impl<'a> Checker<'a> {
     fn check_svg(&mut self, p: &str, n: &'a SvgNode) {
         self.check_node_tracks(p, &n.tracks);
         let asset = self.need_asset(at(p, &[&"asset"]), &n.asset, "svg");
-        let mut keys = HashSet::new();
-        let mut origins: HashMap<&str, (f64, f64)> = HashMap::new();
         for (j, t) in n.element_tracks.iter().enumerate() {
-            let tp = at(p, &[&"elementTracks", &j]);
             if let Some(Asset::Svg(a)) = asset {
                 if !a.element_ids.iter().any(|e| e == &t.target) {
-                    self.add("unknown_element", at(&tp, &[&"target"]), format!("asset {} declares no element {}", n.asset, t.target));
+                    self.add("unknown_element", at(p, &[&"elementTracks", &j, &"target"]), format!("asset {} declares no element {}", n.asset, t.target));
                 }
             }
+        }
+        self.check_element_tracks(p, &n.element_tracks);
+    }
+
+    /// Checks an image node: a pinned image asset, its node tracks, and element tracks only on its one element and only of placement, scale, rotation and opacity.
+    fn check_image(&mut self, p: &str, n: &'a ImageNode) {
+        self.check_node_tracks(p, &n.tracks);
+        if let Some(Asset::Image(a)) = self.need_asset(at(p, &[&"asset"]), &n.asset, "image") {
+            if a.sha256.is_none() {
+                self.add("image_unpinned", at(p, &[&"asset"]), format!("image asset {} carries no sha256; a drawn picture is pinned", a.id));
+            }
+        }
+        for (j, t) in n.element_tracks.iter().enumerate() {
+            let tp = at(p, &[&"elementTracks", &j]);
+            if t.target != n.element {
+                self.add("unknown_element", at(&tp, &[&"target"]), format!("image node {} has the one element {}, not {}", n.id, n.element, t.target));
+            }
+            if matches!(t.property, ElementProperty::DrawOn | ElementProperty::X1 | ElementProperty::Y1 | ElementProperty::X2 | ElementProperty::Y2) {
+                self.add("property_not_allowed", at(&tp, &[&"property"]), format!("a picture's {:?} cannot be animated; move, scale, rotate or fade it", t.property));
+            }
+        }
+        self.check_element_tracks(p, &n.element_tracks);
+    }
+
+    /// Checks the element tracks of an svg or image node: one track per element and property, one origin per element, values in range.
+    fn check_element_tracks(&mut self, p: &str, tracks: &'a [ElementTrack]) {
+        let mut keys = HashSet::new();
+        let mut origins: HashMap<&str, (f64, f64)> = HashMap::new();
+        for (j, t) in tracks.iter().enumerate() {
+            let tp = at(p, &[&"elementTracks", &j]);
             if !keys.insert((t.target.as_str(), t.property)) {
                 self.add("duplicate_track", tp.clone(), format!("{:?} of {} is driven by two tracks", t.property, t.target));
             }

@@ -1,0 +1,15 @@
+{
+  "schema": "aideos.picture/1",
+  "fingerprint": "66ea23344fd68681a4b6b47a966db2c4",
+  "prompt": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.\n\nOne square matte processor die with a lighter rim.\n\nAbsolutely no text, letters, numbers, labels, signs, captions or watermarks anywhere in the image. One abstract object only: no people, no faces, no hands, no animals, no characters. No logos, no brand marks, no real products or trademarks, no recognisable designs of real companies or artists. Keep the background plain so the object can stand on its own, or transparent when asked.",
+  "style": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.",
+  "objectPrompt": "One square matte processor die with a lighter rim.",
+  "aspect": "1:1",
+  "tool": "synthetic-fixture",
+  "cutout": "generator-alpha",
+  "createdAt": "2026-11-20T00:00:00.000Z",
+  "seconds": 0,
+  "sha256": "7e60f8d5f6af51f9c3da4970861b5a616d30d2d99a82c2fb487054fbc8e145e0",
+  "width": 24,
+  "height": 24
+}

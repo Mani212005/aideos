@@ -1,0 +1,15 @@
+{
+  "schema": "aideos.picture/1",
+  "fingerprint": "ad406b3578b55fc28d534f8e02c4a5e0",
+  "prompt": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.\n\nA wide empty dark floor that fades into shadow, lit from the middle.\n\nAbsolutely no text, letters, numbers, labels, signs, captions or watermarks anywhere in the image. One abstract object only: no people, no faces, no hands, no animals, no characters. No logos, no brand marks, no real products or trademarks, no recognisable designs of real companies or artists. Keep the background plain so the object can stand on its own, or transparent when asked.",
+  "style": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.",
+  "objectPrompt": "A wide empty dark floor that fades into shadow, lit from the middle.",
+  "aspect": "1:1",
+  "tool": "synthetic-fixture",
+  "cutout": "none",
+  "createdAt": "2026-11-20T00:00:00.000Z",
+  "seconds": 0,
+  "sha256": "5c6f25b0c3c27e4db77339b49944fefb1104924f58450d769c332af7701d4b65",
+  "width": 48,
+  "height": 48
+}

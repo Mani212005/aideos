@@ -1,5 +1,5 @@
 /**
- * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films) and its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
+ * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) and the strict superset of that, `aideos.render/3` (adds the `image` stage node that draws a pinned picture, the illustrated stage). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
  * Inputs and outputs: nothing at import time -> zod schemas and the TypeScript types inferred from them.
  * Used by: backend/renderIr/validate.ts, backend/renderIr/jsonSchema.ts, backend/renderIr/renderIr.test.ts.
  */
@@ -10,8 +10,10 @@ import { z } from "zod";
 export const RENDER_IR_VERSION = "aideos.render/1";
 /** The second version, a strict superset of `/1`: adds the `stage3d` stage node and the `mesh` asset (Phase 4). */
 export const RENDER_IR_VERSION_2 = "aideos.render/2";
+/** The third version, a strict superset of `/2`: adds the `image` stage node, a pinned picture placed on the stage (the illustrated stage, phase 1). */
+export const RENDER_IR_VERSION_3 = "aideos.render/3";
 /** Every version the loaders read; any other value is rejected before the rest of the document is read. */
-export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2] as const;
+export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3] as const;
 export type RenderIrVersion = (typeof RENDER_IR_VERSIONS)[number];
 
 /** Largest frame index or count a document may carry (about 10 days at 30 fps), so integers stay exact. */
@@ -199,6 +201,7 @@ export interface GroupNode {
 }
 
 export type Node =
+  | ImageNode
   | Stage3dNode
   | z.infer<typeof svgNodeSchema>
   | z.infer<typeof rectNodeSchema>
@@ -278,8 +281,8 @@ export const renderIrSchema = z.strictObject({
   audio: z.array(audioClipSchema),
 });
 
-/** A loaded document of either version, typed as the `/2` superset (a `/1` document never holds the `/2` additions). */
-export type RenderIr = Omit<z.infer<typeof renderIrSchemaV2>, "schema"> & { schema: RenderIrVersion };
+/** A loaded document of any version, typed as the `/3` superset (an older document never holds a later version's additions). */
+export type RenderIr = Omit<z.infer<typeof renderIrSchemaV3>, "schema"> & { schema: RenderIrVersion };
 export type Asset = z.infer<typeof assetSchemaV2>;
 export type Keyframe = z.infer<typeof keyframeSchema>;
 export type FormatName = "long" | "reel";
@@ -544,5 +547,77 @@ export const renderIrSchemaV2 = z.strictObject({
   camera: cameraSchema.optional(),
   stage: z.array(nodeSchemaV2),
   overlay: z.array(nodeSchemaV2),
+  audio: z.array(audioClipSchema),
+});
+
+// ---------------------------------------------------------------------------------------------
+// aideos.render/3: pictures on the stage. Everything above is unchanged `/2`; `/3` adds what follows.
+// ---------------------------------------------------------------------------------------------
+
+/** Element properties a picture's own track may drive: placement, scale, rotation and opacity (no stroke reveal, no line ends). */
+export const IMAGE_ELEMENT_PROPERTIES = ["translateX", "translateY", "scale", "scaleX", "scaleY", "rotate", "opacity"] as const;
+
+/**
+ * A pinned picture placed on the stage like an svg node: `x`, `y`, `scale`, `rotation`, `layer` and node `tracks`
+ * place it in scene space, then its own `elementTracks` (all on the one element `element`, the scene's clips on
+ * the picture) move, scale, turn and fade it about its own origin, then the image asset is drawn into the box
+ * `width` x `height` centred on that origin, stretched to fill, with straight alpha blended over what is below.
+ */
+export const imageNodeSchema = z.strictObject({
+  kind: z.literal("image"),
+  ...nodeBase,
+  /** An `image` asset of this document. */
+  asset: id,
+  x: z.number(),
+  y: z.number(),
+  scale: z.number().gt(0),
+  rotation: z.number(),
+  layer: z.number().int().min(-2147483648).max(2147483647),
+  /** The drawn size in the node's local units, centred on its origin. */
+  width: z.number().gt(0),
+  height: z.number().gt(0),
+  /** The picture's element id: the one target its element tracks may name. */
+  element: text,
+  tracks: z.array(nodeTrackSchema),
+  elementTracks: z.array(elementTrackSchema),
+});
+
+export type ImageNode = z.infer<typeof imageNodeSchema>;
+
+const groupNodeSchemaV3 = z.strictObject({
+  kind: z.literal("group"),
+  ...nodeBase,
+  x: z.number(),
+  y: z.number(),
+  scale: z.number().gt(0),
+  rotation: z.number(),
+  tracks: z.array(nodeTrackSchema),
+  get children(): z.ZodArray<z.ZodType<Node>> { return z.array(nodeSchemaV3); },
+});
+
+/** Any `/3` node; an image node is drawn only on the stage (a cross-reference rule). */
+export const nodeSchemaV3: z.ZodType<Node> = z.discriminatedUnion("kind", [
+  svgNodeSchema,
+  rectNodeSchema,
+  textNodeSchema,
+  railNodeSchema,
+  captionsNodeSchema,
+  endCardNodeSchema,
+  stage3dNodeSchema,
+  imageNodeSchema,
+  groupNodeSchemaV3,
+]);
+
+/** The whole `/3` document: `/2` plus the image node. Its assets are `/2`'s (the image asset already exists in `/1`). */
+export const renderIrSchemaV3 = z.strictObject({
+  schema: z.literal(RENDER_IR_VERSION_3),
+  film: z.strictObject({ id, fps: z.number().int().min(1).max(240), durationFrames: count }),
+  scene: size,
+  formats: perFormat(size),
+  background: color,
+  assets: z.array(assetSchemaV2),
+  camera: cameraSchema.optional(),
+  stage: z.array(nodeSchemaV3),
+  overlay: z.array(nodeSchemaV3),
   audio: z.array(audioClipSchema),
 });

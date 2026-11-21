@@ -1,5 +1,5 @@
 /**
- * File Description: Command-line interface for producing, directing, look planning, designing, reviewing, rendering Aideos films and checking characters.
+ * File Description: Command-line interface for producing, directing, look planning, designing (including the illustrated stage's picture cache), reviewing, rendering Aideos films and checking characters.
  * Inputs and outputs: CLI arguments and subcommands -> runs production pipeline, review, or inspection commands.
  * Used by: bin/aideos, npm run backend (entry point), backend/pipeline/pipeline.test.ts.
  */
@@ -25,6 +25,7 @@ import { registerCharacterCommands } from "./characters/cli";
 import { registerReelCommands } from "./reelCut/cli";
 import { registerCompareCommands } from "./compare/cli";
 import { registerStudyCommands } from "./study/cli";
+import { registerPictureCommands } from "./pictures/cli";
 
 dotenv.config({ quiet: true });
 
@@ -35,6 +36,7 @@ const ACTIVE_FILM_PATH = path.join(ROOT, "src/dl/activeFilm.ts");
 
 const program = new Command();
 registerReelCommands(program);
+registerPictureCommands(program);
 program
   .name("aideos-backend")
   .description("Generate and render Aideos films from natural language")

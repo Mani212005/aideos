@@ -19,8 +19,7 @@ use aideos_render_ir::types::{Asset, Ease, RenderIr};
 use serde::Serialize;
 
 use crate::eval::Format;
-use crate::raster::stage3d::Stage3dScene;
-use crate::renderer::{RenderError, Renderer};
+use crate::renderer::{RenderError, Renderer, SharedAssets};
 
 /// How to render and encode.
 pub struct VideoOptions {
@@ -179,8 +178,8 @@ struct ParallelSource {
 }
 
 impl ParallelSource {
-    /// Starts `threads` workers, each opening its own renderer (sharing the Three stage, if the film has one), drawing frames `first..=last`.
-    fn start(ir_path: &Path, package: &Path, opts: &VideoOptions, frames: (u32, u32), size: (u32, u32), fps: u32, stage: Option<Arc<Stage3dScene>>) -> ParallelSource {
+    /// Starts `threads` workers, each opening its own renderer (sharing the Three stage and the decoded pictures the probe loaded), drawing frames `first..=last`.
+    fn start(ir_path: &Path, package: &Path, opts: &VideoOptions, frames: (u32, u32), size: (u32, u32), fps: u32, stage: SharedAssets) -> ParallelSource {
         let (first, last) = frames;
         let threads = opts.threads.max(1);
         let window_size = (threads as u32) * 3;
@@ -192,7 +191,7 @@ impl ParallelSource {
             let (tx, counter, window, cancel) = (tx.clone(), counter.clone(), window.clone(), opts.cancel.clone());
             let (ir_path, package, format, stage) = (ir_path.to_path_buf(), package.to_path_buf(), opts.format, stage.clone());
             workers.push(std::thread::spawn(move || {
-                let renderer = match Renderer::open_sharing(&ir_path, Some(&package), stage) {
+                let renderer = match Renderer::open_shared(&ir_path, Some(&package), stage) {
                     Ok(r) => r,
                     Err(e) => {
                         let _ = tx.send((counter.load(Ordering::SeqCst), Err(e.to_string())));
@@ -316,7 +315,7 @@ pub fn render_video(ir_path: &Path, package_dir: Option<&Path>, out: &Path, mut 
     let probe = Renderer::open(ir_path, Some(&package)).map_err(|e| e.to_string())?;
     let size = probe.frame_size(opts.format).map_err(|e| e.to_string())?;
     let ir = probe.ir().clone();
-    let stage = probe.stage3d_scene();
+    let stage = probe.shared_assets();
     drop(probe);
     let duration = ir.film.duration_frames.0;
     let (first, last) = opts.frames.unwrap_or((0, duration - 1));

@@ -1,8 +1,8 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1` and its superset `aideos.render/2` (the Three stage): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
+File Description: Reference for the Render IR `aideos.render/1`, its superset `aideos.render/2` (the Three stage) and that one's superset `aideos.render/3` (pictures): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
-# Render IR (`aideos.render/1`, `aideos.render/2`)
+# Render IR (`aideos.render/1`, `aideos.render/2`, `aideos.render/3`)
 
 The Render IR is the document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
@@ -25,6 +25,10 @@ P4.1 of Phase 4 added `aideos.render/2`: a strict superset of `/1` that adds the
 The captain approved native rendering of those films, reversing his earlier decision that they stay on
 Remotion until their phase; the steps are in [NATIVE_RENDERER.md](NATIVE_RENDERER.md#the-three-stage-phase-4).
 
+Phase 1 of the illustrated stage added `aideos.render/3`: a strict superset of `/2` that adds the `image` stage
+node, a pinned picture placed on the stage (see [Pictures](#pictures-aideosrender3)). A film with no picture is
+still written as `/1` (or `/2` with a Three stage), byte for byte what it was before.
+
 ## Where things live
 
 | Piece | Path |
@@ -32,7 +36,7 @@ Remotion until their phase; the steps are in [NATIVE_RENDERER.md](NATIVE_RENDERE
 | Structural contract (zod, the single source, both versions) | `backend/renderIr/schema.ts` |
 | TypeScript load, version gate and cross-reference rules | `backend/renderIr/validate.ts` |
 | JSON Schema generator | `backend/renderIr/jsonSchema.ts`, `scripts/render_ir_schema.ts` |
-| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json` |
+| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json`, `aideos.render.3.schema.json` |
 | Rust workspace and loader crate | `native/Cargo.toml`, `native/aideos-render-ir/` |
 | Mesh file codec (triangle, points and lines parts) | `backend/renderIr/mesh.ts` (write and read), `native/aideos-render-ir/src/mesh.rs` (read) |
 | Stage3d emitter and reference pose | `backend/renderIr/emitStage3d.ts`, `backend/renderIr/stage3d.ts` |
@@ -45,18 +49,19 @@ Remotion until their phase; the steps are in [NATIVE_RENDERER.md](NATIVE_RENDERE
 
 ## Versioning and rejection
 
-A document starts with `"schema": "aideos.render/1"` or `"schema": "aideos.render/2"`. The loader reads
-that field first:
+A document starts with `"schema": "aideos.render/1"`, `"schema": "aideos.render/2"` or `"schema": "aideos.render/3"`.
+The loader reads that field first:
 
 1. Not JSON: refused as `not_json`.
 2. Not an object, or no string `schema` field: refused as `invalid_document` with a `schema` issue.
-3. A string other than exactly `aideos.render/1` or `aideos.render/2` (including `aideos.render/3`,
-   `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the string found and
-   the versions this build reads (`supported`: `aideos.render/1, aideos.render/2`), **before** the rest of the
-   document is read, because a later version may have a different shape.
+3. A string other than exactly `aideos.render/1`, `aideos.render/2` or `aideos.render/3` (including
+   `aideos.render/4`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the string
+   found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3`),
+   **before** the rest of the document is read, because a later version may have a different shape.
 4. Right version, wrong shape (a missing or unknown field, a wrong type, a bad colour, a frame that is
    not a whole number): refused as `invalid_document`, every issue listed. Each version is checked against
-   its own schema, so a `/1` document that uses a `stage3d` node or a `mesh` asset is refused here.
+   its own schema, so a `/1` document that uses a `stage3d` node or a `mesh` asset, or a `/2` document that uses
+   an `image` node, is refused here.
 5. Right shape, broken references or ranges: refused as `invalid_document`, every issue listed.
 
 The shape is closed: an unknown field is an error, never ignored. There are no defaults in the wire
@@ -74,7 +79,7 @@ RenderIr
   background  colour
   assets[]    svg | font | image | audio       by id, path relative to the package directory
   camera?     { centerX[], centerY[], zoom[], rotation[] }       keyframes in scene space
-  stage[]     nodes drawn in scene space under the camera   (svg, group; SVG layer is signed 32-bit)
+  stage[]     nodes drawn in scene space under the camera   (svg, group, and in /3 image; layer is signed 32-bit)
   overlay[]   nodes drawn in frame space, no camera          (group, rect, text, rail, captions, endCard)
   audio[]     clips on the film timeline with a gain envelope
 ```
@@ -121,8 +126,9 @@ Every `placement` or `layout` must have exactly the formats the document declare
 Its end may not exceed the film duration. Absent means the whole film. `opacity` is a static multiplier,
 absent meaning 1. SVG `layer` is a signed 32-bit integer to match the Rust loader's representation.
 
-**Assets.** `svg` (`elementIds`), `font` (`family`, `weight`), `image` (`width`, `height`) and `audio`,
-each with an optional `sha256` for caching and incremental rendering. A path is relative to the package
+**Assets.** `svg` (`elementIds`), `font` (`family`, `weight`), `image` (`width`, `height`, in pixels) and `audio`,
+each with an optional `sha256` for caching and incremental rendering (an image an `image` node draws must carry it:
+the pin). A path is relative to the package
 directory and may not be absolute, contain `..` or a backslash, or start with a drive letter. The
 loader checks the **string**; it does not open the file. The renderer (`native/aideos-render`, see
 [NATIVE_RENDERER.md](NATIVE_RENDERER.md)) opens it against the package directory its caller names and
@@ -241,6 +247,30 @@ float is finite and that every index is inside its part. The IR loaders never op
 asset); the renderer does. The shared fixture `fixtures/mesh/two-parts.{json,mesh}` holds both languages to
 one byte layout.
 
+## Pictures (`aideos.render/3`)
+
+The illustrated stage (one generated plate and a few generated objects on the one stage, see
+[GOOD_VIDEO.md](GOOD_VIDEO.md#pictures-the-illustrated-stage)) is carried by one node kind:
+
+```
+image   { id, visible?, opacity?, asset, x, y, scale, rotation, layer, width, height, element, tracks[], elementTracks[] }
+```
+
+- **Placement** is exactly an `svg` node's: `x`, `y`, `scale`, `rotation`, `layer` and node `tracks` place the
+  picture in scene space, and stage siblings draw by `layer`, document order breaking ties. An `image` node is drawn
+  only on the stage (at any depth, inside groups too), never in the overlay.
+- **Motion** is the scene's clips on the picture: every `elementTracks` entry targets `element` (the picture's one
+  element, the scene asset's id) and drives only `translateX`, `translateY`, `scale`, `scaleX`, `scaleY`, `rotate` or
+  `opacity`, with the same origin and range rules as an svg element. A stroke reveal or line end on pixels is refused.
+- **Drawing.** After the placement and the element state, the image asset is stretched over the box `width` x `height`
+  centred on the node's origin (the emitter writes the PNG's pixel size, so one scene unit is one pixel at scale 1)
+  with its straight alpha blended over everything below; node opacity is a group opacity, element opacity multiplies
+  it. SVG layers above it and the overlay (captions, rail, end card) draw over it, as in SceneView.
+- **The pin.** The `image` asset must carry its `sha256` (`image_unpinned` otherwise), and its `width` and `height`
+  are its pixel size; the renderer refuses a file whose bytes or size differ.
+- **Not in `/3` (phase 2).** Parallax (a depth factor per layer), masks, soft mattes and blend modes, and picture
+  motion beyond placing, scaling, turning and fading (video plates, wipes over an image).
+
 ## Issue codes
 
 Every refusal of an invalid document lists issues as `{ code, path, message }`, `path` being a JSON
@@ -253,7 +283,9 @@ cross-reference rules, identical in both languages:
 | `duplicate_asset_id`, `duplicate_node_id`, `duplicate_audio_id`, `duplicate_element_id` | an id used twice |
 | `unsafe_asset_path` | an asset path leaves the package or is absolute |
 | `unknown_asset`, `asset_kind_mismatch` | a reference to a missing asset, or to one of the wrong kind |
-| `unknown_element` | an element track targets an id the SVG asset does not declare |
+| `unknown_element` | an element track targets an id the SVG asset does not declare, or an image node's track targets anything but its `element` |
+| `property_not_allowed` | an image node's element track drives `drawOn`, `x1`, `y1`, `x2` or `y2` |
+| `image_unpinned` | an image node draws an image asset that carries no `sha256` |
 | `duplicate_track` | one property (of one element) driven by two tracks |
 | `origin_misplaced`, `origin_conflict` | an origin on a property that takes none, or two origins for one element |
 | `keyframes_unordered`, `ease_missing`, `ease_on_last`, `frame_out_of_range` | keyframe frames must strictly increase and may not exceed the film duration, every keyframe but the last has an ease, caption placement starts must be before the film duration, a rail's `progressFrames` may not exceed it |
@@ -261,7 +293,7 @@ cross-reference rules, identical in both languages:
 | `invalid_span` | a span that ends before it starts or runs past the film |
 | `chapters_unordered`, `words_unordered`, `spans_unordered`, `stops_unordered` | rail chapters, caption words, placement spans or gradient stop offsets out of order |
 | `missing_format_entry`, `undeclared_format` | a per-format object that does not match the declared formats |
-| `node_not_allowed` | an `svg` node in the overlay, an overlay node in the stage, a `stage3d` node anywhere but the top of the stage, or a second one |
+| `node_not_allowed` | an `svg` or `image` node in the overlay, an overlay node in the stage, a `stage3d` node anywhere but the top of the stage, or a second one |
 | `duplicate_part_id`, `indices_not_triangles` | a mesh part id used twice, or an index count that is not a multiple of 3 (or a triangles part with none) |
 | `part_kind_mismatch` | a points or lines part that has indices or uvs, a lines part with an odd vertex count, or a drawable, sample field or edge set naming a part of the wrong kind |
 | `duplicate_stage3d_id` | a stage3d node, drawable, face texture or treatment group id used twice in its own list |
@@ -300,7 +332,7 @@ Schema (embedded in the binary with `include_str!`), typed deserialization, then
 ## Commands
 
 ```bash
-npm run render-ir:schema                    # regenerate both JSON Schemas after editing schema.ts
+npm run render-ir:schema                    # regenerate every JSON Schema after editing schema.ts
 npm run render-ir:schema -- --check         # fail when a committed schema is out of date
 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test backend/renderIr/renderIr.test.ts
 cargo test --locked --manifest-path native/Cargo.toml      # loader fixtures and renderer tests
@@ -318,9 +350,11 @@ captions with two placement spans, the end card and an audio clip, in both 16:9 
 `valid/gradient-and-axis-scale.json` covers the gradient band and an underline drawn by `scaleX`.
 `valid/stage3d-minimal.json` is the `/2` example: a ground plane and a stage3d node with a graph, a quaternion
 channel, face, ink and toon drawables (one with polygon offset), a face texture and two face programs that use
-every kind of paint. `invalid/*.json` are short documents with one named defect each; the `stage3d-*` ones cover
-a `/1` document carrying `/2` additions, broken references, sample counts and ranges, placement, and shapes only
-`/2` knows.
+every kind of paint. `valid/image-stage.json` is the `/3` example: a plate and two pictures (one inside a group,
+one with node and element tracks) beside an SVG label. `invalid/*.json` are short documents with one named defect
+each; the `stage3d-*` ones cover a `/1` document carrying `/2` additions, broken references, sample counts and
+ranges, placement, and shapes only `/2` knows; `image-in-version-2.json` is a `/2` document carrying the `/3` node
+and `image-references.json` breaks every image rule once.
 
 `fixtures/expectations.json` states the verdict for every file. Both test suites assert the same
 thing: a structural failure has the code `schema` (a JSON Schema validator and zod word and locate those

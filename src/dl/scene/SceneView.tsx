@@ -14,6 +14,7 @@ import { PALETTE, useTokens } from "../tokens";
 import { useAccent } from "../accent";
 import { parseSvgDocument, type SvgDocument } from "./svgDocument";
 import { renderSvgNodes } from "./svgReact";
+import { rasterBox, rasterElementIds } from "./raster";
 
 export interface SceneViewProps {
   transparentBackground?: boolean;
@@ -35,7 +36,32 @@ export interface SceneViewProps {
    * backend/scene/loadSceneAssets.ts; browser callers can bundle or fetch it ahead of render.
    */
   svgSources?: Record<string, string>;
+  /**
+   * The URL each picture loads from, keyed by its raster `src` (a repo-relative PNG path). Remotion
+   * passes `staticFile` URLs (SceneStage), still renders pass data URLs (loadSceneAssets). A picture
+   * with no URL draws the neutral placeholder so the gap is visible.
+   */
+  rasterUrls?: Record<string, string>;
   onMountEntityRef?: (entityId: string, el: SVGGElement | null) => void;
+}
+
+/** Builds the one-element document a picture renders through, so its clips drive it exactly like an SVG element. */
+function rasterDocument(entity: CompiledEntity, href: string): SvgDocument["children"] {
+  const raster = entity.raster!;
+  const box = rasterBox(raster);
+  return [{
+    tag: "image",
+    attrs: {
+      id: rasterElementIds({ assetId: entity.entityId })[0],
+      href,
+      x: String(box.x),
+      y: String(box.y),
+      width: String(box.w),
+      height: String(box.h),
+      preserveAspectRatio: "none",
+    },
+    children: [],
+  }];
 }
 
 // Maps semantic token to active hex color
@@ -68,6 +94,7 @@ export const SceneView: React.FC<SceneViewProps> = ({
   sceneSize,
   accent,
   svgSources,
+  rasterUrls,
   onMountEntityRef,
 }) => {
   const palette = useTokens();
@@ -85,6 +112,25 @@ export const SceneView: React.FC<SceneViewProps> = ({
     const source = entity.svgSource ? svgSources?.[entity.svgSource] : undefined;
     const doc = source ? getParsedDocument(source) : null;
     const transform = `translate(${tr.x}, ${tr.y}) scale(${tr.scale}) rotate(${tr.rotation})`;
+    const rasterUrl = entity.raster ? rasterUrls?.[entity.raster.src] : undefined;
+
+    if (entity.raster && rasterUrl) {
+      // A picture is one image element: the asset transform places it, its clips move, scale, turn and fade it.
+      return (
+        <g
+          key={entity.entityId}
+          id={`entity-${entity.entityId}`}
+          ref={(el) => onMountEntityRef?.(entity.entityId, el)}
+          transform={transform}
+          opacity={tr.opacity}
+        >
+          {renderSvgNodes(rasterDocument(entity, rasterUrl), {
+            instanceId: entity.entityId,
+            elementStates: entity.elementStates ?? {},
+          })}
+        </g>
+      );
+    }
 
     if (doc) {
       // Sub-group rotation (D1) rides on top of the compiled element states so an asset can spin

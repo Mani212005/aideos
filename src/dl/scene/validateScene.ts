@@ -1,7 +1,8 @@
 /**
  * File Description: Comprehensive semantic validator for Aideos Scene Graph data (Phase 1).
  * Rejects unsupported actor rigs before applying scene integrity rules, custom SVG animation
- * timeline rules (Rule 20), and normalized median scale warnings (W1).
+ * timeline rules (Rule 20), picture assets (Rule 11 with src/dl/scene/raster.ts: one pinned PNG, its one element
+ * moved by placement, scale, rotation and opacity clips only), and normalized median scale warnings (W1).
  * 100% pure TypeScript validator with zero Node runtime dependencies.
  * Inputs and outputs: Scene data object -> validation diagnostics and errors.
  * Used by: src/dl/scene/validateSceneNode.ts, backend/scene/scene.test.ts.
@@ -10,6 +11,7 @@
 import type { Scene, EnvironmentAsset, Track } from "./types";
 import { validateSvgTimeline } from "./svgAnimation";
 import { validateStage } from "./validateStage";
+import { rasterSourceProblems, rasterElementIds } from "./raster";
 
 export interface ValidationError {
   rule: number;
@@ -176,8 +178,20 @@ export function validateScene(scene: Scene): ValidationResult {
       });
     }
 
-    // Rule 11: svgSource string is present and ends with .svg
-    if (!asset.svgSource) {
+    // Rule 11: exactly one artwork source: an svgSource ending with .svg, or a pinned picture.
+    if (asset.raster !== undefined) {
+      if (asset.svgSource) {
+        errors.push({
+          rule: 11,
+          entityId: asset.assetId,
+          message: `Asset "${asset.assetId}" sets both svgSource and a picture; an asset draws one or the other`,
+        });
+      }
+      for (const message of rasterSourceProblems(asset.assetId, asset.raster)) errors.push({ rule: 11, entityId: asset.assetId, message });
+      if (asset.subGroups?.length) {
+        errors.push({ rule: 11, entityId: asset.assetId, message: `Asset "${asset.assetId}" is a picture, which has no sub-groups to rotate` });
+      }
+    } else if (!asset.svgSource) {
       errors.push({
         rule: 11,
         entityId: asset.assetId,
@@ -237,8 +251,10 @@ export function validateScene(scene: Scene): ValidationResult {
     // Target existence against the real SVG document is checked by validateSceneNode, which is
     // the layer that can read the asset off disk.
     if (asset.animation) {
+      // A picture's one element is known without reading a file, so its targets are checked here.
       const timelineErrors = validateSvgTimeline(asset.animation, {
         durationFrames: scene.durationFrames,
+        ...(asset.raster ? { availableElementIds: rasterElementIds(asset) } : {}),
       });
       for (const te of timelineErrors) {
         errors.push({
@@ -246,6 +262,12 @@ export function validateScene(scene: Scene): ValidationResult {
           entityId: asset.assetId,
           message: `Asset "${asset.assetId}" animation timeline "${asset.animation.timelineId}" clip "${te.clipId}": ${te.message}`,
         });
+      }
+      // Phase 1 pictures are placed, scaled, turned and faded; a stroke reveal has no meaning on pixels.
+      for (const clip of asset.raster ? asset.animation.clips : []) {
+        if (clip.property === "drawOn") {
+          errors.push({ rule: 20, entityId: asset.assetId, message: `Asset "${asset.assetId}" clip "${clip.clipId}": a picture cannot be drawn on; move, scale, rotate or fade it instead` });
+        }
       }
     }
   }

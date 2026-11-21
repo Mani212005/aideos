@@ -99,7 +99,7 @@ test("missing or changed approved resources fail, and unsupported secondary chan
   assert.match(validateStageResources(() => new Uint8Array([0])).join(" "), /hash differs/);
   const film = compiled(), scene = structuredClone(film.scene!) as Scene;
   assert.match(validateStageSvgResources(scene, {}).join(" "), /missing SVG resource/);
-  assert.deepEqual(validateStageSvgResources(scene, { [scene.background.svgSource]: "<svg/>" }), []);
+  assert.deepEqual(validateStageSvgResources(scene, { [scene.background.svgSource!]: "<svg/>" }), []);
   scene.performances![0].data.secondary.wings = scene.performances![0].data.secondary.coat;
   assert.match(validateScene(scene).errors.map((e) => e.message).join(" "), /secondary channel/);
   scene.performances![0].data.fps = 60;

@@ -3,11 +3,12 @@
  * However a film's design was made (hand-written builder, connected coding agent, server model or
  * templates), it has to pass this before it ships. Each finding names the rule, where it is, and
  * what to change, so an agent can be handed the report verbatim and repair its own design.
- * Rules: schema, scene engine validity, static self-contained artwork, palette, the accent the user
+ * Rules: schema, scene engine validity, static self-contained artwork (no raster hidden inside SVG), palette, the accent the user
  * chose for the project (the only chromatic colour a scene may use), typography,
  * continuity (no motion snaps while visible, one origin per element), camera (speed limits,
  * move-then-hold pacing, cue landing, and subject focus framing), carry-over change holds,
- * audio lock, honest on-screen data, and a clear inset region while a device shot shares the stage.
+ * audio lock, honest on-screen data, a clear inset region while a device shot shares the stage, and for pictures
+ * (the illustrated stage) provenance, palette on pixels, no text (OCR), label contrast and resolution (pictures.ts).
  * Inputs and outputs: Film or Scene data -> standard-layer design rule violations and warnings.
  * Used by: backend/cli.ts, backend/pipeline/run.ts.
  */
@@ -45,6 +46,7 @@ import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
 import { resolveCue } from "../designSpec/cues";
 import { checkThreeStage } from "./threeStage";
 import { checkSoundtrack } from "./soundtrack";
+import { checkPictures, type PictureOcr } from "./pictures";
 import type { AudioLibrary } from "../audioLibrary/schema";
 
 /** The standard layer rules a finding can belong to. */
@@ -67,7 +69,11 @@ export type DesignRule =
   | "carry-over"
   | "occlusion"
   | "soundtrack"
-  | "look";
+  | "look"
+  | "provenance"
+  | "picture-text"
+  | "contrast"
+  | "resolution";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
 export interface DesignFinding {
@@ -92,6 +98,8 @@ export interface DesignCheckContext {
   lookPlan?: LookPlan;
   cameraTargets?: Array<{ frame: number; focus?: string; authoredFocus?: string }>;
   library?: AudioLibrary;
+  /** Reads words in a picture for the no-text rule; tesseract by default. */
+  pictureOcr?: PictureOcr;
 }
 
 /** The locked design-system palette (src/dl/README.md); a film may add its own accent. */
@@ -183,8 +191,11 @@ function checkAsset(asset: EnvironmentAsset, accent: string | undefined, chosenA
     return; // The scene rule already reports an unparseable file.
   }
   const forbidden = new Set<string>();
+  let embeddedRaster = false;
   walkSvgNodes(doc, (node) => {
     if (FORBIDDEN_TAGS.has(node.tag)) forbidden.add(node.tag);
+    // A raster hidden inside SVG artwork slips past the palette rule and the native renderer refuses it.
+    if (node.tag === "image" || Object.entries(node.attrs).some(([name, value]) => /^(href|xlink:href|src|style)$/.test(name) && /data:image\//i.test(value))) embeddedRaster = true;
     for (const [name, value] of Object.entries(node.attrs)) {
       if ((name === "href" || name === "xlink:href" || name === "src") && /^(https?:|\/\/)/i.test(value)) {
         findings.push({ rule: "static-art", severity: "error", where, message: `<${node.tag}> loads "${value}" from outside the package; embed it instead.` });
@@ -202,6 +213,9 @@ function checkAsset(asset: EnvironmentAsset, accent: string | undefined, chosenA
   });
   for (const tag of forbidden) {
     findings.push({ rule: "static-art", severity: "error", where, message: `contains <${tag}>; assets are static and motion is authored as clips.` });
+  }
+  if (embeddedRaster) {
+    findings.push({ rule: "static-art", severity: "error", where, message: "embeds a raster image; a picture is allowed only as a declared picture asset (design.json `pictures`), never inside SVG artwork, so its pixels are checked and pinned." });
   }
   const foreign = chosenAccent ? foreignAccentColours(text, chosenAccent) : [];
   if (foreign.length) {
@@ -624,6 +638,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
         }
       }
     }
+    // Pictures are measured on their pixels: provenance, palette, no text, label contrast and resolution.
+    if (result.errors.length === 0) findings.push(...checkPictures(film, scene, { formats, accent: chosenAccent ?? film.accent, ...(context.pictureOcr ? { ocr: context.pictureOcr } : {}) }));
     checkCamera(scene, findings, context.cameraTargets);
     checkCarryChangeHolds(film, scene, context.lookPlan, findings);
     // The inset rule reads the compiled scene, which only exists when the scene itself is valid.

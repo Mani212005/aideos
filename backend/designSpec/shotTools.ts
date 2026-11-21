@@ -106,7 +106,7 @@ export function designOverview(film: Film): DesignOverview {
   return {
     design: film.design ?? null,
     accent: film.accent ?? DEFAULT_PROJECT_ACCENT,
-    artwork: (film.scene?.props ?? []).map((p) => ({ id: p.assetId, src: p.svgSource })),
+    artwork: (film.scene?.props ?? []).map((p) => ({ id: p.assetId, src: p.svgSource ?? p.raster?.src ?? "" })),
     ...lookResult,
     shots,
     status: readDesignStatus(film.id),

@@ -4,7 +4,8 @@
  * declarative scene plus its custom SVG animation timelines into actual motion inside a
  * composition. Frame-driven throughout: the only time input is Remotion's current frame, so the
  * same scene renders identically on every pass.
- * Inputs and outputs: Scene definition and current frame -> rendered React SVG scene clip.
+ * Pictures (raster assets) are fetched and decoded before any frame is captured, so a frame never shows one half loaded.
+ * Inputs and outputs: Scene definition, SVG sources, picture URLs and current frame -> rendered React SVG scene clip.
  * Used by: src/dl/SceneStage.tsx.
  */
 
@@ -21,6 +22,8 @@ export interface SceneClipProps {
   scene: Scene;
   /** SVG source text per asset svgSource path. Without it, assets fall back to placeholders. */
   svgSources?: Record<string, string>;
+  /** The URL each picture loads from, keyed by its raster src; every one is decoded before a frame is captured. */
+  rasterUrls?: Record<string, string>;
   /** Composition frame that scene frame 0 lands on. Defaults to 0. */
   startFrame?: number;
   /** Output size in pixels. Defaults to the scene's own coordinate space. */
@@ -76,6 +79,53 @@ function useSvgPaintReady(frame: number, scene: Scene, width?: number, height?: 
   }, [frame, scene, width, height, delayRender, continueRender, initial]);
 }
 
+/** Decoded picture URLs of this page, so each picture is fetched and decoded once however many frames draw it. */
+const decodedRasters = new Map<string, Promise<void>>();
+
+/** Fetches and decodes one picture URL once per page; a picture that cannot load rejects with its URL named. */
+function decodeRaster(url: string): Promise<void> {
+  let pending = decodedRasters.get(url);
+  if (!pending) {
+    pending = new Promise<void>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        image.decode().then(resolve, () => resolve());
+      };
+      image.onerror = () => reject(new Error(`the picture ${url} could not be loaded`));
+      image.src = url;
+    });
+    decodedRasters.set(url, pending);
+  }
+  return pending;
+}
+
+/** Holds the render until every picture of the scene is decoded, so no frame is captured with a picture missing. */
+function useRastersReady(rasterUrls: Record<string, string> | undefined): void {
+  const { delayRender, continueRender, cancelRender } = useDelayRender();
+  const urls = React.useMemo(() => Object.values(rasterUrls ?? {}).sort(), [rasterUrls]);
+  const key = urls.join("\n");
+  React.useLayoutEffect(() => {
+    if (urls.length === 0 || typeof Image === "undefined") return;
+    const handle = delayRender(`scene pictures decoded (${urls.length})`);
+    let released = false;
+    Promise.all(urls.map(decodeRaster)).then(
+      () => {
+        released = true;
+        continueRender(handle);
+      },
+      (err: unknown) => {
+        released = true;
+        cancelRender(err instanceof Error ? err : new Error(String(err)));
+      },
+    );
+    return () => {
+      if (!released) continueRender(handle);
+    };
+    // `key` stands for the URL list, so an equal set of pictures does not restart the wait.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, delayRender, continueRender, cancelRender]);
+}
+
 /**
  * Renders a Scene inside a Remotion composition, holding the last frame past the scene's end.
  * Holding rather than blanking keeps a shot on screen while its narration finishes, which is the
@@ -84,6 +134,7 @@ function useSvgPaintReady(frame: number, scene: Scene, width?: number, height?: 
 export const SceneClip: React.FC<SceneClipProps> = ({
   scene,
   svgSources,
+  rasterUrls,
   startFrame = 0,
   width,
   height,
@@ -108,6 +159,7 @@ export const SceneClip: React.FC<SceneClipProps> = ({
     Math.max(0, frame - startFrame),
   );
 
+  useRastersReady(rasterUrls);
   useSvgPaintReady(localFrame, scene, width, height);
 
   const rawFrame = compiled.frames[localFrame];
@@ -127,6 +179,7 @@ export const SceneClip: React.FC<SceneClipProps> = ({
       sceneSize={scene.sceneSize}
       accent={accent}
       svgSources={svgSources}
+      rasterUrls={rasterUrls}
       transparentBackground={transparentBackground}
     />
   );

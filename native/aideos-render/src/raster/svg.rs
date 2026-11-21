@@ -35,7 +35,7 @@ pub fn draw_document(canvas: &Canvas, draw: &SvgDraw) {
 }
 
 /// The element's animated transform in its own placed space (`svgElementStateToTransform`).
-fn state_matrix(s: &ElementState) -> Matrix {
+pub(crate) fn state_matrix(s: &ElementState) -> Matrix {
     let mut m = Matrix::new_identity();
     if s.translate_x != 0.0 || s.translate_y != 0.0 {
         m.pre_translate((s.translate_x as f32, s.translate_y as f32));

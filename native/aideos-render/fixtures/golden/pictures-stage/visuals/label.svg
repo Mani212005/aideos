@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-240 -40 480 80">
+  <g id="label">
+    <line id="link" x1="-150" y1="-24" x2="150" y2="-24" stroke="#8A8A8E" stroke-width="3"/>
+    <text id="orb-label" x="-150" y="14" font-family="JetBrains Mono" font-size="22" fill="#F5F5F5" text-anchor="middle">ORB</text>
+    <text id="chip-label" x="150" y="14" font-family="JetBrains Mono" font-size="22" fill="#F5F5F5" text-anchor="middle">CHIP</text>
+  </g>
+</svg>

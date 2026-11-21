@@ -30,6 +30,8 @@ export interface RenderStillOptions {
   sceneSize?: { w: number; h: number };
   /** SVG source text per asset svgSource path, as produced by loadSceneAssets. */
   svgSources?: Record<string, string>;
+  /** A URL per picture raster src, as produced by loadSceneAssets (file:// URLs Chrome reads beside the SVG). */
+  rasterUrls?: Record<string, string>;
 }
 
 /**
@@ -44,6 +46,7 @@ export function renderFrameSvgMarkup(frame: CompiledFrame, options: RenderStillO
     height: options.height ?? 1080,
     sceneSize: options.sceneSize,
     svgSources: options.svgSources,
+    rasterUrls: options.rasterUrls,
   });
   return ReactDOMServer.renderToStaticMarkup(element);
 }

@@ -1,0 +1,4 @@
+{"schema":"aideos.render/1","film":{"id":"text-picture","fps":30,"durationFrames":1},"scene":{"width":360,"height":360},
+ "formats":{"long":{"width":240,"height":80}},"background":"#ECECF0",
+ "assets":[{"kind":"font","id":"geist-700","path":"fonts/Geist-latin.ttf","family":"Geist","weight":700}],
+ "stage":[],"overlay":[{"kind":"text","id":"word","text":"SIGNAL","font":"geist-700","color":"#101014","align":"center","lineHeight":1.1,"letterSpacing":0,"tracks":[],"placement":{"long":{"x":0,"y":12,"w":240,"h":60,"fontSize":42}}}],"audio":[]}

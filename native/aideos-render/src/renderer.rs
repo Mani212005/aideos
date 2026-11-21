@@ -1,5 +1,5 @@
 //! File Description: The public renderer: loads a Render IR and its package's assets once (SVG artwork parsed into the retained model, vendored fonts, caption phrases per format), checks what the IR loader cannot (asset files exist inside the package, declared element ids exist in the artwork, every SVG text resolves to a vendored font), then renders any frame of either format on Skia's CPU rasterizer, the deterministic reference. A frame is a pure function of (IR, assets, format, frame number), so frames render in any order and a cold render is byte-identical to a warm one.
-//! Inputs and outputs: an IR file or `RenderIr` plus the package directory -> `Renderer`; (format, frame) -> `RenderedFrame` (straight-alpha RGBA8) and its PNG bytes. A `stage3d` node (the Three stage, `aideos.render/2`) loads its mesh asset here and is drawn by the CPU rasterizer in `raster::stage3d`.
+//! Inputs and outputs: an IR file or `RenderIr` plus the package directory -> `Renderer`; (format, frame) -> `RenderedFrame` (straight-alpha RGBA8) and its PNG bytes. A `stage3d` node (the Three stage, `aideos.render/2`) loads its mesh asset here and is drawn by the CPU rasterizer in `raster::stage3d`; an `image` node (a picture, `aideos.render/3`) has its image decoded here once, refused unless its bytes match the pinned sha256 and its size the declared one.
 //! Used by: the `aideos-render` CLI (src/main.rs), tests/*.rs, and later the encode stage (R3) and the RenderJob runner.
 
 use std::collections::BTreeMap;
@@ -10,13 +10,14 @@ use std::sync::Arc;
 use aideos_render_ir::mesh::decode_mesh;
 use aideos_render_ir::types::{Asset, Node, RenderIr};
 use aideos_render_ir::{load_from_path, LoadError};
-use skia_safe::{surfaces, AlphaType, Canvas, ColorType, ImageInfo, Pixmap};
+use skia_safe::{surfaces, AlphaType, Canvas, ColorType, Data, Image, ImageInfo, Pixmap};
 
 use crate::eval::captions::build_phrases;
 use crate::eval::Format;
 use crate::raster::stage3d::Stage3dScene;
 use crate::raster::text::{Fonts, TextSpec};
 use crate::raster::{self, Loaded};
+use crate::sha256::sha256_hex;
 use crate::svg::{self, SvgDocument};
 
 /// Why a film could not be loaded or a frame not rendered.
@@ -107,6 +108,13 @@ impl RenderedFrame {
     }
 }
 
+/// What renderers of one IR share instead of loading again (the video workers): the Three stage (its mesh and painted faces) and the decoded pictures.
+#[derive(Clone, Default)]
+pub struct SharedAssets {
+    pub stage3d: Option<Arc<Stage3dScene>>,
+    pub images: Option<Arc<BTreeMap<String, Image>>>,
+}
+
 /// A loaded film that renders frames.
 pub struct Renderer {
     loaded: Loaded,
@@ -186,6 +194,50 @@ fn load_stage3d(
     Ok(Some(Arc::new(scene)))
 }
 
+/// Decodes the image asset an image node draws, once at load: its bytes must be the pinned ones (sha256) and decode to exactly the declared size. The pixels are decoded eagerly with mipmaps, so no frame decodes or builds them again.
+fn load_image(package_dir: &Path, asset: &Asset) -> Result<Image, RenderError> {
+    let Asset::Image(a) = asset else {
+        return Err(RenderError::Unsupported(format!("asset {:?} is not an image", asset.id())));
+    };
+    let fail = |reason: String| RenderError::Asset {
+        id: a.id.clone(),
+        path: a.path.clone(),
+        reason,
+    };
+    let bytes = read_asset(package_dir, asset)?;
+    if let Some(pin) = &a.sha256 {
+        let actual = sha256_hex(&bytes);
+        if &actual != pin {
+            return Err(fail(format!("the file's sha256 is {actual}, not the pinned {pin}")));
+        }
+    }
+    let encoded = Image::from_encoded(Data::new_copy(&bytes))
+        .ok_or_else(|| fail("not a decodable image (PNG or JPEG)".into()))?;
+    if encoded.width() != a.width.0 as i32 || encoded.height() != a.height.0 as i32 {
+        return Err(fail(format!(
+            "the image is {} x {} pixels, the IR declares {} x {}",
+            encoded.width(),
+            encoded.height(),
+            a.width.0,
+            a.height.0
+        )));
+    }
+    // Decoded once into the frame surface's own layout (N32, premultiplied, no colour space, so no colour
+    // conversion per draw), and marked opaque when every pixel is, so Skia blits it on its fast integer path.
+    let (w, h) = (encoded.width(), encoded.height());
+    let row = w as usize * 4;
+    let premul = ImageInfo::new((w, h), ColorType::N32, AlphaType::Premul, None);
+    let mut pixels = vec![0u8; row * h as usize];
+    if !encoded.read_pixels(&premul, &mut pixels, row, (0, 0), skia_safe::image::CachingHint::Disallow) {
+        return Err(fail("the image could not be decoded".into()));
+    }
+    let opaque = pixels.chunks_exact(4).all(|p| p[3] == 255);
+    let info = if opaque { premul.with_alpha_type(AlphaType::Opaque) } else { premul };
+    let raster = skia_safe::images::raster_from_data(&info, Data::new_copy(&pixels), row)
+        .ok_or_else(|| fail("the decoded image could not be wrapped".into()))?;
+    Ok(raster.with_default_mipmaps().unwrap_or(raster))
+}
+
 /// Visits every node of a tree, depth first.
 fn walk<'a>(nodes: &'a [Node], out: &mut Vec<&'a Node>) {
     for n in nodes {
@@ -215,7 +267,7 @@ impl Renderer {
 
     /// Loads a validated IR's assets from the package directory and prepares every frame-independent input.
     pub fn new(ir: RenderIr, package_dir: &Path) -> Result<Renderer, RenderError> {
-        Renderer::new_sharing(ir, package_dir, None)
+        Renderer::new_sharing(ir, package_dir, SharedAssets::default())
     }
 
     /// Opens an IR file like `open`, reusing the Three stage another renderer of the same IR already loaded (its mesh and its painted faces, from `stage3d_scene`), so worker threads paint each face program once.
@@ -223,6 +275,15 @@ impl Renderer {
         ir_path: impl AsRef<Path>,
         package_dir: Option<&Path>,
         stage: Option<Arc<Stage3dScene>>,
+    ) -> Result<Renderer, RenderError> {
+        Renderer::open_shared(ir_path, package_dir, SharedAssets { stage3d: stage, images: None })
+    }
+
+    /// Opens an IR file like `open`, reusing everything another renderer of the same IR already loaded (`shared_assets`): the Three stage and the decoded pictures, so worker threads decode each picture once and share its pixels.
+    pub fn open_shared(
+        ir_path: impl AsRef<Path>,
+        package_dir: Option<&Path>,
+        shared: SharedAssets,
     ) -> Result<Renderer, RenderError> {
         let ir_path = ir_path.as_ref();
         let ir = load_from_path(ir_path).map_err(RenderError::Ir)?;
@@ -232,14 +293,14 @@ impl Renderer {
                 .parent()
                 .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
         };
-        Renderer::new_sharing(ir, &package, stage)
+        Renderer::new_sharing(ir, &package, shared)
     }
 
-    /// Loads a validated IR like `new`; `shared` is a Three stage loaded from the same IR, used instead of loading it again.
+    /// Loads a validated IR like `new`; `shared` holds what another renderer of the same IR loaded (the Three stage, the decoded pictures), used instead of loading it again.
     fn new_sharing(
         ir: RenderIr,
         package_dir: &Path,
-        shared: Option<Arc<Stage3dScene>>,
+        shared: SharedAssets,
     ) -> Result<Renderer, RenderError> {
         let mut svgs: BTreeMap<String, SvgDocument> = BTreeMap::new();
         let mut font_files = Vec::new();
@@ -273,10 +334,30 @@ impl Renderer {
                         read_asset(package_dir, asset)?,
                     ));
                 }
-                // Images and audio are not drawn by the frame raster; a mesh is read below, for the stage3d node that names it.
+                // Images are decoded below for the image nodes that draw them; audio is not drawn; a mesh is read below, for the stage3d node that names it.
                 Asset::Image(_) | Asset::Audio(_) | Asset::Mesh(_) => {}
             }
         }
+        // Only the images an image node draws are decoded; an image asset nothing draws stays a declared file.
+        let images = match shared.images {
+            Some(images) => images,
+            None => {
+                let mut stage_nodes = Vec::new();
+                walk(&ir.stage, &mut stage_nodes);
+                let mut images: BTreeMap<String, Image> = BTreeMap::new();
+                for node in stage_nodes {
+                    let Node::Image(n) = node else { continue };
+                    if images.contains_key(&n.asset) {
+                        continue;
+                    }
+                    let asset = ir.assets.iter().find(|a| a.id() == n.asset).ok_or_else(|| {
+                        RenderError::Unsupported(format!("image node {:?} names no asset", n.id))
+                    })?;
+                    images.insert(n.asset.clone(), load_image(package_dir, asset)?);
+                }
+                Arc::new(images)
+            }
+        };
         let fonts = Fonts::load(font_files).map_err(|e| RenderError::Font(e.0))?;
         for (id, doc) in &svgs {
             for (family, weight) in raster::svg::text_fonts(doc) {
@@ -288,7 +369,7 @@ impl Renderer {
             }
         }
         let phrases = caption_phrases(&ir, &fonts);
-        let stage3d = match shared {
+        let stage3d = match shared.stage3d {
             Some(scene) => Some(scene),
             None => load_stage3d(&ir, package_dir)?,
         };
@@ -296,12 +377,21 @@ impl Renderer {
             loaded: Loaded {
                 ir,
                 svgs,
+                images,
                 fonts,
                 phrases,
                 stage3d,
             },
             package_dir: package_dir.to_path_buf(),
         })
+    }
+
+    /// What other renderers of the same IR can reuse (`open_shared`): the Three stage and the decoded pictures.
+    pub fn shared_assets(&self) -> SharedAssets {
+        SharedAssets {
+            stage3d: self.loaded.stage3d.clone(),
+            images: Some(self.loaded.images.clone()),
+        }
     }
 
     /// The loaded Three stage, to hand to `open_sharing` so other renderers of the same IR reuse it.

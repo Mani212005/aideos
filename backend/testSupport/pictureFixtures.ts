@@ -1,0 +1,104 @@
+/**
+ * File Description: Tiny synthetic pictures for the illustrated stage's tests and its fixture package, drawn pixel by pixel in code (never generated art, never an image service): a dark plate with a faint accent grid, an accent orb on a transparent background, a neutral chip, and the cases the picture rules must catch (strong colour off the accent, a busy plate, and the committed word picture for the no-text rule). `writePicturesStageFixture` stores the three fixture pictures in a package through the real picture cache, with a fixed date so the files are byte for byte reproducible; run this file to rewrite test_fixtures/packages/pictures-stage/visuals/generated/.
+ * Inputs and outputs: nothing, or a package directory -> RGBA images, PNG bytes and the stored records of the fixture pictures.
+ * Used by: backend/pictures/*.test.ts, backend/designCheck/pictures.test.ts, backend/journeys/pictures_stage.journey.ts, and by hand to refresh the fixture package.
+ */
+
+import path from "node:path";
+import { encodePng, type RgbaImage } from "../pictures/png";
+import { storePicture, type PictureRecord, type PictureRequest } from "../pictures/cache";
+
+/** Paints an image from a function of its pixel centre, returning [r, g, b, a] 0 to 255. */
+export function paint(width: number, height: number, at: (x: number, y: number) => [number, number, number, number]): RgbaImage {
+  const rgba = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const [r, g, b, a] = at(x + 0.5, y + 0.5);
+      rgba.set([r, g, b, a].map((v) => Math.max(0, Math.min(255, Math.round(v)))), (y * width + x) * 4);
+    }
+  }
+  return { width, height, rgba };
+}
+
+/** A soft-edged disc mask: 1 inside radius `r`, fading to 0 over `soft` pixels. */
+function disc(x: number, y: number, cx: number, cy: number, r: number, soft = 1.5): number {
+  const d = Math.hypot(x - cx, y - cy);
+  return Math.max(0, Math.min(1, (r - d) / soft + 0.5));
+}
+
+/** The plate: 48 x 48, the dark canvas lit softly in the middle with a faint accent-hued grid every 8 pixels. */
+export function platePicture(): RgbaImage {
+  return paint(48, 48, (x, y) => {
+    const glow = Math.max(0, 1 - Math.hypot(x - 24, y - 30) / 30);
+    const base = [12 + 10 * glow, 12 + 9 * glow, 16 + 22 * glow];
+    const grid = (Math.floor(x) % 8 === 0 || Math.floor(y) % 8 === 0) ? 0.55 : 0;
+    return [base[0] + 14 * grid, base[1] + 12 * grid, base[2] + 44 * grid, 255];
+  });
+}
+
+/** The orb: 32 x 32, an accent violet sphere (lighter towards its upper left) on a transparent background. */
+export function orbPicture(): RgbaImage {
+  return paint(32, 32, (x, y) => {
+    const a = disc(x, y, 16, 16, 13);
+    const light = Math.max(0, 1 - Math.hypot(x - 12, y - 11) / 16);
+    return [70 + 70 * light, 64 + 66 * light, 220 + 35 * light, 255 * a];
+  });
+}
+
+/** The chip: 24 x 24, a neutral grey die with a lighter rim and a dark core, on a transparent 2 pixel margin. */
+export function chipPicture(): RgbaImage {
+  return paint(24, 24, (x, y) => {
+    const inside = x > 2 && x < 22 && y > 2 && y < 22;
+    if (!inside) return [0, 0, 0, 0];
+    const rim = x < 4 || x > 20 || y < 4 || y > 20;
+    const core = x > 8 && x < 16 && y > 8 && y < 16;
+    const v = rim ? 138 : core ? 38 : 64;
+    return [v, v, v + 4, 255];
+  });
+}
+
+/** A case the palette rule must catch: a saturated orange disc, far from a violet accent. */
+export function offPalettePicture(): RgbaImage {
+  return paint(32, 32, (x, y) => [255, 120, 20, 255 * disc(x, y, 16, 16, 14)]);
+}
+
+/** A case the contrast rule must catch: a hard black and white checkerboard plate (4 pixel squares). */
+export function busyPlatePicture(): RgbaImage {
+  return paint(48, 48, (x, y) => {
+    const v = (Math.floor(x / 4) + Math.floor(y / 4)) % 2 === 0 ? 245 : 8;
+    return [v, v, v, 255];
+  });
+}
+
+/** A case the no-text rule must catch: the word SIGNAL in Geist Bold drawn by the native renderer (test_fixtures/pictures/README.md). */
+export const TEXT_PICTURE_FIXTURE = path.resolve(__dirname, "../../test_fixtures/pictures/text-signal.png");
+
+/** The fixture film's style paragraph, tool label and pictures, as its design.json declares them. */
+export const PICTURES_STAGE = {
+  style: "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.",
+  tool: "synthetic-fixture",
+  items: [
+    { id: "plate", prompt: "A wide empty dark floor that fades into shadow, lit from the middle.", aspect: "1:1", cutout: "none", draw: platePicture },
+    { id: "orb", prompt: "One smooth glass sphere glowing softly in violet.", aspect: "1:1", cutout: "generator-alpha", draw: orbPicture },
+    { id: "chip", prompt: "One square matte processor die with a lighter rim.", aspect: "1:1", cutout: "generator-alpha", draw: chipPicture },
+  ],
+} as const;
+
+/** The fixed date the fixture pictures are recorded with, so their records are reproducible. */
+export const FIXTURE_DATE = new Date("2026-11-20T00:00:00.000Z");
+
+/** Stores the fixture film's three pictures in a package through the picture cache and returns each record by picture id. */
+export function writePicturesStageFixture(pkgDir: string): Record<string, PictureRecord> {
+  const out: Record<string, PictureRecord> = {};
+  for (const item of PICTURES_STAGE.items) {
+    const request: PictureRequest = { style: PICTURES_STAGE.style, prompt: item.prompt, aspect: item.aspect, tool: PICTURES_STAGE.tool, cutout: item.cutout };
+    out[item.id] = storePicture(pkgDir, request, encodePng(item.draw()), { seconds: 0, createdAt: FIXTURE_DATE });
+  }
+  return out;
+}
+
+// Rewrites the committed fixture pictures when run directly, printing each pin for design.json.
+if (typeof require !== "undefined" && require.main === module) {
+  const pkg = path.resolve(__dirname, "../../test_fixtures/packages/pictures-stage");
+  for (const [id, record] of Object.entries(writePicturesStageFixture(pkg))) console.log(`${id}: visuals/generated/${record.fingerprint}.png sha256 ${record.sha256} (${record.width} x ${record.height})`);
+}

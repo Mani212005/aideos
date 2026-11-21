@@ -1,12 +1,12 @@
 /**
- * File Description: The renderer choice for every render job. By default (`auto`) the native renderer draws every film its emitter supports in that format, and Remotion renders everything else exactly as before, with every refusal reason logged. `AIDEOS_RENDERER=remotion` (or `--renderer remotion`) is the kill switch that keeps every film on Remotion; `AIDEOS_RENDERER=native` requires native and fails a film it cannot draw. A native failure on a film native accepted is an error, never a fallback.
+ * File Description: The renderer choice for every render job. By default (`auto`) the native renderer draws every film its emitter supports in that format and its own loader accepts (`aideos-render check`, asked while the job prepares: a picture or SVG content it cannot draw yet), and Remotion renders everything else exactly as before, with every refusal reason logged. `AIDEOS_RENDERER=remotion` (or `--renderer remotion`) is the kill switch that keeps every film on Remotion; `AIDEOS_RENDERER=native` requires native and fails a film it cannot draw. A native failure on a film native accepted is an error, never a fallback.
  * Inputs and outputs: the requested mode, a film and a format, and factories for both renderers -> the chosen Renderer, its name and the refusal reasons (or a Renderer that makes that choice when the job prepares).
  * Used by: backend/pipeline/run.ts (render stage), backend/exportJobs.ts (studio Export), backend/geminiReview/render.ts (review and all-check renders), scripts/render_active.ts (`aideos render`, `aideos reel`), backend/rendererSelection.test.ts.
  */
 
 import type { Film } from "../src/dl/schema";
 import { nativeSupport, type NativeFormat } from "./renderIr/emit";
-import { nativeBinaryProblem } from "./nativeRenderer";
+import { nativeBinaryProblem, NativeLoadRefusal } from "./nativeRenderer";
 import type { Renderer, RenderRequest } from "./renderJob";
 
 export type RendererName = "remotion" | "native";
@@ -104,10 +104,25 @@ export function createSelectedRenderer(options: {
     get profileSettingsApplied() {
       return chosen?.profileSettingsApplied;
     },
-    /** Chooses for this request's film and format, then prepares the chosen renderer. */
+    /**
+     * Chooses for this request's film and format, then prepares the chosen renderer. In `auto`, a film the native
+     * loader refuses while preparing (before any frame) is rendered on Remotion instead, with the refusal as the reason.
+     */
     async prepare(request: RenderRequest, context) {
-      const choice = selectRenderer(request.film, request.format, options.mode, options, { binaryProblem: options.binaryProblem });
+      let choice = selectRenderer(request.film, request.format, options.mode, options, { binaryProblem: options.binaryProblem });
       chosen = choice.renderer;
+      if (choice.name === "native" && options.mode === "auto") {
+        try {
+          await chosen.prepare?.(request, context);
+          options.onChoice?.(choice, describeChoice(choice, request.film, request.format));
+          return;
+        } catch (error) {
+          if (!(error instanceof NativeLoadRefusal)) throw error;
+          await chosen.cleanup?.();
+          choice = { name: "remotion", renderer: options.remotion(), fallbackReason: `the native loader refused it: ${error.message}` };
+          chosen = choice.renderer;
+        }
+      }
       options.onChoice?.(choice, describeChoice(choice, request.film, request.format));
       await chosen.prepare?.(request, context);
     },

@@ -1,5 +1,5 @@
 {
-  "schema": "aideos.render/3",
+  "schema": "aideos.render/4",
   "film": {
     "id": "minimal",
     "fps": 30,

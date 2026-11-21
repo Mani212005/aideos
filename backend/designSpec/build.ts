@@ -1,6 +1,7 @@
 /**
  * File Description: `aideos design build` - turns videos/<id>/design/design.json into the film.
- * Reads the spec and the measured narration, compiles the scene, runs the design check, and only
+ * Reads the spec and the measured narration, resolves each declared picture to its pinned file in the picture
+ * cache (never generating one), compiles the scene, runs the design check, and only
  * writes film.json (through filmStore, so its shadow module lands with it) when the check passes,
  * so a broken design never replaces a working film. The first build saves the undesigned film as
  * design/base-film.json and every build starts from it. Every outcome is recorded in
@@ -36,6 +37,7 @@ import { writeReelFilm } from "../reelCut/store";
 import { bindLookContract, contractErrors, matchCameraPose, realizeLookContract, type PlanItem } from "../lookPlan/contract";
 import { CAMERA_CUE_LANDING_TOLERANCE_SECONDS } from "../../src/dl/scene/cameraTrack";
 import { designInputHash, readOpenBuildRequest, writeJsonAtomic } from "./buildRecord";
+import { resolvePinnedPictures } from "../pictures/cache";
 
 
 /** The outcome of one build, as written to design/status.json. */
@@ -187,7 +189,7 @@ export function buildDesign(filmId: string, source: DesignSource = "agent", opti
   }
   const spec = parsed.data;
 
-  const missing = [...spec.assets.flatMap((a) => "file" in a ? [a.file] : []), ...(spec.background ? [spec.background.file] : [])].filter(
+  const missing = [...spec.assets.flatMap((a) => "file" in a && a.file !== undefined ? [a.file] : []), ...(spec.background && "file" in spec.background ? [spec.background.file] : [])].filter(
     (f) => !fs.existsSync(path.join(pkg, f)),
   );
   if (missing.length) return fail(missing.map((f) => `artwork ${f} is named in design.json but does not exist`));
@@ -236,7 +238,10 @@ export function buildDesign(filmId: string, source: DesignSource = "agent", opti
     lookFindings.push(...(look.warnings ?? []).map((message): DesignFinding => ({ rule: "look", severity: "warning", where: "design/look.json", message })));
   }
 
-  const compiled = compileDesign(buildFilm, spec, words, source, { characters: resolved.characters });
+  // Pictures come from the cache by fingerprint and must be the pinned, approved files; nothing is generated here.
+  const pictures = "pictures" in spec && spec.pictures ? resolvePinnedPictures(pkg, spec.pictures, `videos/${filmId}`) : { sources: {}, errors: [] };
+  if (pictures.errors.length) return fail(pictures.errors);
+  const compiled = compileDesign(buildFilm, spec, words, source, { characters: resolved.characters, pictures: pictures.sources });
   if (!compiled.film) return fail(compiled.errors);
   if (lookPlan) {
     try {

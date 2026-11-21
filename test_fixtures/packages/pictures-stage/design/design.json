@@ -1,0 +1,219 @@
+{
+  "brief": {
+    "concept": "Synthetic fixture of the illustrated stage: one generated plate and two generated objects on one stage, with every word drawn in SVG."
+  },
+  "accent": "#635BFF",
+  "pictures": {
+    "style": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.",
+    "tool": "synthetic-fixture",
+    "items": [
+      {
+        "id": "plate",
+        "prompt": "A wide empty dark floor that fades into shadow, lit from the middle.",
+        "aspect": "1:1",
+        "cutout": "none",
+        "sha256": "5c6f25b0c3c27e4db77339b49944fefb1104924f58450d769c332af7701d4b65"
+      },
+      {
+        "id": "orb",
+        "prompt": "One smooth glass sphere glowing softly in violet.",
+        "aspect": "1:1",
+        "cutout": "generator-alpha",
+        "sha256": "318bc08ad72419aed7f03cafb9d9202d76f641b52555098ebbfdc10f2d28df9d"
+      },
+      {
+        "id": "chip",
+        "prompt": "One square matte processor die with a lighter rim.",
+        "aspect": "1:1",
+        "cutout": "generator-alpha",
+        "sha256": "7e60f8d5f6af51f9c3da4970861b5a616d30d2d99a82c2fb487054fbc8e145e0"
+      }
+    ]
+  },
+  "background": {
+    "picture": "plate",
+    "scale": 40
+  },
+  "assets": [
+    {
+      "id": "orb",
+      "picture": "orb",
+      "position": [
+        760,
+        900
+      ],
+      "scale": 6,
+      "layer": 2
+    },
+    {
+      "id": "chip",
+      "picture": "chip",
+      "position": [
+        1160,
+        900
+      ],
+      "scale": 7,
+      "layer": 3
+    },
+    {
+      "id": "label",
+      "file": "visuals/label.svg",
+      "position": [
+        960,
+        1060
+      ],
+      "scale": 1.4,
+      "layer": 4
+    }
+  ],
+  "clips": [
+    {
+      "id": "orb-in",
+      "asset": "orb",
+      "targets": [
+        "orb"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "orb",
+      "end": "orb:\"arrives\"@end"
+    },
+    {
+      "id": "orb-grow",
+      "asset": "orb",
+      "targets": [
+        "orb"
+      ],
+      "property": "scale",
+      "from": 0.6,
+      "to": 1,
+      "start": "orb",
+      "end": "orb:\"settles\"@end",
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "orb-rise",
+      "asset": "orb",
+      "targets": [
+        "orb"
+      ],
+      "property": "translateY",
+      "from": 0,
+      "to": -14,
+      "start": "orb:\"settles\"",
+      "end": "chip:\"joins\""
+    },
+    {
+      "id": "chip-in",
+      "asset": "chip",
+      "targets": [
+        "chip"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "chip",
+      "end": "chip:\"chip\"@end"
+    },
+    {
+      "id": "chip-turn",
+      "asset": "chip",
+      "targets": [
+        "chip"
+      ],
+      "property": "rotate",
+      "from": -25,
+      "to": 0,
+      "start": "chip",
+      "end": "chip:\"joins\"@end",
+      "origin": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "label-in",
+      "asset": "label",
+      "targets": [
+        "label"
+      ],
+      "property": "opacity",
+      "from": 0,
+      "to": 1,
+      "start": "chip:\"joins\"",
+      "end": "chip:\"orb\"@end"
+    },
+    {
+      "id": "link-draw",
+      "asset": "label",
+      "targets": [
+        "link"
+      ],
+      "property": "drawOn",
+      "from": 0,
+      "to": 1,
+      "start": "chip:\"joins\"",
+      "end": "chip:\"stage.\"@end"
+    }
+  ],
+  "camera": [
+    {
+      "id": "establish",
+      "at": "plate",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1
+    },
+    {
+      "id": "plate-hold",
+      "at": "plate@0.6",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1
+    },
+    {
+      "id": "orb-push",
+      "at": "orb@0.5",
+      "center": [
+        900,
+        940
+      ],
+      "zoom": 1.12
+    },
+    {
+      "id": "orb-hold",
+      "at": "orb@end",
+      "center": [
+        900,
+        940
+      ],
+      "zoom": 1.12
+    },
+    {
+      "id": "pair",
+      "at": "chip@0.45",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1.06
+    },
+    {
+      "id": "pair-hold",
+      "at": "end",
+      "center": [
+        960,
+        960
+      ],
+      "zoom": 1.06
+    }
+  ]
+}

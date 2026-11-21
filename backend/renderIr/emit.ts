@@ -1,5 +1,5 @@
 /**
- * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 to P4.3 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, or an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts). Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
+ * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 to P4.3 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts), or an `aideos.render/3` document when it places pictures (the illustrated stage: each raster asset becomes an image node over its pinned PNG). Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
  * Inputs and outputs: a Film, a format, the scene's SVG sources and a text measurer -> a validated RenderIr plus the package files it references (fonts, artwork, audio) and the reasons a film is not supported.
  * Used by: backend/nativeRenderer.ts (prepare), backend/rendererSelection.ts (nativeSupport), backend/renderIr/emit.test.ts, backend/renderIr/stage3d.test.ts.
  */
@@ -26,7 +26,8 @@ import {
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
-import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, ELEMENT_PROPERTIES, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
+import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, ELEMENT_PROPERTIES, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
+import { rasterElementIds } from "../../src/dl/scene/raster";
 import { validateRenderIr } from "./validate";
 import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
 
@@ -125,7 +126,7 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
     if (scene.actors && scene.actors.length > 0) reasons.push("scene actors (character rigs) are not drawn natively");
     for (const asset of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
       if (asset.subGroups && asset.subGroups.length > 0) reasons.push(`asset ${asset.assetId}: sub-group rotation is not drawn natively`);
-      if (!asset.svgSource) reasons.push(`asset ${asset.assetId} has no SVG source`);
+      if (!asset.svgSource && !asset.raster) reasons.push(`asset ${asset.assetId} has no SVG source`);
     }
   }
   const uncovered = uncoveredChapters(film, buildTimeline(film));
@@ -554,6 +555,12 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
   return cards;
 }
 
+/** The Render IR image asset id of a picture asset. */
+const imageAssetId = (assetId: string) => `img-${assetId}`;
+
+/** Where a picture is staged inside the render package: by its pinned sha256, so a picture used twice is copied once. */
+export const picturePackagePath = (sha256: string) => `pictures/${sha256}.png`;
+
 /** The scene's stage nodes: background then props (or the `assets` given, for one plane of a Three film), each with its element tracks frozen after `lastFrame`. */
 function stageNodes(scene: Scene, svgIds: Record<string, string[]>, lastFrame: number, assets = [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]): Node[] {
   const needsDense = assets.some((a) => (a.tracks ?? []).some((t) => t.keyframes.length > 0));
@@ -568,6 +575,25 @@ function stageNodes(scene: Scene, svgIds: Record<string, string[]>, lastFrame: n
           tracks.push({ property, keyframes: linearKeyframes((f) => entity(f)[key], 0, lastFrame) });
         }
       }
+    }
+    if (asset.raster) {
+      // A picture: the same placement and clips as an svg node, on its one element, drawn into its pixel box.
+      return {
+        kind: "image" as const,
+        id: `asset-${asset.assetId}`,
+        asset: imageAssetId(asset.assetId),
+        x: asset.position.x,
+        y: asset.position.y,
+        scale: asset.scale ?? 1,
+        rotation: asset.rotation ?? 0,
+        ...(asset.opacity !== undefined && asset.opacity !== 1 ? { opacity: asset.opacity } : {}),
+        layer: asset.layer ?? Math.round(asset.position.y),
+        width: asset.raster.width,
+        height: asset.raster.height,
+        element: rasterElementIds(asset)[0],
+        tracks,
+        elementTracks: elementTracks(asset, lastFrame),
+      };
     }
     return {
       kind: "svg" as const,
@@ -600,6 +626,11 @@ function threeStageNodes(scene: Scene, svgIds: Record<string, string[]>, lastFra
     stage3d.node,
     ...(foreground.length ? [group("foreground-plane", stageNodes(scene, svgIds, lastFrame, foreground))] : []),
   ];
+}
+
+/** Whether a scene places any picture (raster asset), which makes its document `aideos.render/3`. */
+function hasPictures(scene: Scene): boolean {
+  return [scene.background, ...scene.props].some((a) => a?.raster !== undefined);
 }
 
 /** Emits the overlay and stage for one format, given a text measurer callback pair and, for a Three film, its emitted stage. */
@@ -638,6 +669,11 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
   const svgIds: Record<string, string[]> = {};
   const assets: Asset[] = [];
   for (const a of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
+    if (a.raster) {
+      svgIds[a.assetId] = rasterElementIds(a);
+      assets.push({ kind: "image", id: imageAssetId(a.assetId), path: picturePackagePath(a.raster.sha256), sha256: a.raster.sha256, width: a.raster.width, height: a.raster.height });
+      continue;
+    }
     const source = a.svgSource ? input.svgSources[a.svgSource] : undefined;
     if (source === undefined) throw new NativeUnsupportedError([`asset ${a.assetId} has no SVG source`]);
     svgIds[a.assetId] = collectSvgElementIds(parseSvgDocument(source));
@@ -735,8 +771,8 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
 
   const audio = resolveAudio(film, delivery);
   return {
-    // A film without a Three stage stays `/1`, byte for byte what it was before `/2` existed.
-    schema: stage3d ? RENDER_IR_VERSION_2 : RENDER_IR_VERSION,
+    // A film with a picture is `/3`; else a film with a Three stage is `/2`; any other film stays `/1`, byte for byte what it was before `/2` existed.
+    schema: hasPictures(scene) ? RENDER_IR_VERSION_3 : stage3d ? RENDER_IR_VERSION_2 : RENDER_IR_VERSION,
     film: { id: film.id, fps, durationFrames: total },
     scene: { width: scene.sceneSize.w, height: scene.sceneSize.h },
     formats: { [format]: { width, height } },
@@ -935,6 +971,12 @@ export function emitRenderIr(input: EmitInput): EmitResult {
     { path: "fonts/JetBrainsMono-latin.ttf", from: input.resolvePath(NATIVE_FONT_FILES.mono) },
   ];
   for (const a of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
+    if (a.raster) {
+      // The approved file itself, byte for byte: the renderer checks it against the pinned sha256.
+      const path = picturePackagePath(a.raster.sha256);
+      if (!files.some((f) => f.path === path)) files.push({ path, from: input.resolvePath(a.raster.src) });
+      continue;
+    }
     files.push({ path: `visuals/${a.assetId}.svg`, text: input.svgSources[a.svgSource!] });
   }
   if (stage3d) files.push({ path: STAGE_MESH_PATH, bytes: stage3d.meshBytes });

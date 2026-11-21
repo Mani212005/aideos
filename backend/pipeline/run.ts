@@ -95,7 +95,8 @@ export function designFilesFingerprint(slug: string, options: { receiveSourceFil
   try {
     const parsed = designSpecSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) return fingerprint(raw);
-    const files = [...parsed.data.assets.flatMap((a) => "file" in a ? [a.file] : []), ...(parsed.data.background ? [parsed.data.background.file] : [])];
+    // Pictures are pinned by sha256 inside design.json itself, so the raw text already covers them.
+    const files = [...parsed.data.assets.flatMap((a) => "file" in a && a.file !== undefined ? [a.file] : []), ...(parsed.data.background && "file" in parsed.data.background ? [parsed.data.background.file] : [])];
     const dots = "performances" in parsed.data && (parsed.data.treatment === "dots-v1" || parsed.data.assets.some((asset) => "treatment" in asset && asset.treatment === "dots-v1") || Object.values(parsed.data.shots ?? {}).some((shot) => shot.stageTreatment === "dots-v1"));
     const resources = "performances" in parsed.data ? Object.keys({ ...STAGE_RESOURCES, ...(dots ? DOT_RESOURCES : {}) }).map((file) => {
       const absolute = resolveRepoAssetPath(file);

@@ -1,0 +1,145 @@
+{
+  "schema": "aideos.render/3",
+  "film": {
+    "id": "pictures",
+    "fps": 30,
+    "durationFrames": 30
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0A0A0B",
+  "assets": [
+    {
+      "kind": "image",
+      "id": "img-plate",
+      "path": "visuals/generated/plate.png",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "width": 64,
+      "height": 36
+    },
+    {
+      "kind": "image",
+      "id": "img-unpinned",
+      "path": "visuals/generated/raw.png",
+      "width": 8,
+      "height": 8
+    },
+    {
+      "kind": "svg",
+      "id": "svg-label",
+      "path": "visuals/label.svg",
+      "elementIds": [
+        "label"
+      ]
+    }
+  ],
+  "stage": [
+    {
+      "kind": "image",
+      "id": "wrong-kind",
+      "asset": "svg-label",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "width": 8,
+      "height": 8,
+      "element": "a",
+      "tracks": [],
+      "elementTracks": []
+    },
+    {
+      "kind": "image",
+      "id": "unpinned",
+      "asset": "img-unpinned",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "width": 8,
+      "height": 8,
+      "element": "raw",
+      "tracks": [],
+      "elementTracks": []
+    },
+    {
+      "kind": "image",
+      "id": "bad-tracks",
+      "asset": "img-plate",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "width": 64,
+      "height": 36,
+      "element": "plate",
+      "tracks": [],
+      "elementTracks": [
+        {
+          "target": "other",
+          "property": "opacity",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 1
+            }
+          ]
+        },
+        {
+          "target": "plate",
+          "property": "drawOn",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "image",
+      "id": "missing",
+      "asset": "img-nowhere",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "width": 8,
+      "height": 8,
+      "element": "x",
+      "tracks": [],
+      "elementTracks": []
+    }
+  ],
+  "overlay": [
+    {
+      "kind": "image",
+      "id": "in-overlay",
+      "asset": "img-plate",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "width": 64,
+      "height": 36,
+      "element": "plate",
+      "tracks": [],
+      "elementTracks": []
+    }
+  ],
+  "audio": []
+}

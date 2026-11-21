@@ -22,7 +22,8 @@ export const RECEIVE_NEEDS = { action: "receive-v1", expressions: RECEIVE_EXPRES
 
 // Rejects missing bundled SVG planes rather than rendering the legacy placeholder as stage evidence.
 export function validateStageSvgResources(scene: Scene, sources: Record<string, string>): string[] {
-  return scene.renderer === "three" ? [scene.background, ...scene.props].flatMap((a) => sources[a.svgSource]?.trim() ? [] : [`Three stage ${a.assetId}: missing SVG resource ${a.svgSource}.`]) : [];
+  // A picture plane is checked against its own file (validateSceneNode), not the SVG sources.
+  return scene.renderer === "three" ? [scene.background, ...scene.props].flatMap((a) => a.raster || (a.svgSource && sources[a.svgSource]?.trim()) ? [] : [`Three stage ${a.assetId}: missing SVG resource ${a.svgSource}.`]) : [];
 }
 
 // Verifies one resolved character spec: schema, semantics, content hash and receive compatibility.

@@ -1,5 +1,5 @@
-//! File Description: The `aideos-render` command line: renders one frame of a Render IR file to a PNG on the deterministic CPU rasterizer (or, built with the `gpu` feature and given `--gpu`, on an EGL OpenGL surface); `video` renders a whole film or a frame range to an mp4 through the R3 encoder; `measure` reports text widths and line metrics with the renderer's own fonts.
-//! Inputs and outputs: `aideos-render <ir.json> --frame N [--format long|reel] [--package DIR] [--gpu] --out frame.png` -> the PNG and one line on stdout; `aideos-render video <ir.json> --format F --out x.mp4 [...]` -> the mp4, progress lines and a JSON report; `aideos-render measure <request.json>` -> JSON on stdout. Exit 0 on success, 1 when loading, rendering or encoding fails, 2 on a usage error.
+//! File Description: The `aideos-render` command line: renders one frame of a Render IR file to a PNG on the deterministic CPU rasterizer (or, built with the `gpu` feature and given `--gpu`, on an EGL OpenGL surface); `video` renders a whole film or a frame range to an mp4 through the R3 encoder; `measure` reports text widths and line metrics with the renderer's own fonts; `check` loads a film and its assets exactly as a render would and draws nothing (the renderer choice asks it before rendering).
+//! Inputs and outputs: `aideos-render <ir.json> --frame N [--format long|reel] [--package DIR] [--gpu] --out frame.png` -> the PNG and one line on stdout; `aideos-render video <ir.json> --format F --out x.mp4 [...]` -> the mp4, progress lines and a JSON report; `aideos-render measure <request.json>` -> JSON on stdout; `aideos-render check <ir.json> [--package DIR]` -> `ok ...` or the refusal. Exit 0 on success, 1 when loading, rendering or encoding fails, 2 on a usage error.
 //! Used by: people and agents rendering stills, backend/nativeRenderer.ts and backend/renderIr/measure.ts, tests/cli.rs and tests/video.rs.
 
 use std::path::{Path, PathBuf};
@@ -15,7 +15,7 @@ use aideos_render::{Format, Renderer};
 /// The usage text.
 const USAGE: &str = "usage: aideos-render <ir.json> --frame N [--format long|reel] [--package DIR] [--gpu] --out frame.png
 
-Renders one frame of an aideos.render/1 Render IR to a PNG.
+Renders one frame of an aideos.render Render IR (/1, /2 or /3) to a PNG.
   --frame N        frame number, 0 to durationFrames - 1
   --format F       long (16:9) or reel (9:16); defaults to long when declared, else reel
   --package DIR    directory asset paths resolve against; defaults to the IR file's directory
@@ -32,7 +32,13 @@ Prints `frames D/T` progress lines, then one JSON report.
 
        aideos-render measure <request.json>
 
-Prints the single-line width of each run and the line metrics of each face as JSON.";
+Prints the single-line width of each run and the line metrics of each face as JSON.
+
+       aideos-render check <ir.json> [--package DIR]
+
+Loads the Render IR and every asset it draws (SVG artwork, pictures with their pinned sha256, fonts, the
+Three stage mesh) exactly as a render does, and draws nothing. Prints `ok <film> (<version>)`, or exits 1
+naming what this renderer refuses.";
 
 /// Parsed command line arguments.
 struct Args {
@@ -262,6 +268,29 @@ fn run_measure(raw: Vec<String>) -> Result<String, String> {
     serde_json::to_string(&report).map_err(|e| e.to_string())
 }
 
+/// Parses `check <ir.json> [--package DIR]`.
+fn parse_check_args(raw: Vec<String>) -> Result<(PathBuf, Option<PathBuf>), String> {
+    let mut ir = None;
+    let mut package = None;
+    let mut it = raw.into_iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "-h" | "--help" => return Err(String::new()),
+            "--package" => package = Some(PathBuf::from(it.next().ok_or("--package needs a directory")?)),
+            other if other.starts_with('-') => return Err(format!("unknown option {other}")),
+            other if ir.is_none() => ir = Some(PathBuf::from(other)),
+            other => return Err(format!("unexpected argument {other}")),
+        }
+    }
+    Ok((ir.ok_or("missing the Render IR file")?, package))
+}
+
+/// Loads an IR and every asset it draws exactly as a render does, and draws nothing: the authority on whether this renderer accepts a film.
+fn run_check((ir, package): (PathBuf, Option<PathBuf>)) -> Result<String, String> {
+    let renderer = Renderer::open(&ir, package.as_deref()).map_err(|e| e.to_string())?;
+    Ok(format!("ok {} ({})", renderer.ir().film.id, renderer.ir().schema))
+}
+
 /// Prints a subcommand's result and maps it to an exit code (1 failure, 2 usage).
 fn finish(parsed: Result<Result<String, String>, String>) -> ExitCode {
     match parsed {
@@ -291,6 +320,10 @@ fn main() -> ExitCode {
         Some("video") => {
             raw.remove(0);
             return finish(parse_video_args(raw).map(run_video));
+        }
+        Some("check") => {
+            raw.remove(0);
+            return finish(parse_check_args(raw).map(run_check));
         }
         Some("measure") => {
             raw.remove(0);
