@@ -85,8 +85,12 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
   and caches, plus 13 s Chrome warm-up) on top of its share of about 26 minutes of serial work. Predicted
   wall time: 1 shard about 28 min, 2 shards about 15 min, 3 shards about 10 min, 4 shards about 8 min. Going
   from 2 to 3 shards saves about 4.5 min of wall time for about 1.3 extra runner minutes; a fourth would save
-  about 2 min more, but the unit job (5 to 9 min) then sets the wall time. Runner minutes per run rise from
+  about 2 min more, but the unit job then sets the wall time. Runner minutes per run rise from
   about 28 to about 31. Measured values for the real run are in the pull request that added the shards.
+* **Measured on main** (8 green runs of 21 November 2026, 44872244516 to 44902106289): each shard
+  takes 6.3 to 11.1 min (median 8.2 min), well under its 30 min timeout. About 2.9 min of that is setup,
+  now including the release `aideos-render` build (63 to 86 s), and the Journeys step is 3.8 to 7.9 min.
+  The unit job (10.4 to 13.5 min, median 10.7 min) sets the CI wall time, not the journeys.
 
 ## Setup that every job shares
 
