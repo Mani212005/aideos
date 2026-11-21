@@ -32,6 +32,22 @@ export type MixedSection = {
   fadeOutEndFrame: number;
 };
 
+// Seconds the final bed stops short of a lossy source's ending: an MP3 decodes a little shorter than its manifest duration, which would leave the delivery tail without music.
+export const LAST_SECTION_TAIL_HEADROOM_SEC = 0.75;
+
+// Containers whose decoded length can fall short of the manifest duration (encoder delay and padding); PCM sources are exact.
+const LOSSY_SOURCE = /\.(mp3|ogg|m4a|aac)$/i;
+
+// Returns the source frames the final section must leave unused at the end of its track: zero for exact PCM, LAST_SECTION_TAIL_HEADROOM_SEC for lossy sources.
+export function lastSectionHeadroomFrames(fps: number, src: string): number {
+  return LOSSY_SOURCE.test(src.split(/[?#]/)[0]) ? Math.round(LAST_SECTION_TAIL_HEADROOM_SEC * fps) : 0;
+}
+
+// Returns how many source frames the final section skips so a lossy track ends LAST_SECTION_TAIL_HEADROOM_SEC before the source does.
+export function lastSectionTrimFrames(trackFrames: number, spanFrames: number, fps: number, src: string): number {
+  return Math.max(0, trackFrames - spanFrames - lastSectionHeadroomFrames(fps, src));
+}
+
 // Converts a decibel gain to a linear amplitude multiplier without rounding quiet beds away.
 export function dbGain(db: number): number {
   return 10 ** (db / 20);
@@ -57,7 +73,7 @@ export function soundtrackItem(itemId: string, sha256?: string): LibraryItem {
 }
 
 // Names the same shared cache asset the library fetcher writes, without importing filesystem code.
-export function soundtrackItemSrc(item: LibraryItem): string {
+export function soundtrackItemSrc(item: { id: string; url: string | null; archivePath?: string }): string {
   const source = "archivePath" in item ? item.archivePath : item.url;
   const extension = source?.split(/[?#]/)[0].match(/\.[^./]+$/)?.[0] ?? ".mp3";
   return `videos/.audio-library/${item.id}${extension}`;
@@ -101,7 +117,8 @@ export function mixSections(soundtrack: Soundtrack, delivery: DeliveryTimeline):
       ? delivery.totalFrames
       : Math.min(delivery.totalFrames, Math.round(section.to * fps) + Math.ceil(fadeOut / 2));
     const trackFrames = Math.floor(item.durationSec * fps);
-    const trimBefore = last ? Math.max(0, trackFrames - (to - from)) : Math.round(section.offsetSec * fps);
+    const src = section.src || soundtrackItemSrc(item);
+    const trimBefore = last ? lastSectionTrimFrames(trackFrames, to - from, fps, src) : Math.round(section.offsetSec * fps);
     const available = trackFrames - trimBefore;
     if (available <= 0 || (!last && available < to - from)) {
       throw new Error(`Soundtrack section ${item.id} exceeds its track; choose a longer track or an earlier offset`);
@@ -110,7 +127,7 @@ export function mixSections(soundtrack: Soundtrack, delivery: DeliveryTimeline):
     if (durationInFrames <= 0) throw new Error(`Soundtrack section ${item.id} is outside the delivery`);
     if (fadeIn + fadeOut > durationInFrames) throw new Error(`Soundtrack section ${item.id} is too short for its crossfades`);
     return {
-      src: section.src || soundtrackItemSrc(item), from, durationInFrames, trimBefore,
+      src, from, durationInFrames, trimBefore,
       gain: dbGain(soundtrack.mix.targetLufs - item.loudness.integratedLufs) * (section.volume ?? 1) *
         (section.sourceChannels === 1 ? Math.SQRT1_2 : 1),
       duck: section.duckUnderVoiceover ?? true,

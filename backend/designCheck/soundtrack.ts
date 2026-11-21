@@ -7,6 +7,7 @@
 import { loadAudioLibrary } from "../audioLibrary/library";
 import { deliveryTimeline } from "../../src/dl/delivery";
 import { buildTimeline } from "../../src/dl/camera";
+import { lastSectionHeadroomFrames, lastSectionTrimFrames, soundtrackItemSrc } from "../../src/dl/audio/sectionMixer";
 import { FPS } from "../sceneKit";
 import { effectFamily, getVisualEventFrames } from "../designSpec/soundtrack";
 import type { Film } from "../../src/dl/schema";
@@ -126,11 +127,13 @@ export function checkSoundtrack(film: Film, findings: DesignFinding[], context: 
       Math.min(delivery.totalFrames, Math.round(section.to * fps) + Math.ceil(fadeOut / 2));
     const spanFrames = toFrame - fromFrame;
     const trackFrames = Math.floor(item.durationSec * fps);
-    const trimBefore = last ? Math.max(0, trackFrames - spanFrames) : Math.round(section.offsetSec * fps);
+    const src = section.src || soundtrackItemSrc(item);
+    const headroomFrames = last ? lastSectionHeadroomFrames(fps, src) : 0;
+    const trimBefore = last ? lastSectionTrimFrames(trackFrames, spanFrames, fps, src) : Math.round(section.offsetSec * fps);
     // The mixer back-times the final section from the source ending and ignores its stored offset.
     const offsetSec = last ? 0 : section.offsetSec;
     const totalRun = Math.max((spanFrames + trimBefore) / fps, duration + offsetSec);
-    if (spanFrames + trimBefore > trackFrames || totalRun > item.durationSec + 0.001) {
+    if (spanFrames + trimBefore + headroomFrames > trackFrames || totalRun > item.durationSec + 0.001) {
       findings.push({
         rule: "soundtrack",
         severity: "error",

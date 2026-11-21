@@ -93,6 +93,8 @@ export function registerAudioCommands(program: Command): void {
                 console.log(`  [cached]     ${res.id.padEnd(16)} -> ${res.filename} (${res.message})`);
               } else if (res.status === "manual") {
                 console.log(`  [manual]     ${res.id.padEnd(16)} -> ${res.message}`);
+              } else if (res.status === "failed") {
+                console.log(`  [FAILED]     ${res.id.padEnd(16)} -> ${res.message}`);
               }
             }
           },
@@ -103,8 +105,12 @@ export function registerAudioCommands(program: Command): void {
         } else {
           console.log("");
           console.log(
-            `Fetch complete: ${report.summary.downloaded} downloaded, ${report.summary.skipped} already cached, ${report.summary.manual} manual/pending (${report.summary.total} total).`
+            `Fetch complete: ${report.summary.downloaded} downloaded, ${report.summary.skipped} already cached, ${report.summary.manual} manual/pending, ${report.summary.failed} failed (${report.summary.total} total).`
           );
+          if (report.summary.failed > 0) {
+            const failedIds = report.results.filter((r) => r.status === "failed").map((r) => r.id);
+            console.log(`Failed items: ${failedIds.join(", ")} (${report.summary.requiredFailed} required).`);
+          }
           console.log(`Cache: ${report.cacheDir}`);
         }
 

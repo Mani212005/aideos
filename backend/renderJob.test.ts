@@ -467,6 +467,44 @@ test("a job proceeds past an abandoned lock file before initialization", { timeo
   assert.equal(fs.existsSync(lockPath), true);
 });
 
+test("publication needs no external lock binary on PATH (macOS has no flock)", { timeout: 8000 }, async (t) => {
+  const f = fixture(t);
+  const emptyBin = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-empty-path-"));
+  t.after(() => fs.rmSync(emptyBin, { recursive: true, force: true }));
+  const originalPath = process.env.PATH;
+  process.env.PATH = emptyBin;
+  t.after(() => {
+    process.env.PATH = originalPath;
+  });
+  const job = createRenderJob(
+    { film: f.film, format: "long", outPath: f.outPath, profile: "final" },
+    f.renderer,
+    { services: f.services },
+  );
+
+  await job.run();
+  assert.equal(job.state, "done");
+  assert.ok(fs.existsSync(f.outPath));
+  assert.equal(fs.existsSync(`${path.resolve(f.outPath)}.publish.lock.d`), false);
+});
+
+test("a publication lock left by a crashed process is reclaimed once stale", { timeout: 15000 }, async (t) => {
+  const f = fixture(t);
+  const crashedLock = `${path.resolve(f.outPath)}.publish.lock.d`;
+  fs.mkdirSync(crashedLock);
+  const stale = new Date(Date.now() - 60_000);
+  fs.utimesSync(crashedLock, stale, stale);
+  const job = createRenderJob(
+    { film: f.film, format: "long", outPath: f.outPath, profile: "final" },
+    f.renderer,
+    { services: f.services },
+  );
+
+  await job.run();
+  assert.equal(job.state, "done");
+  assert.ok(fs.existsSync(f.outPath));
+});
+
 for (const phase of [
   "deliverable",
   "broll",

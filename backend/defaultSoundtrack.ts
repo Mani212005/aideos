@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { buildTimeline } from "../src/dl/camera";
+import { lastSectionHeadroomFrames, soundtrackItemSrc } from "../src/dl/audio/sectionMixer";
 import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import { soundtrackMixDefault, type Film, type SoundtrackSection, type SoundtrackSfx } from "../src/dl/schema";
 import { computeFileSha256, getDefaultLibraryPath, loadAudioLibrary, verifyAudioItem } from "./audioLibrary/library";
@@ -57,7 +58,7 @@ function candidates(act: Act, index: number, count: number, film: Film, format: 
   if (count > 1 && (act.to - act.from < fade / film.fps || span < fade * Number(index > 0) + fade * Number(index < count - 1))) return [];
   return library.items.filter((item) => item.kind === "music" && item.licence.attribution === null &&
     item.roles.includes(act.role) && (item.loudness.lra <= 10 || act.role === "payoff" || act.role === "outro") &&
-    Math.floor(item.durationSec * film.fps) >= span).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    Math.floor(item.durationSec * film.fps) >= span + (index === count - 1 ? lastSectionHeadroomFrames(film.fps, soundtrackItemSrc(item)) : 0)).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
 // Chooses chapter-sized acts, splitting a long explanation once when one track cannot cover it.
