@@ -10,7 +10,8 @@
  */
 
 import { hasCaptionPlacementForFormat, prepareCaptionReview } from "../review/captionRegion";
-import type { CaptionRect } from "../../src/dl/captionPlacement";
+import { migrateLegacyReelPlacement, type CaptionRect } from "../../src/dl/captionPlacement";
+import { REEL_CAPTION_SAFE_ZONE, SUBTITLE_BAND_TOP_RATIO } from "../../src/dl/fullScreenHeroLayout";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -159,12 +160,13 @@ export function runTesseractOnImage(imagePath: string): Promise<string | null> {
   });
 }
 
-// Samples frames across the video and measures the declared caption card, falling back to the bottom band.
+// Samples frames across the video and measures the declared caption card, falling back to the format default band.
 export async function measureBottomCaptions(
   videoPath: string,
   durationSec: number,
   numSamples = 12,
   captionRectAt?: ((t: number) => CaptionRect | undefined) | null,
+  format: "long" | "reel" = "long",
 ): Promise<{
   measured: boolean;
   hasCaptions: boolean;
@@ -233,8 +235,15 @@ export async function measureBottomCaptions(
 
       try {
         const rect = captionRectAt?.(t);
-        const crop = rect ? `crop=${Math.floor(rect.w)}:${Math.floor(rect.h)}:${Math.floor(rect.x)}:${Math.floor(rect.y)}` : "crop=in_w:in_h*0.22:0:in_h*0.78";
-        // Crop the declared card, falling back to the legacy bottom band for mp4-only review.
+        const z = REEL_CAPTION_SAFE_ZONE;
+        const defaultCrop =
+          format === "reel"
+            ? `crop=in_w*${z.width}:in_h*${(z.bottom - z.top).toFixed(2)}:in_w*${z.left}:in_h*${z.top}`
+            : `crop=in_w:in_h*${(1 - SUBTITLE_BAND_TOP_RATIO).toFixed(2)}:0:in_h*${SUBTITLE_BAND_TOP_RATIO}`;
+        const crop = rect
+          ? `crop=${Math.floor(rect.w)}:${Math.floor(rect.h)}:${Math.floor(rect.x)}:${Math.floor(rect.y)}`
+          : defaultCrop;
+        // Crop the declared card, falling back to the format's default caption band for mp4-only review.
         const args = [
           "-y",
           "-ss", String(t),
@@ -490,7 +499,8 @@ export async function extractDeterministicFacts(
         captionRectAt = prepared;
       }
       if (captionRectAt && format && hasCaptionPlacementForFormat(film, format)) {
-        placementNote = `- Owner ${format} caption cards: ${JSON.stringify({ film: film.captionPlacement?.[format], shots: film.shots.filter((shot) => shot.captionPlacement?.[format]).map((shot) => ({ id: shot.id, placement: shot.captionPlacement?.[format] })) })}. Check these placed rectangles; locked cards must be preserved.`;
+        const resolved = (entry: NonNullable<typeof film.captionPlacement>[typeof format] | undefined) => entry && migrateLegacyReelPlacement(entry, format);
+        placementNote = `- Owner ${format} caption cards: ${JSON.stringify({ film: resolved(film.captionPlacement?.[format]), shots: film.shots.filter((shot) => shot.captionPlacement?.[format]).map((shot) => ({ id: shot.id, placement: resolved(shot.captionPlacement?.[format]) })) })}. Check these placed rectangles; locked cards must be preserved.`;
       }
       if (film.scene?.renderer === "three" && !viewport) stageNote = "- Stage facts: NOT measured, the output size of this video could not be probed; judge the stage only from the video.";
       else filmFacts = readFilmFacts(film, viewport ?? undefined);
@@ -513,11 +523,13 @@ export async function extractDeterministicFacts(
         summary: captionMeasurementNote.replace(/^- Owner caption cards: /, ""),
       };
     } else {
+      const measuredFormat = viewport && viewport.width < viewport.height ? "reel" : "long";
       bottomCaptions = await measureBottomCaptions(
         resolved,
         storySec,
         options?.sampleCount ?? 12,
         captionRectAt,
+        measuredFormat,
       );
     }
   }

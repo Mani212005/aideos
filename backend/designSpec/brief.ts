@@ -16,7 +16,11 @@ import { LOCKED_PALETTE, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_ZOOM_STEP } fro
 import { designDir, readCheckedLookPlan } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
-import { getInsetRegion, INSET_FORMAT_FRAMES } from "../../src/dl/fullScreenHeroLayout";
+import {
+  getInsetRegion,
+  INSET_FORMAT_FRAMES,
+  REEL_STAGE_CENTER_Y_RATIO,
+} from "../../src/dl/fullScreenHeroLayout";
 import type { LookPlan } from "../lookPlan/schema";
 import { loadAudioLibrary } from "../audioLibrary/library";
 
@@ -25,10 +29,11 @@ import { loadAudioLibrary } from "../audioLibrary/library";
 function insetRegionNote(): string {
   const wide = getInsetRegion("long", INSET_FORMAT_FRAMES.long.width, INSET_FORMAT_FRAMES.long.height);
   const reel = getInsetRegion("reel", INSET_FORMAT_FRAMES.reel.width, INSET_FORMAT_FRAMES.reel.height);
+  const reelShiftY = (0.5 - REEL_STAGE_CENTER_Y_RATIO) * SCENE_SIZE.h;
   const span = (a: number, b: number) => `${Math.round(a)}-${Math.round(b)}`;
   return (
     `wide cut: scene x ${span(wide.x, wide.x + wide.w)}, y ${span(wide.y + FORMAT_WINDOWS.wide.y0, wide.y + wide.h + FORMAT_WINDOWS.wide.y0)}; ` +
-    `reel: scene x ${span(reel.x + FORMAT_WINDOWS.reel.x0, reel.x + reel.w + FORMAT_WINDOWS.reel.x0)}, y ${span(reel.y, reel.y + reel.h)}`
+    `reel: scene x ${span(reel.x + FORMAT_WINDOWS.reel.x0, reel.x + reel.w + FORMAT_WINDOWS.reel.x0)}, y ${span(reel.y + reelShiftY, reel.y + reel.h + reelShiftY)}`
   );
 }
 

@@ -5,9 +5,12 @@
 use aideos_render_ir::types::{CaptionSpan, CaptionWord};
 
 use super::spring::spring;
+use super::Format;
 
-/// Width of a caption card with no owner-chosen width, as a fraction of the frame (captionPlacement.ts).
+/// Width of a widescreen caption card with no owner-chosen width, as a fraction of the frame (captionPlacement.ts).
 pub const DEFAULT_CARD_WIDTH: f64 = 0.86;
+/// Width of a 9:16 reel caption card inside the platform safe zone (`REEL_CAPTION_SAFE_ZONE.width` in fullScreenHeroLayout.ts).
+pub const REEL_SAFE_CARD_WIDTH: f64 = 0.78;
 /// Horizontal margin of one word span (6 px each side), added to its measured width for row fitting.
 pub const WORD_MARGIN_X: f64 = 12.0;
 /// The card's horizontal padding and border, subtracted from its width to get the text width.
@@ -21,9 +24,13 @@ pub struct CardWidth {
     pub inner_width: f64,
 }
 
-/// Resolves a span's card width in a frame of the given width (`resolveCaptionCardWidth`).
-pub fn card_width(span: &CaptionSpan, frame_width: f64) -> CardWidth {
-    let width = span.w.unwrap_or(DEFAULT_CARD_WIDTH) * frame_width;
+/// Resolves a span's card width in a frame of the given width and format (`resolveCaptionCardWidth`).
+pub fn card_width(span: &CaptionSpan, frame_width: f64, format: Format) -> CardWidth {
+    let default_ratio = match format {
+        Format::Long => DEFAULT_CARD_WIDTH,
+        Format::Reel => REEL_SAFE_CARD_WIDTH,
+    };
+    let width = span.w.unwrap_or(default_ratio) * frame_width;
     let fixed = span.w.is_some();
     CardWidth {
         width,
@@ -87,6 +94,7 @@ pub fn build_phrases(
     spans: &[CaptionSpan],
     fps: u32,
     frame_width: f64,
+    format: Format,
     measure: &dyn Fn(&str) -> f64,
 ) -> Vec<Phrase> {
     let fps_f = f64::from(fps);
@@ -94,7 +102,8 @@ pub fn build_phrases(
     let mut start = 0;
     while start < words.len() {
         let span_index = span_at(spans, words[start].start_frame.0);
-        let card = card_width(&spans[span_index], frame_width);
+        let card = card_width(&spans[span_index], frame_width, format);
+        let enforce_two_lines = card.fixed || format == Format::Reel;
         let inner = card.inner_width;
         let mut end = start;
         while end + 1 < words.len() && end - start < 6 {
@@ -112,7 +121,7 @@ pub fn build_phrases(
                 break;
             }
             // More than one row break would need a third row.
-            if card.fixed && word_rows(&words[start..end + 2], inner, measure).len() > 1 {
+            if enforce_two_lines && word_rows(&words[start..end + 2], inner, measure).len() > 1 {
                 break;
             }
             end += 1;

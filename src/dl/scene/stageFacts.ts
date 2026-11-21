@@ -17,6 +17,7 @@ import { resolveStageCharacter } from "../characters/resolve";
 import { projectMeshParts, unionPartBounds, sampleMeshDepth, stagePlacement, type DepthEvidence } from "./stageGeometry";
 import { declaredMaterialPalette } from "./stageMaterials";
 import { compileCameraTrack } from "./cameraTrack";
+import { adjustStageCameraForFormat } from "../fullScreenHeroLayout";
 import type { Scene } from "./types";
 import { stageTreatmentAt } from "./materials/treatment";
 import { CEL_TREATMENT } from "./rigs/registry";
@@ -39,7 +40,9 @@ export type SharedDepthEvidence = Map<string, DepthEvidence>;
 
 // Prepares private CPU geometry and evaluators once, then projects the actual posed mesh bounds without WebGL. Pass one `sharedDepth` map to every crop of the same unchanged scene to sample each frame's depth once.
 export function prepareStageFacts(scene: Scene, width: number, height: number, sharedDepth?: SharedDepthEvidence) {
-  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize, scene.fps);
+  const camera = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize, scene.fps).map((pose) =>
+    adjustStageCameraForFormat(pose, width, height, scene.sceneSize),
+  );
   const entries = (scene.performances ?? []).map((p) => {
     const actor = scene.cast?.find((c) => c.id === p.actor && c.kind === "character");
     const resolved = actor?.kind === "character" ? resolveStageCharacter(actor) : undefined;

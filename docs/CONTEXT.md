@@ -249,18 +249,20 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `compactNumber(value)`: Formats numeric values with compact magnitude thresholds (T, B, M, k) used by `StatCounter` and reel number grounding.
 
 ### `src/dl/fullScreenHeroLayout.ts` (Frame Safe Areas, Hero Layout & Inset Regions)
-* `SUBTITLE_BAND_TOP_RATIO`: Single definition of the burned-in caption card top ratio (0.78), aligned with scene engine `CAPTION_SAFE_SQUARE`.
+* `SUBTITLE_BAND_TOP_RATIO`: Single definition of the widescreen 16:9 burned-in caption card top ratio (0.78), aligned with scene engine `CAPTION_SAFE_SQUARE`.
+* `REEL_CAPTION_SAFE_ZONE`: Single named platform safe zone for 9:16 vertical reel captions (`left: 0.06`, `right: 0.84`, `top: 0.40`, `bottom: 0.60`, `centerX: 0.45`, `width: 0.78`, `defaultY: 0.50`), clear of Shorts/Reels/TikTok chrome.
+* `REEL_STAGE_CENTER_Y_RATIO` / `adjustStageCameraForFormat(pose, width, height, size)`: Shifts 9:16 reel stage framing upward to `0.29` of frame height so stage art and characters stay above the reel caption safe zone.
 * `subtitleCardHeight(width, height, lines)`: Returns the rendered caption card height for the planned number of lines.
-* `subtitleCardBottom(width, height)`: Bottom edge (render px) of the subtitle card.
+* `subtitleCardBottom(width, height, format)`: Bottom edge (render px) of the subtitle card in the format's default band.
 * `getFullScreenHeroLayout(input)`: Computes media, scrim, and caption bounding box geometry for full-screen B-roll heroes from `FullScreenHeroLayoutInput` (moving the hero label to the bottom when `captionRect.y < height / 2`).
-* `getInsetRegion(format, width, height)`: Fixed frame rectangle (`InsetRect`) for `stage: "inset"` device beats (right third in long cut, lower-middle band in reel, clearing subtitle band and margins).
+* `getInsetRegion(format, width, height)`: Fixed frame rectangle (`InsetRect`) for `stage: "inset"` device beats (right third in long cut, middle-upper band `y 27-47%` in reel, clearing subtitle band and margins).
 * `INSET_FORMAT_FRAMES`: Reference frame sizes (`long`: 1920x1080, `reel`: 1080x1920) windowed against the square scene.
 * `getFrameMargins(format, width)`: Shared format chrome margins (long: 96px, reel: top 120px, left/right 64px, bottom 240px, scaled from format reference width), consumed by `useLayout()` and stage safe regions.
-* `getStageSafeRegion(format, width, height, captions)`: Safe scene rectangle intersecting the shared 1080 square with output margins and optional caption band.
+* `getStageSafeRegion(format, width, height, captions)`: Safe scene rectangle intersecting the shared 1080 square with output margins and optional format caption band.
 
 ### `src/dl/captionPlacement.ts` (Owner Caption Placement Resolution & Gesture Geometry)
-* `resolveCaptionPlacement(film, format, shotId)`: Resolves shot exception, film-wide placement, or default bottom card (`{x: 0.5, y: 0.78, w: undefined}`).
-* `captionBounds(format, frameW, frameH, w)`: Format-safe placement bounds clamping card within margins, 0.78 floor, and Reel action-zone boundaries.
+* `resolveCaptionPlacement(film, format, shotId)`: Resolves shot exception, film-wide placement, or format default (`long`: `{x: 0.5, y: 0.78, w: undefined}`, `reel`: `{x: 0.45, y: 0.50, w: undefined}`).
+* `captionBounds(format, frameW, frameH, w)`: Format-safe placement bounds clamping card within margins, format vertical ceiling/floor (`0.78` on long, `REEL_CAPTION_SAFE_ZONE.bottom = 0.60` on reel), and Reel action-zone boundaries (`x <= 0.84` when below `y = 0.40`).
 * `captionCardRect(format, frameW, frameH, placement, lines)`: Computes 2D card bounding rectangle for render, design check, and review OCR.
 * `dragCaption(input)`, `resizeCaption(input)`: Gesture math clamping deltas and snapping to margins/center/presets.
 * `carryCaptionPlacement(prev, next, options)`: Carries owner settings through film rebuilds; see the [owner caption cards contract](../src/dl/README.md#owner-caption-cards).

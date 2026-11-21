@@ -13,7 +13,12 @@ import { elementOpacity, VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibili
 import path from "node:path";
 import { buildTimeline } from "../../src/dl/camera";
 import type { Film } from "../../src/dl/schema";
-import { getInsetRegion, INSET_FORMAT_FRAMES, type InsetRect } from "../../src/dl/fullScreenHeroLayout";
+import {
+  adjustStageCameraForFormat,
+  getInsetRegion,
+  INSET_FORMAT_FRAMES,
+  type InsetRect,
+} from "../../src/dl/fullScreenHeroLayout";
 import { compileScene, type CompiledEntity, type CompiledFrame } from "../../src/dl/scene/compile";
 import type { Scene } from "../../src/dl/scene/types";
 import { stageProjection } from "../../src/dl/scene/projection";
@@ -146,7 +151,12 @@ function stateMatrix(state: NonNullable<CompiledEntity["elementStates"]>[string]
 function sceneToFrame(frame: CompiledFrame, scene: Scene, width: number, height: number): Affine {
   const sw = scene.sceneSize.w;
   const sh = scene.sceneSize.h;
-  const cam = frame.camera ?? { center: { x: sw / 2, y: sh / 2 }, zoom: 1, rotation: 0 };
+  const cam = adjustStageCameraForFormat(
+    frame.camera ?? { center: { x: sw / 2, y: sh / 2 }, zoom: 1, rotation: 0 },
+    width,
+    height,
+    scene.sceneSize,
+  );
   return stageProjection(cam, width, height, scene.sceneSize);
 }
 

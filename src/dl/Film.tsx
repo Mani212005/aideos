@@ -9,7 +9,7 @@ import { captionCardRect, resolveCaptionPlacement } from "./captionPlacement";
 import React from "react";
 import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Sequence } from "remotion";
 import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO, SANS } from "./tokens";
-import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, heroScrimGradient } from "./fullScreenHeroLayout";
+import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, getStageCardRect, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext, useAccent } from "./accent";
 import { BlockView } from "./Block";
@@ -256,14 +256,10 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
   const hasHero =
     shot.blocks.some((b: Block) => b.c === "AnalogyInset" && Boolean(b.fullScreenHero));
 
+  const captionsEnabled = film.subtitles !== false && film.captions !== "off";
   const target = hasHero
     ? { x: 0, y: 0, w: width, h: height }
-    : {
-        x: layout.margin.left,
-        y: layout.margin.top,
-        w: width - layout.margin.left - layout.margin.right,
-        h: height - layout.margin.top - layout.margin.bottom,
-      };
+    : getStageCardRect(layout.format, width, height, layout.margin, captionsEnabled);
 
   // An inset device lives in the format's fixed region and shares the stage: the scene around it is
   // neither dimmed nor covered, and the region itself is kept free of art by the design check.
@@ -599,10 +595,13 @@ export const FilmView: React.FC<FilmViewProps> = ({
     words: captionWords,
     fps,
     width,
+    format: captionFormat,
     fontSize: captionFontSize,
     placementAt: captionPlacementAt,
-    measure: (text) => measureText({ text, fontFamily: SANS, fontSize: captionFontSize, fontWeight: 700 }).width,
-  }) : [], [captionWords, fps, width, captionFontSize, captionPlacementAt]);
+    measure: (text) => typeof (globalThis as { document?: unknown }).document === "undefined"
+      ? Number.NaN
+      : measureText({ text, fontFamily: SANS, fontSize: captionFontSize, fontWeight: 700 }).width,
+  }) : [], [captionWords, fps, width, captionFormat, captionFontSize, captionPlacementAt]);
   const activeCaptionPhrase = captionPhraseAtFrame(captionPhrases, frame);
   const captionContextPlacement = captionPlacementAt(activeCaptionPhrase?.startFrame ?? frame);
   const cam = camAt(film, timeline, frame, { width, height });

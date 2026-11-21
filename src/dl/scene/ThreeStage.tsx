@@ -16,6 +16,7 @@ import { applyProp, buildProp } from "./props/paperGlider";
 import { resolveStageCharacter } from "../characters/resolve";
 import { compileCameraTrack } from "./cameraTrack";
 import { applyStageCamera } from "./projection";
+import { adjustStageCameraForFormat } from "../fullScreenHeroLayout";
 import { validateStage } from "./validateStage";
 import { CEL_TREATMENT } from "./rigs/registry";
 import { reportThreeStageInitializationFailure } from "./threeStageError";
@@ -116,7 +117,7 @@ function FrameCommit({ scene: manifest, frame, width, height, ready, testVisibil
     const draw = async () => {
       try {
         const res = resources.current ?? (resources.current = createResources());
-        const pose = res.cameraFrames[frame];
+        const pose = adjustStageCameraForFormat(res.cameraFrames[frame], width, height, manifest.sceneSize);
         const cam = res.camera;
         applyStageCamera(cam, pose, width, height, manifest.sceneSize);
         for (const entry of res.entries) {

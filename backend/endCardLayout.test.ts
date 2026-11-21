@@ -50,9 +50,11 @@ test("end card layout: centred in the stage safe area, clear of the caption card
   }
 });
 
-test("end card layout: captions moved into the middle send the card to the upper slot", () => {
+test("end card layout: captions moved into the stage middle send the card to the upper slot", () => {
   for (const { format, width, height } of FORMATS) {
-    const middle: CardRect = { x: width * 0.07, y: height * 0.45, w: width * 0.86, h: height * 0.1 };
+    // In 9:16 reels the stage safe area sits above the 50% caption band (captain's reel safe-zone rule), so a mid-stage caption sits at y=0.35.
+    const yRatio = format === "reel" ? 0.35 : 0.45;
+    const middle: CardRect = { x: width * 0.07, y: height * yRatio, w: width * 0.86, h: height * 0.1 };
     const layout = getEndCardLayout({ format, width, height, avoid: [middle], ...COPY });
     assert.equal(layout.slot, "upper");
     assert.ok(layout.card.y + layout.card.h <= middle.y, `${format}: the card sits above the captions`);

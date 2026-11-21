@@ -239,7 +239,7 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
     let phrase = &phrases[cf.phrase_index];
     let span = &placement.spans[phrase.span_index];
     let (w, h) = (f64::from(ctx.width), f64::from(ctx.height));
-    let card = captions::card_width(span, w);
+    let card = captions::card_width(span, w, ctx.format);
     let size = placement.font_size;
     let primary = ir_color(&node.color);
     let highlight = ir_color(&node.highlight_color);

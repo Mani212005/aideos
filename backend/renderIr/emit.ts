@@ -18,7 +18,11 @@ import { DRIFT, EXPO, MS, frames } from "../../src/dl/motion";
 import { compactNumber } from "../../src/dl/numberFormat";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
-import { SUBTITLE_FONT_RATIO } from "../../src/dl/fullScreenHeroLayout";
+import {
+  SUBTITLE_FONT_RATIO,
+  adjustStageCameraForFormat,
+  getStageCardRect,
+} from "../../src/dl/fullScreenHeroLayout";
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
@@ -358,8 +362,8 @@ function motionTrack(property: "opacity" | "y" | "x" | "scaleX", value: (f: numb
 
 /** A shot's text-card box: the frame inside its margins (Film.tsx `Stage` for a `frame` stage). */
 function stageRect(ctx: LayoutCtx) {
-  const m = ctx.layout.margin;
-  return { x: m.left, y: m.top, w: ctx.width - m.left - m.right, h: ctx.height - m.top - m.bottom };
+  const captions = ctx.film.subtitles !== false && ctx.film.captions !== "off";
+  return getStageCardRect(ctx.format, ctx.width, ctx.height, ctx.layout.margin, captions);
 }
 
 /** Lays out a TextReveal block: per-word text nodes with their entrance, and the accent word's underline. */
@@ -648,7 +652,7 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
   for (const w of MONO_WEIGHTS) assets.push({ kind: "font", id: monoId(w), path: "fonts/JetBrainsMono-latin.ttf", family: "JetBrains Mono", weight: w });
 
   const cam = compileCameraTrack(scene.camera, scene.durationFrames, scene.sceneSize, fps);
-  const camAt = (f: number) => cam[Math.min(frozen(f), sceneLast)];
+  const camAt = (f: number) => adjustStageCameraForFormat(cam[Math.min(frozen(f), sceneLast)], width, height, scene.sceneSize);
   const last = total - 1;
   const camera = {
     centerX: linearKeyframes((f) => camAt(f).center.x, 0, last),

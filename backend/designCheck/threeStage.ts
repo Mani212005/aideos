@@ -10,7 +10,7 @@ import { prepareStageFacts, type SharedDepthEvidence } from "../../src/dl/scene/
 import { rectInside, projectStagePoint, SAFE_SQUARE, type SceneRect } from "../../src/dl/scene/projection";
 import { undeclaredMaterialColours } from "../../src/dl/scene/stageGeometry";
 import { boundTheme } from "../../src/projectTheme";
-import { getInsetRegion, getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
+import { getInsetRegion, getStageSafeRegion, stageCenterY } from "../../src/dl/fullScreenHeroLayout";
 import { buildTimeline, shotAt } from "../../src/dl/camera";
 import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionPhrases";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
@@ -64,7 +64,7 @@ export function checkThreeStage(
       const svgAt = scene.props.some((p) => p.plane === "foreground") ? prepareSvgProjection(scene, width, height, film.id) : undefined;
       const foregroundIds = new Set(scene.props.filter((p) => p.plane === "foreground").map((p) => p.assetId));
       const captions = film.captions !== "off" && film.subtitles !== false;
-      const hasFixedWidth = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width).fixed);
+      const hasFixedWidth = timeline.some((t) => resolveCaptionCardWidth(resolveCaptionPlacement(film, format, t.shot.id), width, format).fixed);
       const words = captions ? captionWordsForFilm(film) : [];
       const fontSize = Math.round(Math.min(width, height) * 0.042);
       const widths = hasFixedWidth && words.length
@@ -74,9 +74,10 @@ export function checkThreeStage(
         words,
         fps: film.fps,
         width,
+        format,
         fontSize,
         placementAt: (startFrame) => resolveCaptionPlacement(film, format, shotAt(timeline, startFrame)?.shot.id),
-        measure: (text) => widths[text] ?? 0,
+        measure: (text) => widths[text],
       });
       const defaultSafe = getStageSafeRegion(format, width, height, captions);
       const placedSafe = getStageSafeRegion(format, width, height, false);
@@ -152,7 +153,7 @@ export function checkThreeStage(
         const safe = placementAtFrame(frame).source === "default" ? defaultSafe : placedSafe;
         const bounds = pose?.actor === target.focus ? pose.actorBounds : pose?.propBounds;
         const depth = pose?.actor === target.focus ? pose.actorVisibility : pose?.propVisibility;
-        if (target.authoredFocus !== target.focus || depth?.status !== "exposed" || !bounds || !rectInside(bounds, safe) || Math.hypot((bounds.x0 + bounds.x1) / 2 - width / 2, (bounds.y0 + bounds.y1) / 2 - height / 2) > Math.min(width, height) / 3) add("camera", frame, format, target.focus, "focused cast silhouette is cropped, hidden, unnamed in the authored pose or away from the camera's subject region");
+        if (target.authoredFocus !== target.focus || depth?.status !== "exposed" || !bounds || !rectInside(bounds, safe) || Math.hypot((bounds.x0 + bounds.x1) / 2 - width / 2, (bounds.y0 + bounds.y1) / 2 - stageCenterY(width, height)) > Math.min(width, height) / 3) add("camera", frame, format, target.focus, "focused cast silhouette is cropped, hidden, unnamed in the authored pose or away from the camera's subject region");
       }
     } catch (error) {
       add("scene", checkedFrame, format, "three stage", error instanceof Error ? error.message : String(error));

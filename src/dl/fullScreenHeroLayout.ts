@@ -8,7 +8,33 @@
 
 import type { CaptionRect } from "./captionPlacement";
 import type { Format } from "./tokens";
-import { projectStagePoint, SAFE_SQUARE, type SceneRect } from "./scene/projection";
+import { projectStagePoint, SAFE_SQUARE, SCENE_SIZE, stageViewport, type SceneRect, type StageCameraPose } from "./scene/projection";
+
+/**
+ * Platform safe zone for burned-in 9:16 vertical reel captions, as fractions of the frame.
+ * Sized from YouTube Shorts phone captures (also clears Instagram Reels and TikTok overlays):
+ * - top header sits in y 0..8%
+ * - right action-button column sits in x 87..100%, y 40..80%
+ * - bottom channel/title/chips/progress block sits in y 62..100%
+ * Keeping captions inside y 40..60% (bottom edge <= 60%) and x 6..84% keeps every word clear of
+ * every platform overlay while staying visually prominent on a phone screen.
+ */
+export const REEL_CAPTION_SAFE_ZONE = {
+  left: 0.06,
+  right: 0.84,
+  top: 0.4,
+  bottom: 0.6,
+  centerX: 0.45,
+  width: 0.78,
+  defaultY: 0.5,
+} as const;
+
+/**
+ * Vertical centre of the stage in a 9:16 reel, as a fraction of frame height.
+ * Shifting the stage up from 50% to 29% keeps scene artwork, characters and diagrams above the
+ * 40..60% reel caption safe zone and below the 8% Shorts top header.
+ */
+export const REEL_STAGE_CENTER_Y_RATIO = 0.29;
 
 // Returns the shared format chrome margins, scaled from each format's reference width.
 export function getFrameMargins(format: Format, width: number) {
@@ -18,20 +44,77 @@ export function getFrameMargins(format: Format, width: number) {
     : { top: 120 * scale, right: 64 * scale, bottom: 240 * scale, left: 64 * scale };
 }
 
+// Returns the default vertical centre of the stage in render pixels for a viewport.
+export function stageCenterY(width: number, height: number): number {
+  return width < height ? height * REEL_STAGE_CENTER_Y_RATIO : height / 2;
+}
+
+// Shifts a scene camera pose upward in 9:16 reels so stage art sits cleanly above the reel caption safe zone.
+export function adjustStageCameraForFormat(
+  pose: StageCameraPose,
+  width: number,
+  height: number,
+  size: { w: number; h: number } = SCENE_SIZE,
+): StageCameraPose {
+  if (width >= height) return pose;
+  const { fit } = stageViewport(width, height, size);
+  const scale = fit * pose.zoom;
+  if (!(scale > 0)) return pose;
+  const shiftScene = ((0.5 - REEL_STAGE_CENTER_Y_RATIO) * height) / scale;
+  const rad = (pose.rotation * Math.PI) / 180;
+  return {
+    ...pose,
+    center: {
+      x: pose.center.x + shiftScene * Math.sin(rad),
+      y: pose.center.y + shiftScene * Math.cos(rad),
+    },
+  };
+}
+
+// Returns the default burned-in subtitle top ratio for a format.
+export function subtitleBandTopRatio(format: Format): number {
+  return format === "reel" ? REEL_CAPTION_SAFE_ZONE.defaultY : SUBTITLE_BAND_TOP_RATIO;
+}
+
 // Intersects the common stage square with output margins and the actual caption band.
 export function getStageSafeRegion(format: Format, width: number, height: number, captions: boolean): SceneRect {
-  const pose = { center: { x: 960, y: 960 }, zoom: 1, rotation: 0 };
+  const pose = adjustStageCameraForFormat({ center: { x: 960, y: 960 }, zoom: 1, rotation: 0 }, width, height);
   const start = projectStagePoint({ x: SAFE_SQUARE.x0, y: SAFE_SQUARE.y0 }, pose, width, height);
   const end = projectStagePoint({ x: SAFE_SQUARE.x1, y: SAFE_SQUARE.y1 }, pose, width, height);
   const margin = getFrameMargins(format, width);
-  return { x0: Math.max(start.x, margin.left), y0: Math.max(start.y, margin.top), x1: Math.min(end.x, width - margin.right), y1: Math.min(end.y, height - margin.bottom, captions ? height * SUBTITLE_BAND_TOP_RATIO : height) };
+  return {
+    x0: Math.max(start.x, margin.left),
+    y0: Math.max(start.y, margin.top),
+    x1: Math.min(end.x, width - margin.right),
+    y1: Math.min(end.y, height - margin.bottom, captions ? height * subtitleBandTopRatio(format) : height),
+  };
+}
+
+// Returns the bounding rectangle for stage-level text cards so reel cards sit above the reel caption safe zone.
+export function getStageCardRect(
+  format: Format,
+  width: number,
+  height: number,
+  margin: { top: number; right: number; bottom: number; left: number },
+  captions = true,
+): InsetRect {
+  const bottom =
+    format === "reel" && captions
+      ? Math.min(height - margin.bottom, height * REEL_CAPTION_SAFE_ZONE.defaultY - 24 * (width / 1080))
+      : height - margin.bottom;
+  return {
+    x: margin.left,
+    y: margin.top,
+    w: width - margin.left - margin.right,
+    h: Math.max(0, bottom - margin.top),
+  };
 }
 
 /**
- * Top edge of the burned-in subtitle card, as a fraction of frame height.
- * `KineticSubtitles` positions its "bottom" card here and this module keeps hero
- * captions out of the same band, so the two layouts are derived from one number
- * rather than independently guessed (see src/dl/README.md on the reel safe area).
+ * Top edge of the burned-in subtitle card in widescreen 16:9, as a fraction of frame height.
+ * For 9:16 reels use `REEL_CAPTION_SAFE_ZONE.defaultY` (via `subtitleBandTopRatio("reel")`).
+ * `KineticSubtitles` and `fullScreenHero` derive their bands from these constants rather than
+ * independently guessed numbers (see src/dl/README.md).
  */
 export const SUBTITLE_BAND_TOP_RATIO = 0.78;
 
@@ -54,8 +137,12 @@ export const subtitleCardHeight = (
 };
 
 /** Bottom edge (render px) of the tallest subtitle card a frame of this size can draw, to check it clears the frame edge. */
-export const subtitleCardBottom = (width: number, height: number): number => {
-  return height * SUBTITLE_BAND_TOP_RATIO + subtitleCardHeight(width, height);
+export const subtitleCardBottom = (
+  width: number,
+  height: number,
+  format: Format = width < height ? "reel" : "long",
+): number => {
+  return height * subtitleBandTopRatio(format) + subtitleCardHeight(width, height);
 };
 
 export type FullScreenHeroLayoutInput = {
@@ -115,6 +202,7 @@ const SCRIM_STOPS = [
  * film rather than two per-format designs (see `Format` in src/dl/tokens.ts).
  */
 export const getFullScreenHeroLayout = ({
+  format,
   height,
   margin,
   labelHeight,
@@ -126,7 +214,7 @@ export const getFullScreenHeroLayout = ({
     scrimStops: SCRIM_STOPS,
     caption: { left: margin.left, top: labelTop },
     captionBand: { top: labelTop, bottom: labelTop + labelHeight },
-    subtitleBandTop: height * SUBTITLE_BAND_TOP_RATIO,
+    subtitleBandTop: height * subtitleBandTopRatio(format),
     frameHeight: height,
   };
 };
@@ -148,24 +236,22 @@ export type InsetRect = { x: number; y: number; w: number; h: number };
  * shares the stage instead of covering it, so the region is a constant per format and the design
  * check keeps scene art out of it while an inset shot plays. Both edges that face captions and
  * chrome derive from the margins in `useLayout` (long: 96 px all round; reel: 120 top, 64 sides)
- * and from `SUBTITLE_BAND_TOP_RATIO`, so moving the caption band moves the region's floor with it.
+ * and from each format's caption band (`SUBTITLE_BAND_TOP_RATIO` for long, `REEL_CAPTION_SAFE_ZONE`
+ * for reel), so moving the caption band moves the region's floor with it.
  * - long: the right third, between the top margin and the caption band.
- * - reel: the lower-middle band, between the middle of the frame and the caption band.
+ * - reel: the middle-upper band (y 27..47%), between the shifted stage art and the 50% caption band.
  */
-const INSET_CAPTION_GAP_RATIO = 0.04;
-
-const INSET_RATIOS: Record<Format, { left: number; right: number; top: number }> = {
-  long: { left: 0.6, right: 1 - 96 / 1920, top: 96 / 1080 },
-  reel: { left: 64 / 1080, right: 1 - 64 / 1080, top: 0.5 },
+const INSET_RATIOS: Record<Format, { left: number; right: number; top: number; bottom: number }> = {
+  long: { left: 0.6, right: 1 - 96 / 1920, top: 96 / 1080, bottom: SUBTITLE_BAND_TOP_RATIO - 0.04 },
+  reel: { left: 64 / 1080, right: 1 - 64 / 1080, top: 518 / 1920, bottom: 902 / 1920 },
 };
 
 // Returns the inset region for a format in the pixels of a frame of the given size.
 export const getInsetRegion = (format: Format, width: number, height: number): InsetRect => {
   const r = INSET_RATIOS[format];
-  const bottom = height * (SUBTITLE_BAND_TOP_RATIO - INSET_CAPTION_GAP_RATIO);
   const x = width * r.left;
   const y = height * r.top;
-  return { x, y, w: width * r.right - x, h: bottom - y };
+  return { x, y, w: width * r.right - x, h: height * r.bottom - y };
 };
 
 /** Reference frame size of each format, which is what the scene square is windowed against. */

@@ -170,7 +170,30 @@ export function analyzeSample(words: OcrWord[], gray: Uint8Array | null, width: 
   const T = THRESHOLDS;
   const confident = words.filter((w) => w.conf >= T.readability.confidenceMin && w.text.length > 1 && /[A-Za-z0-9]/.test(w.text));
 
-  const band = captionRect === null ? [] : confident.filter((w) => (captionRect ? w.left >= captionRect.x && w.left + w.width <= captionRect.x + captionRect.w && w.top >= captionRect.y && w.top + w.height <= captionRect.y + captionRect.h : w.top > height * T.captions.bandTopRatio) && w.height / unit >= T.captions.wordHeightMin);
+  const isReel = width < height;
+  const reelZone = T.captions.reelSafeZone;
+  const band = captionRect === null
+    ? []
+    : confident.filter((w) => {
+        if (w.height / unit < T.captions.wordHeightMin) return false;
+        if (captionRect) {
+          return (
+            w.left >= captionRect.x &&
+            w.left + w.width <= captionRect.x + captionRect.w &&
+            w.top >= captionRect.y &&
+            w.top + w.height <= captionRect.y + captionRect.h
+          );
+        }
+        if (isReel) {
+          return (
+            w.left >= reelZone.left * width &&
+            w.left + w.width <= reelZone.right * width &&
+            w.top >= reelZone.top * height &&
+            w.top + w.height <= reelZone.bottom * height
+          );
+        }
+        return w.top > height * T.captions.bandTopRatio;
+      });
   const lines = new Map<number, OcrWord[]>();
   for (const w of band) {
     const key = Math.round(w.top / (20 * unit));

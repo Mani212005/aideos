@@ -9,6 +9,7 @@
 
 import { STORY_HOLD_MAX_SEC } from "../stageTimeline";
 import { VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
+import { REEL_CAPTION_SAFE_ZONE } from "../../src/dl/fullScreenHeroLayout";
 
 /** Calibrated on 2026-10-01 against references A, B and RAG (frames at 10 fps, 480x270, ink = 28 levels off the median). */
 export const THRESHOLDS = {
@@ -28,14 +29,16 @@ export const THRESHOLDS = {
     boundaryCarryMin: 0.6,
   },
   captions: {
-    /** Share of narrated sample times with captions in the declared card, or the bottom-quarter default. */
+    /** Share of narrated sample times with captions in the declared card, or the format default safe zone. */
     coverageMin: 0.6,
     /** A word in the band at least this tall (px at 1080 short side) counts as caption text. */
     wordHeightMin: 28,
     /** Caption lines allowed at once. */
     maxLines: 2,
-    /** The fallback band is the bottom quarter of the frame when no placement metadata exists. */
+    /** Widescreen 16:9 fallback band: bottom quarter of the frame when no placement metadata exists. */
     bandTopRatio: 0.75,
+    /** Vertical 9:16 reel default platform safe zone (y 40-60%, x 6-84%, shared with fullScreenHeroLayout.ts). */
+    reelSafeZone: REEL_CAPTION_SAFE_ZONE,
     /** Seconds between OCR samples. */
     sampleEverySec: 2,
   },

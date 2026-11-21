@@ -5,7 +5,7 @@
  */
 import type { CaptionWord } from "./KineticSubtitles";
 import type { CaptionPlacement } from "./schema";
-import { resolveCaptionCardWidth } from "./captionPlacement";
+import { resolveCaptionCardWidth, type CaptionFormat } from "./captionPlacement";
 export type CaptionPhrase = {
   startIndex: number;
   endIndex: number;
@@ -72,11 +72,12 @@ export function fitCaptionWordToRow(
           maxWidth: Math.max(0, innerWidth - 12),
         };
 }
-// Keeps the legacy split for implicit defaults and measures every saved card before displaying it.
+// Keeps the legacy split for implicit widescreen defaults and enforces the two-line limit for saved cards and 9:16 reels.
 export function buildCaptionPhrases({
   words,
   fps,
   width,
+  format = "long",
   placementAt,
   measure,
 }: {
@@ -84,6 +85,7 @@ export function buildCaptionPhrases({
   fps: number;
   fontSize: number;
   width: number;
+  format?: CaptionFormat;
   placementAt: (frame: number) => CaptionPlacement & { source?: "shot" | "film" | "default" };
   measure: (text: string) => number;
 }): CaptionPhrase[] {
@@ -91,8 +93,9 @@ export function buildCaptionPhrases({
   let start = 0;
   while (start < words.length) {
     const placement = placementAt(words[start].startFrame);
-    const card = resolveCaptionCardWidth(placement, width);
+    const card = resolveCaptionCardWidth(placement, width, format);
     const customWidth = card.fixed;
+    const enforceTwoLines = customWidth || format === "reel";
     const inner = card.innerWidth;
     let end = start;
     while (end + 1 < words.length && end - start < 6) {
@@ -109,7 +112,9 @@ export function buildCaptionPhrases({
       )
         break;
       if (
-        customWidth &&
+        enforceTwoLines &&
+        Number.isFinite(measure(word.text)) &&
+        Number.isFinite(measure(words[end + 1].text)) &&
         captionWordRows(words.slice(start, end + 2), inner, measure).length > 1
       )
         break;

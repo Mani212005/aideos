@@ -32,7 +32,7 @@ full camera/pacing rubric honestly. It is engineering evidence, not an accepted 
 | 2 | **Carry-over with transformation** | at least 3 beat boundaries in which a named element persists and changes position, scale, shape or role (graph -> card in a flowchart); plan a distinct resulting state, finish the change during a camera hold on that object, and leave it framed for at least about 2 s | >= 1 per 20 s | deterministic from scene data + judge confirms it reads as the same object |
 | 3 | **Visible cause and effect** | each narrated claim of mechanism has an animation whose start is within 0.4 s of the spoken keyword, and which moves the thing named | every beat with a verb of action | cue-vs-word timing deterministic; "does the animation show the claim" = judge |
 | 4 G | **Camera that does something** | camera track with >= 1 move per 20 s; each move is a deliberate turn toward the next subject, arrives about one beat before its cue word, then holds for about 3 to 5 s; no move faster than 20% frame width per second | present, purposeful, settled | deterministic from compiled camera data; framing purpose = judge |
-| 5 G | **Captions at placed position (default bottom)** | burned-in caption card at its owner-declared position, or, when no position is declared, in the bottom 22% for >= 95% of narrated time; text >= 36 px at 1080p, <= 2 lines, no widows, caption words match narration | pass | deterministic (OCR in the declared card or default band + word-timing diff) |
+| 5 G | **Captions at placed position (default bottom)** | burned-in caption card at its owner-declared position, or, when no position is declared, in the format default band (widescreen 16:9: bottom 22% starting at 78%; vertical 9:16 reel: platform safe zone y 40-60%, bottom edge <= 60%, x 6-84%) for >= 95% of narrated time; text >= 36 px at 1080p (45 px default), <= 2 lines, no widows, caption words match narration, clear of stage art | pass | deterministic (OCR in the declared card or format default safe zone + word-timing diff) |
 | 6 G | **Readability** | every on-screen text >= 24 px at 1080p (labels may be 20 px if non-essential), contrast >= 4.5:1, on screen >= 0.35 s per word | zero violations among essential text | deterministic (DOM/scene text measure; OCR + contrast on frames) |
 | 7 G | **No overlap or clipping** | text-text and text-art intersection, off-safe-area content (96 px margin) | zero | deterministic (scene geometry) + judge for rendered edge cases |
 | 8 G | **Audio sync** | each cue within 120 ms of its word; shot boundaries inside a pause; voiceover = film length within 100 ms | pass | deterministic (Whisper word times vs clip starts) |
@@ -44,6 +44,19 @@ full camera/pacing rubric honestly. It is engineering evidence, not an accepted 
 ### Reel supplement
 
 Applies to the 9:16 reel only, on top of the rubric above. Writing guidance is in the [Reel hook](DIRECTOR_GUIDE.md#reel-hook) rules; the measurement is in [REVIEW.md](REVIEW.md#reel-hook-criterion-15).
+
+#### Reel caption platform safe zone (`REEL_CAPTION_SAFE_ZONE`)
+
+YouTube Shorts, Instagram Reels and TikTok paint persistent UI chrome over vertical 9:16 frames:
+- Top header (back, search, menu): `y = 0%..8%`
+- Right action-button column (like, comments, save, share, remix): `x = 87%..100%`, `y = 40%..80%`
+- Bottom info block (channel handle, title, hashtags, audio/playlist chips, Analytics/Promote chips, bottom bar): `y = 62%..100%`
+
+Every 9:16 reel places burned-in captions inside `REEL_CAPTION_SAFE_ZONE` (`src/dl/fullScreenHeroLayout.ts`, shared by the native renderer, Render IR emitter, Remotion renderer, Studio editor, design check and measured review):
+- **Vertical band**: `y = 40%..60%` of frame height (`defaultY = 0.50`, bottom edge always `<= 60%`)
+- **Horizontal band**: `x = 6%..84%` of frame width (`centerX = 0.45`, `width = 0.78`), keeping clear of the right-hand button column
+- **Lines and type**: at most 2 lines per phrase, readable phone size (`SUBTITLE_FONT_RATIO = 0.042`, 45 px at 1080w), strong active-word highlight and dark card backing
+- **Stage clearance**: the stage camera shifts upward (`REEL_STAGE_CENTER_Y_RATIO = 0.29`, and reel `stage: "inset"` occupies `y = 27%..47%`) so diagrams, characters and text cards never collide with the caption band or the 8% top header.
 
 | # | Criterion | How to measure | Pass target | Method |
 |---|---|---|---|---|
