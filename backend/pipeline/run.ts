@@ -26,6 +26,7 @@ import path from "path";
 import type { Film } from "../../src/dl/schema";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
 import { DEFAULT_KOKORO_SPEED } from "../tts";
+import { HOUSE_PACE } from "../pacingProfile";
 import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { ensureEndCardVoice, narrationVoiceOf, synthesizeEndCardLine } from "../endCard/voice";
 import { readRecordedNarration } from "./recordedNarration";
@@ -408,6 +409,8 @@ export async function runProduction(
       request.ttsBackend ?? "auto",
       request.voice ?? "default",
       request.speed ?? DEFAULT_KOKORO_SPEED,
+      // The house narration rate re-paces a synthesizer without its own speed setting, so it shapes the take too.
+      `rate:${HOUSE_PACE.narrationRate}`,
       ...(request.language && request.language !== "auto" ? [request.language] : []),
     );
     const narrationCachePath = path.join(pkgDir, "narration.json");

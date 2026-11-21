@@ -6,6 +6,7 @@
  */
 
 import type { CriterionEvaluation } from "./types";
+import { HOUSE_PACE } from "../pacingProfile";
 
 export interface RubricCriterionDefinition {
   name: string;
@@ -30,7 +31,7 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     isGate: false,
     description:
       "Elements carry over between beats and visibly change position, scale, shape, or role (e.g. points tilt into 3D layers, query drops layer to layer, graph slides and transforms into a pipeline card).",
-    passTarget: "At least 1 transforming carry-over event per 20s",
+    passTarget: `At least 1 transforming carry-over event per ${HOUSE_PACE.carryOverPerSec}s`,
   },
   {
     name: "visible_cause_effect",
@@ -45,8 +46,8 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     title: "Camera that does something",
     isGate: true,
     description:
-      "Purposeful camera movement (pan, zoom, tilt, payoff pull-back) with at least 1 move per 20s. Every move must change what is framed; no aimless drift or frantically fast pans (>20% width/sec).",
-    passTarget: "Purposeful framing changes >= 1 per 20s; smooth cinematic motion",
+      `Purposeful camera movement (pan, zoom, tilt, payoff pull-back) with at least 1 move per ${HOUSE_PACE.cameraMovePerSec}s. Every move must change what is framed; no aimless drift or frantically fast pans (>20% width/sec).`,
+    passTarget: `Purposeful framing changes >= 1 per ${HOUSE_PACE.cameraMovePerSec}s; smooth cinematic motion`,
   },
   {
     name: "bottom_captions",
@@ -85,8 +86,8 @@ export const RUBRIC_CRITERIA: RubricCriterionDefinition[] = [
     title: "Pacing",
     isGate: false,
     description:
-      "Dynamic visual rhythm: no static frame held unchanged for > 3s in the story (the end card's held, dimmed final stage is intentional), mean beat length 5-12s, no dead air > 0.7s, narration delivery pace 130-170 words per minute.",
-    passTarget: "Continuous visual motion; no static freezes > 3s; natural delivery",
+      `Dynamic visual rhythm at the brisk house pace: no static frame held unchanged for > ${HOUSE_PACE.storyHoldMaxSec}s in the story (the end card's held, dimmed final stage is intentional), mean beat length at most ${HOUSE_PACE.meanBeatMaxSec}s (shorter is fine), no dead air > ${HOUSE_PACE.deadAirMaxSec}s, narration delivery pace ${HOUSE_PACE.wpmTarget[0]}-${HOUSE_PACE.wpmTarget[1]} words per minute, every word still clearly intelligible.`,
+    passTarget: `Continuous visual motion; no static freezes > ${HOUSE_PACE.storyHoldMaxSec}s; brisk but clear delivery`,
   },
   {
     name: "storyline",

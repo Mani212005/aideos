@@ -9,6 +9,7 @@
  */
 
 import { storyRanges } from "../stageTimeline";
+import { HOUSE_PACE } from "../pacingProfile";
 import type { Loudness, Silence } from "./media";
 import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
@@ -93,15 +94,15 @@ function carryOver(i: ReviewInputs): CriterionResult {
   const { film, video } = i;
   if (!film) return skipped(2, "carry-over", "Carry-over with transformation", false, "needs aideos film data; pixel overlap in place measures stillness, not continuity");
   const hits = film.boundaries.filter((b) => b.transformed > 0);
-  const per20 = (hits.length / Math.max(1, video.durationSec)) * 20;
-  const floor = 1 / 20;
-  const ok = hits.length / Math.max(1, video.durationSec) >= floor;
+  const every = HOUSE_PACE.carryOverPerSec;
+  const perWindow = (hits.length / Math.max(1, video.durationSec)) * every;
+  const ok = perWindow >= 1;
   return {
     id: 2, key: "carry-over", name: "Carry-over with transformation", gate: false,
-    status: ok ? "pass" : "fail", score: score(per20, 0, 1.5),
-    summary: `${hits.length} beat boundaries carry an element across while changing it (${round(per20, 2)} per 20 s, needs at least 1)`,
-    metrics: { transformedBoundaries: hits.length, per20s: round(per20) },
-    threshold: { per20sMin: 1 },
+    status: ok ? "pass" : "fail", score: score(perWindow, 0, 1.5),
+    summary: `${hits.length} beat boundaries carry an element across while changing it (${round(perWindow, 2)} per ${every} s, needs at least 1)`,
+    metrics: { transformedBoundaries: hits.length, perWindow: round(perWindow), windowSec: every },
+    threshold: { perWindowMin: 1, windowSec: every },
     evidence: spread(hits.map((b) => b.t), 3).map((t) => ({ t: t + 0.5, note: "an element persists across this boundary and is transformed" })),
     fix: ok ? undefined : "At each beat boundary keep at least one named element and change its position, scale, shape or role (a graph that slides aside and shrinks into a flowchart card).",
   };
@@ -358,7 +359,7 @@ function camera(i: ReviewInputs): CriterionResult {
     summary: failures.length ? failures.join("; ") : `${cam.moves.length} purposeful camera moves`,
     metrics, threshold,
     evidence: spread(cam.moves.map((m) => m.t), 3).map((t) => ({ t: t + 0.5, note: "camera move" })),
-    fix: failures.length ? "Add a slow camera move that changes what is framed at least once every 20 s (push in on the detail being explained, pull back for the payoff), none faster than 20% of the frame width per second." : undefined,
+    fix: failures.length ? `Add a slow camera move that changes what is framed at least once every ${T.camera.movePerSec} s (push in on the detail being explained, pull back for the payoff), none faster than 20% of the frame width per second.` : undefined,
   };
 }
 
@@ -472,7 +473,7 @@ function audioSync(i: ReviewInputs): CriterionResult {
   };
 }
 
-// Criterion 9: pacing (stillness, cuts, dead air, speaking rate); `profile` picks the narration pace window.
+// Criterion 9: pacing (stillness, cuts, dead air, speaking rate, beat length) at the house pace; `profile` picks the narration pace window.
 function pacing(i: ReviewInputs, profile: PacingProfileName): CriterionResult {
   const { render, video, narration, film, silences } = i;
   const failures: string[] = [];
@@ -493,15 +494,17 @@ function pacing(i: ReviewInputs, profile: PacingProfileName): CriterionResult {
   const wpm = narration?.timed ? wordsPerMinute(narration.words) : narration ? (narration.text.split(/\s+/).filter(Boolean).length / video.durationSec) * 60 : null;
   const band = T.pacingProfiles[profile];
   if (wpm !== null && (wpm < band.wpmMin || wpm > band.wpmMax) && narration?.timed) failures.push(`narration runs at ${Math.round(wpm)} words per minute (window ${band.wpmMin} to ${band.wpmMax})`);
-  const meanBeat = film ? film.shotDurations.reduce((a, b) => a + b, 0) / film.shotDurations.length : null;
+  const meanBeat = film && film.shotDurations.length ? film.shotDurations.reduce((a, b) => a + b, 0) / film.shotDurations.length : null;
+  const beatMax = T.pacing.meanBeatMaxSec;
+  if (meanBeat !== null && meanBeat > beatMax) failures.push(`the mean beat lasts ${round(meanBeat, 1)} s (max ${beatMax} s)`);
   return {
     id: 9, key: "pacing", name: "Pacing", gate: false,
     status: failures.length ? "fail" : "pass", score: Math.round(clamp(4 - failures.length * 1.5, 0, 4) * 10) / 10,
     summary: failures.length ? failures.join("; ") : "no static holds, cuts or dead air; narration pace is in range",
     metrics: { longestStaticSec: round(longest, 1), hardCuts: render.hardCutTimes.length, hardCutsPerMin: round(cutsPerMin, 1), deadAirStretches: deadAir, wordsPerMinute: wpm === null ? null : Math.round(wpm), meanBeatSec: meanBeat === null ? null : round(meanBeat, 1), ...(profile === "default" ? {} : { pacingProfile: profile }) },
-    threshold: { staticRunMaxSec: T.pacing.staticRunMaxSec, hardCutsPerMinMax: T.pacing.hardCutsPerMinMax, deadAirMaxSec: T.pacing.deadAirMaxSec, wpmMin: band.wpmMin, wpmMax: band.wpmMax },
+    threshold: { staticRunMaxSec: T.pacing.staticRunMaxSec, hardCutsPerMinMax: T.pacing.hardCutsPerMinMax, deadAirMaxSec: T.pacing.deadAirMaxSec, wpmMin: band.wpmMin, wpmMax: band.wpmMax, meanBeatMaxSec: beatMax },
     evidence: [...staticRuns.slice(0, 2).map((r) => ({ t: (r.start + r.end) / 2, note: "picture unchanged here" })), ...spread(render.hardCutTimes, 3).map((t) => ({ t, note: "hard cut" }))],
-    fix: failures.length ? "Replace cuts with continuous transforms of the same stage, give every beat something that moves, and trim pauses over 0.7 s." : undefined,
+    fix: failures.length ? `Replace cuts with continuous transforms of the same stage, give every beat something that moves, trim pauses over ${T.pacing.deadAirMaxSec} s, and split or merge narration lines so beats average at most ${beatMax} s.` : undefined,
   };
 }
 
