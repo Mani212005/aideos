@@ -94,10 +94,15 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
   action. It restores `node_modules` and `editor/node_modules` from one cache keyed on the OS, the CPU, the
   exact Node version, both `package.json` files, both lockfiles and `.npmrc`, then runs only
   `npm run ensure:generated`. On a miss it runs `npm ci` (npm cache keyed on both lockfiles) and saves the
-  cache right after the install, before any step writes into `node_modules`. Why: `npm ci` took about 41 s
-  per job on CI since 17 Nov (extract and link of about 1 GB; dependency install scripts are about 4 s), while
-  the restore takes about 5 s. A pull request branch cannot read a cache that another pull request created, so
-  its first run is a miss; caches made by `main` are readable everywhere. Jobs that render
+  cache right after the install, before any step writes into `node_modules`. Why: the `npm ci` step took 39 to
+  63 s per job (median 41 s) in GitHub job step timings of real runs on `main` (run ids 44886280947,
+  44893547868, 44897331283, 44899769863, 44902106289); the bun evaluation report
+  (`data/aideos-bun-evaluation/report.md`, section 1b) recorded 11 to 24 s on 15 Nov and 41 to 64 s on 17 to
+  19 Nov with unchanged lockfiles. The effect of the cache is expected, not yet measured: confirm it with this
+  pull request's own CI runs by comparing the `Install dependencies` step time per job (the `npm ci` step
+  before; the cache restore plus `ensure:generated` after) over at least 3 runs. A pull request branch cannot
+  read a cache that another pull request created, so its first run is a miss; caches made by `main` are
+  readable everywhere. Jobs that render
   install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`. APT packages
   are cached across runs under `/home/runner/.apt-cache` with retry-hardened installs (detailed under
   [Runner hardening and red-main alert](#runner-hardening-and-red-main-alert)).
