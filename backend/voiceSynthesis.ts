@@ -1,11 +1,13 @@
 /**
  * File Description: Voiceover synthesis for the studio's /api/generate-voiceover route.
- * Inputs and outputs: narration text and voice preferences -> synthesized audio buffer via provider chain.
- * Used by: editor/vite.config.ts (api/generate-voiceover).
+ * Inputs and outputs: narration text and voice preferences -> synthesized WAV audio buffer via provider chain.
+ * Used by: editor/vite.config.ts (api/generate-voiceover), backend/voiceSynthesis.test.ts.
  *
- * It tries providers in order (local Kokoro, Deepgram Aura, Google Cloud TTS, macOS `say`) and
- * returns one mono 16-bit WAV, or throws a VoiceSynthesisError that names why EVERY provider was
- * skipped or failed, so the studio can show a real reason instead of a bare "failed" message.
+ * A vcd studio voice (My voice) goes only to the local vcd service and never falls through to
+ * another provider. Other voices try providers in order: local Kokoro (for kokoro-* voices when
+ * host memory fits), Deepgram Aura and Google Cloud TTS (for non-macos-* voices), and macOS `say`
+ * on darwin. Returns one mono 16-bit WAV, or throws a VoiceSynthesisError naming why every
+ * attempted or skipped provider did not produce audio.
  *
  * Kokoro is only attempted on a host with the memory for it: its ONNX runtime holds ~400 MB, so
  * loading it inside the studio server on a 512 MB Render free instance OOM-killed the whole

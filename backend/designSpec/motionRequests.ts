@@ -5,9 +5,7 @@
  * design.json and artwork and builds until the design check passes. Every request is recorded in
  * videos/<id>/design/motion-requests.json with a snapshot of the design it replaced, so the studio
  * can show what came of it and revert it.
- * Inputs and outputs: user motion prompt and SVG asset -> parsed motion request with animation clips.
- * Used by: editor/vite.config.ts, backend/designSpec/motionRequests.test.ts.
- * Inputs and outputs: user motion prompt and SVG asset -> parsed motion request with animation clips.
+ * Inputs and outputs: film id, shot id, and owner motion prompt -> dispatched design task and recorded motion request snapshot.
  * Used by: editor/vite.config.ts, backend/designSpec/motionRequests.test.ts.
  */
 

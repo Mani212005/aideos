@@ -4,8 +4,6 @@
  * D1 rotating sub-groups, D5 depth crossing, C-14 rest-hold gap anchoring, and Phase 0 performance benchmarks.
  * Inputs and outputs: scene graph structures and keyframes -> compile output test assertions.
  * Used by: npm test.
- * Inputs and outputs: scene graph structures and keyframes -> compile output test assertions.
- * Used by: npm test.
  */
 
 import { test } from "node:test";
