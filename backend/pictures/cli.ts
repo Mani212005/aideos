@@ -1,5 +1,5 @@
 /**
- * File Description: The `aideos pictures` commands of the illustrated stage. `status` lists every picture a film's design declares with its fingerprint and whether its image is cached, pinned (approved) or still to make, and prints the exact prompt for each one still to make. `add` stores a PNG made elsewhere (on the captain's Mac through Codex image generation) under the fingerprint of its current prompt, byte for byte with its provenance data, writes its record, and with `--pin` pins its sha256 in design.json (the approval). Nothing here generates an image or calls an image service.
+ * File Description: The `aideos pictures` commands of the illustrated stage. `status` lists every picture a film's design declares with its fingerprint and whether its image is cached, pinned (approved) or still to make, and prints the exact prompt for each one still to make. `add` stores a PNG made elsewhere (on the captain's Mac through Codex image generation) under the fingerprint of its current prompt, byte for byte with its provenance data, writes its record, and with `--pin` pins its sha256 in design.json (the approval). It refuses a different image for a fingerprint that already has one unless `--replace` is given; then the previous PNG and record are kept under sha256-suffixed names. Nothing here generates an image or calls an image service.
  * Inputs and outputs: a film id, a picture id and a PNG file -> the cache entry and record, an optional pin, and a status table on stdout.
  * Used by: backend/cli.ts (registerPictureCommands), bin/aideos (`aideos pictures status|add`).
  */
@@ -9,7 +9,7 @@ import path from "node:path";
 import type { Command } from "commander";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { designSpecSchema } from "../designSpec/spec";
-import { pictureFingerprint, pictureFiles, readCachedPicture, requestFor, storePicture, type DeclaredPictures } from "./cache";
+import { archivedPictureFiles, pictureFingerprint, pictureFiles, readCachedPicture, requestFor, storedPictureSha256, storePicture, type DeclaredPictures } from "./cache";
 import { composePicturePrompt, promptProblems } from "./policy";
 
 /** Reads a film's design.json and its `pictures` block, or throws naming what is missing. */
@@ -42,12 +42,17 @@ export function pictureStatusLines(film: string): string[] {
 }
 
 /** Stores a PNG made elsewhere as the picture `pictureId` of a film, and pins it when asked; returns what it did. */
-export function addPicture(film: string, pictureId: string, file: string, options: { seconds: number; pin?: boolean }): string {
+export function addPicture(film: string, pictureId: string, file: string, options: { seconds: number; pin?: boolean; replace?: boolean }): string {
   const { pkg, designFile, raw, pictures } = readDeclaredPictures(film);
   const item = pictures.items.find((i) => i.id === pictureId);
   if (!item) throw new Error(`design.json declares no picture "${pictureId}" (pictures: ${pictures.items.map((i) => i.id).join(", ")})`);
-  const record = storePicture(pkg, requestFor(pictures, item), fs.readFileSync(file), { seconds: options.seconds });
+  const request = requestFor(pictures, item);
+  const previousSha = storedPictureSha256(pkg, pictureFingerprint(request));
+  const record = storePicture(pkg, request, fs.readFileSync(file), { seconds: options.seconds }, { replace: options.replace });
   const out = [`stored ${pictureId} as videos/${film}/${pictureFiles(record.fingerprint).png} (${record.width} x ${record.height}, sha256 ${record.sha256})`];
+  if (previousSha && previousSha !== record.sha256) {
+    out.push(`kept the previous image (sha256 ${previousSha}) as videos/${film}/${archivedPictureFiles(record.fingerprint, previousSha).png}; copy it back over ${pictureFiles(record.fingerprint).png} (and its .json record) to restore it`);
+  }
   if (options.pin) {
     const items = ((raw.pictures as { items: Array<Record<string, unknown>> }).items);
     const entry = items.find((i) => i.id === pictureId)!;
@@ -77,9 +82,10 @@ export function registerPictureCommands(program: Command): void {
     .argument("<file>", "the PNG file, exactly as the generator returned it")
     .requiredOption("--seconds <s>", "how long the generation took, in seconds")
     .option("--pin", "also pin its sha256 in design.json (approve it)")
-    .action((film: string, picture: string, file: string, options: { seconds: string; pin?: boolean }) => {
+    .option("--replace", "store a different image over an existing one for the same prompt (the previous PNG and record are kept under sha256-suffixed names)")
+    .action((film: string, picture: string, file: string, options: { seconds: string; pin?: boolean; replace?: boolean }) => {
       const seconds = Number(options.seconds);
       if (!Number.isFinite(seconds) || seconds < 0) throw new Error(`--seconds must be a non-negative number, got ${options.seconds}`);
-      console.log(addPicture(film, picture, file, { seconds, pin: options.pin }));
+      console.log(addPicture(film, picture, file, { seconds, pin: options.pin, replace: options.replace }));
     });
 }
