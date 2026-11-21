@@ -2,8 +2,9 @@
  * File Description: Story-first Script & Narration Studio. The script is shown as the plain story, one block per
  * paragraph, with the agent's visual and on-screen notes as collapsible notes beside each paragraph (the
  * [VISUAL]/[NARRATION]/[ON SCREEN] tags stay internal). It also lists every narration change made by the user or
- * the agent, shows which lines still need recording, and synthesizes the voiceover line by line.
- * Inputs and outputs: the project's script text and narration change list -> editable story, saved tagged script, voiceover audio.
+ * the agent, shows which lines still need recording, triggers per-line voiceover synthesis via
+ * /api/generate-voiceover, builds scenes via /api/parse-script-scenes, and prompts the agent via /api/prompt-agent.
+ * Inputs and outputs: film manifest and update/navigation callbacks -> story editor UI, saved tagged script via /api/scripts/:id, voiceover playback, and agent prompts.
  * Used by: editor/src/screens/ScriptStage.tsx.
  */
 
@@ -285,7 +286,7 @@ function StoryParagraphRow({
 }
 
 /**
- * Script & Narration Editor component with screenplay parsing and direct voiceover synthesis from the screenplay's spoken dialogue.
+ * Story-first Script & Narration Editor component with scene building, agent prompting, and server-backed voiceover synthesis.
  */
 export function ScriptEditor({
   film,
