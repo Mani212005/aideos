@@ -38,10 +38,14 @@ export const LAST_SECTION_TAIL_HEADROOM_SEC = 0.75;
 // Containers whose decoded length can fall short of the manifest duration (encoder delay and padding); PCM sources are exact.
 const LOSSY_SOURCE = /\.(mp3|ogg|m4a|aac)$/i;
 
+// Returns the source frames the final section must leave unused at the end of its track: zero for exact PCM, LAST_SECTION_TAIL_HEADROOM_SEC for lossy sources.
+export function lastSectionHeadroomFrames(fps: number, src: string): number {
+  return LOSSY_SOURCE.test(src.split(/[?#]/)[0]) ? Math.round(LAST_SECTION_TAIL_HEADROOM_SEC * fps) : 0;
+}
+
 // Returns how many source frames the final section skips so a lossy track ends LAST_SECTION_TAIL_HEADROOM_SEC before the source does.
 export function lastSectionTrimFrames(trackFrames: number, spanFrames: number, fps: number, src: string): number {
-  const headroom = LOSSY_SOURCE.test(src.split(/[?#]/)[0]) ? Math.round(LAST_SECTION_TAIL_HEADROOM_SEC * fps) : 0;
-  return Math.max(0, trackFrames - spanFrames - headroom);
+  return Math.max(0, trackFrames - spanFrames - lastSectionHeadroomFrames(fps, src));
 }
 
 // Converts a decibel gain to a linear amplitude multiplier without rounding quiet beds away.

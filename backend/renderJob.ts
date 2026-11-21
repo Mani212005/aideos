@@ -197,9 +197,9 @@ async function acquirePublicationLock(
   outPath: string,
   signal: AbortSignal,
 ): Promise<() => Promise<void>> {
-  signal.throwIfAborted();
   const target = `${path.resolve(outPath)}.publish.lock`;
   for (;;) {
+    signal.throwIfAborted();
     try {
       const release = await lockfile.lock(target, {
         // The target is only a name: it need not exist, and the lock lives in its own sibling directory.
