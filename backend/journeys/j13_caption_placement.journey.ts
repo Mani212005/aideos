@@ -26,7 +26,7 @@ installVoiceOfChoiceForTests();
 
 const SLUG = "journey-caption-placement";
 const SCRIPT =
-  "## 0:00 - Question\n[NARRATION] A cache keeps recent answers close so repeated questions skip the slow database.\n[VISUAL] One request arrives at the cache.\n## 0:08 - Answer\n[NARRATION] The next request finds the saved answer and returns it to the caller.\n[VISUAL] The request returns with its answer.";
+  "## 0:00 - Question\n[NARRATION] A cache keeps recent answers close so repeated questions skip the slow database, and the first request pays the full price while every later one comes back almost for free.\n[VISUAL] One request arrives at the cache.\n## 0:08 - Answer\n[NARRATION] The next request finds the saved answer and returns it to the caller, which is why the second visit to a busy page feels so much faster than the first one did.\n[VISUAL] The request returns with its answer.";
 // Dispatches real pointer input to a composition-scaled control, including a release away from its start.
 async function drag(
   page: StudioPage,
