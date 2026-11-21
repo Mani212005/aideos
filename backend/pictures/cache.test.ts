@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the picture cache, encoding the captain's decision for the illustrated stage, phase 1 (option A of the mixed-media research), item 3: an image cache like the per-line voice cache whose fingerprint is the style paragraph, the object prompt, the aspect ratio, the tool label and the cut-out settings; each picture is stored as visuals/generated/<fingerprint>.png with a small record (prompt, date, seconds, sha256); the design pins each approved image by sha256; rebuilding with unchanged prompts makes no request; originals are kept byte for byte (provenance data included).
+ * File Description: Behavioural tests of the picture cache, encoding the captain's decision for the illustrated stage, phase 1 (option A of the mixed-media research), item 3: an image cache like the per-line voice cache whose fingerprint is the style paragraph, the object prompt, the aspect ratio, the tool label and the cut-out settings; each picture is stored as visuals/generated/<fingerprint>.png with a small record (prompt, date, seconds, sha256); the design pins each approved image by sha256; rebuilding with unchanged prompts makes no request; originals are kept byte for byte (provenance data included), and a different image for a fingerprint that already has one is refused unless explicitly replaced, in which case the previous original and record are kept under sha256-suffixed names so its pin can be restored (follow-up to the PR 248 review, finding review-2).
  * Inputs and outputs: synthetic pictures and a counting stand-in generator in a throwaway package directory -> asserted fingerprints, files, records, requests and build errors.
  * Used by: npm test (found by glob).
  */
@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ensurePictures, pictureFingerprint, pictureFiles, resolvePinnedPictures, type DeclaredPictures, type PictureGenerator } from "./cache";
+import { archivedPictureFiles, ensurePictures, pictureFingerprint, pictureFiles, resolvePinnedPictures, storePicture, type DeclaredPictures, type PictureGenerator } from "./cache";
 import { encodePng, sha256Hex } from "./png";
 import { chipPicture, orbPicture } from "../testSupport/pictureFixtures";
 
@@ -102,4 +102,58 @@ test("the design pins each approved image by sha256: an unpinned, missing or cha
   assert.deepEqual(ok.sources.orb, { src: `videos/probe/${pass.ready.orb.file}`, width: 32, height: 32, sha256: pass.ready.orb.record.sha256 });
   const wrong: DeclaredPictures = { ...pinned, items: [{ ...pinned.items[0], sha256: "0".repeat(64) }, pinned.items[1]] };
   assert.match(resolvePinnedPictures(dir, wrong, "videos/probe").errors.join("\n"), /picture "orb" is pinned to 0{64} but its prompt now gives/);
+});
+
+/** The request of the first test picture, and its fingerprint. */
+function orbRequest() {
+  const item = PICTURES.items[0];
+  const request = { style: PICTURES.style, prompt: item.prompt, aspect: item.aspect, tool: PICTURES.tool, cutout: item.cutout };
+  return { request, files: pictureFiles(pictureFingerprint(request)), fingerprint: pictureFingerprint(request) };
+}
+
+test("storing a different image for an existing fingerprint is refused without replace and leaves the approved original and its record untouched", (t) => {
+  const dir = pkg(t);
+  const { request, files } = orbRequest();
+  const approved = encodePng(orbPicture());
+  const first = storePicture(dir, request, approved, { seconds: 1, createdAt: new Date("2026-11-20T00:00:00Z") });
+  const pngBefore = fs.readFileSync(path.join(dir, files.png));
+  const recordBefore = fs.readFileSync(path.join(dir, files.record));
+
+  assert.throws(() => storePicture(dir, request, encodePng(chipPicture()), { seconds: 2 }), /already holds a different image.*--replace/s);
+
+  assert.deepEqual(fs.readFileSync(path.join(dir, files.png)), pngBefore, "the approved original is byte for byte unchanged");
+  assert.deepEqual(fs.readFileSync(path.join(dir, files.record)), recordBefore, "its record is unchanged");
+  assert.equal(sha256Hex(pngBefore), first.sha256);
+  assert.deepEqual(fs.readdirSync(path.join(dir, "visuals/generated")).sort(), [path.basename(files.png), path.basename(files.record)].sort(), "no stray or archived files");
+
+  const again = storePicture(dir, request, approved, { seconds: 9, createdAt: new Date("2027-01-01T00:00:00Z") });
+  assert.deepEqual(again, first, "storing the identical bytes again is a no-op that keeps the first record");
+  assert.deepEqual(fs.readFileSync(path.join(dir, files.record)), recordBefore);
+});
+
+test("with replace the previous original and record are kept under sha256-suffixed names, and copying them back restores the old pin", (t) => {
+  const dir = pkg(t);
+  const { request, files, fingerprint } = orbRequest();
+  const first = storePicture(dir, request, encodePng(orbPicture()), { seconds: 1, createdAt: new Date("2026-11-20T00:00:00Z") });
+  const oldPng = fs.readFileSync(path.join(dir, files.png));
+  const oldRecord = fs.readFileSync(path.join(dir, files.record));
+  const declared: DeclaredPictures = { ...PICTURES, items: [{ ...PICTURES.items[0], sha256: first.sha256 }] };
+  assert.deepEqual(resolvePinnedPictures(dir, declared, "videos/probe").errors, [], "the original is approved and pinned");
+
+  const next = storePicture(dir, request, encodePng(chipPicture()), { seconds: 2 }, { replace: true });
+  assert.notEqual(next.sha256, first.sha256);
+  assert.equal(sha256Hex(fs.readFileSync(path.join(dir, files.png))), next.sha256, "the new image now holds the fingerprint's name");
+
+  const kept = archivedPictureFiles(fingerprint, first.sha256);
+  assert.match(kept.png, new RegExp(`${fingerprint}\\.${first.sha256}\\.png$`));
+  assert.deepEqual(fs.readFileSync(path.join(dir, kept.png)), oldPng, "the previous original is kept byte for byte");
+  assert.deepEqual(fs.readFileSync(path.join(dir, kept.record)), oldRecord, "and so is its record");
+  assert.match(resolvePinnedPictures(dir, declared, "videos/probe").errors.join("\n"), /picture "orb" is pinned to [0-9a-f]{64} but its prompt now gives/, "the old pin no longer matches the new image");
+
+  fs.copyFileSync(path.join(dir, kept.png), path.join(dir, files.png));
+  fs.copyFileSync(path.join(dir, kept.record), path.join(dir, files.record));
+  assert.deepEqual(resolvePinnedPictures(dir, declared, "videos/probe").errors, [], "restoring the kept files restores the approved pin");
+
+  storePicture(dir, request, encodePng(chipPicture()), { seconds: 3 }, { replace: true });
+  assert.deepEqual(fs.readFileSync(path.join(dir, kept.png)), oldPng, "replacing the same original a second time keeps the first copy");
 });

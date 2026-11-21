@@ -185,7 +185,7 @@ if [ "$#" -gt 0 ]; then
       esac
       ;;
     pictures)
-      # aideos pictures status <film> | aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin]
+      # aideos pictures status <film> | aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin] [--replace]
       SUB="${1:-}"
       shift || true
       case "$SUB" in
@@ -194,7 +194,7 @@ if [ "$#" -gt 0 ]; then
           ;;
         *)
           echo "Usage: aideos pictures status <film>" >&2
-          echo "       aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin]" >&2
+          echo "       aideos pictures add <film> <picture> <file.png> --seconds <s> [--pin] [--replace]" >&2
           exit 1
           ;;
       esac
