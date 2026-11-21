@@ -135,6 +135,15 @@ export function clampCaptionPlacement(
     locked: placement.locked,
   };
 }
+// Maps the retired reel default position (x 0.5, y 0.78) to the reel safe default; any other saved placement is untouched.
+export function migrateLegacyReelPlacement(
+  entry: CaptionPlacement,
+  format: CaptionFormat,
+): CaptionPlacement {
+  if (format !== "reel" || entry.x !== 0.5 || entry.y !== 0.78) return entry;
+  const safe = DEFAULT_CAPTION_PLACEMENT_BY_FORMAT.reel;
+  return { ...entry, x: safe.x, y: safe.y };
+}
 // Resolves shot, film and format-specific default independently in each format.
 export function resolveCaptionPlacement(
   film: Pick<Film, "captionPlacement" | "shots">,
@@ -144,7 +153,8 @@ export function resolveCaptionPlacement(
   const shot = film.shots.find((s) => s.id === shotId)?.captionPlacement?.[
     format
   ];
-  const entry = shot ?? film.captionPlacement?.[format];
+  const saved = shot ?? film.captionPlacement?.[format];
+  const entry = saved && migrateLegacyReelPlacement(saved, format);
   if (!entry) return { ...DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format], source: "default" };
   const { width, height } = CAPTION_FRAMES[format];
   const normalizedWidth = entry.w === undefined

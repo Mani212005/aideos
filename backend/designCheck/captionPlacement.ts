@@ -17,6 +17,7 @@ import {
   resolveCaptionPlacement,
   resolveCaptionCardWidth,
   clampCaptionPlacement,
+  migrateLegacyReelPlacement,
 } from "../../src/dl/captionPlacement";
 import { getInsetRegion } from "../../src/dl/fullScreenHeroLayout";
 import { prepareSvgProjection } from "./insetRegion";
@@ -63,13 +64,14 @@ export function checkCaptionPlacements(
         message:
           "caption placement was not checked against CanvasGraph art; manually review the placed card against the visible graph.",
       });
-    for (const [where, entry] of [
+    for (const [where, savedEntry] of [
       ["film", film.captionPlacement?.[format]],
       ...film.shots.map(
         (s) => [`shot ${s.id}`, s.captionPlacement?.[format]] as const,
       ),
     ] as const) {
-      if (!entry) continue;
+      if (!savedEntry) continue;
+      const entry = migrateLegacyReelPlacement(savedEntry, format);
       const safe = clampCaptionPlacement(entry, format);
       const formatDefault = DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format];
       const isDefaultPosition =

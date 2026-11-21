@@ -1303,3 +1303,35 @@ test("review phrase measurement matches rendered word widths", async () => {
   const synchronous = measureCaptionWords(parityWords, 47);
   assert.deepEqual(await asynchronous, synchronous);
 });
+
+// Owner decision: the retired reel default (0.5, 0.78) is not an owner choice and resolves to the reel safe default.
+test("saved legacy reel default resolves to the safe default and passes the placement check", () => {
+  const film = {
+    ...base,
+    captionPlacement: { reel: { x: 0.5, y: 0.78, locked: true } },
+  };
+  const resolved = resolveCaptionPlacement(film, "reel");
+  assert.equal(resolved.x, REEL_CAPTION_SAFE_ZONE.centerX);
+  assert.equal(resolved.y, REEL_CAPTION_SAFE_ZONE.defaultY);
+  assert.equal(resolved.locked, true);
+  assert.equal(resolved.source, "film");
+  assert.deepEqual(
+    checkCaptionPlacements(film, undefined, undefined, film, ["reel"]).filter((f) => f.severity === "error"),
+    [],
+  );
+});
+
+// Owner decision: any other saved reel placement stays as saved and the check flags it inside the Shorts exclusion zone.
+test("custom saved reel placement stays as saved and is flagged in the Shorts exclusion zone", () => {
+  const custom = { x: 0.5, y: 0.7, locked: true };
+  const film = { ...base, captionPlacement: { reel: custom } };
+  const resolved = resolveCaptionPlacement(film, "reel");
+  assert.equal(resolved.x, custom.x);
+  assert.equal(resolved.y, custom.y);
+  assert.equal(resolved.locked, true);
+  const errors = checkCaptionPlacements(film, undefined, undefined, film, ["reel"]).filter(
+    (f) => f.severity === "error",
+  );
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /outside the format bounds/);
+});
