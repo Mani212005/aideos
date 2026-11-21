@@ -220,17 +220,22 @@ function downloadHeaders(url: string): Record<string, string> {
 // Downloads raw bytes from a URL and saves them to a destination file; an HTML page is never accepted as audio.
 async function downloadToFile(url: string, destPath: string): Promise<void> {
   const headers = downloadHeaders(url);
+  let htmlRejected = false;
   try {
     const res = await fetch(url, { headers });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} ${res.statusText}`);
     }
     if ((res.headers.get("content-type") ?? "").toLowerCase().includes("text/html")) {
+      htmlRejected = true;
       throw new Error("server returned an HTML page instead of an audio file");
     }
     const arrayBuffer = await res.arrayBuffer();
     fs.writeFileSync(destPath, Buffer.from(arrayBuffer));
-  } catch {
+  } catch (err) {
+    if (htmlRejected) {
+      throw err;
+    }
     // Fall back to curl if Node fetch encountered network or SSL transport issue
     await execFileAsync("curl", ["-fsSL", "-A", headers["User-Agent"], "-e", headers.Referer, url, "-o", destPath]);
   }
