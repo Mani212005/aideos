@@ -1,11 +1,11 @@
 /**
- * File Description: The studio's per-shot design actions.
+ * File Description: The studio's design tools.
  * `designOverview` gathers the film's design, look plan, artwork, motion and shot visuals for the
- * Look stage. `approveLookPlan` records the captain's approval. `swapShotVisual` redraws one shot as
- * another visual kind through the design stage's honest authoring path. `requestShotRedesign` sends
- * the connected agent a design task focused on one shot.
+ * Look stage. `approveLookPlan` records the captain's approval. `requestFilmDesign` sends the
+ * connected agent a whole-film design task. `swapShotVisual` (per-shot redraw) and
+ * `requestShotRedesign` (per-shot agent task) have no studio route now.
  * Inputs and outputs: shot tool command and parameters -> tool execution result.
- * Used by: backend/agentBridge/dispatcher.ts, editor/vite.config.ts.
+ * Used by: editor/vite.config.ts (designOverview, approveLookPlan, requestFilmDesign), backend/designSpec/shotTools.test.ts.
  */
 
 import type { Block, Film, Shot } from "../../src/dl/schema";

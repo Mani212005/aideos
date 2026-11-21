@@ -4,7 +4,7 @@
  * fallback otherwise, in the same WordInfo shape voiceover_words.json already uses so downstream
  * caption and edit-context code needs no new parsing path.
  * Inputs and outputs: audio or video file path -> TranscribedWord list and import_captions.vtt file.
- * Used by: editor/vite.config.ts, backend/editContext/buildEditContext.ts.
+ * Used by: backend/transcribe.test.ts (the studio /api/transcribe route is gone); backend/editContext/buildEditContext.ts and backend/mcp/server.ts import its types only.
  */
 
 import { execFileSync } from "child_process";

@@ -4,7 +4,7 @@
  * assembles the result in the sample domain (trim, fade, exact-offset concatenation, loudness
  * and peak normalization), and emits voiceover.wav, captions.vtt, voiceover_words.json and the
  * shot duration spine the film timeline is locked to. Script-to-synthesis callers share the
- * script-intake assertion, with this boundary covering pipeline resumes and Studio /api/voiceover.
+ * script-intake assertion, with this boundary covering pipeline resumes and Studio /api/generate-voiceover.
  * Inputs and outputs: screenplay text and audio options -> voiceover.wav, captions.vtt, voiceover_words.json, and shot duration spine.
  * Used by: backend/pipeline/run.ts, backend/cli.ts, editor/vite.config.ts.
  *

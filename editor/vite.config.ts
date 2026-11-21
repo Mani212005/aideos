@@ -35,7 +35,7 @@ import { newProjectFilmTheme } from '../src/projectTheme.ts';
 import type { Film } from '../src/dl/schema.ts'
 import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
-import { produceAudioPipeline, splitScriptIntoSegments, chunkTextForTTS, trimSilence, retimeAudioSync, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
+import { chunkTextForTTS, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
@@ -61,7 +61,6 @@ import {
   type VcdLanguagePreference,
 } from '../backend/vcdClient.ts'
 import { extractAudioPeaks } from '../backend/timeline/waveform.ts'
-import { transcribe, writeImportWords } from '../backend/transcribe.ts'
 import { detectFillers } from '../backend/editContext/detectFillers.ts'
 import { detectSilences } from '../backend/editContext/detectSilences.ts'
 import { buildEditContext } from '../backend/editContext/buildEditContext.ts'
@@ -70,7 +69,6 @@ import { appendEditProvenanceRecord, readEditProvenanceLog } from '../backend/ed
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/convertFilm.ts'
 import {
   extractSpokenBlocks as extractSpokenVoiceoverBlocks,
-  ScriptIntakeError,
   buildFilmPartsFromScript,
   plainTextToTaggedScript,
   generateAgentPrompt,
@@ -93,9 +91,7 @@ import {
 } from '../backend/pcm.ts'
 import {
   dispatchTask,
-  getAgentSession,
   paneDelivery,
-  setAgentSession,
   traceBus,
 } from '../backend/agentBridge/index.ts'
 import dotenv from 'dotenv'
@@ -902,51 +898,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           }
         }
 
-        // Handle /api/audio/retime (Pitch-corrected WSOLA time-stretching with FFmpeg atempo)
-        if (url.startsWith('/api/audio/retime')) {
-          if (req.method === 'GET') {
-            const parsedUrl = new URL(req.url ?? '', 'http://localhost');
-            const src = parsedUrl.searchParams.get('src');
-            const speed = parseFloat(parsedUrl.searchParams.get('speed') || '1.0');
-            if (!src) {
-              sendJson(res, 400, { error: 'src parameter is required' });
-              return;
-            }
-            try {
-              const result = retimeAudioSync(src, speed);
-              serveFileWithRange(req, res, result.filePath);
-            } catch (err: any) {
-              console.error('[audio/retime] Error retiming audio:', err);
-              sendJson(res, 500, { error: err?.message || 'Failed to retime audio' });
-            }
-            return;
-          }
-
-          if (req.method === 'POST') {
-            void readBody(req).then((body) => {
-              const { src, speed } = (body as { src?: string; speed?: number }) || {};
-              if (!src) {
-                sendJson(res, 400, { error: 'src is required' });
-                return;
-              }
-              const numSpeed = typeof speed === 'number' && speed > 0 ? speed : 1.0;
-              try {
-                const result = retimeAudioSync(src, numSpeed);
-                sendJson(res, 200, {
-                  success: true,
-                  url: `/api/audio/retime?src=${encodeURIComponent(src)}&speed=${numSpeed}`,
-                  path: result.filePath,
-                  duration: result.durationSec,
-                });
-              } catch (err: any) {
-                console.error('[audio/retime] Error retiming audio:', err);
-                sendJson(res, 500, { error: err?.message || 'Failed to retime audio' });
-              }
-            });
-            return;
-          }
-        }
-
         // Handle /api/audio/peaks (Compute or fetch amplitude envelope peaks for timeline waveforms)
         if (url.startsWith('/api/audio/peaks') && req.method === 'GET') {
           const parsedUrl = new URL(req.url ?? '', 'http://localhost');
@@ -1461,20 +1412,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        // Handle /api/agent-session (Read/Update active agent session metadata)
-        if (url === '/api/agent-session' && req.method === 'GET') {
-          const session = getAgentSession();
-          sendJson(res, 200, { ok: true, session });
-          return;
-        }
-        if (url === '/api/agent-session' && req.method === 'POST') {
-          void readBody(req).then((body: any) => {
-            const updated = setAgentSession(body || {});
-            sendJson(res, 200, { ok: true, session: updated });
-          }).catch(err => sendJson(res, 500, { error: String(err) }));
-          return;
-        }
-
         // Handle /api/agent/trace (SSE stream for live Agent Trace telemetry)
         if (url === '/api/agent/trace' && req.method === 'GET') {
           const parsedUrl = new URL(req.url ?? '', 'http://localhost');
@@ -1534,117 +1471,10 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        // Handle /api/agent/trace/step (Report trace step from server stages or HTTP clients)
-        if (url === '/api/agent/trace/step' && req.method === 'POST') {
-          void readBody(req).then((body: any) => {
-            const { title, description, phase, status, details, source, filmId, durationMs, error } = body || {};
-            if (!title || typeof title !== 'string') {
-              sendJson(res, 400, { error: 'title is required and must be a string' });
-              return;
-            }
-            const step = traceBus.recordStep({
-              title,
-              description,
-              phase,
-              status,
-              details,
-              source: source || 'pipeline',
-              filmId,
-              durationMs,
-              error,
-            });
-            sendJson(res, 200, { ok: true, step });
-          }).catch(err => sendJson(res, 500, { error: String(err) }));
-          return;
-        }
-
-        // Handle /api/agent/trace/history (Read recent trace history snapshot)
-        if (url === '/api/agent/trace/history' && req.method === 'GET') {
-          const parsedUrl = new URL(req.url ?? '', 'http://localhost');
-          const filmId = parsedUrl.searchParams.get('filmId') || undefined;
-          const phase = parsedUrl.searchParams.get('phase') || undefined;
-          const source = parsedUrl.searchParams.get('source') || undefined;
-          const limitStr = parsedUrl.searchParams.get('limit');
-          const limit = limitStr ? parseInt(limitStr, 10) : undefined;
-          const steps = traceBus.getRecentSteps({ filmId, phase, source, limit });
-          sendJson(res, 200, { ok: true, steps });
-          return;
-        }
-
         // Handle DELETE /api/agent/trace (Reset trace history)
         if (url === '/api/agent/trace' && req.method === 'DELETE') {
           traceBus.clear();
           sendJson(res, 200, { ok: true, message: 'Trace history cleared' });
-          return;
-        }
-
-        // Handle /api/voiceover (Google Cloud TTS / Neural Voiceover Synthesis & Shot Duration Alignment)
-        if (url === '/api/voiceover' && req.method === 'POST') {
-          void readBody(req).then(async (body: any) => {
-            const { film, scriptText } = body || {};
-            if (!film || !film.id || !FILM_ID.test(film.id)) {
-              sendJson(res, 400, { error: 'Valid film with a valid film.id is required' });
-              return;
-            }
-            const shotTexts: string[] = film.shots?.map((s: any) => (s.scriptText || s.id || '').trim()).filter(Boolean) || [];
-            const scriptInput = scriptText ? splitScriptIntoSegments(scriptText) : shotTexts.length > 0 ? shotTexts : [film.title];
-            const pkgDir = path.join(videosDir, film.id);
-            const intake = checkVoiceoverIntake(scriptText || '');
-            if (!intake.ok) {
-              sendJson(res, intake.status, { error: intake.error, intakeNotices: intake.intakeNotices });
-              return;
-            }
-            const audioResult = await produceAudioPipeline(scriptInput, pkgDir, {
-              ...(scriptText ? { intakeSource: scriptText } : {}),
-              onIntakeNotice: () => {},
-            });
-
-            // Update shot durations to match audio segments accurately (1:1 shot-level mapping)
-            const updatedShots = film.shots.map((shot: any, idx: number) => {
-              const dur = audioResult.shotDurations[idx] || shot.dur || 3;
-              return {
-                ...shot,
-                dur: Number(dur.toFixed(3)),
-              };
-            });
-
-            const updatedFilm = {
-              ...film,
-              shots: updatedShots,
-              voiceover: { src: `videos/${film.id}/voiceover.wav`, volume: 1 },
-            };
-
-            // Flatten per-segment word timings onto the film's timeline for the
-            // kinetic captions editor
-            const flatWords = audioResult.segments.flatMap((seg) =>
-              seg.words.map((w) => ({
-                word: w.word,
-                punctuated_word: w.punctuated_word,
-                start: Number((seg.startOffset + w.start).toFixed(3)),
-                end: Number((seg.startOffset + w.end).toFixed(3)),
-              }))
-            );
-            fs.writeFileSync(path.join(pkgDir, 'voiceover_words.json'), JSON.stringify({ words: flatWords }, null, 2), 'utf8');
-
-            traceBus.recordStep({
-              phase: "synthesis",
-              source: "tts",
-              filmId: film.id,
-              title: "Neural Voiceover Synthesized",
-              description: `Generated narration audio (${audioResult.totalAudioDuration.toFixed(2)}s) with phonetic word timings`,
-              status: "done",
-              details: [
-                `Segments: ${audioResult.segments.length}`,
-                `Total Words: ${flatWords.length}`,
-                `Duration: ${audioResult.totalAudioDuration.toFixed(2)}s`,
-              ],
-            });
-
-            sendJson(res, 200, { ok: true, film: updatedFilm, audioResult, intakeNotices: intake.intakeNotices });
-          }).catch(err => {
-            console.error('[API voiceover error]:', err);
-            sendJson(res, err instanceof ScriptIntakeError ? 400 : 500, { error: err instanceof Error ? err.message : String(err) });
-          });
           return;
         }
 
@@ -1744,42 +1574,6 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 ...(fps ? { fps } : {}),
               },
             });
-          }).catch((err) => sendJson(res, 500, { error: String(err) }));
-          return;
-        }
-
-        // Handle /api/transcribe (word-level transcription of an imported video/audio source,
-        // via Deepgram when configured or a local Whisper fallback otherwise)
-        if (url === '/api/transcribe' && req.method === 'POST') {
-          void readBody(req).then(async (body: any) => {
-            const { filmId, src } = body || {};
-            if (!filmId || !src) {
-              sendJson(res, 400, { error: 'filmId and src are required' });
-              return;
-            }
-            try {
-              const result = await transcribe(src);
-              const fillers = detectFillers(result.words);
-              const fillerIndices = new Set<number>();
-              for (const span of fillers) {
-                for (let i = span.startIndex; i <= span.endIndex; i++) fillerIndices.add(i);
-              }
-              const words = result.words.map((w, i) => ({ ...w, filler: fillerIndices.has(i) }));
-              const silences = detectSilences(result.words);
-              const { wordsPath, vttPath } = writeImportWords(filmId, words, videosDir);
-              sendJson(res, 200, {
-                ok: true,
-                backend: result.backend,
-                words,
-                fillers,
-                silences,
-                wordsPath: path.relative(path.resolve(__dirname, '..'), wordsPath),
-                vttPath: path.relative(path.resolve(__dirname, '..'), vttPath),
-              });
-            } catch (err: any) {
-              console.error('[transcribe] Error transcribing source:', err);
-              sendJson(res, 500, { error: err?.message || 'Failed to transcribe source' });
-            }
           }).catch((err) => sendJson(res, 500, { error: String(err) }));
           return;
         }
@@ -1887,7 +1681,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 ],
               });
 
-              const planResult = body.mockPlanResult || (await planEdits(request, context, undefined, { agentHints }));
+              const planResult = await planEdits(request, context, undefined, { agentHints });
 
               traceBus.recordStep({
                 phase: "ai_edit",
@@ -2436,8 +2230,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         }
 
         // Handle /api/design/:id/approve-look (Look stage: captain approval recorded to look.json)
-        // Handle /api/design/:id[/shots/:shotId/(visual|redesign)] (the Look stage's design view,
-        // "why this visual" swaps and per-shot redesign requests to the connected agent)
+        // Handle /api/design/:id (the Look stage's design overview and full-film design dispatch)
         // Handle /api/design/:id/motion (the Look stage's Ask: requests to the agent for a shot, their outcomes, undo)
         const approveLookRoute = url.match(/^\/api\/design\/([a-z0-9-]+)\/approve-look$/);
         if (approveLookRoute) {
@@ -2472,16 +2265,16 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
           return;
         }
 
-        const designRoute = url.match(/^\/api\/design\/([a-z0-9-]+)(?:\/shots\/([A-Za-z0-9_-]+)\/(visual|redesign))?$/);
+        const designRoute = url.match(/^\/api\/design\/([a-z0-9-]+)$/);
         if (designRoute) {
-          const [, filmId, shotId, action] = designRoute;
+          const [, filmId] = designRoute;
           const loadFilm = (posted: unknown): Film | null => {
             const parsed = posted ? filmSchema.safeParse(posted) : null;
             if (parsed?.success) return parsed.data;
             const file = path.join(videosDir, filmId, 'film.json');
             return fs.existsSync(file) ? filmSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8'))) : null;
           };
-          if (!action && req.method === 'GET') {
+          if (req.method === 'GET') {
             void import('../backend/designSpec/shotTools.ts').then(({ designOverview }) => {
               const film = loadFilm(null);
               if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });
@@ -2489,22 +2282,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }).catch(err => sendJson(res, 500, { error: String(err) }));
             return;
           }
-          if (action && req.method === 'POST') {
-            void readBody(req).then(async (body: any) => {
-              const film = loadFilm(body?.film);
-              if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });
-              const tools = await import('../backend/designSpec/shotTools.ts');
-              if (action === 'visual') {
-                const { defaultDeviceCaller } = await import('../backend/pipeline/deviceData.ts');
-                const swap = await tools.swapShotVisual(film, shotId, String(body?.visual ?? ''), await defaultDeviceCaller());
-                return sendJson(res, swap.ok ? 200 : 422, swap);
-              }
-              const dispatch = await tools.requestShotRedesign(film, shotId, String(body?.note ?? ''), { ownerKey: ownerOf(req) });
-              sendJson(res, 200, { ok: true, channels: dispatch.channels, taskId: dispatch.taskId, message: dispatch.message });
-            }).catch(err => sendJson(res, 500, { error: String(err) }));
-            return;
-          }
-          if (!action && req.method === 'POST') {
+          if (req.method === 'POST') {
             void readBody(req).then(async (body: any) => {
               const film = loadFilm(body?.film);
               if (!film) return sendJson(res, 404, { error: `Film "${filmId}" not found` });

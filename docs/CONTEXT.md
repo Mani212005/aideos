@@ -537,7 +537,7 @@ Typography, code, metrics, and cards that spend 0 accent tokens (including the 7
 * `resolveCue(cue, cues)` (`cues.ts`): Resolves cue strings and frame offsets against narration timing cues.
 * `planFilmLook(filmId, options)`, `designFilm(filmId, options)` (`designer.ts`): Delivers look planning and scene design through inline, agent, server, or templates policies.
 * `requestShotMotion(filmId, request)` (`motionRequests.ts`): Manages shot-level motion design tasks and history snapshots.
-* `designOverview(film)`, `approveLookPlan(filmId)`, `swapShotVisual(film, shotId, visual, caller)`, `requestShotRedesign(film, shotId, note, options)` (`shotTools.ts`): Gathers design and look plan overview (`look.json`, `LOOK.md`, stage, cast, shot treatments) for the Studio Look stage, records captain look approval, executes honest chart visual swaps, and dispatches per-shot redesign requests.
+* `designOverview(film)`, `approveLookPlan(filmId)`, `requestFilmDesign(film, ownerKey)` (`shotTools.ts`): Gathers design and look plan overview (`look.json`, `LOOK.md`, stage, cast, shot treatments) for the Studio Look stage, records captain look approval, and dispatches a whole-film design task to the connected agent. `swapShotVisual` and `requestShotRedesign` in the same file have no studio route and are called only from tests.
 * `designSpecSchema`, `specCameraSchema`, `specClipSchema`, `specAssetSchema` (`spec.ts`): Zod schemas and TypeScript types for bespoke film designs (brief, accent, background, assets, optional generated `pictures`, cue-timed clips, camera poses with optional focus, and shot block overrides).
 
 ### `backend/pictures/` (Illustrated Stage Picture Cache & Policy)

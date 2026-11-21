@@ -24,16 +24,13 @@ export interface CompiledEntityTransform {
 
 export interface CompiledEntity {
   entityId: string;
-  kind: "actor" | "prop" | "background";
-  rigId?: string;
+  kind: "prop" | "background";
   svgSource?: string;
   /** The picture this entity draws instead of SVG artwork (src/dl/scene/raster.ts). */
   raster?: RasterSource;
   resolvedLayer: number;
   layerSource: "explicit" | "derived";
   transform: CompiledEntityTransform;
-  joints?: Record<string, number>; // absolute degrees for each joint
-  composedPivots?: Record<string, { x: number; y: number; rotation: number }>; // hierarchical pivots
   subGroupRotations?: Array<{ elementId: string; degrees: number }>; // D1
   /** Resolved custom SVG animation state for this frame, keyed by element id inside the asset. */
   elementStates?: Record<string, SvgElementState>;
@@ -64,7 +61,6 @@ export interface CompiledScene {
 
 export interface CompileOptions {
   skipContinuityVerification?: boolean;
-  velocityToleranceDegPerSec?: number;
   /**
    * Pins the wall clock used for the diagnostic meta fields (compiledAt, compileTimeMs).
    * Pass a fixed value when the whole CompiledScene must be byte-identical across runs.

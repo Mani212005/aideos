@@ -208,7 +208,7 @@ Reel-cut behavior, delivery modes, timing limits, shot-drop rules and review gui
 ### Live Real-Time Agent Trace Telemetry (Phase 3)
 
 - `backend/agentBridge/traceBus.ts` is the in-process event bus collecting trace steps from external coding agents, the bridge dispatcher, and in-process pipeline stages (AI-edit planner, neural TTS, GPU B-roll, invariant validation).
-- Server endpoints in `editor/vite.config.ts`: `GET /api/agent/trace` streams live trace steps to the studio via Server-Sent Events (SSE), and `POST /api/agent/trace/step` records server-side pipeline steps.
+- Server endpoints in `editor/vite.config.ts`: `GET /api/agent/trace` streams live trace steps to the studio via Server-Sent Events (SSE), and `DELETE /api/agent/trace` clears trace history.
 - MCP tool `aideos_report_step` in `backend/mcp/server.ts` enables connected coding agents to report reasoning, tool calls, and invariant checks into the unified trace timeline.
 - The Agent sheet (`editor/src/components/shell/AgentSheet.tsx`) renders live SSE telemetry (queued, running, done, failed) while it is open, and an honest empty state when idle.
 

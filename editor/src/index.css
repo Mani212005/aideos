@@ -128,9 +128,6 @@
   .nb-hatch {
     background-color: var(--nb-sunken);
   }
-  .nb-hatch-dense {
-    background-color: var(--nb-sunken-3);
-  }
 
   /* Soft moving stripe for in-flight long operations, in the accent. */
   .nb-progress-stripes {
