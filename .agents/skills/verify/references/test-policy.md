@@ -4,6 +4,10 @@
 
 Tests exist to catch real regressions and protect user-visible guarantees. This policy governs what can never be weakened and when weak tests should be deleted.
 
+## Precedence
+
+The owner standing test policy dated 2026-11-21 (remove weak tests at about 60 to 70 percent confidence with a one-line PR reason, never loosen an assertion, tolerance, timeout or golden, replacing a weak test with a stronger one is fine, and add expect, property-based and differential tests) wins over the AGENTS.md no-delete and no-add-tests rules for weak-test removal and for the verification tests this skill asks for. Every other AGENTS.md test rule stands. AGENTS.md is intentionally unedited here.
+
 ## Protected test suites (never loosen)
 
 Every repository names its exact protected suites in `docs/verify/FEATURE_MAP.md`. Across projects, four categories are always protected:

@@ -11,7 +11,7 @@ One operational workflow to prove a change works reliably before handoff or merg
 
 ## Single-pass workflow
 
-Follow steps 1 through 7 in order. Do not skip a step; record why if a step does not apply (for example, a docs-only change).
+Follow steps 1 through 5 in order. Do not skip a step; record why if a step does not apply (for example, a docs-only change).
 
 ### 1. Map the change against the Feature Map
 
@@ -33,51 +33,17 @@ Select every method that applies to the change (details in [references/methods.m
 Before running or editing any test, read [references/test-policy.md](references/test-policy.md) and the Protected Test Suites section of `docs/verify/FEATURE_MAP.md`:
 
 - **Protected suites** (journeys, goldens, parity gates, hard review gates) must **never be loosened**. Never weaken an assertion, widen a tolerance, raise a timeout, skip a case, or regenerate a golden just to turn a failing run green.
-- **Weak-test removal (owner test policy)**: tests must be real and reliable. If you are roughly 60 to 70 percent sure an existing test is weak or removable (tautology, re-implements the code under test, asserts nothing meaningful, sleeps instead of waiting on a condition, duplicates another test, or tests a mock), remove it and state the removal with a one-line reason in the PR. Replacing a weak test with a stronger one is encouraged.
+- **Weak-test removal (owner test policy)**: remove a test you are roughly 60 to 70 percent sure is weak, with a one-line reason in the PR. Replace a broken or weak test with a stronger test, never loosen it, and list it under Test changes in the PR. Smells and limits are in the reference.
 
-### 4. Run the reliability checklist
+**Precedence.** The owner standing test policy dated 2026-11-21 (remove weak tests at about 60 to 70 percent confidence with a one-line PR reason, never loosen an assertion, tolerance, timeout or golden, replacing a weak test with a stronger one is fine, and add expect, property-based and differential tests) wins over the AGENTS.md no-delete and no-add-tests rules for weak-test removal and for the verification tests this skill asks for. Every other AGENTS.md test rule stands. AGENTS.md is intentionally unedited here.
 
-Run the project's static checks and targeted verification commands from `docs/verify/FEATURE_MAP.md`, and check every item below (template in [references/checklist-and-evidence.md](references/checklist-and-evidence.md)):
+### 4. Run the checks, fix loop, and independent review
 
-- [ ] Real E2E run covers touched user-facing flows (or explicitly marked N/A for docs-only changes).
-- [ ] Property test covers any new invariant (or N/A when no new invariant is added).
-- [ ] Differential test compares old vs new when replacing an implementation (or N/A).
-- [ ] Expect / golden test covers new complex output (or N/A).
-- [ ] Zero arbitrary `sleep` / fixed-delay waits in new or touched tests (wait on real conditions).
-- [ ] Zero mocks of the thing under test (inject only external/network/model boundaries).
-- [ ] Zero silent skips or `todo` placeholders passing as green.
-- [ ] Protected test suites untouched and unloosened.
+[references/checklist-and-evidence.md](references/checklist-and-evidence.md) is the single definition of the per-change reliability checklist, the 3-attempt fix loop with its escalation packet, and the independent review requirement. Run the project's static checks and targeted commands from `docs/verify/FEATURE_MAP.md`, then complete every item there. Do not copy those rules elsewhere.
 
-### 5. Fix loop (maximum 3 attempts)
+### 5. Write the evidence log
 
-If any check or test fails:
-
-1. Diagnose the real root cause from logs and failure artifacts.
-2. Fix the code (or the test only if the test itself is provably broken and not a protected expectation; never loosen a test to pass).
-3. Re-run the failing check.
-4. Repeat at most **3 fix attempts per failure**.
-5. If the failure persists after 3 attempts, **stop immediately**. Write the evidence log with exact commands, failure outputs, artifact links, and what each of the 3 attempts tried, and escalate to the human.
-
-### 6. Independent review (never author alone)
-
-The author never signs off on their own verification:
-
-1. Run an independent review of **both the diff and the verification evidence** using a separate model, an independent reviewer agent, or the repository's review pipeline (listed in `docs/verify/FEATURE_MAP.md`).
-2. Every review finding enters the same max-3-attempt fix loop; architectural or product disagreements escalate to the human.
-3. Record the reviewer identity (pipeline/model) and outcome in the evidence log.
-
-### 7. Write the evidence log
-
-Record what actually ran under `docs/evidence/verify/` (format in `docs/evidence/verify/README.md` and [references/checklist-and-evidence.md](references/checklist-and-evidence.md)):
-
-- Date, branch/PR, and scope.
-- Reliability checklist status (pass / fail / N/A with reason).
-- Exact commands run and observed results (exit code, counts, timings).
-- Protected suite status and any weak-test removals (with one-line reasons).
-- Independent review method and verdict.
-- Links to failure/review artifacts, reports, or screenshots.
-
-Reference the evidence log entry in the PR description or handoff.
+Record what actually ran under `docs/evidence/verify/` using the template in the same reference and the format in `docs/evidence/verify/README.md`. Reference the evidence log entry in the PR description or handoff.
 
 ## Porting to another project
 
