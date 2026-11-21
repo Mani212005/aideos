@@ -48,9 +48,11 @@ struct StageView {
     pose: CameraPose,
 }
 
-/// Reads an IR colour (`#RRGGBB` or `#RRGGBBAA`, already checked by the loader).
+/// Reads an IR colour (`#RRGGBB` or `#RRGGBBAA`). The loader's schema guarantees the format, so a colour that does not parse means an IR was built without the loader: debug builds and tests fail loudly on it, release builds draw opaque black rather than abort a render.
 pub fn ir_color(s: &str) -> Rgba {
-    parse_color(s).unwrap_or(Rgba {
+    let parsed = parse_color(s);
+    debug_assert!(parsed.is_some(), "IR colour {s:?} is not #RRGGBB or #RRGGBBAA: the loader's schema should have refused it");
+    parsed.unwrap_or(Rgba {
         r: 0.0,
         g: 0.0,
         b: 0.0,

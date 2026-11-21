@@ -78,7 +78,6 @@ Before deploying, ensure you have:
    - `NODE_ENV`: `production`
    - `PORT`: `8080`
    - `GEMINI_API_KEY`: `<your-gemini-api-key>`
-   - `AIDEOS_GEMINI_MODEL`: `gemini-2.0-flash`
    - *(Optional)* `DEEPGRAM_API_KEY`, `WAN_GPU_*`
 5. Click **Create Web Service**.
 6. Wait for deployment to complete and copy the backend URL (`https://<your-service>.onrender.com`).
@@ -125,7 +124,7 @@ Before deploying, ensure you have:
 |---|---|---|---|
 | `GEMINI_API_KEY` | Yes | - | Google Gemini API key for agent compilation |
 | `GOOGLE_API_KEY` | Alternative / No | - | Fallback Google GenAI and Cloud TTS API key |
-| `AIDEOS_GEMINI_MODEL` | No | `gemini-2.0-flash` | Gemini model name for screenplay intake |
+| `AIDEOS_GEMINI_MODEL` | No | `gemini-3.5-flash` (`backend/modelClient.ts`) | Gemini text model for screenplay intake, the director and the edit planner; not the video review model (see the next row) |
 | `AIDEOS_GEMINI_REVIEW_MODEL` | No | `videoModels.reviewer.model` in `aideos.config.json` | agy CLI model catalog ID for video quality review loop; see [review model policy](REVIEW.md#5-video-model-policy) |
 | `AIDEOS_PUBLIC_API_URL` | No | `https://aideos-backend.onrender.com` | Public backend URL shown in agent link connect commands |
 | `AIDEOS_LINK_SECRET` | No | Derived / generated | HMAC secret key signing agent link tokens across restarts |

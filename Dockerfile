@@ -1,5 +1,5 @@
-# File Description: Container for the hosted studio API and renderer, with Chromium and ffmpeg.
-# Inputs and outputs: repository source -> image that serves the editor and its API on port 8080.
+# File Description: Container for the hosted studio API, serving the built editor and its API middleware with Chromium and ffmpeg installed.
+# Inputs and outputs: repository source -> image that serves the built editor and its API on port 8080.
 # Used by: render.yaml (Render web service).
 
 FROM node:22-bookworm-slim
@@ -34,15 +34,20 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 WORKDIR /app
 
 # 2. Copy project source code and install root and editor dependencies (the root postinstall
-#    installs editor/ too, so this needs the source present first)
+#    installs editor/ too, so this needs the source present first). The dev dependencies stay: the
+#    build below needs tsc and vite, and the preview server is vite itself.
 COPY . .
 RUN npm ci --include=dev
 
-# 3. Expose the service port
+# 3. Build the editor once at image build time (its prebuild step regenerates the generated modules)
+RUN npm --prefix editor run build
+
+# 4. Expose the service port
 EXPOSE 8080
 
-# 4. Start the studio server. The API lives in the editor dev server's middleware, so that is what
-#    runs here; exec vite directly rather than through npm, which adds two npm processes (~60 MB)
+# 5. Start the studio server: `vite preview` serves the built editor and runs the same API
+#    middleware as the dev server (see filmApiPlugin in editor/vite.config.ts), without a watcher or
+#    hot reload. Exec vite directly rather than through npm, which adds two npm processes (~60 MB)
 #    on a 512 MB instance.
 WORKDIR /app/editor
-CMD ["./node_modules/.bin/vite", "--host", "0.0.0.0"]
+CMD ["./node_modules/.bin/vite", "preview", "--host", "0.0.0.0"]

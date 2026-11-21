@@ -214,9 +214,9 @@ pub(crate) fn prepare(
             continue;
         }
         let dots = d.dots.as_ref().filter(|_| draw.look == Look::Dots);
-        let (shading, offset, ink_width) = match dots {
-            Some(look) => (&look.shading, None, look.ink_width),
-            None => (&d.shading, d.offset, d.ink_width),
+        let (shading, side, offset, ink_width) = match dots {
+            Some(look) => (&look.shading, look.side, None, look.ink_width),
+            None => (&d.shading, d.side, d.offset, d.ink_width),
         };
         if let Shading::Face { texture, .. } | Shading::FaceLuma { texture, .. } = shading {
             if textures[*texture].is_none() {
@@ -278,7 +278,7 @@ pub(crate) fn prepare(
             };
             if let Some(tri) = set_up(
                 (draw.drawable as u32, draw.look),
-                d.side,
+                side,
                 offset,
                 mirrored,
                 [t[0], t[1], t[2]],

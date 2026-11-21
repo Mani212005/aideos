@@ -113,6 +113,9 @@ struct Scene {
     edges: Option<&'static str>,
     /// Whether the drawable carries a dots look at all.
     dotted: bool,
+    /// The sidedness of the cel toon material and of the dots paper, which three keeps apart.
+    cel_side: &'static str,
+    dots_side: &'static str,
 }
 
 /// The big triangle around the origin: 600 units is 100 px.
@@ -136,12 +139,14 @@ impl Scene {
             samples: None,
             edges: None,
             dotted: true,
+            cel_side: "double",
+            dots_side: "double",
         }
     }
 
     /// The IR document.
     fn ir(&self) -> Value {
-        let mut dots = json!({"material": {"kind": "basic", "color": PAPER_LINEAR, "side": "double"}, "order": 5});
+        let mut dots = json!({"material": {"kind": "basic", "color": PAPER_LINEAR, "side": self.dots_side}, "order": 5});
         if let Some(part) = self.samples {
             dots["samples"] = json!({"part": part, "tone": 0.5});
         }
@@ -149,7 +154,7 @@ impl Scene {
             dots["edges"] = json!({"part": part, "color": [1, 1, 1], "order": 6});
         }
         let mut drawable = json!({"id": "paper", "node": "paper", "part": "paper", "order": 1,
-            "material": {"kind": "toon", "color": [1, 1, 1], "side": "double"}});
+            "material": {"kind": "toon", "color": [1, 1, 1], "side": self.cel_side}});
         if self.dotted {
             drawable["group"] = json!("g");
             drawable["dots"] = dots;
@@ -257,6 +262,24 @@ fn the_paper_replaces_the_cel_look_only_while_the_treatment_is_dots() {
     plain.dotted = false;
     plain.spans = vec![(0, 6, "dots-v1")];
     assert_eq!(at(&render(&plain, "paper-plain", 0), 0.0, -300.0), CEL);
+}
+
+/// Each look culls by its own material's side: the dots paper is not drawn or hidden by the cel look's side.
+#[test]
+fn the_dots_paper_culls_by_its_own_side_not_the_cel_looks() {
+    let centre = |cel_side: &'static str, dots_side: &'static str, treatment: &'static str, name: &str| {
+        let mut scene = Scene::new(treatment);
+        scene.cel_side = cel_side;
+        scene.dots_side = dots_side;
+        let frame = scene.renderer(name).render_frame(Format::Long, 0).expect("renders");
+        at(&frame, 0.0, -300.0)
+    };
+    // The triangle faces the camera. A back-side dots paper hides it even though the cel look is double sided.
+    assert_eq!(centre("double", "back", "dots-v1", "side-dots-back"), BACKGROUND);
+    // A front-side dots paper draws it even though the cel look is back sided.
+    assert_eq!(centre("back", "front", "dots-v1", "side-dots-front"), PAPER);
+    // The cel look still follows its own side while the treatment is cel.
+    assert_eq!(centre("back", "front", "cel-v1", "side-cel-back"), BACKGROUND);
 }
 
 /// Scene spans switch the look over time, and win over the group's own treatment; frames past the last sample hold its treatment.
