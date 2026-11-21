@@ -100,3 +100,48 @@ test("kokoroFits honours the override and the memory limit", () => {
   assert.equal(kokoroFits(512 * MB, { AIDEOS_KOKORO: "1" }), true);
   assert.equal(kokoroFits(8192 * MB, { AIDEOS_KOKORO: "0" }), false);
 });
+
+test("a stalled Deepgram request is cut off by the time budget and the chain falls through to Google", async (t) => {
+  // A real hung socket keeps the event loop alive; this mock has none, so hold the loop open until the abort fires.
+  const keepAlive = setInterval(() => {}, 1000);
+  t.after(() => clearInterval(keepAlive));
+  const googlePcm = Buffer.alloc(200);
+  const fetchImpl = ((input: string | URL | Request, init?: RequestInit) => {
+    if (String(input).includes("deepgram.com")) {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason ?? new Error("aborted")));
+      });
+    }
+    const audioContent = pcm16ToWav(googlePcm, 24000).toString("base64");
+    return Promise.resolve(new Response(JSON.stringify({ audioContent })));
+  }) as typeof fetch;
+
+  const out = await synthesizeVoiceover(
+    request({ voice: "aura-helios-en", deepgramKey: "dg", googleKey: "g", timeoutMs: 50 }),
+    deps({ fetch: fetchImpl }),
+    {},
+  );
+
+  assert.equal(out.provider, "google");
+  assert.equal(wavDataChunk(out.wav).length, 200);
+});
+
+test("when every provider stalls the error says each one timed out", async (t) => {
+  const keepAlive = setInterval(() => {}, 1000);
+  t.after(() => clearInterval(keepAlive));
+  const hanging = ((_input: string | URL | Request, init?: RequestInit) =>
+    new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(init.signal?.reason ?? new Error("aborted")));
+    })) as typeof fetch;
+
+  await assert.rejects(
+    () => synthesizeVoiceover(request({ voice: "aura-helios-en", deepgramKey: "dg", googleKey: "g", timeoutMs: 50 }), deps({ fetch: hanging }), {}),
+    (err: unknown) => {
+      assert.ok(err instanceof VoiceSynthesisError);
+      const reasons = Object.fromEntries(err.attempts.map((a) => [a.provider, a.reason]));
+      assert.match(reasons.deepgram, /timed out/);
+      assert.match(reasons.google, /timed out/);
+      return true;
+    },
+  );
+});

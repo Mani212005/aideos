@@ -2,10 +2,14 @@
  * File Description: HTTP client for the local Voice-cloned (`vcd`) service. Talks only to loopback
  * addresses (default http://127.0.0.1:8740), resolves the enrolled owner voice id, submits synthesis
  * jobs for English or Hindi/Hinglish text, polls until completion, and fetches the resulting 24 kHz
- * mono WAV. Network calls and polling waits are injectable so unit tests never touch the network.
+ * mono WAV. Network calls, polling waits and the clock are injectable so unit tests never touch the
+ * network. One deadline (timeoutMs) bounds a whole synthesis: voice discovery, every submit retry and
+ * its wait, polling and the audio download.
  * Inputs and outputs: loopback URL, enrolled voice id, language and text -> WAV audio buffer and provenance, or a plain-language VcdUnavailableError.
  * Used by: backend/tts.ts, backend/voiceSynthesis.ts, backend/aideosConfig.ts, editor/vite.config.ts.
  */
+
+import { fetchWithin, HttpDeadlineError, readWithin, startDeadline, type Deadline, type NowFn } from "./httpDeadline";
 
 /** Default loopback URL where the local vcd voice-clone service listens. */
 export const DEFAULT_VCD_URL = "http://127.0.0.1:8740";
@@ -45,6 +49,8 @@ export interface VcdServiceStatus {
 export interface VcdHttpDeps {
   fetch?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+  /** Clock behind the operation deadline; defaults to Date.now. */
+  now?: NowFn;
 }
 
 /** Successful synthesis output from vcd. */
@@ -63,6 +69,7 @@ export type VcdErrorCode =
   | "unreachable"
   | "no_voice_enrolled"
   | "voice_not_found"
+  | "ambiguous_voice"
   | "job_failed"
   | "timeout"
   | "bad_response";
@@ -85,7 +92,11 @@ const DEVANAGARI_RE = /[\u0900-\u097F]/;
 const DEFAULT_POLL_MS = 250;
 const DEFAULT_TIMEOUT_MS = 5 * 60_000;
 const MAX_QUEUE_RETRIES = 6;
+/** Names (lowercase) that identify the owner's own enrolled voice when no voice id is configured. */
+export const VCD_OWNER_VOICE_NAMES: readonly string[] = ["my-voice", "me"];
+/** Per-request cap for voice discovery; the operation deadline can only make it shorter. */
 const SHORT_REQUEST_TIMEOUT_MS = 5_000;
+/** Per-request cap for submit, poll and audio download; the operation deadline can only make it shorter. */
 const LONG_REQUEST_TIMEOUT_MS = 60_000;
 const VCD_START_HINT = "Start the local voice service with `vcd serve` on 127.0.0.1:8740 (or open an SSH tunnel to the Linux voice service on that port). My voice is the voice of choice; do not switch to another voice without the captain's word.";
 
@@ -164,20 +175,43 @@ function unreachableError(url: string, detail?: string): VcdUnavailableError {
   );
 }
 
-// Wraps fetch with a per-request timeout and turns low-level socket failures into a plain VcdUnavailableError.
+// Runs one vcd request under the operation deadline: a spent budget becomes a "timeout" error and socket failures become "unreachable".
 async function vcdFetch(
   url: string,
   baseUrl: string,
   init: RequestInit | undefined,
   fetchImpl: typeof fetch,
-  timeoutMs: number = LONG_REQUEST_TIMEOUT_MS,
+  deadline: Deadline,
+  capMs: number = LONG_REQUEST_TIMEOUT_MS,
 ): Promise<Response> {
   try {
-    return await fetchImpl(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    return await fetchWithin(deadline, fetchImpl, url, init, { what: `Local voice service at ${baseUrl}`, capMs });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw unreachableError(baseUrl, msg);
+    throw toVcdError(err, baseUrl);
   }
+}
+
+// Reads a vcd response body under the same deadline, mapping a stalled body to the same errors as vcdFetch.
+async function vcdRead<T>(deadline: Deadline, baseUrl: string, read: () => Promise<T>): Promise<T> {
+  try {
+    return await readWithin(deadline, `Local voice service at ${baseUrl}`, read);
+  } catch (err) {
+    if (err instanceof VcdUnavailableError) throw err;
+    throw toVcdError(err, baseUrl);
+  }
+}
+
+// Converts a deadline or socket failure into the plain-language VcdUnavailableError callers expect.
+function toVcdError(err: unknown, baseUrl: string): VcdUnavailableError {
+  if (err instanceof VcdUnavailableError) return err;
+  if (err instanceof HttpDeadlineError) {
+    return new VcdUnavailableError(
+      "timeout",
+      baseUrl,
+      `Local voice service at ${baseUrl} did not finish within the ${Math.round(err.budgetMs / 1000)} s time budget.`,
+    );
+  }
+  return unreachableError(baseUrl, err instanceof Error ? err.message : String(err));
 }
 
 // Reads a vcd application/problem+json or text error body into a short plain string.
@@ -199,14 +233,19 @@ async function readProblemDetail(res: Response): Promise<{ code?: string; detail
   }
 }
 
-// Lists enrolled voices from GET /v1/voices on the local vcd service.
+// Lists enrolled voices from GET /v1/voices on the local vcd service within the given time budget.
 export async function listVcdVoices(
   rawUrl: string = DEFAULT_VCD_URL,
   deps: VcdHttpDeps = {},
+  timeoutMs: number = SHORT_REQUEST_TIMEOUT_MS,
 ): Promise<VcdVoiceSummary[]> {
   const baseUrl = assertLoopbackVcdUrl(rawUrl);
-  const fetchImpl = deps.fetch ?? fetch;
-  const res = await vcdFetch(`${baseUrl}/v1/voices`, baseUrl, { method: "GET" }, fetchImpl, SHORT_REQUEST_TIMEOUT_MS);
+  return listVoicesWithin(baseUrl, deps.fetch ?? fetch, startDeadline(timeoutMs, deps.now));
+}
+
+// Lists enrolled voices under an already running operation deadline.
+async function listVoicesWithin(baseUrl: string, fetchImpl: typeof fetch, deadline: Deadline): Promise<VcdVoiceSummary[]> {
+  const res = await vcdFetch(`${baseUrl}/v1/voices`, baseUrl, { method: "GET" }, fetchImpl, deadline, SHORT_REQUEST_TIMEOUT_MS);
   if (!res.ok) {
     const problem = await readProblemDetail(res);
     throw new VcdUnavailableError(
@@ -215,23 +254,46 @@ export async function listVcdVoices(
       `Local voice service at ${baseUrl} rejected /v1/voices (${problem.detail}). ${VCD_START_HINT}`,
     );
   }
-  const payload = (await res.json()) as { voices?: VcdVoiceSummary[] };
+  const payload = await vcdRead(deadline, baseUrl, () => res.json() as Promise<{ voices?: VcdVoiceSummary[] }>);
   return Array.isArray(payload.voices) ? payload.voices : [];
 }
 
-// Selects the enrolled voice id from explicit config, or auto-discovers the owner's enrolled voice from vcd.
+// Formats enrolled voices as "name (id)" for error messages that list the choices.
+function describeVoices(voices: VcdVoiceSummary[]): string {
+  return voices.map((v) => `${v.name} (${v.id})`).join(", ");
+}
+
+// Selects the enrolled voice id from explicit config, or the owner's voice when that is unambiguous.
 export async function resolveVcdVoiceId(
-  options: { url?: string; voiceId?: string },
+  options: { url?: string; voiceId?: string; timeoutMs?: number },
   deps: VcdHttpDeps = {},
 ): Promise<{ voiceId: string; voiceName: string | null; url: string }> {
   const baseUrl = assertLoopbackVcdUrl(options.url || DEFAULT_VCD_URL);
-  const configured = (options.voiceId ?? "").trim();
-  const voices = await listVcdVoices(baseUrl, deps);
+  const deadline = startDeadline(options.timeoutMs ?? SHORT_REQUEST_TIMEOUT_MS, deps.now);
+  return resolveWithin(baseUrl, options.voiceId, deps.fetch ?? fetch, deadline);
+}
+
+/*
+ * Voice resolution rule (never silently narrate as someone else):
+ *  1. A configured voice id or name must match an enrolled voice exactly, otherwise it fails listing the choices.
+ *  2. With nothing configured, exactly one voice named "my-voice" or "me" is the owner's voice.
+ *  3. With nothing configured and no owner-named voice, the only enrolled voice is used when there is exactly one.
+ *  4. Anything else (several owner-named voices, or several voices and none owner-named) fails listing the choices.
+ */
+// Applies the voice resolution rule above under an already running operation deadline.
+async function resolveWithin(
+  baseUrl: string,
+  voiceIdOption: string | undefined,
+  fetchImpl: typeof fetch,
+  deadline: Deadline,
+): Promise<{ voiceId: string; voiceName: string | null; url: string }> {
+  const configured = (voiceIdOption ?? "").trim();
+  const voices = await listVoicesWithin(baseUrl, fetchImpl, deadline);
 
   if (configured) {
     const match = voices.find((v) => v.id === configured || v.name === configured);
     if (!match) {
-      const known = voices.length > 0 ? ` Enrolled voice(s): ${voices.map((v) => `${v.name} (${v.id})`).join(", ")}.` : "";
+      const known = voices.length > 0 ? ` Enrolled voice(s): ${describeVoices(voices)}.` : "";
       throw new VcdUnavailableError(
         "voice_not_found",
         baseUrl,
@@ -249,10 +311,17 @@ export async function resolveVcdVoiceId(
     );
   }
 
-  const preferred =
-    voices.find((v) => v.name.toLowerCase() === "my-voice" || v.name.toLowerCase() === "me") ??
-    voices[0];
-  return { voiceId: preferred.id, voiceName: preferred.name, url: baseUrl };
+  const ownerNamed = voices.filter((v) => VCD_OWNER_VOICE_NAMES.includes(v.name.toLowerCase()));
+  const chosen = ownerNamed.length > 0 ? ownerNamed : voices.length === 1 ? voices : [];
+  if (chosen.length === 1) {
+    return { voiceId: chosen[0].id, voiceName: chosen[0].name, url: baseUrl };
+  }
+  throw new VcdUnavailableError(
+    "ambiguous_voice",
+    baseUrl,
+    `Cannot tell which enrolled voice is yours at ${baseUrl}: ${describeVoices(chosen.length > 0 ? chosen : voices)}. ` +
+      `Name your voice "${VCD_OWNER_VOICE_NAMES.join('" or "')}" in the voice service, or set voiceClone.voiceId in aideos.config.json (or AIDEOS_VCD_VOICE_ID).`,
+  );
 }
 
 // Probes local vcd availability without throwing, for Studio status indicators and line status checks.
@@ -289,7 +358,7 @@ function wavSampleRate(wav: Buffer): number {
   return 24000;
 }
 
-// Submits a synthesis job to vcd, polls until it finishes, and fetches the resulting WAV buffer.
+// Submits a synthesis job to vcd, polls until it finishes, and fetches the resulting WAV buffer; `timeoutMs` bounds the whole operation.
 export async function synthesizeWithVcd(
   req: {
     text: string;
@@ -305,7 +374,7 @@ export async function synthesizeWithVcd(
   const fetchImpl = deps.fetch ?? fetch;
   const sleep = deps.sleep ?? defaultSleep;
   const pollIntervalMs = req.pollIntervalMs ?? DEFAULT_POLL_MS;
-  const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const deadline = startDeadline(req.timeoutMs ?? DEFAULT_TIMEOUT_MS, deps.now);
 
   const trimmedText = req.text.trim();
   if (!trimmedText) {
@@ -314,12 +383,10 @@ export async function synthesizeWithVcd(
 
   let voiceId = (req.voiceId ?? "").trim();
   if (!voiceId) {
-    const resolved = await resolveVcdVoiceId({ url: baseUrl }, deps);
-    voiceId = resolved.voiceId;
+    voiceId = (await resolveWithin(baseUrl, undefined, fetchImpl, deadline)).voiceId;
   }
 
   const language = detectVcdLanguage(trimmedText, req.language ?? "auto");
-  const deadline = Date.now() + timeoutMs;
 
   // Submit the job, retrying briefly if vcd's single-slot queue is temporarily full (HTTP 429).
   let jobId = "";
@@ -333,12 +400,14 @@ export async function synthesizeWithVcd(
         body: JSON.stringify({ voice_id: voiceId, language, text: trimmedText }),
       },
       fetchImpl,
+      deadline,
     );
 
     if (submitRes.status === 429 && attempt < MAX_QUEUE_RETRIES) {
       const retryAfterSec = Number(submitRes.headers.get("retry-after") || "1");
       const waitMs = Math.min(5000, Math.max(250, Number.isFinite(retryAfterSec) ? retryAfterSec * 1000 : 1000));
-      await sleep(waitMs);
+      // The wait never outlives the budget; once it is spent the next submit fails with a timeout.
+      await sleep(Math.min(waitMs, deadline.remainingMs()));
       continue;
     }
 
@@ -359,7 +428,7 @@ export async function synthesizeWithVcd(
       );
     }
 
-    const created = (await submitRes.json()) as { id?: string };
+    const created = await vcdRead(deadline, baseUrl, () => submitRes.json() as Promise<{ id?: string }>);
     if (!created.id) {
       throw new VcdUnavailableError(
         "bad_response",
@@ -382,7 +451,8 @@ export async function synthesizeWithVcd(
   // Poll until the job completes.
   let audioSeconds: number | null = null;
   for (;;) {
-    const pollRes = await vcdFetch(`${baseUrl}/v1/jobs/${encodeURIComponent(jobId)}`, baseUrl, { method: "GET" }, fetchImpl);
+    if (deadline.expired()) throw jobTimeout(baseUrl, jobId);
+    const pollRes = await vcdFetch(`${baseUrl}/v1/jobs/${encodeURIComponent(jobId)}`, baseUrl, { method: "GET" }, fetchImpl, deadline);
     if (!pollRes.ok) {
       const problem = await readProblemDetail(pollRes);
       throw new VcdUnavailableError(
@@ -391,11 +461,16 @@ export async function synthesizeWithVcd(
         `Local voice service at ${baseUrl} failed while checking job ${jobId} (${problem.detail}).`,
       );
     }
-    const status = (await pollRes.json()) as {
-      state?: string;
-      error_code?: string | null;
-      audio_seconds?: number | null;
-    };
+    const status = await vcdRead(
+      deadline,
+      baseUrl,
+      () =>
+        pollRes.json() as Promise<{
+          state?: string;
+          error_code?: string | null;
+          audio_seconds?: number | null;
+        }>,
+    );
     if (status.state === "succeeded") {
       audioSeconds = typeof status.audio_seconds === "number" ? status.audio_seconds : null;
       break;
@@ -408,14 +483,7 @@ export async function synthesizeWithVcd(
         `Local voice service at ${baseUrl} failed to synthesize this line (${code}).`,
       );
     }
-    if (Date.now() >= deadline) {
-      throw new VcdUnavailableError(
-        "timeout",
-        baseUrl,
-        `Local voice service at ${baseUrl} timed out while synthesizing job ${jobId}.`,
-      );
-    }
-    await sleep(pollIntervalMs);
+    await sleep(Math.min(pollIntervalMs, deadline.remainingMs()));
   }
 
   // Download the completed 24 kHz mono WAV.
@@ -424,6 +492,7 @@ export async function synthesizeWithVcd(
     baseUrl,
     { method: "GET" },
     fetchImpl,
+    deadline,
   );
   if (!audioRes.ok) {
     const problem = await readProblemDetail(audioRes);
@@ -433,7 +502,7 @@ export async function synthesizeWithVcd(
       `Local voice service at ${baseUrl} could not deliver audio for job ${jobId} (${problem.detail}).`,
     );
   }
-  const wav = Buffer.from(await audioRes.arrayBuffer());
+  const wav = Buffer.from(await vcdRead(deadline, baseUrl, () => audioRes.arrayBuffer()));
   if (wav.length < 44 || wav.toString("ascii", 0, 4) !== "RIFF" || wav.toString("ascii", 8, 12) !== "WAVE") {
     throw new VcdUnavailableError(
       "bad_response",
@@ -450,4 +519,13 @@ export async function synthesizeWithVcd(
     audioSeconds,
     sampleRate: wavSampleRate(wav),
   };
+}
+
+// Builds the timeout error for a synthesis job that did not finish inside the operation deadline.
+function jobTimeout(baseUrl: string, jobId: string): VcdUnavailableError {
+  return new VcdUnavailableError(
+    "timeout",
+    baseUrl,
+    `Local voice service at ${baseUrl} timed out while synthesizing job ${jobId}.`,
+  );
 }

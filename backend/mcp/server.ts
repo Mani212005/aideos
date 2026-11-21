@@ -23,7 +23,7 @@ import { detectFillers } from "../editContext/detectFillers";
 import { detectSilences } from "../editContext/detectSilences";
 import { planEdits, applyEditProgram } from "../editPlanner";
 import { appendEditProvenanceRecord, readEditProvenanceLog } from "../editPlanner/provenanceLog";
-import type { TranscribedWord } from "../transcribe";
+import { readTranscriptWords } from "../transcribe";
 import { taskQueue, traceBus } from "../agentBridge";
 import { registerDesignTools } from "./designTools";
 
@@ -141,6 +141,11 @@ function taskSummary(task: { id: string; status: string; eventType: string; film
 /** Wraps a JSON payload in the content shape MCP tool results use. */
 function jsonResult(payload: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }] };
+}
+
+/** Prepends a transcript-read warning (when there is one) to the planner's own warnings. */
+function withTranscriptWarning(planWarnings: string[], transcriptWarning: string | undefined): string[] {
+  return transcriptWarning ? [transcriptWarning, ...planWarnings] : planWarnings;
 }
 
 /** Options for building the server. */
@@ -382,21 +387,8 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
 
       const layered = convertFilmToLayeredFilm(film);
 
-      // Load transcript if available
-      let transcript: TranscribedWord[] = [];
-      const importWordsPath = path.join(VIDEOS_DIR, slug, "import_words.json");
-      const voWordsPath = path.join(VIDEOS_DIR, slug, "voiceover_words.json");
-      if (fs.existsSync(importWordsPath)) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(importWordsPath, "utf8"));
-          transcript = raw.words || [];
-        } catch {}
-      } else if (fs.existsSync(voWordsPath)) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(voWordsPath, "utf8"));
-          transcript = raw.words || [];
-        } catch {}
-      }
+      // Load transcript if available; a corrupt one is reported in the result instead of silently planning without it.
+      const { words: transcript, warning: transcriptWarning } = readTranscriptWords(slug);
 
       const fillers = detectFillers(transcript);
       const silences = detectSilences(transcript);
@@ -424,7 +416,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
           attempts: planResult.attempts,
           dryRun: true,
           source: "mcp",
-          warnings: planResult.warnings,
+          warnings: withTranscriptWarning(planResult.warnings, transcriptWarning),
         });
 
         return jsonResult({
@@ -434,7 +426,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
           plan: planResult.plan,
           ops: planResult.ops,
           attempts: planResult.attempts,
-          warnings: planResult.warnings,
+          warnings: withTranscriptWarning(planResult.warnings, transcriptWarning),
         });
       }
 
@@ -463,7 +455,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         attempts: planResult.attempts,
         dryRun: false,
         source: "mcp",
-        warnings: planResult.warnings,
+        warnings: withTranscriptWarning(planResult.warnings, transcriptWarning),
       });
 
       return jsonResult({
@@ -473,7 +465,7 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
         plan: planResult.plan,
         ops: planResult.ops,
         attempts: planResult.attempts,
-        warnings: planResult.warnings,
+        warnings: withTranscriptWarning(planResult.warnings, transcriptWarning),
         filmSummary: {
           id: savedFilm.id,
           title: savedFilm.title,

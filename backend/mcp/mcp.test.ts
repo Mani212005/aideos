@@ -187,3 +187,29 @@ test("MCP produce is a draft by default: only finalExport lifts the assemble sto
     await server.close();
   }
 });
+
+test("MCP edit surfaces a warning when an existing transcript is corrupt, and stays silent when there is none", async () => {
+  const filmId = "speculative-decoding-designed";
+  const wordsPath = path.join(TEST_VIDEOS_DIR, filmId, "voiceover_words.json");
+  const stubPlanner = async () => JSON.stringify({ plan: "Trim the start.", ops: [{ op: "trim_range", fromSec: 0, toSec: 1 }] });
+  const server = createMcpServer({ llmCaller: stubPlanner });
+  const client = new Client({ name: "mcp-transcript-warning-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const planWarnings = async (): Promise<string[]> => {
+    const result = await client.callTool({ name: "aideos_edit_film", arguments: { slug: filmId, request: "trim the start", dryRun: true } });
+    return (JSON.parse(toolText(result)) as { warnings: string[] }).warnings;
+  };
+  try {
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    assert.equal((await planWarnings()).some((w) => w.includes("voiceover_words.json")), false, "a missing transcript is not a warning");
+
+    fs.writeFileSync(wordsPath, "{ not json");
+    const warnings = await planWarnings();
+    assert.equal(warnings.filter((w) => /voiceover_words\.json exists but could not be read/.test(w)).length, 1);
+    assert.match(warnings[0], /planning without a transcript/);
+  } finally {
+    fs.rmSync(wordsPath, { force: true });
+    await client.close();
+    await server.close();
+  }
+});

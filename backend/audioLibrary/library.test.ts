@@ -110,3 +110,72 @@ test("audio fetch is ok when only an item marked required:false fails", async (t
   assert.equal(report.ok, true);
   assert.ok(fs.existsSync(path.join(cacheDir, "good-after.mp3")));
 });
+
+// Download deadline: a stalled server must fail the item within its budget instead of hanging the whole fetch.
+
+// Starts a server that answers /stall-headers never and /stall-body with headers plus a stalled body, counting requests per path.
+async function startStallingServer(t: test.TestContext) {
+  const hits: Record<string, number> = {};
+  const server = http.createServer((req, res) => {
+    hits[req.url ?? ""] = (hits[req.url ?? ""] ?? 0) + 1;
+    if (req.url === "/stall-body.mp3") {
+      res.writeHead(200, { "content-type": "audio/mpeg", "content-length": "1000000" });
+      res.write(Buffer.alloc(100));
+    }
+    // /stall-headers.mp3: never answered.
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+  t.after(
+    () =>
+      new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections();
+      }),
+  );
+  return { hits, base: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
+}
+
+test("audio fetch fails a stalled download within its budget and does not retry it with curl", async (t) => {
+  const { hits, base } = await startStallingServer(t);
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-audio-stall-"));
+  t.after(() => fs.rmSync(cacheDir, { recursive: true, force: true }));
+  const library = parseAudioLibrary({
+    schema: "aideos.audio-library/1",
+    version: 1,
+    items: [item("stall-headers", `${base}/stall-headers.mp3`), item("stall-body", `${base}/stall-body.mp3`)],
+  });
+
+  const report = await fetchAudioLibrary(library, { cacheDir, download: { timeoutMs: 300 } });
+
+  assert.deepEqual(
+    report.results.map((r) => [r.id, r.status]),
+    [
+      ["stall-headers", "failed"],
+      ["stall-body", "failed"],
+    ],
+  );
+  for (const r of report.results) assert.match(r.message ?? "", /timed out/, r.id);
+  assert.deepEqual(hits, { "/stall-headers.mp3": 1, "/stall-body.mp3": 1 }, "a spent budget must not start the curl fallback");
+});
+
+test("the curl fallback is bounded by what is left of the same download budget", async (t) => {
+  const { hits, base } = await startStallingServer(t);
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-audio-curl-"));
+  t.after(() => fs.rmSync(cacheDir, { recursive: true, force: true }));
+  const library = parseAudioLibrary({
+    schema: "aideos.audio-library/1",
+    version: 1,
+    items: [item("transport-failure", `${base}/stall-headers.mp3`)],
+  });
+  // Node's fetch fails at transport level at once, which is the only case that falls back to curl.
+  const failingFetch = (async () => {
+    throw new TypeError("fetch failed");
+  }) as unknown as typeof fetch;
+
+  const started = Date.now();
+  const report = await fetchAudioLibrary(library, { cacheDir, download: { timeoutMs: 1000, fetchImpl: failingFetch } });
+
+  assert.equal(report.results[0].status, "failed");
+  assert.equal(hits["/stall-headers.mp3"], 1, "curl must have been tried once");
+  assert.ok(Date.now() - started < 10_000, "curl must be cut off by the budget, not wait for the stalled server");
+});

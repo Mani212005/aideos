@@ -12,6 +12,7 @@ import { promisify } from "node:util";
 import { getProjectRoot, getAudioLibraryCacheDir } from "../../src/dl/videoPackageLoader";
 import { overrideSoundtrackLibrary } from "../../src/dl/audio/sectionMixer";
 import { audioItemIdSchema, parseAudioLibrary, type AudioItem, type AudioLibrary } from "./schema";
+import { fetchWithin, HttpDeadlineError, HTTP_DEADLINES, readWithin, startDeadline, type NowFn } from "../httpDeadline";
 
 export type AudioItemStatus = "valid" | "missing" | "mismatch" | "unavailable";
 
@@ -217,12 +218,22 @@ function downloadHeaders(url: string): Record<string, string> {
   };
 }
 
-// Downloads raw bytes from a URL and saves them to a destination file; an HTML page is never accepted as audio.
-async function downloadToFile(url: string, destPath: string): Promise<void> {
+/** Injectable download behaviour: time budget, fetch and clock (tests never touch the network or wait). */
+export interface DownloadOptions {
+  /** Time budget (ms) for one download, including the curl fallback; defaults to 2 minutes. */
+  timeoutMs?: number;
+  fetchImpl?: typeof fetch;
+  now?: NowFn;
+}
+
+// Downloads raw bytes from a URL and saves them to a destination file within one time budget; an HTML page is never accepted as audio.
+async function downloadToFile(url: string, destPath: string, options: DownloadOptions = {}): Promise<void> {
   const headers = downloadHeaders(url);
+  const deadline = startDeadline(options.timeoutMs ?? HTTP_DEADLINES.audioDownloadMs, options.now);
+  const what = `Download of ${url}`;
   let htmlRejected = false;
   try {
-    const res = await fetch(url, { headers });
+    const res = await fetchWithin(deadline, options.fetchImpl ?? fetch, url, { headers }, { what });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} ${res.statusText}`);
     }
@@ -230,14 +241,21 @@ async function downloadToFile(url: string, destPath: string): Promise<void> {
       htmlRejected = true;
       throw new Error("server returned an HTML page instead of an audio file");
     }
-    const arrayBuffer = await res.arrayBuffer();
+    const arrayBuffer = await readWithin(deadline, what, () => res.arrayBuffer());
     fs.writeFileSync(destPath, Buffer.from(arrayBuffer));
   } catch (err) {
-    if (htmlRejected) {
+    // An HTML page or a spent time budget is final; any other failure (transport, SSL, HTTP error) retries with curl.
+    if (htmlRejected || err instanceof HttpDeadlineError) {
       throw err;
     }
-    // Fall back to curl if Node fetch encountered network or SSL transport issue
-    await execFileAsync("curl", ["-fsSL", "-A", headers["User-Agent"], "-e", headers.Referer, url, "-o", destPath]);
+    const remainingMs = deadline.remainingMs();
+    if (remainingMs <= 0) throw new HttpDeadlineError(what, deadline.budgetMs);
+    // The curl fallback gets only what is left of the same budget, and is killed if it overruns.
+    await execFileAsync(
+      "curl",
+      ["-fsSL", "--max-time", String(Math.max(1, Math.ceil(remainingMs / 1000))), "-A", headers["User-Agent"], "-e", headers.Referer, url, "-o", destPath],
+      { timeout: remainingMs + 1000 },
+    );
   }
 }
 
@@ -256,6 +274,7 @@ export async function fetchAudioItem(
     cacheDir?: string;
     force?: boolean;
     archiveCache?: Map<string, string>;
+    download?: DownloadOptions;
   } = {}
 ): Promise<AudioFetchItemResult> {
   const cacheDir = options.cacheDir ? path.resolve(options.cacheDir) : getAudioLibraryCacheDir();
@@ -312,7 +331,7 @@ export async function fetchAudioItem(
       if (!archiveZip || !fs.existsSync(archiveZip)) {
         archiveZip = path.join(cacheDir, `archive_${crypto.randomBytes(6).toString("hex")}.zip`);
         try {
-          await downloadToFile(item.url, archiveZip);
+          await downloadToFile(item.url, archiveZip, options.download);
         } catch (err) {
           if (fs.existsSync(archiveZip)) {
             fs.unlinkSync(archiveZip);
@@ -326,7 +345,7 @@ export async function fetchAudioItem(
       });
       fs.writeFileSync(tempPath, extracted);
     } else {
-      await downloadToFile(item.url, tempPath);
+      await downloadToFile(item.url, tempPath, options.download);
     }
 
     if (!fs.existsSync(tempPath)) {
@@ -366,6 +385,7 @@ export async function fetchAudioLibrary(
     force?: boolean;
     itemId?: string;
     onProgress?: (result: AudioFetchItemResult) => void;
+    download?: DownloadOptions;
   } = {}
 ): Promise<AudioLibraryFetchReport> {
   const cacheDir = options.cacheDir ? path.resolve(options.cacheDir) : getAudioLibraryCacheDir();
@@ -390,6 +410,7 @@ export async function fetchAudioLibrary(
           cacheDir,
           force: options.force,
           archiveCache,
+          download: options.download,
         });
       } catch (err) {
         // One broken item must not skip the rest of the batch; it is reported in the summary instead.
