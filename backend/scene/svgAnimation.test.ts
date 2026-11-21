@@ -7,8 +7,6 @@
  * backend/live/svgAnimation.live.ts.
  * Inputs and outputs: SVG animation clips and easing curves -> test assertions.
  * Used by: npm test.
- * Inputs and outputs: SVG animation clips and easing curves -> test assertions.
- * Used by: npm test.
  */
 
 import { test } from "node:test";

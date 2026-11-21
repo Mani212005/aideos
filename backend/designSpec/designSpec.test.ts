@@ -4,8 +4,6 @@
  * fixture, so the test also proves that design keeps compiling and passing the design check.
  * Inputs and outputs: design specification test cases and fixtures -> test assertions.
  * Used by: npm test.
- * Inputs and outputs: design specification test cases and fixtures -> test assertions.
- * Used by: npm test.
  */
 
 import assert from "node:assert/strict";
