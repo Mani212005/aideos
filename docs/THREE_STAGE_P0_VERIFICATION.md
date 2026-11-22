@@ -1,6 +1,6 @@
 # P0 verification record
 
-One Iona, one illustrative glider, one backdrop and one receive; three shots at 30 fps. The real resumable run stopped at needs_look and needs_design, then completed both formats with local macOS Samantha narration. Contact was independently bound to catches at frame 108 (3.600 s). Narration is 10.8566 s and picture is 10.8667 s. This uses the pipeline's existing 10-second minimum rather than weakening it to fit a shorter clip.
+One Iona, one illustrative glider, one backdrop and one receive; three shots at 30 fps. The real resumable run stopped at needs_look and needs_design, then completed both formats with local macOS Samantha narration. Contact was independently bound to catches at frame 108 (3.600 s). Narration is 10.8566 s and picture is 10.8667 s. This uses the pipeline's existing film minimum (10 s when this was run, now scaled by the house pace to 8.3 s) rather than weakening it to fit a shorter clip.
 
 The approved procedural Iona was promoted unchanged in geometry/face paint/cel style. Orthographic projection replaces the perspective proof. No general retargeter or claim of finished anime craft is included.
 

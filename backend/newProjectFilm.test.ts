@@ -1,5 +1,5 @@
 /**
- * File Description: Tests of the first film of a new project (the Start box): a story under 10 s keeps a title-only film with no invented content, a story that fits compiles, and a story that breaks another schema limit (more than 12 sections, more than 24 canvas nodes) throws the Invalid film error as before.
+ * File Description: Tests of the first film of a new project (the Start box): a story under the minimum film length (8.3 s at the 1.2x house pace) keeps a title-only film with no invented content, a story that fits compiles, and a story that breaks another schema limit (more than 12 sections, more than 24 canvas nodes) throws the Invalid film error as before.
  * Inputs and outputs: tagged story scripts -> assertions on the film or the thrown error.
  * Used by: npm test (backend/**\/*.test.ts).
  */
