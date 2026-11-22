@@ -82,7 +82,7 @@ Each library-backed section and effect records an item ID; a SHA256 can also be 
 
 ### How the default score picks a bed
 
-For each act (hook, explain, payoff, or the reel's single section) the scorer first keeps the tracks that pass the eligibility rules in the next section (role, no credit, LRA, fits the source span). `backend/musicSelector.ts` then ranks them by one cost, lowest wins, and the cost parts are kept so a choice can be explained:
+For each act (hook, explain, payoff, or the reel's single section) the scorer first keeps the tracks that pass the eligibility rules in "Design soundtrack authoring and checks" below (role, no credit, LRA, fits the source span). `backend/musicSelector.ts` then ranks them by one cost, lowest wins, and the cost parts are kept so a choice can be explained:
 
 - **Speech-band share** (`profile.midrangeDb`): how much of the bed's energy sits in 300 to 3400 Hz, where the voice carries its words. A bed above -8 dB pays 1 per dB, because after loudness normalization a midrange-heavy bed competes with the narrator at the same level as a roomy one.
 - **Swells** (`profile.swells`): rises of 6 dB or more inside 8 s. Only swells that overlap the part of the track the section plays count (the last section is back-timed to the track's end, so its window is the tail). A swell costs 0.6 per dB above 4 dB.
