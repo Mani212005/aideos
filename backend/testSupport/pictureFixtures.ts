@@ -1,7 +1,7 @@
 /**
- * File Description: Tiny synthetic pictures for the illustrated stage's tests and its fixture package, drawn pixel by pixel in code (never generated art, never an image service): a dark plate with a faint accent grid, an accent orb on a transparent background, a neutral chip, and the cases the picture rules must catch (strong colour off the accent, a busy plate, and the committed word picture for the no-text rule). `writePicturesStageFixture` stores the three fixture pictures in a package through the real picture cache, with a fixed date so the files are byte for byte reproducible; run this file to rewrite test_fixtures/packages/pictures-stage/visuals/generated/.
+ * File Description: Tiny synthetic pictures for the illustrated stage's tests and its fixture packages, drawn pixel by pixel in code (never generated art, never an image service): a dark plate with a faint accent grid, an accent orb on a transparent background, a neutral chip, a lens (steel ring, dark glass, glowing core) for the worked example of SVG callouts on a picture, and the cases the picture rules must catch (strong colour off the accent, a busy plate, and the committed word picture for the no-text rule). `writePicturesStageFixture` and `writePictureCalloutsFixture` store each fixture film's pictures in a package through the real picture cache, with a fixed date so the files are byte for byte reproducible; run this file to rewrite test_fixtures/packages/pictures-stage/ and test_fixtures/packages/picture-callouts/ visuals/generated/.
  * Inputs and outputs: nothing, or a package directory -> RGBA images, PNG bytes and the stored records of the fixture pictures.
- * Used by: backend/pictures/*.test.ts, backend/designCheck/pictures.test.ts, backend/journeys/pictures_stage.journey.ts, and by hand to refresh the fixture package.
+ * Used by: backend/pictures/*.test.ts, backend/designCheck/pictures.test.ts, backend/designCheck/pictureComposition.test.ts, backend/journeys/pictures_stage.journey.ts, and by hand to refresh the fixture packages.
  */
 
 import path from "node:path";
@@ -57,6 +57,29 @@ export function chipPicture(): RgbaImage {
   });
 }
 
+/**
+ * The lens: 96 x 96 on a transparent background, the hero of the picture-callouts example: a dark steel ring
+ * (radius 39 to 47), dark violet-tinted glass inside it, and a glowing accent core (radius 10), lit from the upper left.
+ */
+export function lensPicture(): RgbaImage {
+  return paint(96, 96, (x, y) => {
+    const d = Math.hypot(x - 48, y - 48);
+    const a = Math.max(0, Math.min(1, (47 - d) / 1.5 + 0.5));
+    if (a <= 0) return [0, 0, 0, 0];
+    const light = Math.max(0, 1 - Math.hypot(x - 34, y - 32) / 70);
+    // Each boundary is blended over about a pixel so the enlarged picture keeps smooth edges.
+    const ring = Math.max(0, Math.min(1, (d - 39) / 1.5 + 0.5));
+    const core = Math.max(0, Math.min(1, (10 - d) / 3 + 0.5));
+    const glow = Math.max(0, 1 - d / 30);
+    const v = 70 + 40 * light;
+    const steel = [v, v, v + 6];
+    const glass = [22 + 14 * light + 18 * glow, 20 + 12 * light + 16 * glow, 40 + 22 * light + 50 * glow];
+    const accent = [120, 110, 255];
+    const inner = [0, 1, 2].map((k) => glass[k] * (1 - core) + accent[k] * core);
+    return [0, 1, 2].map((k) => steel[k] * ring + inner[k] * (1 - ring)).concat(255 * a) as [number, number, number, number];
+  });
+}
+
 /** A case the palette rule must catch: a saturated orange disc, far from a violet accent. */
 export function offPalettePicture(): RgbaImage {
   return paint(32, 32, (x, y) => [255, 120, 20, 255 * disc(x, y, 16, 16, 14)]);
@@ -84,6 +107,16 @@ export const PICTURES_STAGE = {
   ],
 } as const;
 
+/** The picture-callouts example film's style paragraph, tool label and pictures, as its design.json declares them. */
+export const PICTURE_CALLOUTS = {
+  style: PICTURES_STAGE.style,
+  tool: PICTURES_STAGE.tool,
+  items: [
+    { id: "plate", prompt: "A wide empty dark floor that fades into shadow, lit from the middle.", aspect: "1:1", cutout: "none", draw: platePicture },
+    { id: "lens", prompt: "One round optical lens in a dark steel ring with a softly glowing violet core.", aspect: "1:1", cutout: "generator-alpha", draw: lensPicture },
+  ],
+} as const;
+
 /** The fixed date the fixture pictures are recorded with, so their records are reproducible. */
 export const FIXTURE_DATE = new Date("2026-11-20T00:00:00.000Z");
 
@@ -97,8 +130,20 @@ export function writePicturesStageFixture(pkgDir: string): Record<string, Pictur
   return out;
 }
 
+/** Stores the picture-callouts example film's pictures in a package through the picture cache and returns each record by picture id. */
+export function writePictureCalloutsFixture(pkgDir: string): Record<string, PictureRecord> {
+  const out: Record<string, PictureRecord> = {};
+  for (const item of PICTURE_CALLOUTS.items) {
+    const request: PictureRequest = { style: PICTURE_CALLOUTS.style, prompt: item.prompt, aspect: item.aspect, tool: PICTURE_CALLOUTS.tool, cutout: item.cutout };
+    out[item.id] = storePicture(pkgDir, request, encodePng(item.draw()), { seconds: 0, createdAt: FIXTURE_DATE });
+  }
+  return out;
+}
+
 // Rewrites the committed fixture pictures when run directly, printing each pin for design.json.
 if (typeof require !== "undefined" && require.main === module) {
-  const pkg = path.resolve(__dirname, "../../test_fixtures/packages/pictures-stage");
-  for (const [id, record] of Object.entries(writePicturesStageFixture(pkg))) console.log(`${id}: visuals/generated/${record.fingerprint}.png sha256 ${record.sha256} (${record.width} x ${record.height})`);
+  const fixtures = path.resolve(__dirname, "../../test_fixtures/packages");
+  for (const [slug, write] of [["pictures-stage", writePicturesStageFixture], ["picture-callouts", writePictureCalloutsFixture]] as const) {
+    for (const [id, record] of Object.entries(write(path.join(fixtures, slug)))) console.log(`${slug} ${id}: visuals/generated/${record.fingerprint}.png sha256 ${record.sha256} (${record.width} x ${record.height})`);
+  }
 }
