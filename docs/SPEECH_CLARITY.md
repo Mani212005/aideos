@@ -40,8 +40,8 @@ Speech seconds within 1 s before to 2.5 s after a chapter-cut effect:
 
 ## Tool
 
-On the production machine the measure lives in a Python script (numpy only):
-- `/home/mani/aideos-linux-home/data/aideos-narrator-clarity-mix/tools/measure_mix.py`: `python3 -I measure_mix.py <label> <mix.mp4> <voice.wav> ...`
-- `simulate_effect_duck.py` in the same folder: the offline what-if used for the table above.
+The measure lives in two Python scripts (numpy and ffmpeg only), run by hand from the repo root:
+- [`scripts/speech_clarity/measure_mix.py`](../scripts/speech_clarity/measure_mix.py): `python3 -I scripts/speech_clarity/measure_mix.py <label> <mix.mp4> <voice.wav> [...]`
+- [`scripts/speech_clarity/simulate_effect_duck.py`](../scripts/speech_clarity/simulate_effect_duck.py): `python3 -I scripts/speech_clarity/simulate_effect_duck.py <label> <mix.mp4> <voice.wav> <film.json> <effectCacheDir> [...]`. The offline what-if used for the table above.
 
 Both scripts decode in memory and write no audio. Like `aideos review`, the measure needs the narration stem from the video package. It cannot run on a bare mp4.
