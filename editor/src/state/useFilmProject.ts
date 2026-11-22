@@ -122,10 +122,23 @@ async function persistFilm(film: Film, baseRev: string | null): Promise<PersistR
   }
 }
 
-/** Fetch a film and the revision it has on disk, or null when it cannot be read. */
+/** The server has the film but cannot read it, and says why (for example a corrupt film.json). */
+class FilmReadError extends Error {
+  readonly filmId: string;
+
+  // Keeps the film id apart from the server's reason so each caller can phrase its own message.
+  constructor(filmId: string, reason: string) {
+    super(reason);
+    this.name = "FilmReadError";
+    this.filmId = filmId;
+  }
+}
+
+/** Fetch a film and the revision it has on disk, or null when there is none; throws FilmReadError when the server cannot read it. */
 async function fetchFilm(id: string): Promise<{ rev: string | null; order: number; film: Film } | null> {
   const res = await fetch(`/api/films/${id}`);
-  const data = (await res.json()) as { ok?: boolean; film?: Film; rev?: string; order?: number };
+  const data = (await res.json()) as { ok?: boolean; film?: Film; rev?: string; order?: number; error?: string };
+  if (res.status >= 500) throw new FilmReadError(id, data.error || `the server answered ${res.status}`);
   if (!data.ok || !data.film) return null;
   return { rev: data.rev ?? null, order: data.order ?? 0, film: data.film };
 }
@@ -521,8 +534,9 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
           // overwrite a pointer set while this load was in flight.
           opened = openFilmState(loaded.film, loaded.rev, loaded.order, seq);
         }
-      } catch {
-        // Offline or server-less: the bundled film stays open.
+      } catch (err) {
+        // A film the server cannot read is named with its reason; offline or server-less, the bundled film stays open.
+        if (live && err instanceof FilmReadError) notify("danger", `Could not open ${err.filmId}: ${err.message}`);
       } finally {
         if (live && !opened) dispatchSync({ type: "load_failed", seq });
       }
@@ -530,7 +544,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
     return () => {
       live = false;
     };
-  }, [dispatchSync, openFilmState]);
+  }, [dispatchSync, notify, openFilmState]);
 
   // Autosave shortly after the film settles, so edits survive a reload without a manual save. A save
   // that failed is not retried on a timer (the next edit or a manual save retries it).

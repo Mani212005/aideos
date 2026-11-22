@@ -7,7 +7,7 @@
  * clone. It is run by npm's postinstall and by the pre-hooks of every script that bundles them.
  * Deliberately free of the trace bus and the model clients so a bare install can run it.
  * Inputs and outputs: video package manifests and SVGs -> generated TypeScript shadow files.
- * Used by: scripts/ensure_generated.ts, backend/pipeline/run.ts.
+ * Used by: scripts/ensure_generated.ts, backend/pipeline/run.ts, backend/pipeline/filmStore.ts, editor/vite.config.ts.
  */
 
 import fs from "fs";
@@ -33,6 +33,13 @@ export function exportName(id: string): string {
 /** The generated shadow module: pure data behind a type-only import. */
 export function filmModule(film: Film): string {
   return `import type { Film } from "../schema";\n\nexport const ${exportName(film.id)}: Film = ${JSON.stringify(film, null, 2)};\n`;
+}
+
+/** Reads the film back out of a shadow module `filmModule` wrote; throws when the text is not one. */
+export function filmFromModule(text: string): Film {
+  const json = /=\s*(\{[\s\S]*\})\s*;/.exec(text)?.[1];
+  if (!json) throw new Error("not a generated film module");
+  return dropLegacyFilmBlocks(JSON.parse(json) as Film);
 }
 
 /** The generated module that points Remotion's CLI render at one film. */
