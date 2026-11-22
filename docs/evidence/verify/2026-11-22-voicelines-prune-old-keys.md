@@ -4,7 +4,7 @@
 
 - **Date**: 2026-11-22
 - **Branch / PR**: `fm/aideos-voicelines-prune-old-keys` (PR URL assigned when pushed by `no-mistakes`)
-- **Scope**: Feature Map row `Voiceover & Narration`. `backend/voiceLines.ts`: pruning now matches a stored recording by `unpacedVoiceKey` equality instead of the exact key, and is split into `planPrune` (lists, deletes nothing, reports fingerprint, stored voice key and bytes) and `applyPrune` (deletes exactly the plan). One behavioural test in `backend/voiceLines.test.ts`.
+- **Scope**: Feature Map row `Voiceover & Narration`. `backend/voiceLines.ts`: pruning now matches a stored recording by `unpacedVoiceKey` equality instead of the exact key. One behavioural test in `backend/voiceLines.test.ts`.
 - **Risk tier**: Low (cache entries only, they are regenerable; the same-voice match is narrower than "everything": another voice or another take selection has another unpaced key and is untouched).
 
 ## Reliability checklist
@@ -16,7 +16,7 @@
 | Differential test on replacement | N/A | Nothing replaced; behaviour widens only for same-voice other-rate entries. |
 | Expect / golden test for complex output | N/A | No rendered output. |
 | No sleeps in tests | PASS | None. |
-| No mocks of the thing under test | PASS | Store, fingerprint, plan and prune run for real; only the synthesizer is a counting fake. |
+| No mocks of the thing under test | PASS | Store, fingerprint and prune run for real; only the synthesizer is a counting fake. |
 | Protected suites unloosened | PASS | No assertion, tolerance, timeout or golden touched. |
 | Weak-test audit | PASS | None removed. Mutation: restoring the exact-key comparison fails the new test (1 fail, 7 pass). |
 | Independent review | PENDING | Scheduled via `no-mistakes` on handoff. |

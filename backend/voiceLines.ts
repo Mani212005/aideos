@@ -4,7 +4,7 @@
  * rate any pitch-preserving stretch re-paced it to),
  * so regenerating the voice-over re-records only the lines whose fingerprint changed and reuses every other
  * recording untouched. Synthesis is injected, so the logic is tested without any speech engine.
- * Inputs and outputs: narration lines, a voice key and a one-line synthesizer -> per-line audio (reused or fresh), counts and a listable prune plan.
+ * Inputs and outputs: narration lines, a voice key and a one-line synthesizer -> per-line audio (reused or fresh) and counts.
  * Used by: backend/audio.ts, editor/vite.config.ts (api/generate-voiceover, api/narration), backend/voiceLines.test.ts.
  */
 
@@ -126,76 +126,35 @@ export function writeLine(pkgDir: string, fingerprint: string, voiceKey: string,
   write(`${fingerprint}.json`, JSON.stringify(meta));
 }
 
-/** One stored recording a prune would remove (or removed): its fingerprint, the voice key it was made with, and its size. */
-export interface PrunedRecording {
-  fingerprint: string;
-  /** The voice key stored in its metadata, or null when the metadata is unreadable (garbage). */
-  voiceKey: string | null;
-  bytes: number;
-}
-
-/** What a prune removes: the plan is computed first and shown, and only then applied. */
-export interface PrunePlan {
-  dir: string;
-  remove: PrunedRecording[];
-}
-
-/** Size in bytes of a file, 0 when it is absent. */
-function sizeOf(file: string): number {
-  try {
-    return fs.statSync(file).size;
-  } catch {
-    return 0;
-  }
-}
-
 /**
- * Lists (deletes nothing) this voice's recordings that no current line uses. "This voice" means the same voice
- * whatever stretch rate it was recorded at (unpacedVoiceKey equality), so switching the stretch rate retires the
- * recordings made at the other rate, including the plain-key ones made before stretching existed, instead of
- * leaving them on disk for ever. The cost: flipping back and forth between rates re-records the lines each time.
- * Another voice, or the same voice under another take selection, has another unpaced key and is never listed.
- * An unreadable entry is garbage and is listed too.
+ * Deletes this voice's recordings that no current line uses, so edited-away lines and re-paced leftovers do not pile up on disk.
+ * "This voice" means the same voice whatever stretch rate it was recorded at (unpacedVoiceKey equality), so switching the
+ * stretch rate retires the recordings made at the other rate, including the plain-key ones made before stretching existed.
+ * The cost: flipping back and forth between rates re-records the lines each time. Another voice, or the same voice under
+ * another take selection, has another unpaced key and is never touched.
  */
-export function planPrune(pkgDir: string, voiceKey: string, keep: Set<string>): PrunePlan {
+function pruneUnused(pkgDir: string, voiceKey: string, keep: Set<string>): void {
   const dir = voiceLinesDir(pkgDir);
-  const plan: PrunePlan = { dir, remove: [] };
   let names: string[];
   try {
     names = fs.readdirSync(dir);
   } catch {
-    return plan;
+    return;
   }
   const voice = unpacedVoiceKey(voiceKey);
-  for (const name of names.sort()) {
+  for (const name of names) {
     if (!name.endsWith(".json")) continue;
     const fingerprint = name.slice(0, -".json".length);
     if (keep.has(fingerprint)) continue;
-    let stored: string | null = null;
     try {
       const meta = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8")) as { voiceKey?: unknown };
       if (typeof meta.voiceKey !== "string" || unpacedVoiceKey(meta.voiceKey) !== voice) continue;
-      stored = meta.voiceKey;
     } catch {
       // an unreadable entry is garbage too
     }
-    const bytes = sizeOf(path.join(dir, name)) + sizeOf(path.join(dir, `${fingerprint}.f32`));
-    plan.remove.push({ fingerprint, voiceKey: stored, bytes });
+    fs.rmSync(path.join(dir, name), { force: true });
+    fs.rmSync(path.join(dir, `${fingerprint}.f32`), { force: true });
   }
-  return plan;
-}
-
-/** Deletes exactly the recordings a plan lists (the plan is what was shown, so nothing else is touched). */
-export function applyPrune(plan: PrunePlan): void {
-  for (const { fingerprint } of plan.remove) {
-    fs.rmSync(path.join(plan.dir, `${fingerprint}.json`), { force: true });
-    fs.rmSync(path.join(plan.dir, `${fingerprint}.f32`), { force: true });
-  }
-}
-
-/** Deletes this voice's recordings that no current line uses, so edited-away lines and re-paced leftovers do not pile up on disk. */
-function pruneUnused(pkgDir: string, voiceKey: string, keep: Set<string>): void {
-  applyPrune(planPrune(pkgDir, voiceKey, keep));
 }
 
 /**

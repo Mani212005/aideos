@@ -14,7 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { lineFingerprint, pacedVoiceKey, planPrune, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
+import { lineFingerprint, pacedVoiceKey, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
 import { produceAudioPipeline } from "./audio";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
 import { vcdVoiceCacheKey } from "./vcdClient";
@@ -128,7 +128,7 @@ test("a recording no current line uses is removed for that voice, other voices a
   }
 });
 
-test("moving a voice to a stretch rate retires its older-rate recordings, a dry run lists them first, other voices stay", async () => {
+test("moving a voice to a stretch rate retires its older-rate recordings, other voices stay", async () => {
   const pkg = scratch();
   try {
     const spoken: string[] = [];
@@ -143,13 +143,7 @@ test("moving a voice to a stretch rate retires its older-rate recordings, a dry 
     const f32 = path.join(voiceLinesDir(pkg), `${oldFingerprint}.f32`);
     assert.ok(fs.existsSync(f32));
 
-    // A dry run names the plain-key recording and its size, and deletes nothing.
-    const plan = planPrune(pkg, stretched, new Set([lineFingerprint("Hello there.", stretched)]));
-    assert.deepEqual(plan.remove.map((r) => [r.fingerprint, r.voiceKey]), [[oldFingerprint, plain]]);
-    assert.equal(plan.remove[0].bytes, fs.statSync(f32).size + fs.statSync(path.join(voiceLinesDir(pkg), `${oldFingerprint}.json`)).size);
-    assert.ok(fs.existsSync(f32), "a dry run must not delete anything");
-
-    // The real pass at the stretched key records the line once more and then removes only the plain-key leftover.
+    // A pass at the stretched key records the line once more and then removes only the plain-key leftover.
     const run = await synthesizeLines({ pkgDir: pkg, texts: ["Hello there."], voiceKey: stretched, synthesize: countingSynth(spoken) });
     assert.equal(run.recorded, 1);
     assert.equal(fs.existsSync(f32), false, "the plain-key recording is pruned");
