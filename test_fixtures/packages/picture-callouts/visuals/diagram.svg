@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-240 -240 480 480">
+  <g id="diagram" fill="none" stroke="#8A8A8E" stroke-width="4">
+    <path id="plan-ring" d="M -211 0 A 211 211 0 1 1 211 0 A 211 211 0 1 1 -211 0"/>
+    <path id="plan-glass" d="M -175 0 A 175 175 0 1 1 175 0 A 175 175 0 1 1 -175 0"/>
+    <path id="plan-core" d="M -45 0 A 45 45 0 1 1 45 0 A 45 45 0 1 1 -45 0"/>
+  </g>
+</svg>

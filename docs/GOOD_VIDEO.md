@@ -45,6 +45,44 @@ A film may add generated pictures to its one stage. The format is fixed:
   record stay beside it as `<fingerprint>.<sha256>.png|json`;
   `aideos pictures status <film>` lists what is cached, pinned or still to make, with each prompt.
 
+### Pictures and SVG together
+
+Placing each where it fits is the floor. A picture looks best when SVG works *with* it: the picture is the hero and
+SVG explains it. Two compositions do most of the work:
+
+- **The picture as hero, with callouts.** The object fills the middle of the stage. Each label sits beside it on calm
+  plate, and a thin leader line runs from the label into the picture and ends on a dot (or arrow tip) on the exact
+  part the narration names. One callout appears on its spoken word (leader drawn on, label faded in); a later beat
+  can pulse its dot. Labels go beside the picture, never as a centred caption under it: a caption only names the
+  object, a callout explains a part of it.
+- **The SVG diagram becomes the picture.** A simple SVG plan of the object (its outline and parts as strokes, drawn
+  on) is laid exactly over where the picture will sit, at the same size, with the callouts already pointing at its
+  parts. On the turning word the picture fades in above the plan while the plan fades out, and the same callouts now
+  point at the real object. The viewer sees the idea become the thing.
+
+How to build them (the worked example is `test_fixtures/packages/picture-callouts/`, a plan of a lens that becomes the
+lens picture under three callouts, made from tiny code-drawn pictures):
+
+- **Register SVG on the picture.** Give the callout asset (and the plan) the picture's own `position`, and draw in
+  scene units around 0,0: a picture is centred on its position, its pixels times its `scale`. Read the picture's
+  visible box (its alpha-trimmed pixels, not the transparent square) and put every anchor inside it.
+- **Mark the callouts.** Wrap each callout in a group with `data-callout="<picture asset id>"`, and mark its one dot or
+  arrow tip `data-anchor="true"`. The leader is a stroked `<line>`, `<polyline>` or straight `<path>` in that group.
+- **Layer order.** The plan sits on a layer below the picture (its linework may vanish under it); labels and callouts
+  sit on a layer above it. Never put words in the plan: the picture would hide them.
+- **Move them together.** When the picture scales or moves, give the callout asset the same clip with the same
+  `origin` (0,0 is the picture's centre for both). A picture's translate clip is in its own pixels, so the same scene
+  distance for an SVG asset at scale 1 is the picture's value times its scale.
+- **Contrast.** Labels keep the label contrast above; leaders keep 3:1 (WCAG non-text) against the picture under them.
+  A white leader with a dark-ringed white dot reads on most pictures.
+
+The design check enforces these (`backend/designCheck/pictureComposition.ts`): rule `callout-anchor` fails a callout
+that names no picture or does not mark exactly one anchor, and an anchor off its picture's alpha-trimmed box at any
+sampled frame while the picture shows (every shot's middle and every 0.5 s, so a picture that moves away from its
+callouts fails; while the picture is hidden, as in the plan stage, the callout may point at the plan); rule
+`picture-cover` fails a picture drawn above an SVG label or callout part that hides more than a tenth of it; and rule
+`contrast` measures each callout leader along its drawn length at the middle of every shot.
+
 Both renderers draw pictures: the native renderer natively (Render IR `aideos.render/3`, [docs/RENDER_IR.md](RENDER_IR.md)),
 Remotion through SceneView. Phase 1 places, scales, turns and fades pictures; parallax, masks, blend modes and picture
 motion beyond that are phase 2 and not available yet.

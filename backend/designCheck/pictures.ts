@@ -1,7 +1,7 @@
 /**
  * File Description: The design check's rules for pictures (the illustrated stage's plate and generated objects, raster assets of a scene). A picture must keep its provenance record (prompt, date, seconds, tool and sha256, beside the original file) with a prompt that follows the picture rules; its strong colours must sit near the film's accent and the plate's tone near the canvas (the palette rule, which raster pixels used to slip past); it must show no text, read by OCR (SVG keeps every word); every SVG label drawn over a picture must keep its contrast against the busiest part of the picture behind it; and a picture should not be enlarged past its own pixels at the strongest camera zoom. Pixels are read with the dependency-free PNG decoder, OCR with tesseract (injectable), geometry through the compiled scene and each format's window, as the inset rule does.
  * Inputs and outputs: a parsed film, its scene and the formats to check (plus an optional OCR reader) -> design findings naming the picture, shot, format, label and the measured value.
- * Used by: backend/designCheck/designCheck.ts, backend/designCheck/pictures.test.ts.
+ * Used by: backend/designCheck/designCheck.ts, backend/designCheck/pictureComposition.ts (shared pixel sampling), backend/designCheck/pictures.test.ts.
  */
 
 import fs from "node:fs";
@@ -49,6 +49,14 @@ export const PICTURE_THRESHOLDS = {
   labelContrastPercentile: 0.1,
   /** A picture shown larger than this many output pixels per source pixel is enlarged enough to look soft (a warning). */
   enlargementMax: 1.5,
+  /** WCAG non-text contrast a callout's leader line or arrow needs against the worst tenth of the picture under it. */
+  leaderContrastMin: 3,
+  /** A sample of an SVG mark counts as hidden when the pictures drawn above it cover it at least this opaquely (0 to 1). */
+  coverAlphaMin: 0.5,
+  /** The largest share of a label's or callout part's samples a picture drawn above it may hide. */
+  coverShareMax: 0.1,
+  /** Callout anchoring and hidden labels are sampled at the middle of every shot and at least this often (seconds). */
+  compositionSampleSec: 0.5,
 } as const;
 
 /** One word an OCR reader found in a picture. */
@@ -117,7 +125,7 @@ function hsv(r: number, g: number, b: number): { h: number; s: number; v: number
 }
 
 /** Reads a CSS colour as 0 to 255 channels, or null. */
-function channels(css: string): [number, number, number] | null {
+export function channels(css: string): [number, number, number] | null {
   const c = converter("rgb")(css);
   if (!c || c.r === undefined) return null;
   return [c.r, c.g, c.b].map((v) => Math.round(Math.max(0, Math.min(1, v ?? 0)) * 255)) as [number, number, number];
@@ -263,30 +271,30 @@ function assetLabels(svgSource: string): Label[] {
 }
 
 /** The matrix that places a compiled entity on the stage (translate, scale, rotate), before its element states. */
-function placement(entity: CompiledEntity): Affine {
+export function placement(entity: CompiledEntity): Affine {
   const t = entity.transform;
   return multiply(multiply(translation(t.x, t.y), scaling(t.scale, t.scale)), rotation(t.rotation));
 }
 
 /** Inverts an affine matrix, or null when it is singular. */
-function invert(m: Affine): Affine | null {
+export function invert(m: Affine): Affine | null {
   const det = m.a * m.d - m.b * m.c;
   if (Math.abs(det) < 1e-12) return null;
   return { a: m.d / det, b: -m.b / det, c: -m.c / det, d: m.a / det, e: (m.c * m.f - m.d * m.e) / det, f: (m.b * m.e - m.a * m.f) / det };
 }
 
 /** A picture as drawn at one frame: frame pixels to its pixels, and its opacity. */
-interface DrawnPicture {
+export interface DrawnPicture {
   id: string;
   image: RgbaImage;
   toPixel: Affine;
   opacity: number;
 }
 
-/** The pictures drawn at a frame, below a given layer index, mapped from frame pixels into each picture's own pixels. */
-function drawnPictures(entities: CompiledEntity[], below: number, toPx: Affine): DrawnPicture[] {
+/** The pictures drawn at a frame between two layer indexes (below `below`, from `from`), mapped from frame pixels into each picture's own pixels. */
+export function drawnPictures(entities: CompiledEntity[], below: number, toPx: Affine, from = 0): DrawnPicture[] {
   const out: DrawnPicture[] = [];
-  for (const entity of entities.slice(0, below)) {
+  for (const entity of entities.slice(from, below)) {
     if (!entity.raster || entity.transform.opacity <= VISIBLE_OPACITY_MIN) continue;
     const image = loadPicture(entity.raster);
     if (!image) continue;
@@ -303,7 +311,7 @@ function drawnPictures(entities: CompiledEntity[], below: number, toPx: Affine):
 }
 
 /** The colour at a frame pixel: the canvas with every picture below composited over it in order. */
-function composite(x: number, y: number, pictures: DrawnPicture[], canvas: [number, number, number]): [number, number, number] | null {
+export function composite(x: number, y: number, pictures: DrawnPicture[], canvas: [number, number, number]): [number, number, number] | null {
   let rgb: [number, number, number] = [...canvas];
   let covered = false;
   for (const p of pictures) {

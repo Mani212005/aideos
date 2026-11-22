@@ -1,0 +1,15 @@
+{
+  "schema": "aideos.picture/1",
+  "fingerprint": "ee73db723d15129744dcf00a577f9166",
+  "prompt": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.\n\nOne round optical lens in a dark steel ring with a softly glowing violet core.\n\nAbsolutely no text, letters, numbers, labels, signs, captions or watermarks anywhere in the image. One abstract object only: no people, no faces, no hands, no animals, no characters. No logos, no brand marks, no real products or trademarks, no recognisable designs of real companies or artists. Keep the background plain so the object can stand on its own, or transparent when asked.",
+  "style": "Quiet dark stage, soft violet glow from below, smooth matte surfaces, gentle studio light, no glare.",
+  "objectPrompt": "One round optical lens in a dark steel ring with a softly glowing violet core.",
+  "aspect": "1:1",
+  "tool": "synthetic-fixture",
+  "cutout": "generator-alpha",
+  "createdAt": "2026-11-20T00:00:00.000Z",
+  "seconds": 0,
+  "sha256": "7614bf1f774fa35dd7a37e958f1e6dcb0a06e0e438d6e800f41245e81a64b52e",
+  "width": 96,
+  "height": 96
+}

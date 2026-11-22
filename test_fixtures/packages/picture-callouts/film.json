@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "picture-callouts",
+  "title": "A picture with callouts",
+  "fps": 30,
+  "accent": "#635BFF",
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "accent": "#635BFF"
+  },
+  "chapters": [
+    "Lens"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "a",
+        "label": "Plan",
+        "x": 160,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "b",
+        "label": "Lens",
+        "x": 590,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      }
+    ],
+    "edges": [
+      {
+        "from": "a",
+        "to": "b"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "plan",
+      "ch": "Lens",
+      "dur": 5.6,
+      "stage": "none",
+      "look": "a",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Here is the plan of a lens: a ring, a glass and a core.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "real",
+      "ch": "Lens",
+      "dur": 3.2,
+      "stage": "none",
+      "look": "a",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Now the plan becomes the real lens.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "parts",
+      "ch": "Lens",
+      "dur": 5.6,
+      "stage": "none",
+      "look": "a",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "The ring holds it, the glass bends light, and the core focuses it.",
+      "speed": 1,
+      "blocks": []
+    }
+  ],
+  "captions": "kinetic",
+  "voiceover": {
+    "src": "videos/picture-callouts/voiceover.wav",
+    "durationSec": 14.4
+  }
+}

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-480 -300 960 600">
+  <g id="callouts">
+    <g id="ring-callout" data-callout="lens">
+      <polyline id="ring-leader" points="-290,-240 -210,-240 -136,-136" fill="none" stroke="#F5F5F5" stroke-width="3"/>
+      <circle id="ring-dot" data-anchor="true" cx="-136" cy="-136" r="9" fill="#F5F5F5" stroke="#0A0A0B" stroke-width="3"/>
+      <text id="ring-label" x="-305" y="-228" font-family="JetBrains Mono" font-size="34" fill="#F5F5F5" text-anchor="end">ring</text>
+    </g>
+    <g id="glass-callout" data-callout="lens">
+      <polyline id="glass-leader" points="290,-200 210,-200 105,-85" fill="none" stroke="#F5F5F5" stroke-width="3"/>
+      <circle id="glass-dot" data-anchor="true" cx="105" cy="-85" r="9" fill="#F5F5F5" stroke="#0A0A0B" stroke-width="3"/>
+      <text id="glass-label" x="305" y="-188" font-family="JetBrains Mono" font-size="34" fill="#F5F5F5">glass</text>
+    </g>
+    <g id="core-callout" data-callout="lens">
+      <polyline id="core-leader" points="290,170 190,170 0,0" fill="none" stroke="#F5F5F5" stroke-width="3"/>
+      <circle id="core-dot" data-anchor="true" cx="0" cy="0" r="9" fill="#F5F5F5" stroke="#0A0A0B" stroke-width="3"/>
+      <text id="core-label" x="305" y="182" font-family="JetBrains Mono" font-size="34" fill="#F5F5F5">core</text>
+    </g>
+  </g>
+</svg>
