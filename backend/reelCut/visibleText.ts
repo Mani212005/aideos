@@ -36,7 +36,12 @@ function textByElement(source: string): Map<string, string[]> {
   return labels;
 }
 
+// Longest run, in seconds, that a label carried over a cut may keep fading before it stops counting as shown in the next shot.
+export const EXIT_TAIL_SEC = 0.5;
+
 // Samples every story frame, preserving short reveals, authored visibility and the reel's actual crop.
+// A label already shown at the end of the previous shot and gone within EXIT_TAIL_SEC of the cut is that shot's
+// exit fade, not something the next shot shows: the next shot's narration does not have to speak it.
 export function visibleReelText(film: Film): Record<string, string[]> {
   if (!film.scene) return {};
   const labels = new Map(
@@ -58,22 +63,35 @@ export function visibleReelText(film: Film): Record<string, string[]> {
     1920,
     { includeBackground: true },
   );
-  return Object.fromEntries(
-    buildTimeline(film).map(({ shot, from, to }) => {
-      const texts = new Set<string>();
-      for (let frame = from; frame < to; frame++)
-        for (const entity of at(frame)) {
-          const entityLabels = labels.get(entity.id);
-          if (!entityLabels) continue;
-          for (const part of entity.parts) {
-            const b = part.bounds;
-            if (b.x1 <= 0 || b.x0 >= 1080 || b.y1 <= 0 || b.y0 >= 1920)
-              continue;
-            for (const text of entityLabels.get(part.name) ?? [])
-              if (text) texts.add(text);
-          }
-        }
-      return [shot.id, [...texts]];
-    }),
-  );
+  // Collects the label texts drawn inside the reel crop at one frame.
+  const textsAt = (frame: number): Set<string> => {
+    const texts = new Set<string>();
+    for (const entity of at(frame)) {
+      const entityLabels = labels.get(entity.id);
+      if (!entityLabels) continue;
+      for (const part of entity.parts) {
+        const b = part.bounds;
+        if (b.x1 <= 0 || b.x0 >= 1080 || b.y1 <= 0 || b.y0 >= 1920) continue;
+        for (const text of entityLabels.get(part.name) ?? [])
+          if (text) texts.add(text);
+      }
+    }
+    return texts;
+  };
+  const tailFrames = Math.round(EXIT_TAIL_SEC * film.fps);
+  let previousLast: Set<string> | undefined;
+  const result: Record<string, string[]> = {};
+  for (const { shot, from, to } of buildTimeline(film)) {
+    const lastSeen = new Map<string, number>();
+    for (let frame = from; frame < to; frame++)
+      for (const text of textsAt(frame)) lastSeen.set(text, frame);
+    result[shot.id] = [...lastSeen]
+      .filter(
+        ([text, last]) =>
+          !(previousLast?.has(text) && last < from + tailFrames),
+      )
+      .map(([text]) => text);
+    previousLast = to > from ? textsAt(to - 1) : undefined;
+  }
+  return result;
 }
