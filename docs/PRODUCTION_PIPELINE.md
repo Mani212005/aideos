@@ -317,7 +317,9 @@ in `aideos.config.json`; `AIDEOS_VCD_URL`, `AIDEOS_VCD_VOICE_ID` and `AIDEOS_VCD
 never swaps to another voice. The voice is never guessed: a configured id or name must match an enrolled voice;
 with none configured, the one voice named `my-voice` or `me` is used; anything else
 fails listing the enrolled choices. One `timeoutMs` deadline bounds a whole vcd synthesis (discovery, submit retries,
-polling, audio download); `backend/httpDeadline.ts` holds the shared, injectable deadline policy that also bounds
+polling, audio download). It is 5 minutes per narration line by default; set `AIDEOS_VCD_LINE_TIMEOUT_SECONDS` (a number
+of seconds above 0, up to 86400) to raise it on a busy machine. A bad value fails the line with a plain
+`invalid_config` message instead of being ignored. `backend/httpDeadline.ts` holds the shared, injectable deadline policy that also bounds
 speech-provider and audio library download requests. No worker may switch to another voice (Kokoro, Google, Deepgram, macOS `say` or
 the `tone` placeholder) without the captain's word.
 
