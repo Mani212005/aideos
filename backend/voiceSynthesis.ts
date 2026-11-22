@@ -20,6 +20,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { resolveVoiceCloneSettings } from "./aideosConfig";
+import { fetchWithin, HTTP_DEADLINES, readWithin, startDeadline, type NowFn } from "./httpDeadline";
 import {
   isVcdStudioVoice,
   synthesizeWithVcd,
@@ -65,6 +66,8 @@ export interface SynthesisDeps {
   /** Container memory limit in bytes, or null when unknown. */
   memoryLimitBytes: () => number | null;
   platform: NodeJS.Platform;
+  /** Clock behind the per-provider time budget; defaults to Date.now. */
+  now?: NowFn;
 }
 
 /** Inputs for one synthesis run. */
@@ -79,6 +82,8 @@ export interface SynthesisRequest {
   vcdVoiceId?: string;
   deepgramKey?: string;
   googleKey?: string;
+  /** Time budget (ms) for each network provider attempt (vcd, Deepgram, Google); a stalled one fails over instead of hanging. */
+  timeoutMs?: number;
   /** Splits text into provider-sized chunks. */
   chunk: (text: string, maxChars: number) => string[];
   /** Trims leading and trailing silence from a Kokoro chunk. */
@@ -151,16 +156,23 @@ export function wavDataChunk(wav: Buffer): Buffer {
 async function synthesizeDeepgram(req: SynthesisRequest, deps: SynthesisDeps): Promise<PcmAudio> {
   const model = req.voice.startsWith("aura-") ? req.voice : "aura-helios-en";
   const url = `https://api.deepgram.com/v1/speak?model=${encodeURIComponent(model)}&encoding=linear16&container=none&sample_rate=24000`;
+  const deadline = startDeadline(req.timeoutMs ?? HTTP_DEADLINES.speechProviderMs, deps.now);
   const parts: Buffer[] = [];
   for (const piece of req.chunk(req.text, 1800)) {
     if (!piece.trim()) continue;
-    const res = await deps.fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Token ${req.deepgramKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ text: piece }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-    parts.push(Buffer.from(await res.arrayBuffer()));
+    const res = await fetchWithin(
+      deadline,
+      deps.fetch,
+      url,
+      {
+        method: "POST",
+        headers: { Authorization: `Token ${req.deepgramKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: piece }),
+      },
+      { what: "Deepgram speech request", capMs: HTTP_DEADLINES.speechRequestMs },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await readWithin(deadline, "Deepgram speech request", () => res.text(), HTTP_DEADLINES.speechRequestMs)).slice(0, 200)}`);
+    parts.push(Buffer.from(await readWithin(deadline, "Deepgram speech request", () => res.arrayBuffer(), HTTP_DEADLINES.speechRequestMs)));
   }
   if (parts.length === 0) throw new Error("no text to synthesize");
   return { pcm: Buffer.concat(parts), sampleRate: 24000 };
@@ -169,20 +181,27 @@ async function synthesizeDeepgram(req: SynthesisRequest, deps: SynthesisDeps): P
 /** Google Cloud TTS over REST with an API key, one request per chunk (limit 5000 bytes). */
 async function synthesizeGoogle(req: SynthesisRequest, deps: SynthesisDeps): Promise<PcmAudio> {
   const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(req.googleKey ?? "")}`;
+  const deadline = startDeadline(req.timeoutMs ?? HTTP_DEADLINES.speechProviderMs, deps.now);
   const parts: Buffer[] = [];
   for (const piece of req.chunk(req.text, 800)) {
     if (!piece.trim()) continue;
-    const res = await deps.fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input: { text: piece },
-        voice: { languageCode: "en-US", name: "en-US-Journey-D" },
-        audioConfig: { audioEncoding: "LINEAR16", sampleRateHertz: 24000 },
-      }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-    const json = (await res.json()) as { audioContent?: string };
+    const res = await fetchWithin(
+      deadline,
+      deps.fetch,
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          input: { text: piece },
+          voice: { languageCode: "en-US", name: "en-US-Journey-D" },
+          audioConfig: { audioEncoding: "LINEAR16", sampleRateHertz: 24000 },
+        }),
+      },
+      { what: "Google speech request", capMs: HTTP_DEADLINES.speechRequestMs },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await readWithin(deadline, "Google speech request", () => res.text(), HTTP_DEADLINES.speechRequestMs)).slice(0, 200)}`);
+    const json = await readWithin(deadline, "Google speech request", () => res.json() as Promise<{ audioContent?: string }>, HTTP_DEADLINES.speechRequestMs);
     if (!json.audioContent) throw new Error("response had no audioContent");
     parts.push(wavDataChunk(Buffer.from(json.audioContent, "base64")));
   }
@@ -279,8 +298,9 @@ export async function synthesizeVoiceover(
                 url: settings.url,
                 voiceId: settings.voiceId || undefined,
                 language,
+                ...(req.timeoutMs ? { timeoutMs: req.timeoutMs } : {}),
               },
-              { fetch: deps.fetch },
+              { fetch: deps.fetch, now: deps.now },
             )
           ).wav;
       return { wav, provider: "vcd" };
