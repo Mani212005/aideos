@@ -97,7 +97,7 @@ export function assetComposition(svgSource: string): AssetComposition {
   const visit = (node: SvgNode, chain: ChainLink[], paint: { fill: string; stroke: string }, nearestId: string | undefined, callout: { group: CalloutGroup } | undefined) => {
     if (NON_DRAWING_TAGS.has(node.tag) || node.attrs.display === "none" || node.attrs.visibility === "hidden") return;
     const here = [...chain, { id: node.attrs.id, transform: parseTransform(node.attrs.transform), opacity: authoredOpacity(node) }];
-    const own = { fill: styleValue(node, "fill") ?? paint.fill, stroke: styleValue(node, "stroke") ?? paint.stroke };
+    const own = { fill: node.tag === "line" ? "none" : styleValue(node, "fill") ?? paint.fill, stroke: styleValue(node, "stroke") ?? paint.stroke };
     const name = node.attrs.id ?? nearestId;
     let inCallout = callout;
     const pictureId = node.attrs[CALLOUT_ATTR];
