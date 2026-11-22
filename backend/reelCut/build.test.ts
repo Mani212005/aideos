@@ -13,6 +13,7 @@ import { loadFixtureFilm } from "../testSupport/fixtureFilms";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { clampCaptionPlacement } from "../../src/dl/captionPlacement";
 import { deliveryTimeline } from "../../src/dl/delivery";
+import { buildTimeline } from "../../src/dl/camera";
 import { splitScriptIntoSegments, type ProduceAudioResult } from "../audio";
 import { designSpecSchema } from "../designSpec/spec";
 import { createCues } from "../sceneKit/timing";
@@ -92,6 +93,25 @@ test("captain decision 2026-10-22: explicit checked drops remove node-graph shot
   assert.ok(result.film, JSON.stringify(result));
   assert.deepEqual(result.film.shots.map((s) => s.id), ["intro", "outro"]);
   assert.ok(long.shots[1].captionPlacement?.reel?.locked);
+});
+
+test("reel compile: the chapter rail names only kept chapters and every one has shots (render report bug 2)", () => {
+  const base = packageFilm("reel-chapter-renumber", 60);
+  // Four chapters of two shots each; the rail counts a chapter at every move cut.
+  const names = ["Setup", "The pushback", "Not a ban", "Hard to fool"];
+  const long: Film = { ...base, chapters: names, shots: names.flatMap((name, c) => [0, 1].map((n) => ({
+    ...base.shots[0], id: `s${c * 2 + n}`, ch: name, move: n === 0 ? "cut" as const : "pan" as const, dur: 7.5 })) ) };
+  const drop = new Set(["s0", "s2", "s3", "s4", "s5", "s6"]);
+  const cut: ReelCut = { ...cutFor(long), shots: long.shots.map((s) => drop.has(s.id) ? { id: s.id, drop: true, reason: "off the reel" } : { id: s.id, narration: "Paper moves and stays." }) };
+  const result = compileReel({ long, base: long, cut, narration: narration(["Paper moves.", "Paper moves."], [8, 8]), pkg: path.join(TEST_VIDEOS_DIR, long.id) });
+  assert.ok(result.film, JSON.stringify(result));
+  const reel = result.film;
+  assert.deepEqual(reel.shots.map((s) => s.id), ["s1", "s7"]);
+  assert.deepEqual(reel.chapters, ["Setup", "Hard to fool"]);
+  assert.deepEqual(reel.shots.map((s) => s.move), ["cut", "cut"]);
+  const timeline = buildTimeline(reel);
+  assert.deepEqual(timeline.map((t) => reel.chapters[t.chapter]), ["Setup", "Hard to fool"]);
+  assert.deepEqual(new Set(timeline.map((t) => t.chapter)), new Set(reel.chapters.keys()));
 });
 
 test("reel compile: standalone clips stay within shortened kept-shot narration", () => {
