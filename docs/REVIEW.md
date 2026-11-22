@@ -50,7 +50,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 9 | Pacing | compiled stage motion plus frame difference (static holds, hard cuts), word timings or silence (dead air, pace), film shot lengths (mean beat) | [house pace](GOOD_VIDEO.md#house-pace): no story hold over 2.5 s, <= 2.4 hard cuts per minute, no pause over 0.6 s, 145 to 215 wpm, mean beat at most 10 s (shorter is fine) |
 | 11 | Numbers grounded in narration | OCR numbers vs spoken numbers (digits and number words) | every on-screen number is said |
 | 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms windows overlapping speech on the shared voice activity timeline | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
-| 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); evaluated on reel reviews |
+| 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); fails when ffprobe cannot measure the duration; evaluated on reel reviews |
 | 15 | Reel hook | timed narration words (`punctuated_word` for sentence ends) | first word starts under 0.25 s, first sentence is 10 to 16 words, no greeting or intro opener; evaluated on reel reviews, non-gating |
 
 ### Stage timeline and stillness
@@ -370,7 +370,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 | 11 | accuracy_honesty | No | Every number, chart, and label is grounded in the narration; zero fabricated numbers or misleading visuals. |
 | 12 | loudness_mix | No | Audio loudness normalized to -14 to -18 LUFS integrated, true peak <= -1 dBFS, background music ducked cleanly. |
 
-Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating rendered-output check (non-gate until calibrated on the proof and two or three more films). This review score is separate from the design build gate; see [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery). For reel reviews, deterministic facts also enforce the hard gate `reel_length`: container duration <= 179 s including the end card. This gate overrides any model pass when exceeded.
+Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating rendered-output check (non-gate until calibrated on the proof and two or three more films). This review score is separate from the design build gate; see [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery). For reel reviews, deterministic facts also enforce the hard gate `reel_length`: container duration <= 179 s including the end card. This gate overrides any model pass when exceeded, and it fails when ffprobe cannot measure the duration (the facts then say the duration was not measured and give no duration timestamp).
 
 Run `npm run eval:look -- --plans <look.json-or-directory> [--min percent]` before changing look-treatment criteria wording.
 
