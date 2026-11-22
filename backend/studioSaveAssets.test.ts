@@ -11,8 +11,20 @@ import path from "node:path";
 import test from "node:test";
 import { startEditor } from "../scripts/studioDriver";
 import { FILMS_DIR, readActiveFilmSource, restoreActiveFilmSource } from "./pipeline/filmStore";
+import { encodeWav } from "./pcm";
 
 const FILM_ID = "asset-guard-live";
+const FIXTURE_AUDIO = path.resolve(process.cwd(), "test_fixtures", "test_audio.wav");
+
+/** Makes sure the real audio file the accepted save points at exists, since *.wav is gitignored and only audio.test.ts would otherwise create it. */
+function ensureFixtureAudio(): void {
+  if (fs.existsSync(FIXTURE_AUDIO)) return;
+  fs.mkdirSync(path.dirname(FIXTURE_AUDIO), { recursive: true });
+  const sampleRate = 48000;
+  const samples = new Float32Array(sampleRate * 2);
+  for (let i = 0; i < samples.length; i++) samples[i] = Math.sin((2 * Math.PI * 440 * i) / sampleRate) * 0.5;
+  fs.writeFileSync(FIXTURE_AUDIO, encodeWav(samples, sampleRate));
+}
 
 /** A minimal valid film whose one audio clip points at `src`. */
 function filmWithAudio(src: string) {
@@ -34,6 +46,7 @@ function filmWithAudio(src: string) {
 }
 
 test("Live Studio save refuses a film that names a missing media file and saves one that names a real file", async () => {
+  ensureFixtureAudio();
   const videosDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-save-assets-"));
   const activeFilmBefore = readActiveFilmSource();
   const server = await startEditor(videosDir);
