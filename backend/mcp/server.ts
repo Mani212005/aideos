@@ -18,6 +18,7 @@ import { runProduction } from "../pipeline/run";
 import { FILM_ID, readFilm, writeFilm, ROOT, VIDEOS_DIR } from "../pipeline/filmStore";
 import { DESIGN_MODES, PRODUCTION_STAGES, draftStopAfter, type ProductionProgress, type ProductionRequest, type ProductionResult } from "../pipeline/types";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../src/dl/convertFilm";
+import { assertLayeredAssetsExist, layeredMediaSources } from "../timeline/layerAssetCheck";
 import { buildEditContext } from "../editContext/buildEditContext";
 import { detectFillers } from "../editContext/detectFillers";
 import { detectSilences } from "../editContext/detectSilences";
@@ -443,6 +444,17 @@ export function createMcpServer(options: McpServerOptions = {}): McpServer {
       }
 
       const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
+      try {
+        assertLayeredAssetsExist(appliedResult.film, { baseDir: path.join(ROOT, "public"), knownSources: layeredMediaSources(layered) });
+      } catch (error) {
+        return jsonResult({
+          slug,
+          applied: false,
+          error: error instanceof Error ? error.message : String(error),
+          plan: planResult.plan,
+          ops: planResult.ops,
+        });
+      }
       const savedFilm = writeFilm(slug, updatedFilm, {
         owner: false,
         agentEdit: planResult.ops.some((op) => op.op === "set_caption_placement"),

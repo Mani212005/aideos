@@ -17,6 +17,7 @@ import { reviewerModel } from "../aideosConfig";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
 import { runAgyProcess } from "./agyProcess";
+import { errorMessage } from "../fsErrors";
 import {
   PAIRWISE_EXCHANGE_JSON_SCHEMA,
   PAIRWISE_WATCH_JSON_SCHEMA,
@@ -90,7 +91,9 @@ function readLookPlanStrip(videoPath: string, explicitFilmPath?: string): string
     const markdown = fs.readFileSync(lookPath, "utf8");
     const section = markdown.split(/^## Shots & Beat Treatments\s*$/m)[1];
     return section ? section.split(/^##\s+/m)[0].trim() || null : null;
-  } catch {
+  } catch (err) {
+    // The file exists (checked above), so a failed read is a real problem; say so, then review without the shot treatments.
+    console.warn(`[geminiReview] Could not read ${lookPath}: ${errorMessage(err)}`);
     return null;
   }
 }
@@ -170,13 +173,12 @@ export async function defaultAgyRunner(
           );
         }
 
-        try {
-          const parsed = JSON.parse(stdout);
-          if (parsed.status === "ERROR") {
-            const errStr = parsed.error || stderr || error.message;
-            return reject(new Error(`agy review failed (${parsed.status}): ${errStr}`));
-          }
-        } catch {}
+        // The failed run may still have printed its own JSON error envelope; plain text output has none.
+        const failedEnvelope = parseJsonOrUndefined(stdout) as { status?: string; error?: string } | null | undefined;
+        if (failedEnvelope?.status === "ERROR") {
+          const errStr = failedEnvelope.error || stderr || error.message;
+          return reject(new Error(`agy review failed (${failedEnvelope.status}): ${errStr}`));
+        }
 
         return reject(
           new Error(
@@ -235,13 +237,11 @@ export async function defaultAgyRunner(
         if (typeof parsed.response === "string" && parsed.response.trim().length > 0) {
           const cleaned = cleanModelJsonResponse(parsed.response);
           // Keep the conversation id on a text reply too: the pairwise exchange phase resumes the watcher's conversation by it.
-          try {
-            const obj = JSON.parse(cleaned);
-            if (obj && typeof obj === "object" && !Array.isArray(obj) && parsed.conversation_id && !obj.conversation_id) {
-              obj.conversation_id = parsed.conversation_id;
-              return resolve(JSON.stringify(obj));
-            }
-          } catch {}
+          const obj = parseJsonOrUndefined(cleaned) as Record<string, unknown> | null | undefined;
+          if (obj && typeof obj === "object" && !Array.isArray(obj) && parsed.conversation_id && !obj.conversation_id) {
+            obj.conversation_id = parsed.conversation_id;
+            return resolve(JSON.stringify(obj));
+          }
           return resolve(cleaned);
         }
 
@@ -299,6 +299,15 @@ export function computeFileHash(filePath: string): Promise<string> {
   });
 }
 
+// Parses JSON text, or returns undefined when the text is not JSON (a plain-text reply is an expected input, not a failure).
+function parseJsonOrUndefined(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
 // Reports whether a string parses as JSON.
 function isJsonText(text: string): boolean {
   try {
@@ -347,15 +356,16 @@ export function reviewVideoBitrateKbps(durationSec: number, targetBytes: number 
   return Math.max(80, Math.floor(totalKbps - 96));
 }
 
-// Writes a smaller copy of an oversized video for the reviewer and returns whether it succeeded.
-function makeReviewCopy(srcPath: string, destPath: string): boolean {
+// Writes a smaller copy of an oversized video for the reviewer; returns null on success or the reason it failed.
+function makeReviewCopy(srcPath: string, destPath: string): string | null {
   try {
     const out = execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", srcPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     const kbps = reviewVideoBitrateKbps(Number.parseFloat(out));
     execFileSync("ffmpeg", ["-y", "-v", "error", "-i", srcPath, "-c:v", "libx264", "-preset", "medium", "-threads", "2", "-b:v", `${kbps}k`, "-maxrate", `${Math.round(kbps * 1.5)}k`, "-bufsize", `${kbps * 2}k`, "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", destPath], { stdio: "ignore" });
-    return fs.statSync(destPath).size <= AGY_VIDEO_LIMIT_BYTES;
-  } catch {
-    return false;
+    const size = fs.statSync(destPath).size;
+    return size <= AGY_VIDEO_LIMIT_BYTES ? null : `the re-encoded copy is still ${size} bytes`;
+  } catch (err) {
+    return errorMessage(err);
   }
 }
 
@@ -369,9 +379,10 @@ export function createIsolatedVideoWorkspace(
   for (const [neutralName, srcPath] of Object.entries(videos)) {
     const destPath = path.join(dir, neutralName);
     if (fs.statSync(srcPath).size > AGY_VIDEO_LIMIT_BYTES) {
-      if (!makeReviewCopy(srcPath, destPath)) {
+      const copyFailure = makeReviewCopy(srcPath, destPath);
+      if (copyFailure !== null) {
         fs.rmSync(dir, { recursive: true, force: true });
-        throw new Error(`Could not prepare a review copy under 20 MB for ${path.basename(srcPath)}; the original video was preserved.`);
+        throw new Error(`Could not prepare a review copy under 20 MB for ${path.basename(srcPath)} (${copyFailure}); the original video was preserved.`);
       }
       videoPaths[neutralName] = destPath;
       continue;
@@ -387,7 +398,9 @@ export function createIsolatedVideoWorkspace(
   const cleanup = () => {
     try {
       fs.rmSync(dir, { recursive: true, force: true });
-    } catch {}
+    } catch (err) {
+      console.warn(`[geminiReview] Could not remove the temporary review folder ${dir}: ${errorMessage(err)}`);
+    }
   };
 
   return { dir, videoPaths, cleanup };
@@ -491,7 +504,7 @@ export async function reviewVideo(
           filmPath: options?.filmPath,
         }));
   if (facts) {
-    onProgress(`Measured: ${facts.durationSec.toFixed(1)}s, captions: ${facts.bottomCaptions.summary}, camera: ${facts.camera.summary}`);
+    onProgress(`Measured: ${facts.durationMeasured === false ? "duration NOT measured" : `${facts.durationSec.toFixed(1)}s`}, captions: ${facts.bottomCaptions.summary}, camera: ${facts.camera.summary}`);
   }
 
   let deterministicReviewContext: string | undefined;
@@ -514,7 +527,9 @@ export async function reviewVideo(
       try {
         deterministicReviewContext = fs.readFileSync(p, "utf8");
         break;
-      } catch {}
+      } catch (err) {
+        console.warn(`[geminiReview] Could not read the deterministic review context ${p}: ${errorMessage(err)}`);
+      }
     }
   }
 
@@ -622,7 +637,9 @@ export async function reviewVideo(
         if (facts?.reelLength) {
           normalizedCriteria.push({ name: "reel_length", title: "Reel delivered length", isGate: true,
             score: facts.reelLength.passed ? 10 : 0, passed: facts.reelLength.passed,
-            evidenceTimestamps: [`${Math.floor(facts.durationSec / 60)}:${String(Math.floor(facts.durationSec % 60)).padStart(2, "0")}`],
+            evidenceTimestamps: facts.durationMeasured === false
+              ? ["0:00"]
+              : [`${Math.floor(facts.durationSec / 60)}:${String(Math.floor(facts.durationSec % 60)).padStart(2, "0")}`],
             reason: facts.reelLength.summary });
         }
 

@@ -65,6 +65,7 @@ import { detectFillers } from '../backend/editContext/detectFillers.ts'
 import { detectSilences } from '../backend/editContext/detectSilences.ts'
 import { buildEditContext } from '../backend/editContext/buildEditContext.ts'
 import { planEdits, applyEditProgram } from '../backend/editPlanner/index.ts'
+import { assertFilmWriteAssetsExist, assertLayeredAssetsExist, layeredMediaSources } from '../backend/timeline/layerAssetCheck.ts'
 import { appendEditProvenanceRecord, readEditProvenanceLog } from '../backend/editPlanner/provenanceLog.ts'
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from '../src/dl/convertFilm.ts'
 import {
@@ -107,6 +108,8 @@ const captionCheckRequest = z.object({ film: filmSchema, previewFilm: filmSchema
 const filmsDir = path.resolve(__dirname, '../src/dl/films');
 // The owner's personal, gitignored videos (AIDEOS_VIDEOS_DIR moves it); examples/ is the read-only fallback.
 const videosDir = getVideosDir();
+// Media sources in a film are relative to public/ (what staticFile() resolves against).
+const PUBLIC_DIR = path.resolve(__dirname, '../public')
 // Studio exports run as cancellable jobs; a render still going when the dev server exits is killed with it.
 const exportJobs = createExportJobs();
 process.on('exit', () => exportJobs.killAll());
@@ -584,7 +587,7 @@ function sendEnded(res: ServerResponse, link: { replacementNote(t?: string): any
         ? 'you disconnected this agent in the studio'
         : reason === 'tab-closed'
           ? 'the studio tab was closed, so the link ended; open the studio and connect again'
-          : 'this connection is not recognised by the studio; connect again from Connect agent';
+          : 'this connection is not recognised by the studio; connect again from the Agent button in the studio';
   sendJson(res, 401, { error, reason, ...(replacedBy ? { replacedBy } : {}) });
 }
 
@@ -630,7 +633,7 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
     const body = (await readBody(req)) as { code?: string; agent?: string; machine?: string };
     if (!LINK_AGENTS.includes(body?.agent as never)) return sendJson(res, 400, { error: `agent must be one of ${LINK_AGENTS.join(', ')}` });
     const claimed = link.claim(String(body.code ?? ''), body.agent as (typeof LINK_AGENTS)[number], String(body.machine ?? ''));
-    if (!claimed) return sendJson(res, 404, { error: 'that pairing code is wrong or has expired; make a new one with Connect agent in the studio' });
+    if (!claimed) return sendJson(res, 404, { error: 'that pairing code is wrong or has expired; make a new one with the Agent button in the studio' });
     return sendJson(res, 200, claimed);
   }
   if (url === '/api/agent-link/next' && req.method === 'GET') {
@@ -1748,6 +1751,21 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               }
 
               const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
+              try {
+                const onDisk = readFilm(updatedFilm.id);
+                const knownSources = onDisk ? layeredMediaSources(convertFilmToLayeredFilm(onDisk)) : new Set<string>();
+                assertLayeredAssetsExist(appliedResult.film, { baseDir: PUBLIC_DIR, knownSources });
+              } catch (assetError) {
+                sendJson(res, 422, {
+                  ok: false,
+                  error: assetError instanceof Error ? assetError.message : String(assetError),
+                  code: 'missing_asset',
+                  plan: planResult.plan,
+                  ops: planResult.ops,
+                  dispatch,
+                });
+                return;
+              }
               writeFilm(updatedFilm.id, updatedFilm, {
                 owner: false,
                 agentEdit: planResult.ops.some((op: { op: string }) => op.op === 'set_caption_placement'),
@@ -2157,7 +2175,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }
             const storyScript = plainTextToTaggedScript(script, { speed: Number(voiceSpeed) > 0 ? Number(voiceSpeed) : DEFAULT_KOKORO_SPEED });
 
-            // The first film: compiled from the story, or one title shot when the story is under 10 s (backend/newProjectFilm.ts).
+            // The first film: compiled from the story, or one title shot when the story is under the minimum film length (backend/newProjectFilm.ts).
             const newFilm: Film = buildNewProjectFilm({ id: cleanId, title: title.trim(), accent, theme: filmTheme, storyScript, autoCompile: Boolean(autoCompile) });
 
             fs.mkdirSync(newPkgDir, { recursive: true });
@@ -2410,6 +2428,13 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }
             if (decideSave(raw?.baseRev, currentRev) === 'stale') {
               sendJson(res, 409, { error: 'conflict', code: 'stale_revision', rev: currentRev, order: traceBus.getFilmUpdateOrder(id), film: readFilm(id) });
+              return;
+            }
+            // A save may not introduce a media source that is missing on disk (Rule 6); sources the film on disk already has are left alone.
+            try {
+              assertFilmWriteAssetsExist(parsed.data, readFilm(id), { baseDir: PUBLIC_DIR });
+            } catch (error) {
+              sendJson(res, 422, { error: error instanceof Error ? error.message : String(error), code: 'missing_asset' });
               return;
             }
             // This studio save endpoint is the trusted owner path; placement locks bind agents and rebuilds.

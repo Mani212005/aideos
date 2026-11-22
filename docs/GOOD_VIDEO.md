@@ -149,6 +149,8 @@ the silences between lines all move together:
 - **Tighter gaps.** Silence between lines 170 ms (pipeline) and 350 ms (scene kit), chapter breath 750 ms.
 - **Shorter beats, more camera.** Beats average at most 10 s (shorter is fine), the camera moves at least once per 17 s and holds
   2.5 to 4 s per subject, and no story picture holds still past 2.5 s.
+- **Scaled minimum length.** The film schema refuses a film shorter than 10 s at narration rate 1, scaled by the rate
+  (`minFilmSecAt` in `backend/pacingProfile.ts`): 8.3 s at the 1.2x house pace. The error reads `film is under 8.3s`.
 - **More cuts, earlier hook.** At most 2.4 hard cuts per minute (2 before), a carry-over with transformation at least
   once per 17 s (20 before), and the reel's first word starts before 0.25 s (0.3 before). Each is the old value
   scaled by 1.2 in `backend/pacingProfile.ts`; the 10 to 16 word hook sentence is unchanged.

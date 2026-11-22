@@ -30,6 +30,16 @@ import {
 import { closeAudioGapWithDependencies } from "../timeline/voiceover_engine";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import { traceBus } from "../agentBridge/traceBus";
+import { errorMessage } from "../fsErrors";
+
+/** Records a trace step for the live trace panel; a trace failure is reported but never fails or rolls back the edit. */
+function recordTraceStep(step: Parameters<typeof traceBus.recordStep>[0]): void {
+  try {
+    traceBus.recordStep(step);
+  } catch (err) {
+    console.warn(`[AI edit] Could not record the trace step "${step.title}": ${errorMessage(err)}`);
+  }
+}
 
 export interface EditProgramResult {
   film: LayeredFilm;
@@ -616,16 +626,14 @@ export function applyEditProgram(
       const errorMsg = err instanceof Error ? err.message : String(err);
       rejected.push({ op, reason: errorMsg });
 
-      try {
-        traceBus.recordStep({
-          phase: "ai_edit",
-          source: "ai_edit",
-          title: "AI Edit: Transaction Rolled Back",
-          description: `Transaction rolled back due to error in "${op.op}": ${errorMsg}`,
-          status: "failed",
-          error: errorMsg,
-        });
-      } catch (_) {}
+      recordTraceStep({
+        phase: "ai_edit",
+        source: "ai_edit",
+        title: "AI Edit: Transaction Rolled Back",
+        description: `Transaction rolled back due to error in "${op.op}": ${errorMsg}`,
+        status: "failed",
+        error: errorMsg,
+      });
 
       // Rollback transaction immediately on single op failure
       return {
@@ -648,16 +656,14 @@ export function applyEditProgram(
     validateLayeredFilm(workingFilm);
   } catch (err: unknown) {
     const valErrorMsg = err instanceof Error ? err.message : String(err);
-    try {
-      traceBus.recordStep({
-        phase: "ai_edit",
-        source: "ai_edit",
-        title: "AI Edit: Post-Apply Validation Failed",
-        description: `Transaction rolled back due to post-apply validation failure: ${valErrorMsg}`,
-        status: "failed",
-        error: valErrorMsg,
-      });
-    } catch (_) {}
+    recordTraceStep({
+      phase: "ai_edit",
+      source: "ai_edit",
+      title: "AI Edit: Post-Apply Validation Failed",
+      description: `Transaction rolled back due to post-apply validation failure: ${valErrorMsg}`,
+      status: "failed",
+      error: valErrorMsg,
+    });
 
     return {
       film: originalFilm,
@@ -673,16 +679,14 @@ export function applyEditProgram(
     };
   }
 
-  try {
-    traceBus.recordStep({
-      phase: "ai_edit",
-      source: "ai_edit",
-      title: "AI Edit: Program Applied",
-      description: `Successfully applied ${applied.length} edit operations`,
-      status: "done",
-      details: applied.map((a) => `${a.op}`),
-    });
-  } catch (_) {}
+  recordTraceStep({
+    phase: "ai_edit",
+    source: "ai_edit",
+    title: "AI Edit: Program Applied",
+    description: `Successfully applied ${applied.length} edit operations`,
+    status: "done",
+    details: applied.map((a) => `${a.op}`),
+  });
 
   return {
     film: workingFilm,

@@ -35,7 +35,12 @@ function fakeAgy(t: TestContext, body: string): string {
     for (const name of ["child.pid", "leader.pid"]) {
       const file = path.join(dir, name);
       if (fs.existsSync(file)) {
-        try { process.kill(Number(fs.readFileSync(file, "utf8")), "SIGKILL"); } catch {}
+        try {
+          process.kill(Number(fs.readFileSync(file, "utf8")), "SIGKILL");
+        } catch (err) {
+          // A process that already exited is the normal case; anything else is a real cleanup failure.
+          if ((err as NodeJS.ErrnoException).code !== "ESRCH") throw err;
+        }
       }
     }
     fs.rmSync(dir, { recursive: true, force: true });
