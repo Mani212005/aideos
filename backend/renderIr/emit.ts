@@ -25,7 +25,7 @@ import {
 } from "../../src/dl/fullScreenHeroLayout";
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
-import { dbGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
+import { dbGain, effectDuckGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
 import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, ELEMENT_PROPERTIES, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
 import { rasterElementIds } from "../../src/dl/scene/raster";
 import { validateRenderIr } from "./validate";
@@ -867,7 +867,7 @@ interface ResolvedAudio {
  * Resolves the soundtrack exactly as Soundtrack.tsx plays it in the delivered format: the narration with its
  * head and tail ramps (`voiceLevel`), the end card's spoken line, each library music section with its gain,
  * equal-power envelope and speech ducking (`mixSections`, `sectionEnvelope`, `speechGain`), and each library
- * effect at its capped gain (`effectGain`). Every clip has gain 1 and carries its level in the envelope, so it
+ * effect at its capped gain (`effectGain`), a transition effect ducked under the same measured speech (`effectDuckGain`). Every clip has gain 1 and carries its level in the envelope, so it
  * reads the same whether a mixer multiplies the envelope by the gain or takes it as the gain.
  */
 function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>): ResolvedAudio {
@@ -893,7 +893,7 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>)
   }
   const soundtrack = normalizeFilmSoundtrack(film);
   if (!usesSectionMixer(soundtrack)) return out;
-  // The voice the music ducks under: the measured speech, plus the end card's line.
+  // The voice the music and library effects duck under: the measured speech, plus the end card's line.
   const voiceRuns = [
     ...soundtrack.speech.map((i) => ({ startSec: i.startSec, endSec: Math.min(i.endSec, story / fps) })),
     ...(card && film.endCardVoice && card.lineFrom !== null
@@ -916,7 +916,8 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>)
     if (startFrame >= total) return;
     const frames = Math.min(Math.max(1, Math.ceil(item.durationSec * fps)), total - startFrame);
     const g = effectGain(sfx, soundtrack.mix, narrationPeakDb);
-    add(`sfx-${i}`, sfx.src || soundtrackItemSrc(item), { startFrame, durationFrames: frames, sourceStartMs: 0, gainEnvelope: envelope(() => g, startFrame, startFrame) });
+    const gain = (f: number) => g * effectDuckGain(sfx, f / fps, voice, soundtrack.mix);
+    add(`sfx-${i}`, sfx.src || soundtrackItemSrc(item), { startFrame, durationFrames: frames, sourceStartMs: 0, gainEnvelope: envelope(gain, startFrame, startFrame + frames) });
   });
   return out;
 }

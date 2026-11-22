@@ -1,13 +1,13 @@
 /**
- * File Description: Browser-safe library resolution, section envelopes, speech ducking and effect gains.
+ * File Description: Browser-safe library resolution, section envelopes, speech ducking of music and effects, and effect gains.
  * Inputs and outputs: Recorded soundtrack and delivery timeline -> deterministic source spans and linear gains.
- * Used by: src/dl/Soundtrack.tsx and backend/soundtrack.ts.
+ * Used by: src/dl/Soundtrack.tsx, backend/renderIr/emit.ts and backend/soundtrack.ts.
  */
 
 import committedLibrary from "../../../audio/library.json";
 import type { DeliveryTimeline } from "../delivery";
 import type { Soundtrack, SoundtrackMix, SoundtrackSfx } from "../schema";
-import { HOLD_SEC, voiceContextAt, type VoiceTimeline } from "./voiceActivity";
+import { HOLD_SEC, voiceContextAt, type VoiceContext, type VoiceTimeline } from "./voiceActivity";
 
 type LibraryItem = (typeof committedLibrary.items)[number];
 
@@ -84,17 +84,37 @@ function progress(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+// Seconds a duck starts before the next phrase, so the first syllable already lands on the ducked level.
+const PRE_DUCK_SEC = 0.25;
+
+// Ramps a gap between an open level and a ducked level: ducked inside a phrase, pre-ducking 0.25 s before the next phrase and releasing over the 0.6 s hold after the last.
+function rampedDuckDb(context: VoiceContext, timeSec: number, openDb: number, duckDb: number): number {
+  if (context.state !== "gap") return duckDb;
+  const release = duckDb + (openDb - duckDb) * progress((timeSec - context.previousEndSec) / HOLD_SEC);
+  const attack = duckDb + (openDb - duckDb) * progress((context.nextStartSec - timeSec) / PRE_DUCK_SEC);
+  return Math.min(openDb, release, attack);
+}
+
 // Pre-ducks over 0.25 s and releases over 0.6 s, keeping speech and pauses inside a phrase flat.
 export function speechGain(timeSec: number, voice: VoiceTimeline, mix: SoundtrackMix, storySec: number): number {
-  const { state, previousEndSec, nextStartSec } = voiceContextAt(voice, timeSec);
-  if (state !== "gap") return dbGain(mix.duckDb);
-  const musicOnly = previousEndSec === -Infinity || nextStartSec === Infinity;
+  const context = voiceContextAt(voice, timeSec);
+  if (context.state !== "gap") return dbGain(mix.duckDb);
+  const musicOnly = context.previousEndSec === -Infinity || context.nextStartSec === Infinity;
   const cardRise = progress((timeSec - storySec + 0.25) / 0.25);
   const openDb = musicOnly ? mix.musicOnlyGainDb :
     mix.pauseGainDb + (mix.musicOnlyGainDb - mix.pauseGainDb) * cardRise;
-  const release = mix.duckDb + (openDb - mix.duckDb) * progress((timeSec - previousEndSec) / HOLD_SEC);
-  const attack = mix.duckDb + (openDb - mix.duckDb) * progress((nextStartSec - timeSec) / 0.25);
-  return dbGain(Math.min(openDb, release, attack));
+  return dbGain(rampedDuckDb(context, timeSec, openDb, mix.duckDb));
+}
+
+// Says whether a library effect ducks under speech: only transition effects do, while UI and structural cues keep their capped level.
+export function ducksUnderSpeech(effect: SoundtrackSfx): boolean {
+  return (soundtrackItem(effect.item, effect.sha256).roles as readonly string[]).includes("transition");
+}
+
+// Ducks a transition effect under speech by the music's own speech duck (duckDb) with the same ramps, so a transition that runs into a spoken line never masks it; outside speech, and for every other effect, the gain is 1.
+export function effectDuckGain(effect: SoundtrackSfx, timeSec: number, voice: VoiceTimeline, mix: SoundtrackMix): number {
+  if (!ducksUnderSpeech(effect)) return 1;
+  return dbGain(rampedDuckDb(voiceContextAt(voice, timeSec), timeSec, 0, mix.duckDb));
 }
 
 // Compiles frame-aligned overlaps and source trims, back-timing the final track through the card.

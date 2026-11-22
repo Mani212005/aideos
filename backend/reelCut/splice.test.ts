@@ -149,6 +149,21 @@ test("reel splice: dropped changes are carried by eased clips, never a one-frame
   assert.ok(cargo.every((c) => c.durationFrames > SPLICE_MIN_FRAMES));
 });
 
+test("reel splice: a slot animated only inside dropped shots with zero net change keeps its initial value instead of falling back to the SVG default", () => {
+  const f = fixture();
+  // The road label fades in during s03 and out during s04: both shots are dropped, the net change is zero and no kept clip ever touches it.
+  const spec = designSpecSchema.parse({ ...f.spec, clips: [...f.spec.clips,
+    { id: "label-in", asset: "road", targets: ["road-label"], property: "opacity", from: 0, to: 1, start: id(3), end: `${id(3)}@end`, easing: "linear" },
+    { id: "label-out", asset: "road", targets: ["road-label"], property: "opacity", from: 1, to: 0, start: id(4), end: `${id(4)}@end`, easing: "linear" }] });
+  const cut = cutDropping(f.long, DROPS, {});
+  const kept = cut.shots.filter((s) => !("drop" in s));
+  const reel = compileReel({ long: f.long, base: f.base, cut, spec, pkg: f.pkg, narration: narration(kept.map((s) => ("narration" in s ? s.narration : "")), kept.map(() => 6.5)) });
+  assert.ok(reel.film, JSON.stringify(reel));
+  const labelClips = reel.film!.scene!.props.find((p) => p.assetId === "road")!.animation!.clips.filter((c) => c.targets.includes("road-label") && c.property === "opacity");
+  assert.equal(labelClips.length, 1, JSON.stringify(labelClips));
+  assert.deepEqual([labelClips[0].from, labelClips[0].to, labelClips[0].startFrame], [0, 0, 0]);
+});
+
 test("reel splice: a cut that drops nothing compiles byte-identically with or without the splice option", () => {
   const f = fixture();
   const plain = compile(f, cutDropping(f.long, []), 6.5);

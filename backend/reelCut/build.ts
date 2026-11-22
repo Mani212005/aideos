@@ -23,6 +23,7 @@ import { lookPlanSchema, type LookPlan } from "../lookPlan/schema";
 import { createCues } from "../sceneKit/timing";
 import { ProductionError } from "../pipeline/types";
 import { writeJsonAtomic } from "../designSpec/buildRecord";
+import { renumberReelChapters } from "./chapters";
 import { lookPlanForKeptShots } from "./keptLook";
 import { loadReelContext, readReelCut, reelPackageDir } from "./brief";
 import { checkReelCut, formatReelReport } from "./check";
@@ -209,6 +210,8 @@ export function compileReel(input: {
     const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
     reel = { ...reel, soundtrack: resolveSoundtrack(spec.soundtrack, cues, reel, "reel") };
   }
+  // The rail counts chapters by move cut: renumber so a dropped chapter or opening shot cannot shift or empty it.
+  reel = renumberReelChapters(long, reel);
   const cues = createCues(narrationTimingForFilm(reel, words), reel.fps, { collapsed });
   const authored = spec?.camera?.map((pose) => ({ frame: resolveCue(pose.at, cues), focus: pose.focus })) ?? [];
   const cameraTargets = (keptLook?.film.camera ?? []).map((pose) => {
