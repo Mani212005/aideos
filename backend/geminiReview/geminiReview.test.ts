@@ -41,6 +41,7 @@ import {
   endCardFactLine,
   inspectCamera,
   measureBottomCaptions,
+  probeVideoMetadata,
 } from "./facts";
 import type { CriterionEvaluation, GeminiReviewReport, ReviewFeedbackItem } from "./types";
 
@@ -147,6 +148,32 @@ test("facts: inspectCamera handles missing film.json without hardcoded path heur
   const nonExistent = inspectCamera("/path/to/nonexistent/film.json", 60);
   assert.equal(nonExistent.measured, false);
   assert.equal(nonExistent.moveCount, 0);
+});
+
+test("facts: a film.json that cannot be parsed is named in the camera summary instead of vanishing", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-camera-corrupt-"));
+  try {
+    const filmPath = path.join(dir, "film.json");
+    fs.writeFileSync(filmPath, "{not json", "utf8");
+    const result = inspectCamera(filmPath, 60);
+    assert.equal(result.measured, false);
+    assert.match(result.summary, /film data could not be read/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("facts: a video ffprobe cannot read reports no duration and says why", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-probe-bad-"));
+  try {
+    const video = path.join(dir, "not-a-video.mp4");
+    fs.writeFileSync(video, "plain text, not a video", "utf8");
+    const probe = probeVideoMetadata(video);
+    assert.equal(probe.durationSec, 0);
+    assert.ok(probe.error && probe.error.length > 0, "the probe failure is reported, not swallowed");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("facts: inspectCamera counts meaningful scene.camera keyframe moves", () => {

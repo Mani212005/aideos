@@ -17,6 +17,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { DeterministicVideoFacts } from "./types";
+import { errorMessage } from "../fsErrors";
 import { THRESHOLDS } from "../review/thresholds";
 import { parseFilm } from "../../src/dl/schema";
 import { readFilmFacts, type FilmFacts, type ReviewViewport } from "../review/source";
@@ -36,6 +37,8 @@ export function probeVideoMetadata(videoPath: string): {
   width?: number;
   height?: number;
   fps?: number;
+  /** Why the probe failed; set only when durationSec is 0 because ffprobe could not read the video. */
+  error?: string;
 } {
   try {
     const args = [
@@ -60,8 +63,8 @@ export function probeVideoMetadata(videoPath: string): {
       }
     }
     return { durationSec, width, height, fps };
-  } catch {
-    return { durationSec: 0 };
+  } catch (err) {
+    return { durationSec: 0, error: errorMessage(err) };
   }
 }
 
@@ -116,13 +119,13 @@ export function measureAudioLoudness(videoPath: string): {
       truePeakDb: -99,
       summary: "No audio stream detected",
     };
-  } catch {
+  } catch (err) {
     return {
       measured: false,
       hasAudio: false,
       integratedLufs: -99,
       truePeakDb: -99,
-      summary: "Audio loudness measurement skipped or unavailable",
+      summary: `Audio loudness measurement skipped or unavailable (${errorMessage(err)})`,
     };
   }
 }
@@ -227,6 +230,7 @@ export async function measureBottomCaptions(
   let captionFrames = 0;
   let sampledFrames = 0;
   const captionTimesSec: number[] = [];
+  const sampleFailures: string[] = [];
 
   try {
     for (let i = 0; i < sampleTimes.length; i++) {
@@ -272,14 +276,17 @@ export async function measureBottomCaptions(
             }
           }
         }
-      } catch {
-        // Sample failure; continue with next frame
+      } catch (err) {
+        // A frame that cannot be cut is left out of the coverage; the failure is kept so the summary can name it.
+        sampleFailures.push(`${t}s: ${errorMessage(err)}`);
       }
     }
   } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch {}
+    } catch (err) {
+      console.warn(`[geminiReview] Could not remove the temporary OCR folder ${tmpDir}: ${errorMessage(err)}`);
+    }
   }
 
   if (sampledFrames === 0) {
@@ -290,7 +297,7 @@ export async function measureBottomCaptions(
       sampledFrames: 0,
       captionFrames: 0,
       score: 0,
-      summary: "Could not sample video frames or run OCR",
+      summary: `Could not sample video frames or run OCR${sampleFailures.length ? ` (first failure at ${sampleFailures[0]})` : ""}`,
     };
   }
 
@@ -299,9 +306,10 @@ export async function measureBottomCaptions(
   const score = coverageRatio < 0.2 ? 0.0 : coverageRatio >= 0.8 ? 9.5 : Math.round(coverageRatio * 10 * 10) / 10;
   const pct = Math.round(coverageRatio * 100);
 
+  const failureNote = sampleFailures.length ? `; ${sampleFailures.length} of ${sampleTimes.length} frames could not be sampled` : "";
   const summary = hasCaptions
-    ? `Burned-in captions at the placed position (default bottom) detected in ${pct}% of sampled frames (${captionFrames}/${sampledFrames})`
-    : `Caption coverage below the required level at the placed position (default bottom): ${pct}% (${captionFrames}/${sampledFrames} frames with captions)`;
+    ? `Burned-in captions at the placed position (default bottom) detected in ${pct}% of sampled frames (${captionFrames}/${sampledFrames})${failureNote}`
+    : `Caption coverage below the required level at the placed position (default bottom): ${pct}% (${captionFrames}/${sampledFrames} frames with captions)${failureNote}`;
 
   return {
     measured: true,
@@ -328,6 +336,7 @@ export function inspectCamera(
   summary: string;
 } {
   const neededMoves = Math.max(1, Math.floor(durationSec / 20));
+  let filmReadFailure: string | null = null;
 
   if (filmPath && fs.existsSync(filmPath)) {
     try {
@@ -411,7 +420,9 @@ export function inspectCamera(
           ? `${moves} camera moves verified in film data (meets requirement of >= ${neededMoves})`
           : `Static camera: only ${moves} moves in film data (needs >= ${neededMoves})`,
       };
-    } catch {}
+    } catch (err) {
+      filmReadFailure = errorMessage(err);
+    }
   }
 
   return {
@@ -419,7 +430,9 @@ export function inspectCamera(
     hasCameraMoves: true,
     moveCount: 0,
     score: 7.5,
-    summary: "Camera track evaluation left to visual critic",
+    summary: filmReadFailure
+      ? `Camera track evaluation left to visual critic (the film data could not be read: ${filmReadFailure})`
+      : "Camera track evaluation left to visual critic",
   };
 }
 
@@ -436,6 +449,8 @@ export async function extractDeterministicFacts(
 ): Promise<DeterministicVideoFacts> {
   const resolved = path.resolve(videoPath);
   const metadata = probeVideoMetadata(resolved);
+  // An unreadable video gets a placeholder duration for sampling only; the facts text says it was not measured.
+  const durationMeasured = !metadata.error && metadata.durationSec > 0;
   const durationSec = metadata.durationSec || 80;
 
   const audio = measureAudioLoudness(resolved);
@@ -472,10 +487,13 @@ export async function extractDeterministicFacts(
     const reelPath = path.join(path.dirname(filmPath), "reel/film.json");
     if (fs.existsSync(reelPath)) filmPath = reelPath;
   }
+  const reelPassed = durationMeasured && durationSec <= DELIVERY_CONFIG.reel.maxSec;
   const reelLength = viewport && viewport.width < viewport.height ? {
     capSec: DELIVERY_CONFIG.reel.maxSec,
-    passed: durationSec <= DELIVERY_CONFIG.reel.maxSec,
-    summary: `Reel delivered duration ${durationSec.toFixed(3)} s, including the end card, ${durationSec <= DELIVERY_CONFIG.reel.maxSec ? "passes" : "exceeds"} the ${DELIVERY_CONFIG.reel.maxSec} s hard cap.`,
+    passed: reelPassed,
+    summary: durationMeasured
+      ? `Reel delivered duration ${durationSec.toFixed(3)} s, including the end card, ${reelPassed ? "passes" : "exceeds"} the ${DELIVERY_CONFIG.reel.maxSec} s hard cap.`
+      : `Reel delivered duration NOT measured (${metadata.error ?? "ffprobe reported no duration"}), so the ${DELIVERY_CONFIG.reel.maxSec} s hard cap cannot be verified.`,
   } : undefined;
   let filmFacts: FilmFacts | null = null;
   let captionRectAt: ((t: number) => CaptionRect | undefined) | null | undefined = undefined;
@@ -537,14 +555,21 @@ export async function extractDeterministicFacts(
   const camera = inspectCamera(filmPath, storySec, filmFacts);
   const wordsPath = wordsDir ? path.join(wordsDir, "voiceover_words.json") : null;
   let narration: ReturnType<typeof loadNarration> | null = null;
-  try { narration = wordsPath && fs.existsSync(wordsPath) ? loadNarration(wordsPath) : null; } catch { narration = null; }
+  try {
+    narration = wordsPath && fs.existsSync(wordsPath) ? loadNarration(wordsPath) : null;
+  } catch (err) {
+    console.warn(`[geminiReview] Could not load the narration word timings ${wordsPath}: ${errorMessage(err)}`);
+    narration = null;
+  }
   const stage: StageTruth | undefined = filmFacts ? stageTruth(filmFacts, narration) : undefined;
 
   const rawSummaryText = [
     placementNote,
     captionMeasurementNote,
     `=== PRE-MEASURED GROUND TRUTH FACTS (DETERMINISTIC FACTS) ===`,
-    `- Exact Video Duration: ${durationSec.toFixed(1)}s (do NOT hallucinate a different duration such as 120s)`,
+    durationMeasured
+      ? `- Exact Video Duration: ${durationSec.toFixed(1)}s (do NOT hallucinate a different duration such as 120s)`
+      : `- Video Duration: NOT measured (${metadata.error ?? "ffprobe reported no duration"}); judge pacing and length from the video itself and trust no duration figure.`,
     metadata.width && metadata.height ? `- Dimensions: ${metadata.width}x${metadata.height}` : null,
     stage ? `=== STAGE FACTS FOR THIS OUTPUT (projected geometry and action data; pixels and craft unmeasured) ===\n${stageTruthText(stage)}` : stageNote,
     filmFacts?.endCard ? endCardFactLine(filmFacts.endCard) : null,
@@ -561,7 +586,7 @@ export async function extractDeterministicFacts(
     `1. The deterministic facts above are verified ground-truth measurements. You MUST NOT contradict these facts.`,
     `2. Caption Placement Gate (stable result key: bottom_captions): If the measured fact indicates 0% captions or FAIL, you MUST set isGate=true, passed=false, score=0.0 for "bottom_captions". Do NOT pass captions when 0% are present. Owner-declared cards may be anywhere within the frame; do not require a moved card to be at the bottom.`,
     `3. Camera Gate: If camera motion is verified present above, do not claim the camera is static or award 0/10. Evaluate its framing purpose.`,
-    `4. Duration and Pacing: Base all pacing and duration comments on the exact measured duration (${durationSec.toFixed(1)}s)${filmFacts?.endCard ? `, of which the story is the first ${filmFacts.endCard.startSec.toFixed(1)}s; judge audio sync, pacing and the payoff on the story, and the end card only for readability and overlap` : ""}.`,
+    `4. Duration and Pacing: ${durationMeasured ? `Base all pacing and duration comments on the exact measured duration (${durationSec.toFixed(1)}s)` : "The duration could not be measured, so base pacing comments on what you see in the video"}${filmFacts?.endCard ? `, of which the story is the first ${filmFacts.endCard.startSec.toFixed(1)}s; judge audio sync, pacing and the payoff on the story, and the end card only for readability and overlap` : ""}.`,
     stage || stageNote ? `5. Stage: the stage facts say where geometry and contacts are, not what the pixels show. A character or prop counts only if you can see it in the video. Face appeal, finger contact and occlusion are unmeasured: judge them from the video, and never pass a criterion on these facts alone.` : null,
     reelLength ? `6. Reel length: enforce the ${reelLength.capSec} s cap including the end card. An over-cap reel cannot be accepted, regardless of other scores.` : null,
   ]
@@ -570,6 +595,7 @@ export async function extractDeterministicFacts(
 
   return {
     durationSec,
+    durationMeasured,
     ...(reelLength ? { reelLength } : {}),
     endCard: filmFacts?.endCard ? { startSec: filmFacts.endCard.startSec, endSec: filmFacts.endCard.endSec } : null,
     ...(stage ? { stage } : {}),

@@ -30,6 +30,8 @@ export interface DeterministicVideoFacts {
   /** A Three stage film measured in this video's own output (see backend/review/stageTruth.ts). */
   stage?: StageTruth;
   durationSec: number;
+  /** False when ffprobe could not read the video and durationSec is only a placeholder used for sampling. */
+  durationMeasured?: boolean;
   width?: number;
   height?: number;
   fps?: number;

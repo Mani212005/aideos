@@ -13,6 +13,12 @@ import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { parseLookPlan } from "../lookPlan/schema";
 import { STORY_SCRIPT_RULES } from "../scriptIntake";
 import { boundTheme, boundThemeName } from "../../src/projectTheme";
+import { errorMessage, isFileNotFound } from "../fsErrors";
+
+/** Reports a package file that exists but could not be used, so the agent prompt does not silently lose it. */
+function warnUnusableFile(what: string, filmId: string, err: unknown): void {
+  console.warn(`[AgentBridge] Could not use ${what} for "${filmId}": ${errorMessage(err)}`);
+}
 
 /** Core design invariants enforced across the Aideos explainer video standard. */
 export const DESIGN_INVARIANTS: string[] = [
@@ -45,7 +51,9 @@ export function shotLookContext(filmId: string, shotId: string, rootDir: string 
       treatment: shot.treatment,
       cast: plan.film.cast.filter((item) => shot.carries.includes(item.id)).map(({ id, what }) => ({ id, what })),
     };
-  } catch {
+  } catch (err) {
+    // A missing look.json simply means no plan yet; a corrupt or invalid one is reported before the prompt says there is no entry.
+    if (!isFileNotFound(err)) warnUnusableFile("design/look.json", filmId, err);
     return null;
   }
 }
@@ -63,7 +71,9 @@ export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT):
   if (!scriptText && fs.existsSync(scriptPath)) {
     try {
       scriptText = fs.readFileSync(scriptPath, "utf8");
-    } catch (_) {}
+    } catch (err) {
+      warnUnusableFile("script.md", filmId, err);
+    }
   }
 
   // Film manifest resolution
@@ -71,7 +81,8 @@ export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT):
   if (FILM_ID.test(filmId)) {
     try {
       film = readFilm(filmId);
-    } catch (_) {
+    } catch (err) {
+      warnUnusableFile("the film", filmId, err);
       film = null;
     }
   }
@@ -102,7 +113,9 @@ export function buildTaskContext(opts: DispatchOptions, rootDir: string = ROOT):
     try {
       const raw = JSON.parse(fs.readFileSync(voiceoverWordsPath, "utf8"));
       voiceoverWords = Array.isArray(raw) ? raw : raw.words || [];
-    } catch (_) {}
+    } catch (err) {
+      warnUnusableFile("the voiceover word timings", filmId, err);
+    }
   }
 
   // Duration & shots calculation

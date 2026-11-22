@@ -17,6 +17,7 @@ import { taskQueue } from "./taskQueue";
 import { agentLink } from "../agentLink/store";
 import { OPEN_AFTER_TIMEOUT_MS, paneDelivery, type PaneDelivery, type PaneDeliveryDeps } from "./paneDelivery";
 import { remoteTaskPrompt } from "../agentLink/prompt";
+import { errorMessage } from "../fsErrors";
 import type { AgentSessionInfo, AgentTask, DispatchChannel, DispatchOptions, DispatchResult } from "./types";
 
 /** Injectable tmux command effect; omitted under Node tests unless explicitly supplied. */
@@ -68,7 +69,9 @@ export function getAgentSession(): AgentSessionInfo {
         pid: data.pid,
         updatedAt: data.updatedAt || new Date().toISOString(),
       };
-    } catch (_) {}
+    } catch (err) {
+      console.warn(`[AgentBridge] Ignoring unreadable ${path.basename(SESSION_FILE)}, using the default tmux session: ${errorMessage(err)}`);
+    }
   }
 
   return {
@@ -181,7 +184,10 @@ export function dispatchLocalAndTmux(
       promptSnippet: prompt.slice(0, 100),
     });
     fs.appendFileSync(EVENTS_LOG, `${logEntry}\n`, "utf8");
-  } catch (_) {}
+  } catch (err) {
+    // Name the step that failed: the task file is the hand-off, the event log is only a record.
+    console.warn(`[AgentBridge] ${fileWritten ? "Could not append to the agent event log" : "Could not write the local task file"}: ${errorMessage(err)}`);
+  }
 
   const sessionInfo = getAgentSession();
   const targetSession = opts?.sessionName || sessionInfo.tmuxSession || "aideos";
@@ -197,7 +203,8 @@ export function dispatchLocalAndTmux(
       { tmux, sleep: deps.sleep, now: deps.now, timing: deps.timing },
     );
     return { fileWritten, pane };
-  } catch (_) {
+  } catch (err) {
+    console.warn(`[AgentBridge] Could not hand the prompt to the tmux pane ${targetPane}: ${errorMessage(err)}`);
     return { fileWritten };
   }
 }
