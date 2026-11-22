@@ -17,6 +17,7 @@ import { designDir, readCheckedLookPlan } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { HOUSE_PACE } from "../pacingProfile";
+import { formatDurationSec } from "../formatDurationSec";
 import {
   getInsetRegion,
   INSET_FORMAT_FRAMES,
@@ -82,18 +83,12 @@ function exampleSpecFor(accent: string): typeof EXAMPLE_SPEC {
   return { ...EXAMPLE_SPEC, accent };
 }
 
-// Formats seconds as m:ss.
-function clock(sec: number): string {
-  const s = Math.max(0, Math.round(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
-
 // Renders the brief markdown for a film.
 export function renderDesignBrief(film: Film, lookPlan?: LookPlan): string {
   let t = 0;
   const shots = film.shots
     .map((s) => {
-      const line = `- \`${s.id}\` (${clock(t)}-${clock(t + s.dur)}, ${s.dur.toFixed(1)}s, chapter "${s.ch}")\n  - says: ${s.scriptText?.trim() || "(no narration)"}${s.visualDirection ? `\n  - direction: ${s.visualDirection}` : ""}${s.blocks.length ? `\n  - on screen now: ${s.blocks.map((b) => b.c).join(", ")}` : ""}`;
+      const line = `- \`${s.id}\` (${formatDurationSec(t)}-${formatDurationSec(t + s.dur)}, ${s.dur.toFixed(1)}s, chapter "${s.ch}")\n  - says: ${s.scriptText?.trim() || "(no narration)"}${s.visualDirection ? `\n  - direction: ${s.visualDirection}` : ""}${s.blocks.length ? `\n  - on screen now: ${s.blocks.map((b) => b.c).join(", ")}` : ""}`;
       t += s.dur;
       return line;
     })
@@ -213,7 +208,7 @@ function renderSoundSection(): string {
     .filter((item) => item.kind === "music")
     .map(
       (item) =>
-        `| \`${item.id}\` | ${item.title} / ${item.artist} | ${item.roles.join(", ")} | ${item.moods.join(", ")} | ${item.energy}/5 | ${clock(item.durationSec)} | ${item.loudness.integratedLufs.toFixed(1)} / ${item.loudness.truePeakDb > 0 ? "+" : ""}${item.loudness.truePeakDb.toFixed(1)} / ${item.loudness.lra.toFixed(1)} |`,
+        `| \`${item.id}\` | ${item.title} / ${item.artist} | ${item.roles.join(", ")} | ${item.moods.join(", ")} | ${item.energy}/5 | ${formatDurationSec(item.durationSec)} | ${item.loudness.integratedLufs.toFixed(1)} / ${item.loudness.truePeakDb > 0 ? "+" : ""}${item.loudness.truePeakDb.toFixed(1)} / ${item.loudness.lra.toFixed(1)} |`,
     )
     .join("\n");
 

@@ -335,9 +335,6 @@ export const cameraTrackSchema = z.object({
   holdPush: z.number().min(MIN_HOLD_PUSH).max(MAX_HOLD_PUSH).optional(),
 });
 
-export type CameraKeyframe = z.infer<typeof cameraKeyframeSchema>;
-export type CameraTrack = z.infer<typeof cameraTrackSchema>;
-
 export const sceneSchema = z.object({
   treatmentResourceHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   treatment: stageTreatmentSchema.optional(),

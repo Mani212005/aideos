@@ -6,6 +6,8 @@
  * Used by: editor/src/components/{timeline/TimelineRuler,TimelineEditor,ReelPanel,SoundtrackPanel,DesignView,ScriptEditor,CheckExport,captions/CaptionStrip}.tsx.
  */
 
+import { formatDurationSec } from "../../../backend/formatDurationSec";
+
 // Clamps a time to a finite, non-negative number of seconds.
 function safeSeconds(sec: number): number {
   return Number.isFinite(sec) ? Math.max(0, sec) : 0;
@@ -14,11 +16,9 @@ function safeSeconds(sec: number): number {
 /** Format a time in seconds as a compact m:ss or m:ss.t timecode (whole seconds are floored). */
 export function formatTimecode(sec: number, withTenths = false): string {
   const safe = safeSeconds(sec);
-  const m = Math.floor(safe / 60);
-  const s = Math.floor(safe % 60);
-  if (!withTenths) return `${m}:${String(s).padStart(2, "0")}`;
+  if (!withTenths) return formatDurationSec(safe, "floor");
   const t = Math.floor((safe % 1) * 10);
-  return `${m}:${String(s).padStart(2, "0")}.${t}`;
+  return `${formatDurationSec(safe, "floor")}.${t}`;
 }
 
 /** Format a time in seconds as a frame-accurate m:ss:ff timecode. */

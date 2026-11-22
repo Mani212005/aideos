@@ -9,6 +9,7 @@ import path from "node:path";
 import { type LookPerformance, type LookPlan, parseLookPlan } from "./schema";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { availableCharacters } from "./brief";
+import { formatDurationSec } from "../formatDurationSec";
 
 // Says one performance in plain words: who, which character, what, on which spoken word, and what stays true after.
 export function describePerformance(p: LookPerformance, names: Record<string, string> = {}): string {
@@ -27,12 +28,6 @@ Renderer: three (orthographic persistent stage, ${treatment}). ${plan.film.perfo
 ${plan.film.performances.map((p) => `- ${describePerformance(p, names)}`).join("\n")}
 
 Look check completed: schema, shot and cast ids, cast and character resolution, decisive phrases spoken once in their shots, and performance starts before decisive words. Pending at design build: verify contact lands on the decisive word and projected geometry clears the wide and reel crops, caption band and inset. Not measured by any tool: face appeal, finger contact and final on-screen occlusion; judge those by eye with \`aideos character sheet\` and the rendered stills. Art references: src/dl/scene/rigs/NOTICE.md.`;
-}
-
-// Formats seconds into m:ss clock format.
-function clock(sec: number): string {
-  const s = Math.max(0, Math.round(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 // Renders markdown for a look plan.
@@ -64,7 +59,7 @@ export function renderLookMd(plan: LookPlan, filmTitle?: string, shotTimings?: {
     const timing = timingMap.get(s.id);
     let timeStr = "";
     if (timing) {
-      timeStr = `${clock(timing.start)}-${clock(timing.end)} `;
+      timeStr = `${formatDurationSec(timing.start)}-${formatDurationSec(timing.end)} `;
     } else {
       timeStr = `shot-${idx + 1} `;
     }

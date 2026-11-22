@@ -16,6 +16,7 @@ import path from "node:path";
 import { reviewerModel } from "../aideosConfig";
 import { cleanModelJsonResponse } from "../modelReply";
 import { probeVideo } from "../media/probe";
+import { formatDurationSec } from "../formatDurationSec";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
 import { runAgyProcess } from "./agyProcess";
@@ -562,7 +563,7 @@ export async function reviewVideo(
               // Evidence is the sampled frames OCR actually read a caption in, never a placeholder.
               if (capCrit.evidenceTimestamps.length === 0) {
                 capCrit.evidenceTimestamps = (facts.bottomCaptions.captionTimesSec ?? []).slice(0, 3)
-                  .map((t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`);
+                  .map((t) => formatDurationSec(t, "floor"));
               }
             }
           }
@@ -605,7 +606,7 @@ export async function reviewVideo(
             score: facts.reelLength.passed ? 10 : 0, passed: facts.reelLength.passed,
             evidenceTimestamps: facts.durationMeasured === false
               ? ["0:00"]
-              : [`${Math.floor(facts.durationSec / 60)}:${String(Math.floor(facts.durationSec % 60)).padStart(2, "0")}`],
+              : [formatDurationSec(facts.durationSec, "floor")],
             reason: facts.reelLength.summary });
         }
 
