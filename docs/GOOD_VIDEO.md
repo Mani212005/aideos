@@ -134,11 +134,16 @@ the silences between lines all move together:
   films). One without (the cloned voice, Google, say) is re-paced line by line with a pitch-preserving time-stretch
   (`timeStretch` in `backend/pcm.ts`); the rate is part of each line's cache key. Whether the cloned voice reaches
   the 145 wpm floor at 1.2x is unverified: measure it with the real voice.
-- **Clarity was measured once, not gated.** A faster-whisper small.en (CPU, int8) speech-to-text round trip on the
+- **Clarity is measured, not gated in CI.** A faster-whisper small.en (CPU, int8) speech-to-text round trip on the
   `sample-explainer` fixture, word error rate against the script: before 9.8%, Kokoro 0.9 8.1%, WSOLA stretch 1.2x
   8.6%, ffmpeg `atempo` 1.2x reference 9.0%, Kokoro 1.05 6.8%; no content word misheard. See
-  [the evidence log](evidence/verify/2026-11-21-faster-pacing-profile.md). A repeatable check is a follow-up
-  (`aideos-intelligibility-check`).
+  [the evidence log](evidence/verify/2026-11-21-faster-pacing-profile.md). Those numbers used sampled decoding and
+  move by up to 2.6 points between runs of the same wav. Re-run the round trip with `npm run intelligibility`
+  ([`scripts/intelligibility/round_trip.ts`](../scripts/intelligibility/round_trip.ts)) whenever the voice, a
+  synthesizer's default speed, the house narration rate or `timeStretch` changes. It narrates the fixture with one
+  voice as spoken and stretched to the house rate, transcribes both with local Whisper at temperature 0, and exits 1
+  when the stretch adds more than 2 points of misheard words (spelling choices such as "down sampling" forgiven). See
+  [its evidence log](evidence/verify/2026-11-22-intelligibility-round-trip.md).
 - **Tighter gaps.** Silence between lines 170 ms (pipeline) and 350 ms (scene kit), chapter breath 750 ms.
 - **Shorter beats, more camera.** Beats average at most 10 s (shorter is fine), the camera moves at least once per 17 s and holds
   2.5 to 4 s per subject, and no story picture holds still past 2.5 s.
