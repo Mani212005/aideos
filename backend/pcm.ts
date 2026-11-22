@@ -1,12 +1,12 @@
 /**
  * File Description: Pure sample-domain helpers for the narration pipeline - silence trimming,
  * pitch-preserving time-stretch (WSOLA),
- * boundary fades, peak normalization, exact-offset concatenation, word-timing distribution and
- * 16-bit PCM WAV encode/decode. Everything here is deterministic and dependency-free so the
+ * boundary fades, peak normalization, exact-offset concatenation, word-timing distribution (and the
+ * shared TimedWord type every word-timing reader uses) and 16-bit PCM WAV encode/decode. Everything here is deterministic and dependency-free so the
  * voiceover regression tests can assert on sample counts and boundary amplitudes directly,
  * which is the only way to prove there is no click, gap or drift at a stitch point.
  * Inputs and outputs: raw Float32 PCM samples and WAV buffers -> trimmed, re-paced, normalized, concatenated audio samples and WAV files.
- * Used by: backend/audio.ts, backend/tts.ts, backend/pipeline/design.ts, editor/vite.config.ts.
+ * Used by: backend/audio.ts, backend/tts.ts, backend/pipeline/design.ts, editor/vite.config.ts; TimedWord by the design compile, review, reel cut and end card modules.
  */
 
 import { HOUSE_PACE } from "./pacingProfile";
@@ -34,12 +34,34 @@ export interface AssembledAudio {
   totalSec: number;
 }
 
-/** A single word with its absolute position on the narration timeline. */
+/**
+ * One narrated word with its offsets in seconds, as voiceover_words.json stores it. The single definition every
+ * producer and reader of word timings shares (narration, design compile, review, reel cut, end card).
+ */
 export interface TimedWord {
   word: string;
-  punctuated_word: string;
+  punctuated_word?: string;
   start: number;
   end: number;
+}
+
+/** A word as distributeWordTimings produces it: it always carries its punctuated spelling. */
+export type PunctuatedWord = Required<TimedWord>;
+
+/** One stretch of the transcript a narration segment speaks. */
+export interface UtteranceInfo {
+  start: number;
+  end: number;
+  transcript: string;
+}
+
+/** A narration segment as narration.json records it, with word timings relative to the segment start. */
+export interface SegmentAudioInfo {
+  text: string;
+  duration: number;
+  startOffset: number;
+  words: TimedWord[];
+  utterances: UtteranceInfo[];
 }
 
 /**
@@ -352,14 +374,14 @@ export function distributeWordTimings(
   text: string,
   durationSec: number,
   startSec = 0,
-): TimedWord[] {
+): PunctuatedWord[] {
   const tokens = text.split(/\s+/).filter(Boolean);
   if (tokens.length === 0 || durationSec <= 0) return [];
 
   const weights = tokens.map((t) => syllableCount(t) + punctuationWeight(t));
   const totalWeight = weights.reduce((a, b) => a + b, 0) || tokens.length;
 
-  const words: TimedWord[] = [];
+  const words: PunctuatedWord[] = [];
   let cursor = 0;
   tokens.forEach((token, i) => {
     const span = (weights[i] / totalWeight) * durationSec;
@@ -376,6 +398,34 @@ export function distributeWordTimings(
   });
 
   return words;
+}
+
+/**
+ * Times every assembled segment's words: absolute offsets on the narration timeline (voiceover_words.json and the
+ * captions) plus the per-segment records with segment-relative words (narration.json). The CLI pipeline and the
+ * Studio voiceover route both write these files, so they share this one derivation.
+ */
+export function narrationWordTimings(segments: AssembledSegment[]): { words: PunctuatedWord[]; segments: SegmentAudioInfo[] } {
+  const words: PunctuatedWord[] = [];
+  const records = segments.map((seg): SegmentAudioInfo => {
+    const relativeWords = distributeWordTimings(seg.text, seg.durationSec);
+    for (const w of relativeWords) {
+      words.push({
+        word: w.word,
+        punctuated_word: w.punctuated_word,
+        start: Number((seg.startSec + w.start).toFixed(3)),
+        end: Number((seg.startSec + w.end).toFixed(3)),
+      });
+    }
+    return {
+      text: seg.text,
+      duration: seg.durationSec,
+      startOffset: seg.startSec,
+      words: relativeWords,
+      utterances: [{ start: 0, end: seg.durationSec, transcript: seg.text }],
+    };
+  });
+  return { words, segments: records };
 }
 
 /** Encodes mono Float32 samples as a 16-bit PCM WAV file buffer. */

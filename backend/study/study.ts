@@ -8,7 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { probeVideo } from "../review/media";
+import { probeVideo } from "../media/probe";
 import { resolveMetric } from "./agreement";
 import { analyzeAudio } from "./audio";
 import { analyzeCamera, buildPyramid, cornerSpeed, estimateBlocks, estimateTiles, staticOverlayMask, type FramePyramid, type MotionModel, type OverlayMask, type SpeedSeries } from "./camera";

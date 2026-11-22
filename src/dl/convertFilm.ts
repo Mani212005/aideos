@@ -445,6 +445,14 @@ function isPlainSfx(clip: Clip): boolean {
   return /^clip-sfx-\d+$/.test(clip.id) && clip.start === 0 && clip.end === SFX_CLIP_DURATION;
 }
 
+/**
+ * True when a clip id names a soundtrack music section or soundtrack effect, including the pieces a split leaves
+ * (each split appends `-a`/`-b` plus four characters). The editor refuses to split or retime these.
+ */
+export function isSoundtrackClipId(id: string): boolean {
+  return /^clip-(?:music-section|soundtrack-sfx)-\d+(?:-[ab][a-z0-9]{4})*$/.test(id);
+}
+
 // True when an audio clip represents a synthesized soundtrack section.
 function isSoundtrackSectionClip(clip: Clip): boolean {
   return /^clip-music-section-\d+$/.test(clip.id);

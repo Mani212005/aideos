@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import type { Clip } from "../../../src/dl/layeredSchema";
+import { isSoundtrackClipId } from "../../../src/dl/convertFilm";
 import type {
   AnimationPayload,
   AudioPayload,
@@ -80,7 +81,8 @@ import {
 } from "./ui";
 import { ClipBody, type ClipPointerMode } from "./timeline/ClipBody";
 import { LaneHeader } from "./timeline/LaneHeader";
-import { TimelineRuler, formatFrameTimecode } from "./timeline/TimelineRuler";
+import { TimelineRuler } from "./timeline/TimelineRuler";
+import { formatFrameTimecode } from "../utils/time";
 
 /** Zoom bounds in pixels per second. */
 const MIN_PX_PER_SEC = 2;
@@ -337,7 +339,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       e.stopPropagation();
 
       if (tool === "razor") {
-        if (/^clip-(?:music-section|soundtrack-sfx)-\d+(?:-[ab][a-z0-9]{4})*$/.test(clip.id)) {
+        if (isSoundtrackClipId(clip.id)) {
           onReject("Soundtrack clips cannot be split; swap the track or move the effect instead.");
           return;
         }
@@ -715,7 +717,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       onReject("Move the playhead inside a clip to split it.");
       return;
     }
-    if (/^clip-(?:music-section|soundtrack-sfx)-\d+(?:-[ab][a-z0-9]{4})*$/.test(target.id)) {
+    if (isSoundtrackClipId(target.id)) {
       onReject("Soundtrack clips cannot be split; swap the track or move the effect instead.");
       return;
     }

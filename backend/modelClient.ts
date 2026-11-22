@@ -1,12 +1,13 @@
 /**
  * File Description: Google Gen AI (@google/genai) client helper for Gemini text and JSON prompts.
  * Provides authenticated client setup, generateText (with transient-error backoff retries), and
- * generateStructuredJson (markdown fence stripping and a 3-attempt JSON.parse retry loop without schema validation).
+ * generateStructuredJson (fence stripping through backend/modelReply.ts and a 3-attempt parse retry loop without schema validation).
  * Inputs and outputs: prompts and Gemini model/temperature options -> parsed JSON or plain text from Google Gen AI.
  * Used by: backend/pipeline/director.ts, backend/pipeline/deviceData.ts, backend/editPlanner/planner.ts, backend/ideation/visualSelector.ts.
  */
 
 import { GoogleGenAI } from "@google/genai";
+import { parseModelJson } from "./modelReply";
 
 // Google retires pinned versions (gemini-2.0-flash now 404s), so keep this current; override with AIDEOS_GEMINI_MODEL.
 const DEFAULT_GEMINI_MODEL = process.env.AIDEOS_GEMINI_MODEL || "gemini-3.5-flash";
@@ -52,15 +53,7 @@ export async function generateStructuredJson<T>(
         },
       });
 
-      const rawText = response.text || "";
-      let cleaned = rawText.trim();
-      if (cleaned.startsWith("```json")) {
-        cleaned = cleaned.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-      } else if (cleaned.startsWith("```")) {
-        cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
-      }
-
-      return JSON.parse(cleaned) as T;
+      return parseModelJson<T>(response.text || "");
     } catch (err) {
       lastError = err;
     }

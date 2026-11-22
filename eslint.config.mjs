@@ -31,7 +31,6 @@ const LEGACY_ANY = [
   "backend/mcp/server.ts",
   "backend/timeline/{layer_manager,snap,updates}.ts",
   "scripts/smoke_studio.ts",
-  "scripts/validate_film.ts",
   "editor/src/components/{OnCanvasAiEditor,ScriptEditor}.tsx",
   "editor/src/state/useFilmProject.ts",
 ];

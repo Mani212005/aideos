@@ -5,11 +5,10 @@
 */
 
 import { buildVoiceTimeline, voiceContextAt, type VoiceTimeline } from "./voiceActivity";
+import type { SpeechInterval } from "../schema";
 
-export interface SpeechInterval {
-  startSec: number;
-  endSec: number;
-}
+/** A stretch of narration speech in seconds (one definition: the soundtrack schema's). */
+export type { SpeechInterval };
 
 export interface DuckingOptions {
   frame: number;

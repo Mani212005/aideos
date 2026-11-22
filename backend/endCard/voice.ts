@@ -13,6 +13,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { produceAudioPipeline, type ProduceAudioOptions, type ProduceAudioResult } from "../audio";
+import type { TimedWord } from "../pcm";
 import type { TtsBackendName } from "../tts";
 import type { VcdLanguagePreference } from "../vcdClient";
 import { DELIVERY_CONFIG, endCardEnabledFor, type DeliveryConfig } from "../../src/dl/delivery";
@@ -42,7 +43,7 @@ export interface EndCardLineRecord {
   ttsBackend: string;
   durationSec: number;
   /** Word timings relative to the start of the line. */
-  words: Array<{ word: string; start: number; end: number }>;
+  words: TimedWord[];
 }
 
 /** Synthesizes narration audio; produceAudioPipeline in production, a stub in tests. */

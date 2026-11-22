@@ -11,6 +11,7 @@ import type { EditContext } from "../editContext/buildEditContext";
 import { plannerOutputSchema, type EditOp } from "./schema";
 import { validateEditProgram } from "./validator";
 import { generateText } from "../modelClient";
+import { cleanModelJsonResponse } from "../modelReply";
 import { traceBus } from "../agentBridge";
 
 export interface PlanEditsOptions {
@@ -24,19 +25,6 @@ export interface PlanEditsResult {
   ops: EditOp[];
   attempts: number;
   warnings: string[];
-}
-
-/**
- * Strips markdown code fences from model response string.
- */
-export function cleanCodeFence(raw: string): string {
-  let cleaned = raw.trim();
-  const fenced = cleaned.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
-  if (fenced) return fenced[1].trim();
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```[a-zA-Z]*\s*/, "").replace(/\s*```$/, "");
-  }
-  return cleaned.trim();
 }
 
 /**
@@ -214,7 +202,7 @@ export async function planEdits(
       continue;
     }
 
-    const cleaned = cleanCodeFence(rawOutput);
+    const cleaned = cleanModelJsonResponse(rawOutput);
 
     // 1. JSON Parse
     let parsed: unknown;

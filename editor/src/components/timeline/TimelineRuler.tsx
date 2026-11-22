@@ -8,6 +8,7 @@
  */
 
 import { cn } from "../ui";
+import { formatTimecode } from "../../utils/time";
 
 /** Candidate tick intervals in seconds, chosen so labelled ticks stay about 90 pixels apart. */
 const TICK_STEPS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
@@ -18,27 +19,6 @@ export function tickStepForZoom(pxPerSec: number, targetPx = 90): number {
     if (step * pxPerSec >= targetPx) return step;
   }
   return TICK_STEPS[TICK_STEPS.length - 1];
-}
-
-/** Format a time in seconds as a compact m:ss or m:ss.t timecode. */
-export function formatTimecode(sec: number, withTenths = false): string {
-  const safe = Math.max(0, sec);
-  const m = Math.floor(safe / 60);
-  const s = Math.floor(safe % 60);
-  if (!withTenths) return `${m}:${String(s).padStart(2, "0")}`;
-  const t = Math.floor((safe % 1) * 10);
-  return `${m}:${String(s).padStart(2, "0")}.${t}`;
-}
-
-/** Format a time in seconds as a frame-accurate m:ss:ff timecode. */
-export function formatFrameTimecode(sec: number, fps: number): string {
-  const safe = Math.max(0, sec);
-  const totalFrames = Math.round(safe * fps);
-  const frames = totalFrames % fps;
-  const totalSeconds = Math.floor(totalFrames / fps);
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}:${String(frames).padStart(2, "0")}`;
 }
 
 export interface TimelineRulerProps {

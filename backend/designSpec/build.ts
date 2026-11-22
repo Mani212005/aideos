@@ -19,7 +19,8 @@ import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDo
 import { writeFilm } from "../pipeline/filmStore";
 import { buildSvgSources } from "../scene/buildSvgSources";
 import { checkFilmDesign, narratorContext, type DesignFinding, type DesignCheckContext } from "../designCheck/designCheck";
-import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource, type TimedWord } from "./compile";
+import { compileDesign, DEFAULT_BACKGROUND_FILE, narrationTimingForFilm, type DesignSource } from "./compile";
+import type { TimedWord } from "../pcm";
 import { designSpecSchema, type DesignSpec } from "./spec";
 import { checkLookPlan, packageCharacterResolver, parseLookPlan, type LookPlan } from "../lookPlan";
 import { fieldIssues } from "../../src/dl/schemaIssues";

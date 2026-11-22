@@ -9,6 +9,7 @@ import type { Scene, EnvironmentAsset } from "../../src/dl/scene/types";
 import { validateSvgTimeline, applySvgEasing, type SvgAnimationClip, type SvgEasing } from "../../src/dl/scene/svgAnimation";
 import { compileCameraTrack } from "../../src/dl/scene/cameraTrack";
 import { compileScene } from "../../src/dl/scene/compile";
+import { parseHeadline } from "../../src/dl/headline";
 import { parseSvgDocument, collectSvgElementIds } from "../../src/dl/scene/svgDocument";
 import { buildTimeline, shotAt, type TimedShot } from "../../src/dl/camera";
 import { deliveryTimeline, DELIVERY_CONFIG, type CardWord } from "../../src/dl/delivery";
@@ -321,35 +322,6 @@ const sansId = (weight: number) => `geist-${weight}`;
 const monoId = (weight: number) => `mono-${weight}`;
 const SANS_WEIGHTS = [400, 500, 600, 700];
 const MONO_WEIGHTS = [400, 500, 700];
-
-/** Splits a headline into words with their accent flags (primitives.tsx `parseHeadline`). */
-function parseHeadline(text: string, accentWord?: string): Array<{ word: string; accent: boolean }> {
-  const stripPunct = (w: string) => w.replace(/[^\p{L}\p{N}-]/gu, "").toLowerCase();
-  const spans: [number, number][] = [];
-  let clean = "";
-  let open: number | null = null;
-  for (const ch of text) {
-    if (ch === "*") {
-      if (open === null) open = clean.length;
-      else {
-        spans.push([open, clean.length]);
-        open = null;
-      }
-      continue;
-    }
-    clean += ch;
-  }
-  if (open !== null) clean = text.replace(/\*/g, (_m, i) => (i === open ? "*" : ""));
-  const target = accentWord ? stripPunct(accentWord) : null;
-  const out: Array<{ word: string; accent: boolean }> = [];
-  const re = /\S+/g;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(clean)) !== null) {
-    const at = match.index;
-    out.push({ word: match[0], accent: spans.some(([a, b]) => at >= a && at < b) || (target !== null && stripPunct(match[0]) === target) });
-  }
-  return out;
-}
 
 /** Ease-out-expo progress through `[from, from + duration]` at a frame (motion.ts `useProgress`). */
 function progressAt(f: number, from: number, duration: number): number {

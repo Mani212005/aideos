@@ -12,6 +12,7 @@
 import { useState, type KeyboardEvent } from "react";
 import { Link2, Scissors, Trash2, Unlink } from "lucide-react";
 import type { Clip } from "../../../src/dl/layeredSchema";
+import { isSoundtrackClipId } from "../../../src/dl/convertFilm";
 import type {
   AnimationPayload,
   AudioPayload,
@@ -213,7 +214,7 @@ export function ClipInspector({
 
   const lane = api.layered.layers.find((l) => l.id === clip.layerId);
   const duration = clipDuration(clip);
-  const soundtrackClip = /^clip-(?:music-section|soundtrack-sfx)-\d+(?:-[ab][a-z0-9]{4})*$/.test(clip.id);
+  const soundtrackClip = isSoundtrackClipId(clip.id);
   const partner = clip.linkedClipId
     ? api.layered.clips.find((c) => c.id === clip.linkedClipId)
     : undefined;

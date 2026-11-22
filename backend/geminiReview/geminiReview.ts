@@ -14,6 +14,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { reviewerModel } from "../aideosConfig";
+import { cleanModelJsonResponse } from "../modelReply";
+import { probeVideo } from "../media/probe";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
 import { runAgyProcess } from "./agyProcess";
@@ -308,42 +310,6 @@ function parseJsonOrUndefined(text: string): unknown {
   }
 }
 
-// Reports whether a string parses as JSON.
-function isJsonText(text: string): boolean {
-  try {
-    JSON.parse(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// Strips markdown code fences (with or without a language tag such as json or python) and surrounding prose, returning the JSON text.
-export function cleanModelJsonResponse(rawText: string): string {
-  const text = rawText.trim();
-  if (isJsonText(text)) return text;
-
-  let firstBody: string | undefined;
-  for (const match of text.matchAll(/```[A-Za-z0-9_+.-]*[ \t]*\r?\n?([\s\S]*?)```/g)) {
-    const body = match[1].trim();
-    firstBody ??= body;
-    if (isJsonText(body)) return body;
-  }
-
-  // An unterminated fence (a cut-off reply) still opens with the marker line; drop it.
-  const candidate = firstBody ?? text.replace(/^```[A-Za-z0-9_+.-]*[ \t]*\r?\n?/, "").trim();
-  if (isJsonText(candidate)) return candidate;
-
-  // Prose around a bare JSON object: take the outermost braces.
-  const open = candidate.indexOf("{");
-  const close = candidate.lastIndexOf("}");
-  if (open >= 0 && close > open) {
-    const slice = candidate.slice(open, close + 1);
-    if (isJsonText(slice)) return slice;
-  }
-  return candidate;
-}
-
 /** Keep inline review media under 20 MB: larger native-video requests repeatedly reset during full-film reviews. */
 export const AGY_VIDEO_LIMIT_BYTES = 20_000_000;
 /** Size the review copy aims for, under the limit with room for the audio track and container overhead. */
@@ -359,8 +325,8 @@ export function reviewVideoBitrateKbps(durationSec: number, targetBytes: number 
 // Writes a smaller copy of an oversized video for the reviewer; returns null on success or the reason it failed.
 function makeReviewCopy(srcPath: string, destPath: string): string | null {
   try {
-    const out = execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", srcPath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    const kbps = reviewVideoBitrateKbps(Number.parseFloat(out));
+    const probe = probeVideo(srcPath);
+    const kbps = reviewVideoBitrateKbps(probe.containerDurationSec ?? probe.durationSec);
     execFileSync("ffmpeg", ["-y", "-v", "error", "-i", srcPath, "-c:v", "libx264", "-preset", "medium", "-threads", "2", "-b:v", `${kbps}k`, "-maxrate", `${Math.round(kbps * 1.5)}k`, "-bufsize", `${kbps * 2}k`, "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", destPath], { stdio: "ignore" });
     const size = fs.statSync(destPath).size;
     return size <= AGY_VIDEO_LIMIT_BYTES ? null : `the re-encoded copy is still ${size} bytes`;

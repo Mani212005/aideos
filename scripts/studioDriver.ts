@@ -6,24 +6,12 @@
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
-import net from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { freePort } from "../backend/freePort";
 
 const ROOT = path.resolve(__dirname, "..");
 const EDITOR_DIR = path.join(ROOT, "editor");
-
-/** Asks the OS for a free TCP port on localhost. */
-export function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const port = (server.address() as net.AddressInfo).port;
-      server.close(() => resolve(port));
-    });
-  });
-}
 
 /** Polls a URL until it answers or the deadline passes. */
 export async function waitForHttp(

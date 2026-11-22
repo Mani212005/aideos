@@ -24,7 +24,6 @@ import {
 } from "./rubric";
 import {
   computeFileHash,
-  cleanModelJsonResponse,
   reviewVideo,
   reviewPairwise,
   defaultAgyRunner,
@@ -33,6 +32,7 @@ import {
   AGY_VIDEO_LIMIT_BYTES,
   formatReviewSummary,
 } from "./geminiReview";
+import { cleanModelJsonResponse } from "../modelReply";
 import type {
   AgyRunner,
   AgyReviewClient,

@@ -5,26 +5,14 @@
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
-import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { findChromeBinary } from "../scene/renderStill";
+import { freePort } from "../freePort";
 
 /** Software WebGL keeps pixels the same across GPUs and operating systems. */
 export const SOFTWARE_GL_FLAGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"];
-
-// Asks the OS for a free localhost port.
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const port = (server.address() as net.AddressInfo).port;
-      server.close(() => resolve(port));
-    });
-  });
-}
 
 // Polls the DevTools endpoint until Chrome answers.
 async function waitForChrome(port: number, timeoutMs: number): Promise<void> {

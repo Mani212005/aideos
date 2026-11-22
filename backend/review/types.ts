@@ -11,13 +11,14 @@
  */
 import type { FilmFacts } from "./source";
 import type { StageTruth } from "./stageTruth";
+import type { VideoFacts } from "../media/probe";
+import type { TimedWord } from "../pcm";
 
-/** A spoken word with its measured offsets in seconds. */
-export interface ReviewWord {
-  word: string;
-  start: number;
-  end: number;
-}
+/** Facts about the rendered file: one definition, beside the one probe that measures them. */
+export type { VideoFacts };
+
+/** A spoken word with its measured offsets in seconds (the shared TimedWord). */
+export type ReviewWord = TimedWord;
 
 /** Outcome of one criterion: skipped means the inputs it needs were not available, never a pass. */
 export type CriterionStatus = "pass" | "fail" | "skipped";
@@ -69,19 +70,6 @@ export interface CriterionResult {
   fix?: string;
 }
 
-/** Facts about the rendered file. */
-export interface VideoFacts {
-  path: string;
-  durationSec: number;
-  /** Delivered container duration, which can include an encoded audio tail beyond the picture. */
-  containerDurationSec?: number;
-  width: number;
-  height: number;
-  fps: number;
-  hasAudio: boolean;
-  /** Duration of the audio stream in seconds, null when there is none. */
-  audioDurationSec: number | null;
-}
 
 /** Which optional inputs the review had besides the pixels and the audio. */
 export interface ReviewSources {

@@ -23,23 +23,16 @@ import {
   textPayloadSchema,
   imagePayloadSchema,
   subtitlePayloadSchema,
+  metaphorSchema,
+  timelineLayerSchema,
 } from "./schema";
 import type { TextPayload, ImagePayload, SubtitlePayload } from "./schema";
 
 export { textPayloadSchema, imagePayloadSchema, subtitlePayloadSchema };
 export type { TextPayload, ImagePayload, SubtitlePayload };
 
-/** A user-created track. Pure ordering and display state. */
-export const layerSchema = z.object({
-  id: z.string().regex(/^[a-z0-9-]+$/),
-  /** Z-order. Higher number draws on top. Stored integer. */
-  number: z.number().int().min(0).max(100),
-  label: z.string().min(1).max(40),
-  locked: z.boolean().default(false),
-  hidden: z.boolean().default(false),
-  muted: z.boolean().default(false),
-  height: z.number().min(20).max(200).default(56),
-});
+/** A user-created track. Pure ordering and display state: the film schema's timeline lane, defined once there. */
+export const layerSchema = timelineLayerSchema;
 
 export type Layer = z.infer<typeof layerSchema>;
 
@@ -57,17 +50,7 @@ export const animationPayloadSchema = z.preprocess(dropLegacyBlocks, z.object({
   speed: z.number().min(0.25).max(4).default(1).optional(),
   scriptText: z.string().optional(),
   visualDirection: z.string().optional(),
-  metaphor: z.enum([
-    "spider-web",
-    "liquid-bucket",
-    "balance-scale",
-    "clock-gears",
-    "rocket-launch",
-    "character-throw",
-    "glowing-cluster",
-    "typing-cursor-quote",
-    "custom",
-  ]).optional(),
+  metaphor: metaphorSchema.optional(),
   blocks: z.array(blockSchema).max(12).default([]),
 }));
 

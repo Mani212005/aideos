@@ -58,7 +58,7 @@
     "release:setup": "tsx scripts/release.ts setup",
     "studio": "remotion studio",
     "editor": "npm --prefix editor run dev --",
-    "validate": "node scripts/validate.mjs",
+    "validate": "tsx scripts/validate_film.ts",
     "smoke:studio": "tsx scripts/smoke_studio.ts",
     "eval:visuals": "tsx backend/eval/shotVisualEval.ts",
     "eval:look": "tsx backend/eval/lookEval.ts",

@@ -87,8 +87,8 @@ import {
   assembleSegments,
   decodeWav,
   deriveShotDurations,
-  distributeWordTimings,
   encodeWav,
+  narrationWordTimings,
   normalizePeak,
   timeStretch,
   DEFAULT_ASSEMBLE_OPTIONS,
@@ -1952,25 +1952,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 // captions, and end card stay in sync with Studio-recorded audio.
                 const shotDurations = deriveShotDurations(assembled.segments, assembled.totalSec);
                 assembledShotDurations = shotDurations;
-                const absoluteWords: Array<{ word: string; punctuated_word: string; start: number; end: number }> = [];
-                const segments = assembled.segments.map((seg) => {
-                  const relativeWords = distributeWordTimings(seg.text, seg.durationSec);
-                  relativeWords.forEach((w) => {
-                    absoluteWords.push({
-                      word: w.word,
-                      punctuated_word: w.punctuated_word,
-                      start: Number((seg.startSec + w.start).toFixed(3)),
-                      end: Number((seg.startSec + w.end).toFixed(3)),
-                    });
-                  });
-                  return {
-                    text: seg.text,
-                    duration: seg.durationSec,
-                    startOffset: seg.startSec,
-                    words: relativeWords,
-                    utterances: [{ start: 0, end: seg.durationSec, transcript: seg.text }],
-                  };
-                });
+                const { words: absoluteWords, segments } = narrationWordTimings(assembled.segments);
                 const vttContent = buildCaptionsVtt(absoluteWords);
                 fs.writeFileSync(path.join(pkgDir, 'captions.vtt'), vttContent, 'utf8');
                 fs.writeFileSync(path.join(pkgDir, 'voiceover_words.json'), JSON.stringify({ words: absoluteWords }, null, 2), 'utf8');

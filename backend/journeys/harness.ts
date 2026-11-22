@@ -10,6 +10,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { probeVideo as probeMedia, type VideoFacts } from "../media/probe";
 
 /**
  * Every journey process works in its own temp dir: Remotion and Chrome write their frames, bundles
@@ -82,32 +83,10 @@ export function sizeOf(target: string): number {
   }
 }
 
-/** Facts about a rendered video, read with ffprobe. */
-export interface VideoFacts {
-  width: number;
-  height: number;
-  fps: number;
-  frames: number;
-  durationSec: number;
-  hasAudio: boolean;
-}
-
-/** Probes a video's size, frame rate, frame count and whether it carries audio. */
-export function probeVideo(file: string): VideoFacts {
-  const out = JSON.parse(
-    execFileSync("ffprobe", ["-v", "error", "-count_frames", "-show_entries", "stream=codec_type,width,height,r_frame_rate,nb_read_frames:format=duration", "-of", "json", file]).toString(),
-  ) as { streams: Array<{ codec_type: string; width?: number; height?: number; r_frame_rate?: string; nb_read_frames?: string }>; format: { duration?: string } };
-  const video = out.streams.find((s) => s.codec_type === "video");
-  if (!video) throw new Error(`no video stream in ${file}`);
-  const [num, den] = (video.r_frame_rate ?? "30/1").split("/").map(Number);
-  return {
-    width: video.width ?? 0,
-    height: video.height ?? 0,
-    fps: den ? num / den : num,
-    frames: Number(video.nb_read_frames ?? 0),
-    durationSec: Number(out.format.duration ?? 0),
-    hasAudio: out.streams.some((s) => s.codec_type === "audio"),
-  };
+/** Probes a video's size, frame rate, exact frame count and whether it carries audio. */
+export function probeVideo(file: string): VideoFacts & { frames: number } {
+  const facts = probeMedia(file, { countFrames: true });
+  return { ...facts, frames: facts.frames ?? 0 };
 }
 
 /** One decoded frame: raw RGB bytes, three per pixel. */
@@ -119,7 +98,8 @@ export interface Rgb {
 
 /** Decodes frame `index` of a video, or the first frame of an image, to raw RGB at an optional width. */
 export function decodeFrame(file: string, options: { frame?: number; scaleWidth?: number } = {}): Rgb {
-  const probe = probeVideo(file);
+  // Only the frame size is needed here, so the probe skips the full-stream frame count.
+  const probe = probeMedia(file);
   const filterList = [
     ...(options.frame === undefined ? [] : [`select=eq(n\\,${options.frame})`]),
     ...(options.scaleWidth ? [`scale=${options.scaleWidth}:-2:flags=area`] : []),

@@ -16,6 +16,7 @@ import { reelPackageDir, writeReelBrief } from "./brief";
 import { reelBudgetFor } from "./store";
 import { reelCutSchema } from "./schema";
 import { ProductionError } from "../pipeline/types";
+import { parseModelJson } from "../modelReply";
 
 export type ReelDeliveryMode = "inline" | "agent" | "server";
 export interface ReelWriterOptions {
@@ -32,8 +33,7 @@ export type ReelOutcome = { status: "passed"; film: Film } | { status: "needs_re
 
 // Validates model JSON and stamps its provenance without granting owner approval.
 function modelCut(reply: string): unknown {
-  const body = reply.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  const cut = reelCutSchema.parse(JSON.parse(body));
+  const cut = parseModelJson(reply, reelCutSchema);
   delete cut.approved;
   return { ...cut, source: "server-model" };
 }

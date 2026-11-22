@@ -22,10 +22,12 @@ import type { DesignMode } from "../pipeline/types";
 import { prepareDefaultSoundtrack } from "../defaultSoundtrack";
 import { resolveSoundtrack } from "./soundtrack";
 import { designSpecSchema } from "./spec";
-import { narrationTimingForFilm, type TimedWord } from "./compile";
+import { narrationTimingForFilm } from "./compile";
+import type { TimedWord } from "../pcm";
 import { createCues } from "../sceneKit/timing";
 import { checkSoundtrack } from "../designCheck/soundtrack";
 import { designAcceptance, judgeBuiltDesign, type JudgeState } from "../lookPlan/contract";
+import { parseModelJson } from "../modelReply";
 
 
 /** Asks a text model for a completion; injectable so tests never reach a real model. */
@@ -122,14 +124,6 @@ async function tryAgent<T>(
   return null;
 }
 
-// Parses a model's JSON output, including a surrounding Markdown fence.
-function parseJsonReply(text: string): unknown {
-  const body = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  const start = body.indexOf("{");
-  const end = body.lastIndexOf("}");
-  return JSON.parse(body.slice(start, end + 1));
-}
-
 /** A passing look plan or actionable errors for the invoking agent. */
 export interface LookOutcome { plan?: LookPlan; note: string; errors: string[] }
 
@@ -152,7 +146,7 @@ export async function planFilmLook(filmId: string, opts: DesignFilmOptions = {})
       for (let attempt = 1; attempt <= (opts.maxServerAttempts ?? 3); attempt++) {
         opts.onProgress?.(`server model look attempt ${attempt}`);
         try {
-          const raw = parseJsonReply(await caller(prompt, system));
+          const raw = parseModelJson(await caller(prompt, system));
           fs.writeFileSync(path.join(designDir(filmId), "look.json"), JSON.stringify(raw, null, 2) + "\n");
           checked = readCheckedLookPlan(film);
           if (checked.plan) break;
@@ -180,7 +174,7 @@ interface ServerDesignReply {
 
 // Pulls the JSON object out of a model reply, tolerating a code fence around it.
 function parseReply(text: string): ServerDesignReply {
-  const parsed = parseJsonReply(text) as ServerDesignReply;
+  const parsed = parseModelJson(text) as ServerDesignReply;
   if (!parsed || typeof parsed !== "object" || !parsed.design || !parsed.svgs ||
     typeof parsed.svgs !== "object" || Array.isArray(parsed.svgs) ||
     Object.values(parsed.svgs).some((svg) => typeof svg !== "string")) {
