@@ -47,7 +47,7 @@ function near(actual: number, expected: number, tolerance: number, message: stri
   assert.ok(Math.abs(actual - expected) <= tolerance, `${message}: ${actual.toFixed(2)}, expected ${expected} +/- ${tolerance}`);
 }
 
-test("a chapter-cut effect that runs into narration ducks under the speech and keeps its level in the gap", { timeout: 180000 }, async () => {
+test("a chapter-cut transition that runs into narration ducks under the speech and keeps its level in the gap, while a UI cue is never ducked", { timeout: 180000 }, async () => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-effect-duck-"));
   const slug = "soundtrack-effect-duck";
   const pkg = resolvePackageDir(slug);
@@ -57,6 +57,8 @@ test("a chapter-cut effect that runs into narration ducks under the speech and k
   fs.mkdirSync(pkg, { recursive: true });
   try {
     const bed = soundtrackItem("mk-1167");
+    // ui-select is a UI cue, not a transition: it keeps its capped level under speech.
+    const select = soundtrackItem("ui-select");
     // sweep-tech is the transition that masked the narration in the 2026-11-22 test-quality delivery.
     const sweep = soundtrackItem("sweep-tech");
     tone(path.join(assets, "bed.wav"), 1000, bed.durationSec, { lufs: bed.loudness.integratedLufs });
@@ -69,6 +71,7 @@ test("a chapter-cut effect that runs into narration ducks under the speech and k
     // one cut lands inside a phrase, one in a gap before the next line.
     tone(path.join(assets, "cut-in-phrase.wav"), 3000, sweep.durationSec, { amplitude: 0.98 });
     tone(path.join(assets, "cut-in-gap.wav"), 5000, sweep.durationSec, { amplitude: 0.98 });
+    tone(path.join(assets, "ui-cue.wav"), 7000, select.durationSec, { amplitude: 0.98 });
     for (const file of ["voice.wav", "bed.wav"]) fs.copyFileSync(path.join(assets, file), path.join(pkg, file));
     const base = loadFixtureFilm("fixture-canvas-a");
     const film = prepareSoundtrack(parseFilm({
@@ -79,6 +82,7 @@ test("a chapter-cut effect that runs into narration ducks under the speech and k
         sfx: [
           { item: sweep.id, src: `videos/${slug}/cut-in-phrase.wav`, timeSec: 3.9, gainDb: 0, event: "chapter-cut" },
           { item: sweep.id, src: `videos/${slug}/cut-in-gap.wav`, timeSec: 6.4, gainDb: 0, event: "chapter-cut" },
+          { item: select.id, src: `videos/${slug}/ui-cue.wav`, timeSec: 7.6, gainDb: 0, event: "element-enter" },
         ],
       },
     }));
@@ -102,6 +106,10 @@ test("a chapter-cut effect that runs into narration ducks under the speech and k
     console.log(`effect duck measurements: ${JSON.stringify({ voice, reference, inGap, underSpeech, inPhrase,
       speechToEffectWithoutDuckDb: voice - inGap, speechToEffectDb: voice - underSpeech })}`);
 
+    const uiCapDb = 20 * Math.log10(effectGain(film.soundtrack!.sfx[2], soundtrack.mix, soundtrack.narrationPeakDb ?? -1));
+    const uiReference = rms(path.join(assets, "ui-cue.wav"), 0.3, 0.75, 7000) + uiCapDb;
+    const uiUnderSpeech = rms(wav, 7.9, 8.4, 7000);
+    near(uiUnderSpeech - uiReference, 0, 1, "a UI cue under speech plays at its capped library level, not ducked");
     near(inGap - reference, 0, 1, "in a gap the effect plays at its capped library level");
     near(inGap - underSpeech, -soundtrack.mix.duckDb, 1, "once the next line starts the effect sits at the music's speech duck");
     near(inGap - inPhrase, -soundtrack.mix.duckDb, 1, "an effect that starts inside a phrase is ducked from its first frame");

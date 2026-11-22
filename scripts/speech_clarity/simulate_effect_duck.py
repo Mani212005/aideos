@@ -1,6 +1,7 @@
-# File Description: Offline what-if of ducking library effects under speech on a delivered mix, measured with the same clarity metrics.
+# File Description: Offline what-if of ducking transition effects under speech on a delivered mix, measured with the same clarity metrics.
 # Inputs and outputs: delivered mp4 + narration wav + film.json + effect cache dir (decoded in memory) -> JSON of before/after clarity per duck depth.
 # Used by: run by hand when judging narration clarity; see docs/SPEECH_CLARITY.md.
+# Rule simulated: only effects whose audio/library.json roles include "transition" are ducked under speech.
 # Run: python3 -I scripts/speech_clarity/simulate_effect_duck.py <label> <mix.mp4> <voice.wav> <film.json> <effectCacheDir> [...]
 import glob
 import json
@@ -13,6 +14,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from measure_mix import band_powers, db, decode, find_lag, shift, sii_index, stoi  # noqa: E402
 
 HOLD_SEC, PRE_DUCK_SEC, FPS = 0.6, 0.25, 30
+LIBRARY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "audio", "library.json")
+
+
+# Returns the library item ids whose roles include "transition", the only effects the mixer ducks under speech.
+def transition_items():
+    with open(LIBRARY_PATH) as handle:
+        items = json.load(handle)["items"]
+    return {i["id"] for i in items if i.get("kind") == "sfx" and "transition" in i.get("roles", [])}
 
 
 # Mirrors the mixer's ramp: full depth inside a phrase, pre-duck over 0.25 s, release over the 0.6 s hold (dB).
@@ -117,6 +126,7 @@ def simulate(label, mix_path, voice_path, film_path, cache_dir, depths):
         files = glob.glob(f"{cache_dir}/{e['item']}.*")
         effects.append({"item": e["item"], "timeSec": e["timeSec"], "signal": decode(files[0], rate)})
     fitted = fit_effects(rest, effects, rate)
+    ducked_items = transition_items()
     music = rest.copy()
     for e in fitted:
         seg = slice(e["start"], e["start"] + len(e["signal"]))
@@ -141,7 +151,8 @@ def simulate(label, mix_path, voice_path, film_path, cache_dir, depths):
         for e in fitted:
             n = min(len(e["signal"]), story - e["start"])
             frames = int(np.ceil(n / rate * FPS)) + 1
-            gains = [10 ** (duck_db(e["start"] / rate + f / FPS, phrases, depth) / 20) for f in range(frames)]
+            level = depth if e["item"] in ducked_items else 0
+            gains = [10 ** (duck_db(e["start"] / rate + f / FPS, phrases, level) / 20) for f in range(frames)]
             other[e["start"] : e["start"] + n] += e["coef"] * e["signal"][:n] * sample_gain(gains, e["start"], n, rate)
         scored, rows, _, _ = score(voice, other, speech_seconds, near, rate)
         results[f"effectDuck{depth}dB"] = scored

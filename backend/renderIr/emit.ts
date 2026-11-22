@@ -867,7 +867,7 @@ interface ResolvedAudio {
  * Resolves the soundtrack exactly as Soundtrack.tsx plays it in the delivered format: the narration with its
  * head and tail ramps (`voiceLevel`), the end card's spoken line, each library music section with its gain,
  * equal-power envelope and speech ducking (`mixSections`, `sectionEnvelope`, `speechGain`), and each library
- * effect at its capped gain (`effectGain`), ducked under the same measured speech (`effectDuckGain`). Every clip has gain 1 and carries its level in the envelope, so it
+ * effect at its capped gain (`effectGain`), a transition effect ducked under the same measured speech (`effectDuckGain`). Every clip has gain 1 and carries its level in the envelope, so it
  * reads the same whether a mixer multiplies the envelope by the gain or takes it as the gain.
  */
 function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>): ResolvedAudio {
@@ -916,7 +916,7 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>)
     if (startFrame >= total) return;
     const frames = Math.min(Math.max(1, Math.ceil(item.durationSec * fps)), total - startFrame);
     const g = effectGain(sfx, soundtrack.mix, narrationPeakDb);
-    const gain = (f: number) => g * effectDuckGain(f / fps, voice, soundtrack.mix);
+    const gain = (f: number) => g * effectDuckGain(sfx, f / fps, voice, soundtrack.mix);
     add(`sfx-${i}`, sfx.src || soundtrackItemSrc(item), { startFrame, durationFrames: frames, sourceStartMs: 0, gainEnvelope: envelope(gain, startFrame, startFrame + frames) });
   });
   return out;

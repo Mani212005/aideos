@@ -223,13 +223,15 @@ test("a music section that starts after frame 0 keys its gain envelope in film f
   }
 });
 
-test("a library effect's gain envelope ducks under the measured speech, as the Remotion mixer plays it", () => {
+test("a transition effect's gain envelope ducks under the measured speech, as the Remotion mixer plays it", () => {
   const film = nativeSceneFilm({
     soundtrack: {
       sections: [{ item: "mk-556", from: 0, to: 6 }, { item: "mk-615", from: 6, to: 12.5 }],
       speech: [{ startSec: 1, endSec: 4 }, { startSec: 7, endSec: 10 }],
       // One cut inside a phrase that runs into the gap, one in the gap that runs into the next phrase.
-      sfx: [{ item: "sweep-tech", timeSec: 3, gainDb: 0, event: "chapter-cut" }, { item: "sweep-tech", timeSec: 5, gainDb: 0, event: "chapter-cut" }],
+      sfx: [{ item: "sweep-tech", timeSec: 3, gainDb: 0, event: "chapter-cut" }, { item: "sweep-tech", timeSec: 5, gainDb: 0, event: "chapter-cut" },
+        // A UI cue cued to a spoken word is not a transition, so it keeps its capped level under the speech.
+        { item: "ui-select", timeSec: 2, gainDb: 0, event: "element-enter" }],
     },
   });
   const ir = emit(film);
@@ -246,10 +248,14 @@ test("a library effect's gain envelope ducks under the measured speech, as the R
   assert.ok(Math.abs(at("sfx-0", 3.5) - ducked) < 1e-9, "an effect inside a phrase sits at the speech duck");
   assert.ok(Math.abs(at("sfx-0", 5) - g) < 1e-9 && Math.abs(at("sfx-1", 6) - g) < 1e-9, "in a gap the effect keeps its capped level");
   assert.ok(Math.abs(at("sfx-1", 7.2) - ducked) < 1e-9, "the next line ducks the effect that started in the gap");
-  for (const id of ["sfx-0", "sfx-1"]) {
+  const uiGain = effectGain(soundtrack.sfx[2], soundtrack.mix, (soundtrack.narrationPeakDb ?? -1) + 20 * Math.log10(film.voiceover?.volume ?? 1));
+  assert.ok(Math.abs(at("sfx-2", 2.5) - uiGain) < 1e-9, "a UI cue under speech is not ducked");
+  for (const id of ["sfx-0", "sfx-1", "sfx-2"]) {
     const clip = ir.audio.find((c) => c.id === id)!;
+    const sfx = soundtrack.sfx[Number(id.slice(4))];
+    const gain = id === "sfx-2" ? uiGain : g;
     for (let f = clip.startFrame; f < clip.startFrame + clip.durationFrames; f++) {
-      const expected = Math.min(4, g * effectDuckGain(f / film.fps, voice, soundtrack.mix));
+      const expected = Math.min(4, gain * effectDuckGain(sfx, f / film.fps, voice, soundtrack.mix));
       assert.ok(Math.abs(sampleTrack(clip.gainEnvelope, f) - expected) < 1e-9, `${id} film frame ${f}`);
     }
   }

@@ -106,8 +106,14 @@ export function speechGain(timeSec: number, voice: VoiceTimeline, mix: Soundtrac
   return dbGain(rampedDuckDb(context, timeSec, openDb, mix.duckDb));
 }
 
-// Ducks a library effect under speech by the music's own speech duck (duckDb) with the same ramps, so a transition that runs into a spoken line never masks it; outside speech the effect keeps its full level.
-export function effectDuckGain(timeSec: number, voice: VoiceTimeline, mix: SoundtrackMix): number {
+// Says whether a library effect ducks under speech: only transition effects do, while UI and structural cues keep their capped level.
+export function ducksUnderSpeech(effect: SoundtrackSfx): boolean {
+  return (soundtrackItem(effect.item, effect.sha256).roles as readonly string[]).includes("transition");
+}
+
+// Ducks a transition effect under speech by the music's own speech duck (duckDb) with the same ramps, so a transition that runs into a spoken line never masks it; outside speech, and for every other effect, the gain is 1.
+export function effectDuckGain(effect: SoundtrackSfx, timeSec: number, voice: VoiceTimeline, mix: SoundtrackMix): number {
+  if (!ducksUnderSpeech(effect)) return 1;
   return dbGain(rampedDuckDb(voiceContextAt(voice, timeSec), timeSec, 0, mix.duckDb));
 }
 

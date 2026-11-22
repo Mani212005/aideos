@@ -33,15 +33,17 @@ STOI sits near 1 at the SNRs a narrated video has, so it confirms a direction bu
 
 Speech seconds within 1 s before to 2.5 s after a chapter-cut effect:
 
-| Film | delivered: mean / min | with library effects ducked under speech: mean / min |
+| Film | delivered: mean / min | with transition effects ducked under speech: mean / min |
 | --- | --- | --- |
 | Long | 0.834 / 0.318 | 0.925 / 0.713 |
 | Reel | 0.826 / 0.302 | 0.896 / 0.661 |
+
+The what-if applies the rule "transition effects ducked under speech". Every effect inside the story span of both films is a transition (`sweep-tech`, `whoosh-fast`, `whoosh-soft`; the `card-arrive` end-card effect lies after the measured story), so the numbers are the same as for ducking every effect.
 
 ## Tool
 
 The measure lives in two Python scripts (numpy and ffmpeg only), run by hand from the repo root:
 - [`scripts/speech_clarity/measure_mix.py`](../scripts/speech_clarity/measure_mix.py): `python3 -I scripts/speech_clarity/measure_mix.py <label> <mix.mp4> <voice.wav> [...]`
-- [`scripts/speech_clarity/simulate_effect_duck.py`](../scripts/speech_clarity/simulate_effect_duck.py): `python3 -I scripts/speech_clarity/simulate_effect_duck.py <label> <mix.mp4> <voice.wav> <film.json> <effectCacheDir> [...]`. The offline what-if used for the table above.
+- [`scripts/speech_clarity/simulate_effect_duck.py`](../scripts/speech_clarity/simulate_effect_duck.py): `python3 -I scripts/speech_clarity/simulate_effect_duck.py <label> <mix.mp4> <voice.wav> <film.json> <effectCacheDir> [...]`. The offline what-if used for the table above; it ducks only effects whose roles in `audio/library.json` include `transition`.
 
 Both scripts decode in memory and write no audio. Like `aideos review`, the measure needs the narration stem from the video package. It cannot run on a bare mp4.

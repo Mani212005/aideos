@@ -1,11 +1,11 @@
-<!-- File Description: Verification evidence log for ducking library sound effects under narration (owner feedback 2026-11-22 item 2b). -->
+<!-- File Description: Verification evidence log for ducking transition sound effects under narration (owner feedback 2026-11-22 item 2b). -->
 
-# Verification Evidence: library effects duck under narration
+# Verification Evidence: transition effects ducked under narration
 
 - **Date**: 2026-11-22
 - **Branch / PR**: `fm/aideos-narrator-clarity-mix`
 - **Scope**: Feature Map row "Soundtrack, Audio Library & Mastering" (`src/dl/audio/sectionMixer.ts`, `src/dl/Soundtrack.tsx`, `backend/renderIr/emit.ts`); docs `docs/AUDIO_LIBRARY.md`, `docs/NATIVE_RENDERER.md`
-- **Risk tier**: Low (one new gain factor on library effects, only below 1, only around measured speech; music, narration and mastering are unchanged)
+- **Risk tier**: Low (one new gain factor on transition effects, only below 1, only around measured speech; music, narration and mastering are unchanged)
 
 ## Why
 
@@ -16,7 +16,7 @@ The owner heard the music overpower the narration at times in the 2026-11-22 tes
 | Check | Status | Notes |
 | --- | --- | --- |
 | Real E2E run | PASS | `backend/journeys/j14_soundtrack.journey.ts` (studio soundtrack journey, real mixer) |
-| Property test for new invariants | N/A | The new gain reuses the existing voice state machine and ramp; the per-frame IR check covers every frame of two effects |
+| Property test for new invariants | N/A | The new gain reuses the existing voice state machine and ramp; the per-frame IR check covers every frame of two transitions and one UI cue |
 | Differential test on replacement | PASS | `speechGain` refactored onto a shared ramp: D6 golden unchanged (-18.0 dB duck, -18.0 section, end card -8.0); the new behavioural test run on origin/main's mixer fails (no duck) and passes on this branch |
 | Expect / golden test for complex output | PASS | `backend/soundtrack.golden.test.ts` passes unchanged |
 | No sleeps in tests | PASS | none added |
@@ -38,14 +38,16 @@ The owner heard the music overpower the narration at times in the 2026-11-22 tes
 | `npm run lint` | PASS | headers, eslint, tracked typecheck |
 | `npx tsc --noEmit -p .` | PASS | |
 
+The rule is "transition effects ducked under speech": `ducksUnderSpeech` is true only for library items whose roles include `transition`; UI and structural cues keep their capped level. The what-if was re-run under this rule and the numbers are unchanged, because every effect inside the story span of both delivered films is a transition (`sweep-tech`, `whoosh-fast`, `whoosh-soft`; the `card-arrive` end-card effect lies after the measured story).
+
 Delivered-film what-if (read-only offline remix of the real delivered mixes, effects re-added with the shipped envelope; the shipped TypeScript envelope matched the analysis mirror to 0.0 dB on both films):
 
 | Film, seconds near an effect | SII-style mean / min | voice minus rest p10 / min | STOI (whole story) |
 | --- | --- | --- | --- |
 | long, delivered | 0.834 / 0.318 | 7.5 / 6.3 dB | 0.984 |
-| long, effects ducked | 0.925 / 0.713 | 17.4 / 14.1 dB | 0.9887 |
+| long, transition effects ducked | 0.925 / 0.713 | 17.4 / 14.1 dB | 0.9887 |
 | reel, delivered | 0.826 / 0.302 | 7.4 / 3.2 dB | 0.9761 |
-| reel, effects ducked | 0.896 / 0.661 | 14.8 / 13.8 dB | 0.9813 |
+| reel, transition effects ducked | 0.896 / 0.661 | 14.8 / 13.8 dB | 0.9813 |
 
 ## Fix attempts
 
@@ -57,4 +59,4 @@ Delivered-film what-if (read-only offline remix of the real delivered mixes, eff
 
 ## Artifacts and links
 
-- Measurement scripts, raw JSON and handoff: `/home/mani/aideos-linux-home/data/aideos-narrator-clarity-mix/` (outside the repo; no audio written)
+- Measurement scripts: [`scripts/speech_clarity/`](../../../scripts/speech_clarity/) (no audio written)

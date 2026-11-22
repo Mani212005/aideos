@@ -232,7 +232,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
       {/* 3. The end card's spoken line, at the narration's own level */}
       {stem !== "music" && card ? <EndCardVoice film={film} card={card} volume={effectiveVoiceoverVolume} /> : null}
 
-      {/* 4. Transition Sound Effects (SFX) Track; library effects duck under measured speech like the music */}
+      {/* 4. Transition Sound Effects (SFX) Track; transition effects duck under measured speech like the music */}
       {!stem && soundtrack.sfx.length > 0
         ? soundtrack.sfx.map((sfx, idx) => {
             const startFrame = Math.round(sfx.timeSec * effectiveFps);
@@ -246,7 +246,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
                 <Audio src={staticFile(sfxSrc)} useWebAudioApi={mixedEffect} allowAmplificationDuringRender={mixedEffect}
                   volume={(f) => mixedEffect ? effectGain(sfx, soundtrack.mix,
                     (soundtrack.narrationPeakDb ?? -1) + 20 * Math.log10(effectiveVoiceoverVolume || 1e-10),
-                  ) * effectDuckGain((startFrame + f) / effectiveFps, measuredVoice, soundtrack.mix) : sfx.volume ?? 1} />
+                  ) * effectDuckGain(sfx, (startFrame + f) / effectiveFps, measuredVoice, soundtrack.mix) : sfx.volume ?? 1} />
               </Sequence>
             );
           })
