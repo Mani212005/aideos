@@ -1,12 +1,16 @@
 /**
- * File Description: Command-line interface for `aideos audio fetch`, `verify`, and `import`.
+ * File Description: Command-line interface for `aideos audio fetch`, `verify`, `profile`, and `import`.
  * Inputs and outputs: CLI arguments -> downloads, validates, or imports audio library assets.
  * Used by: backend/cli.ts, bin/aideos.
  */
 
+import fs from "node:fs";
 import path from "node:path";
 import type { Command } from "commander";
 import {
+  getAudioItemCachePath,
+  getDefaultLibraryPath,
+  verifyAudioItem,
   loadAudioLibrary,
   verifyAudioLibrary,
   fetchAudioLibrary,
@@ -14,6 +18,7 @@ import {
   type AudioLibraryVerifyReport,
   type AudioFetchItemResult,
 } from "./library";
+import { measureMusicProfile } from "./musicProfile";
 
 // Formats a byte count into a human-readable string.
 function formatBytes(bytes: number): string {
@@ -149,6 +154,38 @@ export function registerAudioCommands(program: Command): void {
       if (!report.ok) {
         process.exitCode = 1;
       }
+    });
+
+  audio
+    .command("profile")
+    .description("Measure how much each cached music bed competes with narration (speech-band share and swells)")
+    .option("--item <id>", "profile a single music item by id")
+    .option("--write", "store the measured profiles on the manifest (audio/library.json)")
+    .action(async (options: { item?: string; write?: boolean }) => {
+      const library = loadAudioLibrary();
+      const music = library.items.filter((item) => item.kind === "music" && (!options.item || item.id === options.item));
+      if (options.item && music.length === 0) throw new Error(`Music item "${options.item}" not found in library manifest`);
+      const measured = new Map<string, Awaited<ReturnType<typeof measureMusicProfile>>>();
+      for (const item of music) {
+        if (verifyAudioItem(item).status !== "valid") {
+          console.log(`  [skipped] ${item.id.padEnd(16)} not in the cache or not verified; run "aideos audio fetch"`);
+          process.exitCode = 1;
+          continue;
+        }
+        const profile = await measureMusicProfile(getAudioItemCachePath(item));
+        measured.set(item.id, profile);
+        const biggest = profile.swells.reduce((max, swell) => Math.max(max, swell.riseDb), 0);
+        console.log(`  [profiled] ${item.id.padEnd(16)} speech band ${profile.midrangeDb.toFixed(1)} dB, ${profile.swells.length} swells, largest +${biggest.toFixed(1)} dB`);
+      }
+      if (!options.write) return;
+      const file = getDefaultLibraryPath();
+      const raw = JSON.parse(fs.readFileSync(file, "utf8")) as { items: { id: string; profile?: unknown }[] };
+      for (const item of raw.items) {
+        const profile = measured.get(item.id);
+        if (profile) item.profile = profile;
+      }
+      fs.writeFileSync(file, `${JSON.stringify(raw, null, 2)}\n`);
+      console.log(`Wrote ${measured.size} profiles to ${file}`);
     });
 
   audio

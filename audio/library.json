@@ -36,7 +36,17 @@
         "Technology"
       ],
       "energy": 3,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -3.3,
+        "swells": [
+          {
+            "startSec": 173,
+            "endSec": 181,
+            "riseDb": 6.6
+          }
+        ]
+      }
     },
     {
       "id": "mk-615",
@@ -70,7 +80,17 @@
         "Cinematic"
       ],
       "energy": 2,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -7.8,
+        "swells": [
+          {
+            "startSec": 138.5,
+            "endSec": 140.5,
+            "riseDb": 15.4
+          }
+        ]
+      }
     },
     {
       "id": "mk-554",
@@ -104,7 +124,17 @@
         "Technology"
       ],
       "energy": 2,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -3.8,
+        "swells": [
+          {
+            "startSec": 183,
+            "endSec": 186,
+            "riseDb": 19.7
+          }
+        ]
+      }
     },
     {
       "id": "mk-184",
@@ -138,7 +168,11 @@
         "Cinematic"
       ],
       "energy": 1,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -13.5,
+        "swells": []
+      }
     },
     {
       "id": "mk-570",
@@ -171,7 +205,32 @@
         "Technology"
       ],
       "energy": 2,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -3.5,
+        "swells": [
+          {
+            "startSec": 77.5,
+            "endSec": 84,
+            "riseDb": 8.1
+          },
+          {
+            "startSec": 112.5,
+            "endSec": 117.5,
+            "riseDb": 8.9
+          },
+          {
+            "startSec": 211,
+            "endSec": 214,
+            "riseDb": 7
+          },
+          {
+            "startSec": 242,
+            "endSec": 244.5,
+            "riseDb": 6.3
+          }
+        ]
+      }
     },
     {
       "id": "mk-107",
@@ -206,7 +265,17 @@
         "City"
       ],
       "energy": 3,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -7.9,
+        "swells": [
+          {
+            "startSec": 26.5,
+            "endSec": 30.5,
+            "riseDb": 11.3
+          }
+        ]
+      }
     },
     {
       "id": "mk-634",
@@ -241,7 +310,22 @@
         "Technology"
       ],
       "energy": 4,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -6.4,
+        "swells": [
+          {
+            "startSec": 9.5,
+            "endSec": 15.5,
+            "riseDb": 7.1
+          },
+          {
+            "startSec": 84,
+            "endSec": 89,
+            "riseDb": 6.1
+          }
+        ]
+      }
     },
     {
       "id": "mk-1023",
@@ -276,7 +360,11 @@
         "Motivational"
       ],
       "energy": 3,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -7.3,
+        "swells": []
+      }
     },
     {
       "id": "mk-543",
@@ -311,7 +399,52 @@
         "Cinematic"
       ],
       "energy": 3,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -3,
+        "swells": [
+          {
+            "startSec": 3,
+            "endSec": 9,
+            "riseDb": 10.8
+          },
+          {
+            "startSec": 11.5,
+            "endSec": 19,
+            "riseDb": 13.2
+          },
+          {
+            "startSec": 22.5,
+            "endSec": 25,
+            "riseDb": 18.2
+          },
+          {
+            "startSec": 28,
+            "endSec": 32.5,
+            "riseDb": 7.9
+          },
+          {
+            "startSec": 36,
+            "endSec": 40,
+            "riseDb": 8.8
+          },
+          {
+            "startSec": 43.5,
+            "endSec": 47.5,
+            "riseDb": 9.4
+          },
+          {
+            "startSec": 51,
+            "endSec": 55,
+            "riseDb": 8.7
+          },
+          {
+            "startSec": 58.5,
+            "endSec": 62.5,
+            "riseDb": 8.2
+          }
+        ]
+      }
     },
     {
       "id": "mk-1167",
@@ -346,7 +479,11 @@
         "Technology"
       ],
       "energy": 4,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -9.7,
+        "swells": []
+      }
     },
     {
       "id": "mk-175",
@@ -380,7 +517,17 @@
         "Technology"
       ],
       "energy": 3,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -10.9,
+        "swells": [
+          {
+            "startSec": 91,
+            "endSec": 95,
+            "riseDb": 6.7
+          }
+        ]
+      }
     },
     {
       "id": "mk-148",
@@ -415,7 +562,62 @@
         "Documentary"
       ],
       "energy": 1,
-      "contentIdRisk": "low"
+      "contentIdRisk": "low",
+      "profile": {
+        "midrangeDb": -4.8,
+        "swells": [
+          {
+            "startSec": 3,
+            "endSec": 9,
+            "riseDb": 11
+          },
+          {
+            "startSec": 17,
+            "endSec": 19,
+            "riseDb": 10.1
+          },
+          {
+            "startSec": 21.5,
+            "endSec": 23.5,
+            "riseDb": 6.2
+          },
+          {
+            "startSec": 27,
+            "endSec": 34,
+            "riseDb": 10.6
+          },
+          {
+            "startSec": 42,
+            "endSec": 44,
+            "riseDb": 8.3
+          },
+          {
+            "startSec": 46,
+            "endSec": 54,
+            "riseDb": 6.3
+          },
+          {
+            "startSec": 61,
+            "endSec": 67,
+            "riseDb": 7.7
+          },
+          {
+            "startSec": 74.5,
+            "endSec": 78,
+            "riseDb": 6.8
+          },
+          {
+            "startSec": 117,
+            "endSec": 120,
+            "riseDb": 7
+          },
+          {
+            "startSec": 131,
+            "endSec": 133.5,
+            "riseDb": 8.1
+          }
+        ]
+      }
     },
     {
       "id": "whoosh-soft",
