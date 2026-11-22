@@ -8,7 +8,8 @@
  * continuity (no motion snaps while visible, one origin per element), camera (speed limits,
  * move-then-hold pacing, cue landing, and subject focus framing), carry-over change holds,
  * audio lock, honest on-screen data, a clear inset region while a device shot shares the stage, and for pictures
- * (the illustrated stage) provenance, palette on pixels, no text (OCR), label contrast and resolution (pictures.ts),
+ * (the illustrated stage) provenance, palette on pixels, no text (OCR), label contrast and resolution (pictures.ts), and SVG
+ * composed with pictures: callout anchors on the picture, no label hidden under a picture, leader contrast (pictureComposition.ts),
  * and the voice of choice (a package narrated by another voice than the owner's cloned voice fails unless overridden).
  * Inputs and outputs: Film or Scene data -> standard-layer design rule violations and warnings.
  * Used by: backend/cli.ts, backend/pipeline/run.ts, backend/designSpec/build.ts, backend/reelCut/build.ts.
@@ -48,6 +49,7 @@ import { resolveCue } from "../designSpec/cues";
 import { checkThreeStage } from "./threeStage";
 import { checkSoundtrack } from "./soundtrack";
 import { checkPictures, type PictureOcr } from "./pictures";
+import { checkPictureComposition } from "./pictureComposition";
 import type { AudioLibrary } from "../audioLibrary/schema";
 import { otherVoiceOverrideActive, voiceOfChoiceFinding } from "../voiceOfChoice";
 
@@ -76,6 +78,8 @@ export type DesignRule =
   | "picture-text"
   | "contrast"
   | "resolution"
+  | "callout-anchor"
+  | "picture-cover"
   | "voice-of-choice";
 
 /** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
@@ -647,6 +651,8 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
     }
     // Pictures are measured on their pixels: provenance, palette, no text, label contrast and resolution.
     if (result.errors.length === 0) findings.push(...checkPictures(film, scene, { formats, accent: chosenAccent ?? film.accent, ...(context.pictureOcr ? { ocr: context.pictureOcr } : {}) }));
+    // SVG composed with pictures: callouts stay on their picture, no picture hides a label, leaders keep contrast.
+    if (compiled) findings.push(...checkPictureComposition(film, scene, compiled, formats));
     checkCamera(scene, findings, context.cameraTargets);
     checkCarryChangeHolds(film, scene, context.lookPlan, findings);
     // The inset rule reads the compiled scene, which only exists when the scene itself is valid.

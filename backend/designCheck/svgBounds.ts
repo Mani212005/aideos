@@ -2,7 +2,7 @@
  * File Description: Conservative 2D geometry for SVG artwork: affine transforms and the bounding box of one drawn element.
  * Shapes are measured from their attributes and path control points, never rasterized, so the result is an upper bound that errs toward "this element reaches there".
  * Inputs and outputs: an SVG node's attributes or a transform string -> an affine matrix or a local bounding box.
- * Used by: backend/designCheck/insetRegion.ts, backend/insetStage.test.ts.
+ * Used by: backend/designCheck/insetRegion.ts, backend/designCheck/pictures.ts, backend/designCheck/pictureComposition.ts, backend/insetStage.test.ts.
  */
 
 import type { SvgNode } from "../../src/dl/scene/svgDocument";
@@ -64,7 +64,7 @@ export function apply(m: Affine, x: number, y: number): [number, number] {
 }
 
 // Reads every number out of a transform or path argument list.
-function numbers(text: string): number[] {
+export function numbers(text: string): number[] {
   return (text.match(/[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) ?? []).map(Number);
 }
 
@@ -101,7 +101,7 @@ export function parseTransform(value: string | undefined): Affine {
 }
 
 // Collects the points a path's commands touch: endpoints, control points, and arc extents.
-function pathPoints(d: string): Array<[number, number]> {
+export function pathPoints(d: string): Array<[number, number]> {
   const pts: Array<[number, number]> = [];
   let x = 0;
   let y = 0;

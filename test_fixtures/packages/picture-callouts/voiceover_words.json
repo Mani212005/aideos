@@ -1,0 +1,174 @@
+{
+  "words": [
+    {
+      "word": "Here",
+      "start": 0.2,
+      "end": 0.5
+    },
+    {
+      "word": "is",
+      "start": 0.56,
+      "end": 0.86
+    },
+    {
+      "word": "the",
+      "start": 0.92,
+      "end": 1.22
+    },
+    {
+      "word": "plan",
+      "start": 1.28,
+      "end": 1.58
+    },
+    {
+      "word": "of",
+      "start": 1.64,
+      "end": 1.94
+    },
+    {
+      "word": "a",
+      "start": 2.0,
+      "end": 2.3
+    },
+    {
+      "word": "lens:",
+      "start": 2.36,
+      "end": 2.66
+    },
+    {
+      "word": "a",
+      "start": 2.72,
+      "end": 3.02
+    },
+    {
+      "word": "ring,",
+      "start": 3.08,
+      "end": 3.38
+    },
+    {
+      "word": "a",
+      "start": 3.44,
+      "end": 3.74
+    },
+    {
+      "word": "glass",
+      "start": 3.8,
+      "end": 4.1
+    },
+    {
+      "word": "and",
+      "start": 4.16,
+      "end": 4.46
+    },
+    {
+      "word": "a",
+      "start": 4.52,
+      "end": 4.82
+    },
+    {
+      "word": "core.",
+      "start": 4.88,
+      "end": 5.18
+    },
+    {
+      "word": "Now",
+      "start": 5.8,
+      "end": 6.1
+    },
+    {
+      "word": "the",
+      "start": 6.16,
+      "end": 6.46
+    },
+    {
+      "word": "plan",
+      "start": 6.52,
+      "end": 6.82
+    },
+    {
+      "word": "becomes",
+      "start": 6.88,
+      "end": 7.18
+    },
+    {
+      "word": "the",
+      "start": 7.24,
+      "end": 7.54
+    },
+    {
+      "word": "real",
+      "start": 7.6,
+      "end": 7.9
+    },
+    {
+      "word": "lens.",
+      "start": 7.96,
+      "end": 8.26
+    },
+    {
+      "word": "The",
+      "start": 9.0,
+      "end": 9.3
+    },
+    {
+      "word": "ring",
+      "start": 9.36,
+      "end": 9.66
+    },
+    {
+      "word": "holds",
+      "start": 9.72,
+      "end": 10.02
+    },
+    {
+      "word": "it,",
+      "start": 10.08,
+      "end": 10.38
+    },
+    {
+      "word": "the",
+      "start": 10.44,
+      "end": 10.74
+    },
+    {
+      "word": "glass",
+      "start": 10.8,
+      "end": 11.1
+    },
+    {
+      "word": "bends",
+      "start": 11.16,
+      "end": 11.46
+    },
+    {
+      "word": "light,",
+      "start": 11.52,
+      "end": 11.82
+    },
+    {
+      "word": "and",
+      "start": 11.88,
+      "end": 12.18
+    },
+    {
+      "word": "the",
+      "start": 12.24,
+      "end": 12.54
+    },
+    {
+      "word": "core",
+      "start": 12.6,
+      "end": 12.9
+    },
+    {
+      "word": "focuses",
+      "start": 12.96,
+      "end": 13.26
+    },
+    {
+      "word": "it.",
+      "start": 13.32,
+      "end": 13.62
+    }
+  ]
+}
