@@ -14,7 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { lineFingerprint, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
+import { lineFingerprint, pacedVoiceKey, planPrune, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
 import { produceAudioPipeline } from "./audio";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
 import { vcdVoiceCacheKey } from "./vcdClient";
@@ -123,6 +123,39 @@ test("a recording no current line uses is removed for that voice, other voices a
     assert.deepEqual(recordedStatus(pkg, ["Keep me.", "Drop me."], "a"), [true, false]);
     assert.deepEqual(recordedStatus(pkg, ["Other voice."], "b"), [true]);
     assert.equal(fs.readdirSync(voiceLinesDir(pkg)).filter((f) => f.endsWith(".json")).length, 2);
+  } finally {
+    fs.rmSync(pkg, { recursive: true, force: true });
+  }
+});
+
+test("moving a voice to a stretch rate retires its older-rate recordings, a dry run lists them first, other voices stay", async () => {
+  const pkg = scratch();
+  try {
+    const spoken: string[] = [];
+    const plain = "voice-a";
+    const stretched = pacedVoiceKey(plain, 1.2);
+    assert.notEqual(stretched, plain);
+    // Old world: the line was recorded under the plain key (before stretching existed); another voice and a take variant sit beside it.
+    await synthesizeLines({ pkgDir: pkg, texts: ["Hello there."], voiceKey: plain, synthesize: countingSynth(spoken) });
+    await synthesizeLines({ pkgDir: pkg, texts: ["Other voice."], voiceKey: "voice-b", synthesize: countingSynth(spoken) });
+    await synthesizeLines({ pkgDir: pkg, texts: ["Take variant."], voiceKey: `${plain}|takes=3`, synthesize: countingSynth(spoken) });
+    const oldFingerprint = lineFingerprint("Hello there.", plain);
+    const f32 = path.join(voiceLinesDir(pkg), `${oldFingerprint}.f32`);
+    assert.ok(fs.existsSync(f32));
+
+    // A dry run names the plain-key recording and its size, and deletes nothing.
+    const plan = planPrune(pkg, stretched, new Set([lineFingerprint("Hello there.", stretched)]));
+    assert.deepEqual(plan.remove.map((r) => [r.fingerprint, r.voiceKey]), [[oldFingerprint, plain]]);
+    assert.equal(plan.remove[0].bytes, fs.statSync(f32).size + fs.statSync(path.join(voiceLinesDir(pkg), `${oldFingerprint}.json`)).size);
+    assert.ok(fs.existsSync(f32), "a dry run must not delete anything");
+
+    // The real pass at the stretched key records the line once more and then removes only the plain-key leftover.
+    const run = await synthesizeLines({ pkgDir: pkg, texts: ["Hello there."], voiceKey: stretched, synthesize: countingSynth(spoken) });
+    assert.equal(run.recorded, 1);
+    assert.equal(fs.existsSync(f32), false, "the plain-key recording is pruned");
+    assert.deepEqual(recordedStatus(pkg, ["Hello there."], stretched), [true]);
+    assert.deepEqual(recordedStatus(pkg, ["Other voice."], "voice-b"), [true]);
+    assert.deepEqual(recordedStatus(pkg, ["Take variant."], `${plain}|takes=3`), [true]);
   } finally {
     fs.rmSync(pkg, { recursive: true, force: true });
   }
