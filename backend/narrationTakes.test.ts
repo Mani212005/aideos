@@ -229,3 +229,59 @@ test("without a selector the pipeline behaves as before: one synthesis per line 
     fs.rmSync(pkg, { recursive: true, force: true });
   }
 });
+
+test("a deterministic backend without synthesizeTake gets one synthesis per line even when maxTakes is 3, and a take-capable backend gets all three", async () => {
+  const pkg = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-takes-cap-"));
+  try {
+    let plainCalls = 0;
+    let takeCalls = 0;
+    const base = { name: FAKE_OWNER_BACKEND_NAME, voice: "voice_test_owner_fake", maxChars: 1800 };
+    // Too fast for the house pace gate, so every take fails a gate and the search would run to maxTakes if it could.
+    const deterministic: TtsBackend = {
+      ...base,
+      async synthesize() {
+        plainCalls += 1;
+        return tone(0.3, 0.2).chunks[0].samples;
+      },
+    };
+    const capable: TtsBackend = {
+      ...base,
+      async synthesize() {
+        throw new Error("a take-capable backend is spoken through synthesizeTake");
+      },
+      async synthesizeTake() {
+        takeCalls += 1;
+        return { samples: tone(0.3, 0.2).chunks[0].samples };
+      },
+    };
+    const selector = createTakeSelector({ id: "cap", maxTakes: 3, scorer: null });
+    const script = [LINE, "They also forget to expire."];
+    const choices: TakeChoice[] = [];
+    const run = (backend: TtsBackend, dir: string) =>
+      produceAudioPipeline(script, dir, { ttsBackendInstance: backend, narrationRate: 1, takeSelector: selector, onTakeChoice: (c) => choices.push(c) });
+
+    const first = await run(deterministic, pkg);
+    assert.deepEqual(first.lines, { recorded: 2, reused: 0 });
+    assert.equal(plainCalls, 2, "one synthesis per line, not three");
+    assert.ok(choices.every((c) => c.takes.length === 1 && c.degraded), "the single take is still judged by the gates");
+    assert.ok(readLine(pkg, lineFingerprint(LINE, lineVoiceKey(deterministic, 1, selector))), "stored under the key of the effective selector");
+    assert.notEqual(lineVoiceKey(deterministic, 1, selector), lineVoiceKey(capable, 1, selector), "the key reflects the effective take count");
+
+    plainCalls = 0;
+    const again = await run(deterministic, pkg);
+    assert.deepEqual(again.lines, { recorded: 0, reused: 2 });
+    assert.equal(plainCalls, 0);
+
+    const pkg2 = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-takes-cap2-"));
+    try {
+      choices.length = 0;
+      await run(capable, pkg2);
+      assert.equal(takeCalls, 6, "three takes for each of two lines");
+      assert.ok(choices.every((c) => c.takes.length === 3));
+    } finally {
+      fs.rmSync(pkg2, { recursive: true, force: true });
+    }
+  } finally {
+    fs.rmSync(pkg, { recursive: true, force: true });
+  }
+});

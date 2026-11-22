@@ -31,7 +31,7 @@ takes, a selector chooses one, and only the chosen take is stored.
 
 ```
 produceAudioPipeline  --takeSelector-->  withTakes(takeSynthesizer, selector)
-                                            |  take 0, 1, ... (backend.synthesizeTake, else backend.synthesize)
+                                            |  take 0, 1, ... (backend.synthesizeTake; a backend without it gets one take)
                                             |  measure each take, score it (pluggable), apply the rule
                                             v
                                          chosen LineAudio  -->  voiceLines.synthesizeLines
@@ -41,8 +41,9 @@ produceAudioPipeline  --takeSelector-->  withTakes(takeSynthesizer, selector)
 - **A better voice** needs no code here: a new voice build changes the backend name or voice id, so the voice key
   changes and every line is recorded again. Nothing recorded with the old voice is served.
 - **Per-sentence retries** are the selector's `maxTakes`. `TtsBackend.synthesizeTake(text, take)` is optional: a
-  backend that has it can use the take number as a seed and return the service's own naturalness score; without it the
-  pipeline calls `synthesize` again, which only helps if the voice is not deterministic.
+  backend that has it can use the take number as a seed and return the service's own naturalness score. A backend
+  without it is deterministic, so a second take would be identical: it gets exactly one take per line (`maxTakes` is
+  capped at 1, the gates and scorer still judge that take, and the cache key carries the effective take count).
 - **The cache key carries the selector.** `takeSelectorKey` hashes the take count, thresholds, accept and minimum
   score, the gates and the scorer's id and version. Changing any of them re-records the lines; an unchanged selector
   reuses what is stored and calls nothing. With no selector the key is the plain key, so nothing recorded before this

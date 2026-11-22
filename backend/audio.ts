@@ -123,7 +123,8 @@ export interface ProduceAudioOptions {
   narrationRate?: number;
   /**
    * Natural-narration take selection (backend/narrationTakes.ts, docs/NATURAL_NARRATION.md): speak each line as up
-   * to `maxTakes` takes and keep the one the selector chooses. Off by default; the chosen take is cached under a
+   * to `maxTakes` takes and keep the one the selector chooses. Only a backend with `synthesizeTake` makes more than one
+   * take; any other is deterministic and is held to a single take (still judged by the gates and the scorer). Off by default; the chosen take is cached under a
    * voice key that carries the selector, so changing it re-records the lines and an unchanged one reuses them.
    */
   takeSelector?: TakeSelector;
@@ -295,8 +296,18 @@ export function lineStretchFor(backend: Pick<TtsBackend, "speed">, narrationRate
  * The per-line cache key for one synthesizer setup. The time-stretch is part of it, so a line re-paced at another
  * rate is a different recording; an unstretched line keeps the key it had before stretching existed.
  */
-export function lineVoiceKey(backend: Pick<TtsBackend, "name" | "voice" | "speed" | "maxChars">, stretch: number, selector?: TakeSelector): string {
-  return pacedVoiceKey(takesVoiceKey(`${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}`, selector), stretch);
+export function lineVoiceKey(backend: Pick<TtsBackend, "name" | "voice" | "speed" | "maxChars" | "synthesizeTake">, stretch: number, selector?: TakeSelector): string {
+  const effective = selector ? effectiveTakeSelector(backend, selector) : undefined;
+  return pacedVoiceKey(takesVoiceKey(`${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}`, effective), stretch);
+}
+
+/**
+ * The selector a backend can actually honour. Only a backend with `synthesizeTake` makes distinct takes; any other
+ * is deterministic, so a second take would repeat the first, and its selector is held to one take (the gates and the
+ * scorer still judge that take, and the cache key reflects the one take).
+ */
+export function effectiveTakeSelector(backend: Pick<TtsBackend, "synthesizeTake">, selector: TakeSelector): TakeSelector {
+  return backend.synthesizeTake || selector.maxTakes === 1 ? selector : { ...selector, maxTakes: 1 };
 }
 
 /** Synthesizes one segment's text as its chunks, each within the backend's length limit, re-paced by `stretch`. */
@@ -372,7 +383,8 @@ async function synthesizeSegments(
     return { chunks: out };
   }
 
-  const voiceKey = lineVoiceKey(backend, stretch, takes?.selector);
+  const selector = takes ? effectiveTakeSelector(backend, takes.selector) : undefined;
+  const voiceKey = lineVoiceKey(backend, stretch, selector);
   const synthesizeOne = async (text: string) => ({ sampleRate: PCM_SAMPLE_RATE, chunks: await synthesizeChunks(text, backend, stretch, report) });
   const synthesizeTake: TakeSynthesizer | null = takes
     ? async (text, take) => {
@@ -385,7 +397,7 @@ async function synthesizeSegments(
     pkgDir: store.pkgDir,
     texts: segmentTexts,
     voiceKey,
-    synthesize: takes && synthesizeTake ? withTakes(synthesizeTake, takes.selector, takes.onChoice) : synthesizeOne,
+    synthesize: takes && selector && synthesizeTake ? withTakes(synthesizeTake, selector, takes.onChoice) : synthesizeOne,
     onLine: (_n, _total, text, reused) => {
       if (reused) for (const chunk of chunkTextForTTS(text, backend.maxChars)) report(chunk);
     },
