@@ -81,6 +81,7 @@
       ],
       "energy": 2,
       "contentIdRisk": "low",
+      "instrumental": true,
       "profile": {
         "midrangeDb": -7.8,
         "swells": [

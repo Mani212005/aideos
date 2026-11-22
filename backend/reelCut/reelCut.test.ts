@@ -1054,6 +1054,84 @@ test("SVG text grounding follows visibility and reel crop, including a one-frame
   }
 });
 
+// Builds a scene film whose "65" label fades out over `fadeFrames` starting on the cut into the middle shot (frame 300).
+function exitFadeFilm(tmp: string, fadeFrames: number): Film {
+  const svg = path.join(tmp, "labels.svg");
+  const backgroundSvg = path.join(tmp, "background.svg");
+  fs.writeFileSync(
+    svg,
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-960 -960 1920 1920"><text id="bar" x="-60" y="-60" font-size="40">65</text></svg>',
+  );
+  fs.writeFileSync(
+    backgroundSvg,
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-960 -960 1920 1920"/>',
+  );
+  const f = sceneFilm();
+  f.scene!.camera = undefined;
+  f.scene!.background.svgSource = backgroundSvg;
+  f.scene!.props = [
+    {
+      ...f.scene!.background,
+      assetId: "labels",
+      svgSource: svg,
+      animation: {
+        timelineId: "labels",
+        clips: [
+          {
+            clipId: "exit",
+            targets: ["bar"],
+            property: "opacity",
+            from: 1,
+            to: 0,
+            startFrame: 300,
+            durationFrames: fadeFrames,
+          },
+        ],
+      },
+    },
+  ];
+  return f;
+}
+
+test("a label fading out just after a cut is the previous shot's exit, not on screen in the next shot", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-reel-exit-"));
+  try {
+    const f = exitFadeFilm(tmp, 12);
+    const texts = visibleReelText(f);
+    assert.deepEqual(texts.intro, ["65"]);
+    assert.deepEqual(texts.middle, []);
+    const context = createReelContext({ film: f, visibleText: texts });
+    assert.equal(
+      check(cut(context), context).findings.some(
+        (finding) => finding.rule === "numbers" && finding.shotId === "middle",
+      ),
+      false,
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("a label still fading well after the cut stays on screen in the next shot and must be spoken there", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-reel-exit-"));
+  try {
+    const f = exitFadeFilm(tmp, 90);
+    const texts = visibleReelText(f);
+    assert.deepEqual(texts.middle, ["65"]);
+    const context = createReelContext({ film: f, visibleText: texts });
+    assert.ok(
+      check(cut(context), context).findings.some(
+        (finding) =>
+          finding.rule === "numbers" &&
+          finding.shotId === "middle" &&
+          /on-screen number 65/.test(finding.message),
+      ),
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test("real aideos reel brief/check commands produce a brief, enforce failures and leave source data untouched", () => {
   const pkg = path.join(TEST_VIDEOS_DIR, "reel-test");
   fs.mkdirSync(path.join(pkg, "reel"), { recursive: true });
