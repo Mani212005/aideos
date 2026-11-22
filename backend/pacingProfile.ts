@@ -63,9 +63,23 @@ function quicker(value: number): number {
   return Math.round((value * NARRATION_RATE) / 5) * 5;
 }
 
+/** Shortest film in seconds at the pace before the 2026-11-21 decision (narration rate 1). */
+const BASE_MIN_FILM_SEC = 10;
+
+/**
+ * The shortest film the schema accepts at a narration rate: the 10 s floor of rate 1 scaled by the rate, so a
+ * script that narrates to the same length of speech clears the floor at every pace (8.3 s at the 1.2x house pace).
+ * Rounded to 0.1 s so the schema message can state it. A rate that is not a positive finite number keeps the 10 s floor.
+ */
+export function minFilmSecAt(rate: number): number {
+  const safeRate = Number.isFinite(rate) && rate > 0 ? rate : 1;
+  return Number((Math.round(BASE_MIN_FILM_SEC / safeRate / 0.1) * 0.1).toFixed(1));
+}
+
 /** The house pace every new film is made and reviewed at. */
 export const HOUSE_PACE = {
   narrationRate: NARRATION_RATE,
+  minFilmSec: minFilmSecAt(NARRATION_RATE),
   segmentGapMs: faster(PRE_2026_11_21.segmentGapMs, 10),
   chapterGapMs: faster(PRE_2026_11_21.chapterGapMs, 10),
   chunkGapMs: faster(PRE_2026_11_21.chunkGapMs, 10),

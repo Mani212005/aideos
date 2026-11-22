@@ -26,7 +26,7 @@ const BEAT_IDS: Record<string, string> = { approach: "beat-01", catch: "beat-02"
 
 /**
  * The fixture's three narration beats, padded so the fake owner voice (about 0.4 s a word) reaches the
- * 10 s the film schema asks for. "catches" and the other cue phrases the fixture's look and design
+ * film minimum the schema asks for (10 s at narration rate 1, 8.3 s at the house pace). "catches" and the other cue phrases the fixture's look and design
  * bind to are kept verbatim, so the contact moment still lands on the spoken word.
  */
 export const IONA_BEATS = [

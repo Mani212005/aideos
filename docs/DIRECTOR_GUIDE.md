@@ -42,6 +42,7 @@ While your artistic choices are completely free, your screenplay must respect th
    - Limit visual density to at most 3 focal accents per frame to avoid cognitive overload.
    - Keep beats brisk: each narration line is one beat, and at the house pace beats average at most 10 s
      (roughly 12 to 30 spoken words). Split a longer line at a sentence so the picture can change with it.
+   The whole film must run at least 8.3 s at the house pace (the 10 s minimum scaled by the 1.2x narration rate).
 4. **Audio Sync**: Every shot duration (`dur`) locks to the measured narration audio timing (+-50ms).
 
 ---

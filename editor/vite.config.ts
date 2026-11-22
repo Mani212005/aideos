@@ -2175,7 +2175,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }
             const storyScript = plainTextToTaggedScript(script, { speed: Number(voiceSpeed) > 0 ? Number(voiceSpeed) : DEFAULT_KOKORO_SPEED });
 
-            // The first film: compiled from the story, or one title shot when the story is under 10 s (backend/newProjectFilm.ts).
+            // The first film: compiled from the story, or one title shot when the story is under the minimum film length (backend/newProjectFilm.ts).
             const newFilm: Film = buildNewProjectFilm({ id: cleanId, title: title.trim(), accent, theme: filmTheme, storyScript, autoCompile: Boolean(autoCompile) });
 
             fs.mkdirSync(newPkgDir, { recursive: true });

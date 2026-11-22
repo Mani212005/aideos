@@ -8,6 +8,7 @@ import { z } from "zod";
 import { stageTreatmentSchema, treatmentSpanSchema } from "./scene/materials/treatment";
 import { castSchema, performanceSchema } from "./scene/stageContract";
 import { MAX_HOLD_PUSH, MIN_HOLD_PUSH } from "./holdPush";
+import { NARRATION_RATE, minFilmSecAt } from "../../backend/pacingProfile";
 
 /**
  * ---------------------------------------------------------------------------
@@ -930,7 +931,8 @@ export const filmBaseSchema = z.object({
     .optional(),
 });
 
-export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
+// The film-level rules, with the shortest film allowed (seconds) as the one pace-dependent input.
+const refineFilm = (minFilmSec: number) => (film: z.infer<typeof filmBaseSchema>, ctx: z.core.$RefinementCtx): void => {
     const ids = new Set(film.canvas.nodes.map((n) => n.id));
 
     const dupes = film.canvas.nodes
@@ -1077,9 +1079,18 @@ export const filmSchema = filmBaseSchema.superRefine((film, ctx) => {
         message: 'the first shot has nothing to move from: use move: "cut"',
       });
 
-    if (clock < 10)
-      ctx.addIssue({ code: "custom", path: ["shots"], message: "film is under 10s" });
-  });
+    if (clock < minFilmSec)
+      ctx.addIssue({ code: "custom", path: ["shots"], message: filmUnderFloorMessage(minFilmSec) });
+  };
+
+/** The schema message for a film shorter than the floor, stating the floor so the 1.2x pace shows 8.3s and not 10s. */
+export const filmUnderFloorMessage = (minFilmSec: number): string => `film is under ${minFilmSec}s`;
+
+/** The film schema for a narration rate: the 10 s minimum scaled by that rate (see minFilmSecAt). */
+export const filmSchemaAtPace = (narrationRate: number) => filmBaseSchema.superRefine(refineFilm(minFilmSecAt(narrationRate)));
+
+/** The film schema at the house pace, the one every writer and reader of a film uses. */
+export const filmSchema = filmSchemaAtPace(NARRATION_RATE);
 
 export type Film = z.infer<typeof filmSchema>;
 
