@@ -52,6 +52,12 @@ export interface TtsBackend {
   /** Longest text one call may receive; the caller chunks above this. */
   maxChars: number;
   synthesize(text: string): Promise<Float32Array>;
+  /**
+   * Optional take-aware synthesis for natural narration (backend/narrationTakes.ts): speaks `text` as take number
+   * `take` (a seed or retry counter) and may report the service's own naturalness score in 0..1. A backend without
+   * it is retried through `synthesize`.
+   */
+  synthesizeTake?(text: string, take: number): Promise<{ samples: Float32Array; score?: number }>;
   /** Releases any worker process the backend holds. Safe to call more than once. */
   close?(): Promise<void>;
 }

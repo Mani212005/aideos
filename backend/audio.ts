@@ -24,6 +24,7 @@ import { getRetimedAudioFilename } from "../src/dl/audio/retime";
 import { assertScriptReadyForSynthesis, detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags, plainTextToTaggedScript } from "./scriptIntake";
 import type { ScriptIssue } from "./screenplayLines";
 import { pacedVoiceKey, synthesizeLines } from "./voiceLines";
+import { takesVoiceKey, withTakes, type TakeChoice, type TakeSelector, type TakeSynthesizer } from "./narrationTakes";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import type { VcdLanguagePreference } from "./vcdClient";
 import { HOUSE_PACE } from "./pacingProfile";
@@ -120,6 +121,14 @@ export interface ProduceAudioOptions {
    * A synthesizer that sets its own pace (Kokoro, through `speed`) is never stretched.
    */
   narrationRate?: number;
+  /**
+   * Natural-narration take selection (backend/narrationTakes.ts, docs/NATURAL_NARRATION.md): speak each line as up
+   * to `maxTakes` takes and keep the one the selector chooses. Off by default; the chosen take is cached under a
+   * voice key that carries the selector, so changing it re-records the lines and an unchanged one reuses them.
+   */
+  takeSelector?: TakeSelector;
+  /** Receives the decision for every line a take selector recorded this run (lines reused from the store are not decided again). */
+  onTakeChoice?: (choice: TakeChoice) => void;
   /** Called once per synthesized chunk so long runs can report progress. */
   onProgress?: (done: number, total: number, label: string) => void;
   /** A synthesizer to use instead of creating one from `backend` (tests inject a counting one). */
@@ -286,15 +295,39 @@ export function lineStretchFor(backend: Pick<TtsBackend, "speed">, narrationRate
  * The per-line cache key for one synthesizer setup. The time-stretch is part of it, so a line re-paced at another
  * rate is a different recording; an unstretched line keeps the key it had before stretching existed.
  */
-export function lineVoiceKey(backend: Pick<TtsBackend, "name" | "voice" | "speed" | "maxChars">, stretch: number): string {
-  return pacedVoiceKey(`${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}`, stretch);
+export function lineVoiceKey(backend: Pick<TtsBackend, "name" | "voice" | "speed" | "maxChars">, stretch: number, selector?: TakeSelector): string {
+  return pacedVoiceKey(takesVoiceKey(`${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}`, selector), stretch);
 }
 
 /** Synthesizes one segment's text as its chunks, each within the backend's length limit, re-paced by `stretch`. */
 async function synthesizeChunks(text: string, backend: TtsBackend, stretch: number, onChunk?: (text: string) => void): Promise<PcmChunk[]> {
+  return (await synthesizeTakeChunks(text, backend, stretch, null, onChunk)).chunks;
+}
+
+/**
+ * Synthesizes one take of a segment as its chunks. `take` null speaks it the plain way (`backend.synthesize`);
+ * a number speaks that take through `backend.synthesizeTake` when the backend has one. The take's reported
+ * naturalness is the lowest of its chunks' (a line is as natural as its weakest chunk), or undefined when the
+ * backend reports none.
+ */
+async function synthesizeTakeChunks(
+  text: string,
+  backend: TtsBackend,
+  stretch: number,
+  take: number | null,
+  onChunk?: (text: string) => void,
+): Promise<{ chunks: PcmChunk[]; reportedScore?: number }> {
   const synthesized: PcmChunk[] = [];
+  let reportedScore: number | undefined;
   for (const chunk of chunkTextForTTS(text, backend.maxChars)) {
-    const spoken = await backend.synthesize(chunk);
+    let spoken: Float32Array;
+    if (take !== null && backend.synthesizeTake) {
+      const result = await backend.synthesizeTake(chunk, take);
+      spoken = result.samples;
+      if (typeof result.score === "number") reportedScore = reportedScore === undefined ? result.score : Math.min(reportedScore, result.score);
+    } else {
+      spoken = await backend.synthesize(chunk);
+    }
     if (spoken.length === 0) {
       throw new Error(`TTS backend "${backend.name}" returned no audio for: "${chunk.slice(0, 60)}..."`);
     }
@@ -303,7 +336,14 @@ async function synthesizeChunks(text: string, backend: TtsBackend, stretch: numb
     synthesized.push({ text: chunk, samples });
     onChunk?.(chunk);
   }
-  return synthesized;
+  return { chunks: synthesized, ...(reportedScore !== undefined ? { reportedScore } : {}) };
+}
+
+/** Default take-choice handler: says on stderr which line had no clean take and why, so a reviewer can listen to it. */
+function logDegradedTake(choice: TakeChoice): void {
+  if (!choice.degraded) return;
+  const chosen = choice.takes[choice.chosenIndex];
+  console.error(`[narration] no clean take for "${choice.text.slice(0, 48)}": kept take ${choice.chosenIndex + 1} of ${choice.takes.length} (${chosen.violations.join(", ")})`);
 }
 
 /**
@@ -317,6 +357,7 @@ async function synthesizeSegments(
   stretch: number,
   onProgress?: ProduceAudioOptions["onProgress"],
   store?: { pkgDir: string },
+  takes?: { selector: TakeSelector; onChoice?: (choice: TakeChoice) => void },
 ): Promise<{ chunks: PcmChunk[][]; lines?: { recorded: number; reused: number } }> {
   const total = segmentTexts.reduce((sum, text) => sum + chunkTextForTTS(text, backend.maxChars).length, 0);
   let done = 0;
@@ -331,12 +372,20 @@ async function synthesizeSegments(
     return { chunks: out };
   }
 
-  const voiceKey = lineVoiceKey(backend, stretch);
+  const voiceKey = lineVoiceKey(backend, stretch, takes?.selector);
+  const synthesizeOne = async (text: string) => ({ sampleRate: PCM_SAMPLE_RATE, chunks: await synthesizeChunks(text, backend, stretch, report) });
+  const synthesizeTake: TakeSynthesizer | null = takes
+    ? async (text, take) => {
+        // Only the first take reports progress: later takes are retries of a line already counted.
+        const spoken = await synthesizeTakeChunks(text, backend, stretch, take, take === 0 ? report : undefined);
+        return { audio: { sampleRate: PCM_SAMPLE_RATE, chunks: spoken.chunks }, reportedScore: spoken.reportedScore };
+      }
+    : null;
   const result = await synthesizeLines({
     pkgDir: store.pkgDir,
     texts: segmentTexts,
     voiceKey,
-    synthesize: async (text) => ({ sampleRate: PCM_SAMPLE_RATE, chunks: await synthesizeChunks(text, backend, stretch, report) }),
+    synthesize: takes && synthesizeTake ? withTakes(synthesizeTake, takes.selector, takes.onChoice) : synthesizeOne,
     onLine: (_n, _total, text, reused) => {
       if (reused) for (const chunk of chunkTextForTTS(text, backend.maxChars)) report(chunk);
     },
@@ -413,7 +462,14 @@ export async function produceAudioPipeline(
   let segmentChunks: PcmChunk[][];
   let lineCounts: { recorded: number; reused: number } | undefined;
   try {
-    const synthesized = await synthesizeSegments(segmentTexts, backend, stretch, options?.onProgress, { pkgDir: outDir });
+    const synthesized = await synthesizeSegments(
+      segmentTexts,
+      backend,
+      stretch,
+      options?.onProgress,
+      { pkgDir: outDir },
+      options?.takeSelector ? { selector: options.takeSelector, onChoice: options.onTakeChoice ?? logDegradedTake } : undefined,
+    );
     segmentChunks = synthesized.chunks;
     lineCounts = synthesized.lines;
     if (lineCounts) console.error(`[narration] ${lineCounts.recorded} line(s) recorded, ${lineCounts.reused} reused`);
