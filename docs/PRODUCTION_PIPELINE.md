@@ -285,7 +285,9 @@ for the details; the plan is always model-driven, so there is no canned screenpl
 and returns the exact timing spine the film is built from. Each narration line is stored under
 `videos/<slug>/voiceover_lines/` keyed by a content fingerprint (its words plus the voice, speed,
 chunk limit and sample rate; see `backend/voiceLines.ts`), so regenerating voice-over re-records
-only changed lines and reuses every other recording untouched. Trimming, boundary fades, gap insertion
+only changed lines and reuses every other recording untouched. Recordings no current line uses are pruned for
+the same voice at any time-stretch rate, so switching the rate retires the other rate's recordings (and re-records
+the lines if you switch back). Trimming, boundary fades, gap insertion
 and peak normalization all happen on samples rather than on encoded files, so the reported segment
 offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. The
 default pause is 170 ms between narration segments and 750 ms before a segment that opens a new
