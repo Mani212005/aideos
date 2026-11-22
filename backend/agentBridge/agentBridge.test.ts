@@ -168,6 +168,21 @@ test("buildTaskContext resolves existing video package files and design invarian
   assert.ok(context.designInvariants.length >= 7);
 });
 
+test("buildTaskContext reports a voiceover word file it cannot parse instead of dropping it silently", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-context-words-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const pkg = path.join(root, "videos", "words-film");
+  fs.mkdirSync(pkg, { recursive: true });
+  fs.writeFileSync(path.join(pkg, "voiceover_words.json"), "{not json", "utf8");
+  const warn = t.mock.method(console, "warn", () => {});
+
+  const context = buildTaskContext({ eventType: "auto_build_scenes", filmId: "words-film", filmTitle: "Words Film" }, root);
+
+  assert.equal(context.voiceoverWords, undefined);
+  assert.equal(warn.mock.callCount(), 1);
+  assert.match(String(warn.mock.calls[0].arguments[0]), /voiceover word timings for "words-film"/);
+});
+
 // Test 6: Prompt synthesizer generates actionable instructions
 test("buildDirectingPrompt formats structured markdown with package refs and rules", () => {
   const prompt = buildDirectingPrompt({

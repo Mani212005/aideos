@@ -315,6 +315,18 @@ test("Phase 4 - Provenance log: handles missing log file gracefully (no-file = e
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test("Phase 4 - Provenance log: a log that exists but cannot be read is an error, not an empty history", () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-prov-unreadable-"));
+  const filmId = "unreadable-film";
+  // A directory where the log file should be: the path exists but reading it fails with EISDIR.
+  fs.mkdirSync(path.join(tmpDir, filmId, "edit_log.jsonl"), { recursive: true });
+  try {
+    assert.throws(() => readEditProvenanceLog(tmpDir, filmId), /Could not read the edit log/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test("Phase 4 - Provenance log: ignores corrupt lines and returns valid records", () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-prov-corrupt-"));
   const filmId = "corrupt-film";
