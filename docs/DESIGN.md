@@ -170,6 +170,9 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
   them (and `videos/**`) under `server.watch.ignored` for the same reason.
 - `src/dl/validateLayeredFilm.ts` and `backend/editPlanner/interpreter.ts` run in the page (the AI edit Apply gesture), so they
   must stay free of Node built-ins and `process`: the on-disk source check lives in `backend/timeline/layerAssetCheck.ts`.
+  The server runs that check before it persists a film: `POST /api/films/:id`, the `/api/ai-edit` Apply and the MCP `aideos_edit_film` tool
+  refuse (422, or `applied: false`) a write that introduces a video, audio or image source missing on disk (Rule 6). Sources the film
+  already carried and soundtrack library items are not checked, so an old film with a broken reference can still be saved and fixed.
   A Node import on a browser path passes every Node test and only fails in Chrome, so `backend/editPlanner/browserSafety.test.ts`
   bundles the apply path and the whole studio and fails on an externalized module, and `backend/journeys/j3_studio_edit.journey.ts`
   clicks Apply Edits in a real browser.
