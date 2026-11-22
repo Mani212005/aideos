@@ -11,10 +11,11 @@ import { lastSectionHeadroomFrames, soundtrackItemSrc } from "../src/dl/audio/se
 import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import { soundtrackMixDefault, type Film, type SoundtrackSection, type SoundtrackSfx } from "../src/dl/schema";
 import { computeFileSha256, getDefaultLibraryPath, loadAudioLibrary, verifyAudioItem } from "./audioLibrary/library";
-import type { AudioLibrary } from "./audioLibrary/schema";
+import type { AudioItem, AudioLibrary } from "./audioLibrary/schema";
 import { checkSoundtrack } from "./designCheck/soundtrack";
 import { resolveAudioSourcePath } from "./audio";
 import { detectVisualEvent, getVisualEventFrames } from "./designSpec/soundtrack";
+import { pickMusic, rankMusic, type MusicAct, type MusicCandidate } from "./musicSelector";
 
 type Act = Pick<SoundtrackSection, "role" | "from" | "to">;
 
@@ -96,6 +97,21 @@ function actsFor(film: Film, format: DeliveryFormat, library: AudioLibrary, comp
   return plan;
 }
 
+// Returns the mean shot length of the story shots that start inside an act, or null when none do; this is the act's pace.
+function meanShotSec(film: Film, act: Act): number | null {
+  const shots = buildTimeline(film).filter((entry) => entry.from / film.fps >= act.from && entry.from / film.fps < act.to);
+  return shots.length ? shots.reduce((sum, entry) => sum + entry.durationInFrames, 0) / shots.length / film.fps : null;
+}
+
+// Returns where in the track a section would play: the last section is back-timed to the track's end, every other starts at 0, and both fades are included in its span.
+function sourceWindow(item: AudioItem, act: Act, index: number, count: number, film: Film, fade: number): MusicCandidate["window"] {
+  const startFrame = Math.max(0, Math.round(act.from * film.fps) - (index > 0 ? Math.ceil(fade / 2) : 0));
+  const endFrame = Math.round(act.to * film.fps) + (index < count - 1 ? Math.ceil(fade / 2) : 0);
+  const spanSec = (endFrame - startFrame) / film.fps;
+  const startSec = index === count - 1 ? Math.floor(item.durationSec * film.fps) / film.fps - spanSec : 0;
+  return { startSec: Math.max(0, startSec), endSec: Math.max(0, startSec) + spanSec };
+}
+
 /** Longest library effect the default scorer places; keeps long beds such as typing out of the accents. */
 const DEFAULT_EFFECT_MAX_SEC = 4;
 
@@ -149,10 +165,14 @@ export function scoreDefaultSoundtrack(film: Film, format: DeliveryFormat, libra
   let sections = base.soundtrack?.sections ?? [];
   if (needsMusic) {
     const acts = actsFor(base, format, cachedLibrary, library);
+    const used = new Set<string>();
     sections = acts.map((act, index): SoundtrackSection => {
-      const pool = candidates(act, index, acts.length, base, format, cachedLibrary);
+      const pool = candidates(act, index, acts.length, base, format, cachedLibrary)
+        .map((item): MusicCandidate => ({ item, window: sourceWindow(item, act, index, acts.length, base, fade) }));
+      const musicAct: MusicAct = { role: act.role, meanShotSec: meanShotSec(base, act) };
       const seed = createHash("sha256").update(JSON.stringify([film.id, format, act.role, index])).digest().readUInt32BE(0);
-      const item = pool[seed % pool.length];
+      const item = pickMusic(rankMusic(musicAct, pool, used), seed).item;
+      used.add(item.id);
       const spanFrames = Math.round((act.to - act.from) * film.fps) + (index > 0 ? Math.ceil(fade / 2) : 0);
       const offsetSec = index === acts.length - 1 ? (Math.floor(item.durationSec * film.fps) - spanFrames) / film.fps : 0;
       return { ...act, item: item.id, sha256: item.sha256, offsetSec, crossfadeSec: format === "reel" ? 1.5 : 3, volume: 1, duckUnderVoiceover: true };
