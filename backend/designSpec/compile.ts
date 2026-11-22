@@ -175,6 +175,9 @@ export function compileDesign(
     const idleFrom = new Map<string, number>();
     type Pending = { target: string; property: SpecClip["property"]; from: number; to: number; cutFrame: number; origin?: SpecClip["origin"]; clips: Array<{ clip: SpecClip; shotId: string; frame: number; start: number; end: number }> };
     const pending = new Map<string, Pending>();
+    // Slots that have a clip in the timeline, and slots whose dropped clips netted zero: a netted slot that never gets a clip must still hold its initial value.
+    const written = new Set<string>();
+    const netZero = new Map<string, Pending>();
     // Adds one clip as authored, tracking the value each of its slots now holds.
     const addClip = (clip: SpecClip, extra: { targets?: string[]; id?: string; from?: number; start: number; end: number; dropped?: boolean }) => {
       timeline.add({
@@ -191,6 +194,7 @@ export function compileDesign(
         ...(clip.allowJump ? { allowJump: true } : {}),
       });
       for (const target of extra.targets ?? clip.targets) {
+        written.add(slotKey(target, clip.property));
         held.set(slotKey(target, clip.property), clip.to);
         idleFrom.set(slotKey(target, clip.property), Math.max(idleFrom.get(slotKey(target, clip.property)) ?? 0, extra.end + (clip.stagger && !extra.dropped ? clip.stagger * (clip.targets.length - 1) : 0)));
       }
@@ -203,6 +207,7 @@ export function compileDesign(
       pending.delete(key);
       if (Math.abs(carry.to - carry.from) <= 1e-6) {
         held.set(key, carry.to);
+        netZero.set(key, carry);
         return undefined;
       }
       const window = options.splice ? planSpliceWindow({ gapStart: idleFrom.get(key) ?? 0, gapEnd, cutFrame: carry.cutFrame, frames: options.splice.frames }) : undefined;
@@ -210,6 +215,7 @@ export function compileDesign(
         const first = carry.clips[0].clip;
         timeline.add({ id: `splice-${first.id}-${carry.target}`, targets: [carry.target], property: carry.property, from: carry.from, to: carry.to,
           start: window.start, end: window.end, easing: SPLICE_EASING, ...(carry.origin ? { origin: { x: carry.origin[0], y: carry.origin[1] } } : {}) });
+        written.add(key);
         held.set(key, carry.to);
         idleFrom.set(key, window.end);
         return undefined;
@@ -254,6 +260,17 @@ export function compileDesign(
       for (const key of [...pending.keys()]) settle(key, cues.durationFrames);
     } catch (err) {
       errors.push(`asset "${a.id}" splice: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    // A slot animated only inside dropped shots with zero net change has no clip, so the engine would show its SVG default (opacity 1) from frame 0.
+    // One hold clip keeps the value the slot had before the cut.
+    try {
+      for (const [key, carry] of netZero) {
+        if (written.has(key)) continue;
+        timeline.add({ id: `hold-${carry.clips[0].clip.id}-${carry.target}`, targets: [carry.target], property: carry.property, from: carry.from, to: carry.from, start: 0, end: 1,
+          ...(carry.origin ? { origin: { x: carry.origin[0], y: carry.origin[1] } } : {}) });
+      }
+    } catch (err) {
+      errors.push(`asset "${a.id}" splice hold: ${err instanceof Error ? err.message : String(err)}`);
     }
     const built = timeline.build();
     const raster = "picture" in a && a.picture !== undefined ? pictureSource(`asset "${a.id}"`, a.picture) : undefined;
