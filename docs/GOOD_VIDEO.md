@@ -141,8 +141,10 @@ the silences between lines all move together:
   move by up to 2.6 points between runs of the same wav. Re-run the round trip with `npm run intelligibility`
   ([`scripts/intelligibility/round_trip.ts`](../scripts/intelligibility/round_trip.ts)) whenever the voice, a
   synthesizer's default speed, the house narration rate or `timeStretch` changes. It narrates the fixture with one
-  voice as spoken and stretched to the house rate, transcribes both with local Whisper at temperature 0, and exits 1
-  when the stretch adds more than 2 points of misheard words (spelling choices such as "down sampling" forgiven). See
+  voice as spoken and stretched to the house rate, transcribes both with openai-whisper `small` (the scene kit's
+  engine) at temperature 0, and exits 1 when the stretch adds more than 2 points of misheard words (spelling choices
+  such as "down sampling" forgiven). Its numbers are not comparable with the 2026-11-21 faster-whisper numbers above.
+  See
   [its evidence log](evidence/verify/2026-11-22-intelligibility-round-trip.md).
 - **Tighter gaps.** Silence between lines 170 ms (pipeline) and 350 ms (scene kit), chapter breath 750 ms.
 - **Shorter beats, more camera.** Beats average at most 10 s (shorter is fine), the camera moves at least once per 17 s and holds

@@ -1,13 +1,13 @@
 # File Description: Speech-to-text half of the narration intelligibility round trip: transcribes narration wavs with a locally cached Whisper model and scores word error rate against the script.
 # Inputs and outputs: a script text file, one or more wavs (decoded in memory, never written) -> JSON report per wav of plain WER, the spelling-blind misheard rate, the misheard word runs and the transcript.
 # Used by: scripts/intelligibility/round_trip.ts (spawned with the chosen python); see docs/GOOD_VIDEO.md "House pace".
-# Run: python3 scripts/intelligibility/transcribe_wer.py --engine auto|whisper|faster-whisper <script.txt> <out.json> <wav> [<wav> ...]
+# Run: python3 scripts/intelligibility/transcribe_wer.py <script.txt> <out.json> <wav> [<wav> ...]
 #
-# Engines: `whisper` is openai-whisper, the speech-to-text the scene kit already uses (backend/sceneKit/whisperWords.py,
-# model "small"); `faster-whisper` is the CTranslate2 port the 2026-11-21 pace evidence was measured with (model
-# "small.en", CPU, int8). `auto` takes the first one installed in that order. Both run offline from a local model cache.
-# Decoding is pinned to temperature 0: the engines' default fallback to sampled decoding made the same wav score
-# 6.8% on one run and 9.4% on the next, which is more than the stretch effect being measured.
+# Engine: openai-whisper, the speech-to-text the scene kit already uses (backend/sceneKit/whisperWords.py), model "small",
+# run offline from the local model cache. The 2026-11-21 pace evidence was measured with another engine (faster-whisper
+# small.en), so its numbers are not comparable with this scorer's.
+# Decoding is pinned to temperature 0 (greedy): the engine's default fallback to sampled decoding made the same wav
+# score 6.8% on one run and 9.4% on the next, which is more than the stretch effect being measured.
 import argparse
 import importlib.util
 import json
@@ -19,7 +19,6 @@ import sys
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 SAMPLE_RATE = 16000
-ENGINES = ("whisper", "faster-whisper")
 DIGITS = dict(zip("0123456789", ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")))
 
 
@@ -44,42 +43,18 @@ def load_audio(path):
     return np.frombuffer(raw, dtype=np.float32)
 
 
-# Picks the engine to use: the requested one, or the first installed one for `auto`. Returns None when none is installed.
-def pick_engine(requested):
-    module = {"whisper": "whisper", "faster-whisper": "faster_whisper"}
-    candidates = ENGINES if requested == "auto" else (requested,)
-    for name in candidates:
-        if importlib.util.find_spec(module[name]) is not None:
-            return name
-    return None
+# Loads the openai-whisper model and returns (model name, transcribe function from float32 audio to text).
+def load_transcriber():
+    import whisper
 
+    model = whisper.load_model("small")
 
-# Loads the engine's model and returns (model name, transcribe function from float32 audio to text).
-def load_transcriber(engine):
-    if engine == "whisper":
-        import whisper
+    # Transcribes one clip, settings as in backend/sceneKit/whisperWords.py but without sampling.
+    def transcribe(audio):
+        result = model.transcribe(audio, language="en", temperature=0.0, condition_on_previous_text=False)
+        return result["text"]
 
-        model = whisper.load_model("small")
-
-        # Transcribes one clip with openai-whisper, settings as in backend/sceneKit/whisperWords.py but without sampling.
-        def run_whisper(audio):
-            result = model.transcribe(audio, language="en", temperature=0.0, condition_on_previous_text=False)
-            return result["text"]
-
-        return "small", run_whisper
-
-    from faster_whisper import WhisperModel
-
-    model = WhisperModel("small.en", device="cpu", compute_type="int8", cpu_threads=4)
-
-    # Transcribes one clip with faster-whisper, settings as in the 2026-11-21 pace evidence but without sampling.
-    def run_faster(audio):
-        segments, _ = model.transcribe(
-            audio, language="en", beam_size=5, temperature=0.0, condition_on_previous_text=False
-        )
-        return " ".join(s.text for s in segments)
-
-    return "small.en", run_faster
+    return "small", transcribe
 
 
 # Spells single digits out and drops apostrophes, so "4" matches "four" and "net's" matches "nets".
@@ -137,28 +112,25 @@ def word_errors(ref, hyp):
     }
 
 
-# Parses arguments, transcribes every wav and writes the report. Exits 2 when no speech-to-text engine is installed.
+# Parses arguments, transcribes every wav and writes the report. Exits 2 when openai-whisper is not installed.
 def main():
     parser = argparse.ArgumentParser(
         description="Transcribe narration wavs and score word error rate against a script."
     )
-    parser.add_argument("--engine", choices=("auto",) + ENGINES, default="auto")
     parser.add_argument("script")
     parser.add_argument("out")
     parser.add_argument("wavs", nargs="+")
     args = parser.parse_args()
 
-    engine = pick_engine(args.engine)
-    if engine is None:
-        wanted = "openai-whisper or faster-whisper" if args.engine == "auto" else args.engine
-        print(f"no speech-to-text engine: install {wanted} for {sys.executable}", file=sys.stderr)
+    if importlib.util.find_spec("whisper") is None:
+        print(f"no speech-to-text engine: install openai-whisper for {sys.executable}", file=sys.stderr)
         sys.exit(2)
 
     with open(args.script) as fh:
         ref = normalize(fh.read()).split()
     if not ref:
         raise ValueError(f"{args.script}: the script has no words")
-    model_name, transcribe = load_transcriber(engine)
+    model_name, transcribe = load_transcriber()
     takes = []
     for wav in args.wavs:
         heard = normalize(transcribe(load_audio(wav)))
@@ -176,7 +148,7 @@ def main():
             }
         )
     with open(args.out, "w") as fh:
-        json.dump({"engine": engine, "model": model_name, "takes": takes}, fh, indent=2)
+        json.dump({"engine": "whisper", "model": model_name, "takes": takes}, fh, indent=2)
 
 
 if __name__ == "__main__":

@@ -2,13 +2,13 @@
  * File Description: Repeatable speech-to-text round trip that checks the house narration time-stretch does not hurt
  * clarity. It narrates the committed sample-explainer fixture script through the real produceAudioPipeline twice
  * with one voice (as the synthesizer spoke it, and re-paced by the pitch-preserving timeStretch at the house rate),
- * transcribes both takes with the local Whisper engine (scripts/intelligibility/transcribe_wer.py) and compares how
+ * transcribes both takes with local openai-whisper (scripts/intelligibility/transcribe_wer.py) and compares how
  * many script words each take has misheard. Run it again whenever the voice, a synthesizer's default speed, the house
  * narration rate (backend/pacingProfile.ts) or timeStretch (backend/pcm.ts) changes. The audio goes to a temporary
  * directory outside the repo and is deleted afterwards unless --keep is given; nothing is uploaded.
  * Exit codes: 0 when the stretched take is no less clear than the spoken one within MAX_STRETCH_MISHEARD_LOSS, 1 when it
- * is, 2 when the round trip cannot run (no synthesizer, no python, no speech-to-text engine).
- * Inputs and outputs: CLI flags (--backend, --voice, --speed, --rate, --engine, --python, --json, --keep) ->
+ * is not, 2 when the round trip cannot run (no synthesizer, no python, no speech-to-text engine).
+ * Inputs and outputs: CLI flags (--backend, --voice, --speed, --rate, --python, --json, --keep) ->
  * prints a table and writes an optional JSON report.
  * Used by: npm run intelligibility (by hand, when the voice or the stretch changes); docs/verify/FEATURE_MAP.md
  * row "Voiceover & Narration"; docs/GOOD_VIDEO.md "House pace".
@@ -28,15 +28,17 @@ import { wordsPerMinute } from "../../backend/review/speech";
 const FIXTURE_FILM = path.resolve(__dirname, "../../test_fixtures/packages/sample-explainer/film.json");
 const SCORER = path.resolve(__dirname, "transcribe_wer.py");
 const BACKENDS: readonly TtsBackendName[] = ["vcd", "kokoro", "google", "say", "tone"];
-const ENGINES = ["auto", "whisper", "faster-whisper"] as const;
 
 /**
  * Most the stretched take's misheard rate (word errors left once spelling choices are forgiven) may exceed the
- * spoken take's, as a fraction: 0.02 is 2 points, about five words of the 234-word fixture. Not calibrated: it sits
- * well above what the 2026-11-21 evidence takes differ by (stretch path 8.6% plain WER, the same voice unstretched
- * 9.8%, the ffmpeg atempo reference 9.0%), whose errors were all spelling choices both takes share. Plain WER is
- * reported but not judged, because the speech-to-text spells a compound one way in one take and the other way in
- * the next ("downsampling" against "down sampling").
+ * spoken take's, as a fraction: 0.02 is 2 points, about five words of the 234-word fixture. Calibrated with
+ * openai-whisper small on this fixture with Kokoro af_heart: the stretch moved the misheard rate by +1.3 points
+ * (speed 1), +0.0 (speed 0.75) and -0.9 (speed 1.05 stretched to 176 wpm), so 2 points sits above the largest
+ * take-to-take change seen. It guards against a stretch that makes words misheard; it is not proof of a pace limit,
+ * because the 2x control (280 wpm) moved the rate by -0.4 points and is not caught (openai-whisper small
+ * transcribes fast clean speech about as well as normal speech, and mishears "U-Net" as "unit" at every pace).
+ * Plain WER is reported but not judged, because the speech-to-text spells a compound one way in one take and the
+ * other way in the next ("downsampling" against "down sampling").
  */
 const MAX_STRETCH_MISHEARD_LOSS = 0.02;
 
@@ -72,11 +74,11 @@ interface ScorerReport {
 function usage(): string {
   return [
     "usage: npm run intelligibility -- [--backend vcd|kokoro|google|say|tone] [--voice <id>] [--speed <n>]",
-    "         [--rate <n>] [--engine auto|whisper|faster-whisper] [--python <path>] [--json <report.json>] [--keep]",
+    "         [--rate <n>] [--python <path>] [--json <report.json>] [--keep]",
     "  --backend/--voice          the narrator, as for produceAudioPipeline (default: the pipeline's own choice)",
     "  --speed                    a pace-controlled synthesizer's (Kokoro's) speed, standing in for a natural rate (default 1)",
     `  --rate                     the stretch to test (default: the house narration rate, ${HOUSE_PACE.narrationRate})`,
-    "  --python                   python with openai-whisper or faster-whisper (default: $AIDEOS_STT_PYTHON or python3)",
+    "  --python                   python with openai-whisper (default: $AIDEOS_STT_PYTHON or python3)",
   ].join("\n");
 }
 
@@ -89,7 +91,6 @@ function readOptions(argv: string[]) {
       voice: { type: "string" },
       speed: { type: "string" },
       rate: { type: "string" },
-      engine: { type: "string", default: "auto" },
       python: { type: "string" },
       json: { type: "string" },
       keep: { type: "boolean", default: false },
@@ -103,8 +104,6 @@ function readOptions(argv: string[]) {
   }
   const backend = values.backend as TtsBackendName | undefined;
   if (backend !== undefined && !BACKENDS.includes(backend)) throw new Error(`--backend must be one of ${BACKENDS.join(", ")}`);
-  const engine = values.engine as (typeof ENGINES)[number];
-  if (!ENGINES.includes(engine)) throw new Error(`--engine must be one of ${ENGINES.join(", ")}`);
   const speed = values.speed === undefined ? undefined : Number(values.speed);
   if (speed !== undefined && !(Number.isFinite(speed) && speed >= 0.5 && speed <= 2)) throw new Error("--speed must be a number from 0.5 to 2");
   const rate = values.rate === undefined ? HOUSE_PACE.narrationRate : Number(values.rate);
@@ -114,7 +113,6 @@ function readOptions(argv: string[]) {
     voice: values.voice,
     speed,
     rate,
-    engine,
     python: values.python ?? process.env.AIDEOS_STT_PYTHON ?? "python3",
     json: values.json ? path.resolve(values.json) : undefined,
     keep: values.keep,
@@ -159,8 +157,8 @@ async function narrate(lines: string[], dir: string, backend: TtsBackend, rate: 
 }
 
 // Runs the Python scorer over the takes and returns its report.
-function score(python: string, engine: string, scriptPath: string, wavs: string[], outPath: string): ScorerReport {
-  const run = spawnSync(python, [SCORER, "--engine", engine, scriptPath, outPath, ...wavs], { stdio: ["ignore", "inherit", "inherit"] });
+function score(python: string, scriptPath: string, wavs: string[], outPath: string): ScorerReport {
+  const run = spawnSync(python, [SCORER, scriptPath, outPath, ...wavs], { stdio: ["ignore", "inherit", "inherit"] });
   if (run.error) throw new Error(`cannot start ${python}: ${run.error.message}`);
   if (run.status === 2) throw new Error("no speech-to-text engine (see the message above)");
   if (run.status !== 0) throw new Error(`speech-to-text scorer exited ${run.status ?? run.signal}`);
@@ -197,7 +195,7 @@ async function main(): Promise<number> {
     }
     const scriptPath = path.join(work, "script.txt");
     fs.writeFileSync(scriptPath, `${lines.join("\n")}\n`);
-    const report = score(opts.python, opts.engine, scriptPath, [spoken.voiceoverPath, stretched.voiceoverPath], path.join(work, "stt.json"));
+    const report = score(opts.python, scriptPath, [spoken.voiceoverPath, stretched.voiceoverPath], path.join(work, "stt.json"));
 
     const takes = [
       { name: "spoken", rate: 1, audio: spoken, stt: report.takes[0] },
