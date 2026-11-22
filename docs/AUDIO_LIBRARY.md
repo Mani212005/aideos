@@ -95,6 +95,14 @@ Beds within 0.25 of the best cost are a tie, and the film's seed (film ID, forma
 
 `aideos audio profile` measures every cached music item with ffmpeg (two passes, 0.5 s windows) and `--write` stores `profile` on its manifest item; run it after adding a music item to the manifest. The profile is part of the committed manifest, so the choice stays deterministic and needs no audio at selection time.
 
+### Labelling `instrumental`
+
+Set `instrumental` on a music item only from proof, never from a guess. Accepted proof is the source's own statement, such as the "Instrumental" tag on the track's Mixkit page, or an owner listen. A spectral or speech-band measurement is not proof: on 2026-11-22 the voiced-band share, the pitched-frame fraction and the 2 to 8 Hz envelope modulation of the speech band were measured on all 12 library beds and on Mixkit's one "Vocals" tagged track (`mk-527`), and the vocal track fell inside the range of the library beds on every feature, so none of them can tell a voice from a synth lead. Mixkit tags almost no track either way (its "Instrumental" tag has 9 tracks and its "Vocals" tag has 1), so a missing "Vocals" tag proves nothing.
+
+Only `false` changes the choice (it costs 50), and an unlabelled bed already counts as instrumental, so a `true` changes nothing that plays: it records a proven fact. Leave the field out when a bed is not proven, and set `false` as soon as the owner hears a voice in it.
+
+Labelled `true` from the source tag: `mk-615` (Tapis). Not yet labelled, waiting for the owner to listen: `mk-556`, `mk-554`, `mk-184`, `mk-570`, `mk-107`, `mk-634`, `mk-1023`, `mk-543`, `mk-1167`, `mk-175`, `mk-148`. Remove an id from this list when it gets a label.
+
 ### Mixing and speech pauses
 
 The section mixer uses each manifest item's integrated loudness to set the gain toward `targetLufs`, which defaults to -16 LUFS. It then applies the section volume and a mono-to-stereo correction where needed. It does not analyze the music file during playback.
