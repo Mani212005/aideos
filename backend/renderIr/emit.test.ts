@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the Render IR emitter through its public interface: the emitted document validates and spans the delivered video; every element track reproduces the scene compiler's state at every frame, holding the story's last frame through the end card; the end card's slow push scales the stage and the text cards together; text cards appear with their shots and keep the last one under the end card; headline words enter in order, wrap inside the stage and the accent word's underline draws from the left; a counter shows each value once and lands on its target; the narration follows the soundtrack's head and tail ramps; a music section that starts after frame 0 keys its envelope in film frames; and a film the native renderer cannot draw is refused with every reason.
+ * File Description: Behavioural tests of the Render IR emitter through its public interface: the emitted document validates and spans the delivered video; every element track reproduces the scene compiler's state at every frame, holding the story's last frame through the end card; the end card's slow push scales the stage and the text cards together; text cards appear with their shots and keep the last one under the end card; headline words enter in order, wrap inside the stage and the accent word's underline draws from the left; a counter shows each value once and lands on its target; the narration follows the soundtrack's head and tail ramps; a music section that starts after frame 0 keys its envelope in film frames; a library effect's envelope ducks under the measured speech; and a film the native renderer cannot draw is refused with every reason.
  * Inputs and outputs: the synthetic scene film in backend/testSupport/nativeSceneFilm.ts and a fake measurer -> asserted IR values.
  * Used by: npm test (Node test runner).
  */
@@ -12,7 +12,7 @@ import type { Scene } from "../../src/dl/scene/types";
 import { buildTimeline } from "../../src/dl/camera";
 import { voiceLevel } from "../../src/dl/Soundtrack";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
-import { dbGain, mixSections, sectionEnvelope, speechGain } from "../../src/dl/audio/sectionMixer";
+import { dbGain, effectDuckGain, effectGain, mixSections, sectionEnvelope, speechGain } from "../../src/dl/audio/sectionMixer";
 import { normalizeFilmSoundtrack } from "../../src/dl/schema";
 import { quantize } from "../../src/dl/scene/svgAnimation";
 import { emitRenderIr, nativeSupport, sampleTrack, NativeUnsupportedError, type NativeFormat } from "./emit";
@@ -220,6 +220,38 @@ test("a music section that starts after frame 0 keys its gain envelope in film f
     const expected = late.gain * sectionEnvelope(late, f - late.from) *
       (late.duck ? speechGain(f / film.fps, voice, soundtrack.mix, story / film.fps) : dbGain(soundtrack.mix.musicOnlyGainDb));
     assert.ok(Math.abs(sampleTrack(clip.gainEnvelope, f) - Math.min(4, expected)) < 1e-9, `film frame ${f}`);
+  }
+});
+
+test("a library effect's gain envelope ducks under the measured speech, as the Remotion mixer plays it", () => {
+  const film = nativeSceneFilm({
+    soundtrack: {
+      sections: [{ item: "mk-556", from: 0, to: 6 }, { item: "mk-615", from: 6, to: 12.5 }],
+      speech: [{ startSec: 1, endSec: 4 }, { startSec: 7, endSec: 10 }],
+      // One cut inside a phrase that runs into the gap, one in the gap that runs into the next phrase.
+      sfx: [{ item: "sweep-tech", timeSec: 3, gainDb: 0, event: "chapter-cut" }, { item: "sweep-tech", timeSec: 5, gainDb: 0, event: "chapter-cut" }],
+    },
+  });
+  const ir = emit(film);
+  const soundtrack = normalizeFilmSoundtrack(film);
+  const story = deliveryTimeline(film, "long").storyFrames;
+  const voice = buildVoiceTimeline(soundtrack.speech.map((i) => ({ startSec: i.startSec, endSec: Math.min(i.endSec, story / film.fps) })));
+  const g = effectGain(soundtrack.sfx[0], soundtrack.mix, (soundtrack.narrationPeakDb ?? -1) + 20 * Math.log10(film.voiceover?.volume ?? 1));
+  const at = (id: string, sec: number) => {
+    const clip = ir.audio.find((c) => c.id === id);
+    assert.ok(clip, id);
+    return sampleTrack(clip.gainEnvelope, Math.round(sec * film.fps));
+  };
+  const ducked = g * dbGain(soundtrack.mix.duckDb);
+  assert.ok(Math.abs(at("sfx-0", 3.5) - ducked) < 1e-9, "an effect inside a phrase sits at the speech duck");
+  assert.ok(Math.abs(at("sfx-0", 5) - g) < 1e-9 && Math.abs(at("sfx-1", 6) - g) < 1e-9, "in a gap the effect keeps its capped level");
+  assert.ok(Math.abs(at("sfx-1", 7.2) - ducked) < 1e-9, "the next line ducks the effect that started in the gap");
+  for (const id of ["sfx-0", "sfx-1"]) {
+    const clip = ir.audio.find((c) => c.id === id)!;
+    for (let f = clip.startFrame; f < clip.startFrame + clip.durationFrames; f++) {
+      const expected = Math.min(4, g * effectDuckGain(f / film.fps, voice, soundtrack.mix));
+      assert.ok(Math.abs(sampleTrack(clip.gainEnvelope, f) - expected) < 1e-9, `${id} film frame ${f}`);
+    }
   }
 });
 

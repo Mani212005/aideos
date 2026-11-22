@@ -352,7 +352,7 @@ differ per format.
 | The end card | `endCard` with the `getEndCardLayout` geometry, the configured copy, `subscribePressFrame`, and the theme's surface, hairline, muted colour and faces |
 | Burned-in kinetic captions (`KineticSubtitles`) | a `captions` node: the film's caption words plus the end card's spoken line, white text, the accent as the highlight, the component's `rgba(10, 15, 29, 0.88)` card (quantized to 8-bit alpha), Geist 600 (the component asks for 700, but `tokens.ts` loads Geist at 300 to 600 only, so Chrome draws the 600 face and the emitter matches the render), `round(min(width, height) * 0.042)` px, and one placement span per shot where the resolved `captionPlacement` changes (read at a phrase's first word, as `captionPlacementAt` does). Words starting after the delivered length are dropped and a word's end is capped at it |
 | The frame's 1 px hairline | a stroked `rect` |
-| Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` |
+| Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` with `effectDuckGain` (effects duck under the same speech) |
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film, an actor scene, sub-group

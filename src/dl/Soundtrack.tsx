@@ -1,5 +1,5 @@
 /**
- * File Description: Shared soundtrack component mixing multi-clip audio tracks, background music with sidechain ducking, narration spine, end card voice, and sound effects.
+ * File Description: Shared soundtrack component mixing multi-clip audio tracks, background music and library effects with sidechain ducking, narration spine, end card voice, and sound effects.
  * Inputs and outputs: Film and timeline props -> rendered Remotion audio elements and sequences.
  * Used by: src/dl/Video.tsx (render), src/dl/Film.tsx (preview) and src/dl/reviewAudio.tsx (review stems).
  */
@@ -14,7 +14,7 @@ import { getRetimedAudioRelPath } from "./audio/retime";
 import { normalizeFilmSoundtrack, type Film } from "./schema";
 import { totalFrames, type TimedShot } from "./camera";
 import {
-  dbGain, effectGain, isLibrarySource, mixSections, sectionEnvelope, speechGain, usesSectionMixer,
+  dbGain, effectDuckGain, effectGain, isLibrarySource, mixSections, sectionEnvelope, speechGain, usesSectionMixer,
   soundtrackItem, soundtrackItemSrc,
 } from "./audio/sectionMixer";
 
@@ -232,7 +232,7 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
       {/* 3. The end card's spoken line, at the narration's own level */}
       {stem !== "music" && card ? <EndCardVoice film={film} card={card} volume={effectiveVoiceoverVolume} /> : null}
 
-      {/* 4. Transition Sound Effects (SFX) Track */}
+      {/* 4. Transition Sound Effects (SFX) Track; library effects duck under measured speech like the music */}
       {!stem && soundtrack.sfx.length > 0
         ? soundtrack.sfx.map((sfx, idx) => {
             const startFrame = Math.round(sfx.timeSec * effectiveFps);
@@ -244,9 +244,9 @@ export const Soundtrack: React.FC<SoundtrackProps> = ({
             return (
               <Sequence key={`sfx-${idx}-${sfxSrc}`} from={startFrame} durationInFrames={durationInFrames}>
                 <Audio src={staticFile(sfxSrc)} useWebAudioApi={mixedEffect} allowAmplificationDuringRender={mixedEffect}
-                  volume={() => mixedEffect ? effectGain(sfx, soundtrack.mix,
+                  volume={(f) => mixedEffect ? effectGain(sfx, soundtrack.mix,
                     (soundtrack.narrationPeakDb ?? -1) + 20 * Math.log10(effectiveVoiceoverVolume || 1e-10),
-                  ) : sfx.volume ?? 1} />
+                  ) * effectDuckGain((startFrame + f) / effectiveFps, measuredVoice, soundtrack.mix) : sfx.volume ?? 1} />
               </Sequence>
             );
           })
