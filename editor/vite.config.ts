@@ -1752,7 +1752,9 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
               const updatedFilm = convertLayeredFilmToFilm(appliedResult.film, film);
               try {
-                assertLayeredAssetsExist(appliedResult.film, { baseDir: PUBLIC_DIR, knownSources: layeredMediaSources(layered) });
+                const onDisk = readFilm(updatedFilm.id);
+                const knownSources = onDisk ? layeredMediaSources(convertFilmToLayeredFilm(onDisk)) : new Set<string>();
+                assertLayeredAssetsExist(appliedResult.film, { baseDir: PUBLIC_DIR, knownSources });
               } catch (assetError) {
                 sendJson(res, 422, {
                   ok: false,
