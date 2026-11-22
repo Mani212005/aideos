@@ -637,7 +637,9 @@ export async function reviewVideo(
         if (facts?.reelLength) {
           normalizedCriteria.push({ name: "reel_length", title: "Reel delivered length", isGate: true,
             score: facts.reelLength.passed ? 10 : 0, passed: facts.reelLength.passed,
-            evidenceTimestamps: [`${Math.floor(facts.durationSec / 60)}:${String(Math.floor(facts.durationSec % 60)).padStart(2, "0")}`],
+            evidenceTimestamps: facts.durationMeasured === false
+              ? ["0:00"]
+              : [`${Math.floor(facts.durationSec / 60)}:${String(Math.floor(facts.durationSec % 60)).padStart(2, "0")}`],
             reason: facts.reelLength.summary });
         }
 

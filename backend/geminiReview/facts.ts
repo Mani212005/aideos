@@ -487,10 +487,13 @@ export async function extractDeterministicFacts(
     const reelPath = path.join(path.dirname(filmPath), "reel/film.json");
     if (fs.existsSync(reelPath)) filmPath = reelPath;
   }
+  const reelPassed = durationMeasured && durationSec <= DELIVERY_CONFIG.reel.maxSec;
   const reelLength = viewport && viewport.width < viewport.height ? {
     capSec: DELIVERY_CONFIG.reel.maxSec,
-    passed: durationSec <= DELIVERY_CONFIG.reel.maxSec,
-    summary: `Reel delivered duration ${durationSec.toFixed(3)} s, including the end card, ${durationSec <= DELIVERY_CONFIG.reel.maxSec ? "passes" : "exceeds"} the ${DELIVERY_CONFIG.reel.maxSec} s hard cap.`,
+    passed: reelPassed,
+    summary: durationMeasured
+      ? `Reel delivered duration ${durationSec.toFixed(3)} s, including the end card, ${reelPassed ? "passes" : "exceeds"} the ${DELIVERY_CONFIG.reel.maxSec} s hard cap.`
+      : `Reel delivered duration NOT measured (${metadata.error ?? "ffprobe reported no duration"}), so the ${DELIVERY_CONFIG.reel.maxSec} s hard cap cannot be verified.`,
   } : undefined;
   let filmFacts: FilmFacts | null = null;
   let captionRectAt: ((t: number) => CaptionRect | undefined) | null | undefined = undefined;
