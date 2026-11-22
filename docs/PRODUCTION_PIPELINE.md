@@ -335,7 +335,8 @@ fingerprints and `narration.json` carry the real shapes, and returns a quiet ton
 speech. A test never reaches a real service and never commits voice audio.
 
 To make the voice sound less robotic, a line can be spoken as several takes and a selector can keep the most natural one
-(`takeSelector` on `ProduceAudioOptions`, cached under a key that carries the selector); the blind A/B listening test the
+(`takeSelector` on `ProduceAudioOptions`, cached under a key that carries the selector; a backend without
+`synthesizeTake` makes one take per line); the blind A/B listening test the
 owner judges a voice with is defined there too. See [Natural narration](NATURAL_NARRATION.md).
 
 The design check (rule `voice-of-choice`) fails when a package's `narration.json` records any narrator other
