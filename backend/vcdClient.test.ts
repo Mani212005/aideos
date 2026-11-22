@@ -20,7 +20,9 @@ import type { AddressInfo } from "node:net";
 import {
   assertLoopbackVcdUrl,
   detectVcdLanguage,
+  DEFAULT_VCD_LINE_TIMEOUT_MS,
   listVcdVoices,
+  resolveVcdLineTimeoutMs,
   resolveVcdVoiceId,
   synthesizeWithVcd,
   VcdUnavailableError,
@@ -527,6 +529,87 @@ test("an audio download whose body stalls is cut off by the budget (real loopbac
 
   await assert.rejects(
     () => synthesizeWithVcd({ text: "Stalled body.", url: `http://127.0.0.1:${port}`, voiceId: "voice_x", timeoutMs: 400, pollIntervalMs: 10 }),
+    (err: unknown) => err instanceof VcdUnavailableError && err.code === "timeout",
+  );
+});
+
+// Per-line limit: AIDEOS_VCD_LINE_TIMEOUT_SECONDS raises or lowers the default 5 minute budget.
+
+/** Starts a fake loopback voice service whose job reports "running" until `finishAfterMs` has passed, then serves a short tone. */
+async function startSlowVcd(t: import("node:test").TestContext, finishAfterMs: number): Promise<{ url: string; requests: string[] }> {
+  const requests: string[] = [];
+  const startedAt = new Map<string, number>();
+  const wav = toneWav();
+  const server = http.createServer((req, res) => {
+    requests.push(`${req.method} ${req.url}`);
+    if (req.url === "/v1/jobs" && req.method === "POST") {
+      startedAt.set("job_1", Date.now());
+      res.writeHead(202, { "Content-Type": "application/json" }).end(JSON.stringify({ id: "job_1" }));
+    } else if (req.url === "/v1/jobs/job_1") {
+      const done = Date.now() - (startedAt.get("job_1") ?? Date.now()) >= finishAfterMs;
+      res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(done ? { state: "succeeded", audio_seconds: 0.6 } : { state: "running" }));
+    } else if (req.url === "/v1/jobs/job_1/audio") {
+      res.writeHead(200, { "Content-Type": "audio/wav" }).end(wav);
+    } else {
+      res.writeHead(404).end();
+    }
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise<void>((resolve) => server.close(() => resolve())));
+  return { url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, requests };
+}
+
+test("the per-line limit defaults to 5 minutes when AIDEOS_VCD_LINE_TIMEOUT_SECONDS is unset or blank", () => {
+  assert.equal(DEFAULT_VCD_LINE_TIMEOUT_MS, 300_000);
+  assert.equal(resolveVcdLineTimeoutMs({}), 300_000);
+  assert.equal(resolveVcdLineTimeoutMs({ AIDEOS_VCD_LINE_TIMEOUT_SECONDS: "  " }), 300_000);
+});
+
+test("the per-line limit reads whole and fractional seconds from AIDEOS_VCD_LINE_TIMEOUT_SECONDS", () => {
+  assert.equal(resolveVcdLineTimeoutMs({ AIDEOS_VCD_LINE_TIMEOUT_SECONDS: "900" }), 900_000);
+  assert.equal(resolveVcdLineTimeoutMs({ AIDEOS_VCD_LINE_TIMEOUT_SECONDS: " 0.5 " }), 500);
+});
+
+test("an invalid per-line limit is reported by name, never ignored, and submits nothing", async (t) => {
+  const { url, requests } = await startSlowVcd(t, 0);
+  for (const bad of ["abc", "0", "-5", "1e3", "NaN", "Infinity", "90000", "5 minutes"]) {
+    await assert.rejects(
+      () => synthesizeWithVcd({ text: "Bad limit.", url, voiceId: "voice_x" }, { env: { AIDEOS_VCD_LINE_TIMEOUT_SECONDS: bad } }),
+      (err: unknown) => {
+        assert.ok(err instanceof VcdUnavailableError, bad);
+        assert.equal(err.code, "invalid_config", bad);
+        assert.match(err.message, /AIDEOS_VCD_LINE_TIMEOUT_SECONDS/, bad);
+        return true;
+      },
+      `value ${JSON.stringify(bad)}`,
+    );
+  }
+  assert.deepEqual(requests, [], "a bad limit must fail before any request reaches the voice service");
+});
+
+test("a slow line fails under a short limit and succeeds once the limit is raised (real loopback server)", async (t) => {
+  const slow = await startSlowVcd(t, 700);
+  const env = (seconds: string) => ({ env: { AIDEOS_VCD_LINE_TIMEOUT_SECONDS: seconds } });
+
+  await assert.rejects(
+    () => synthesizeWithVcd({ text: "Slow line.", url: slow.url, voiceId: "voice_x", pollIntervalMs: 20 }, env("0.3")),
+    (err: unknown) => err instanceof VcdUnavailableError && err.code === "timeout" && /AIDEOS_VCD_LINE_TIMEOUT_SECONDS/.test(err.message),
+  );
+
+  const fresh = await startSlowVcd(t, 700);
+  const result = await synthesizeWithVcd({ text: "Slow line.", url: fresh.url, voiceId: "voice_x", pollIntervalMs: 20 }, env("20"));
+  assert.equal(result.jobId, "job_1");
+  assert.ok(result.wav.length > 44);
+});
+
+test("an explicit timeoutMs still wins over AIDEOS_VCD_LINE_TIMEOUT_SECONDS", async (t) => {
+  const slow = await startSlowVcd(t, 700);
+  await assert.rejects(
+    () =>
+      synthesizeWithVcd(
+        { text: "Slow line.", url: slow.url, voiceId: "voice_x", pollIntervalMs: 20, timeoutMs: 300 },
+        { env: { AIDEOS_VCD_LINE_TIMEOUT_SECONDS: "20" } },
+      ),
     (err: unknown) => err instanceof VcdUnavailableError && err.code === "timeout",
   );
 });

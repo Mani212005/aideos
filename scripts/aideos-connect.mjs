@@ -278,9 +278,9 @@ async function handleTask(task, conn, url) {
 
 // Updates or validates a saved connection when reconnecting without a pairing code.
 export function updateConnection(conn, args) {
-  if (!conn) throw new Error(`no saved connection for ${args.url}; run with the pairing code shown by Connect agent in the studio`);
+  if (!conn) throw new Error(`no saved connection for ${args.url}; run with the pairing code shown by the Agent button in the studio`);
   if (args.agent && args.agent !== conn.agent) {
-    throw new Error(`this URL is paired as ${conn.agent}; to switch agents, pair again with a fresh code from Connect agent in the studio`);
+    throw new Error(`this URL is paired as ${conn.agent}; to switch agents, pair again with a fresh code from the Agent button in the studio`);
   }
   if (args.model) return { ...conn, model: args.model };
   return conn;
@@ -352,10 +352,10 @@ async function main() {
         const t = new Date(by.at);
         if (!Number.isNaN(t.getTime())) when = `, paired ${t.toLocaleString()}`;
       }
-      if (by) throw new Error(`this connection was replaced by ${by.agentLabel ?? by.agent} (${by.machine}${when}); that agent now gets the work - to switch back, pair again from Connect agent in the studio`);
-      if (reason === "disconnected") throw new Error("you disconnected this agent in the studio. To link again, use Connect agent in the studio.");
-      if (reason === "tab-closed") throw new Error("the studio tab was closed, so the link ended. Open the studio and use Connect agent to link again.");
-      throw new Error(res.json?.error ?? "the studio no longer recognises this connection; pair again from Connect agent");
+      if (by) throw new Error(`this connection was replaced by ${by.agentLabel ?? by.agent} (${by.machine}${when}); that agent now gets the work - to switch back, pair again from the Agent button in the studio`);
+      if (reason === "disconnected") throw new Error("you disconnected this agent in the studio. To link again, use the Agent button in the studio.");
+      if (reason === "tab-closed") throw new Error("the studio tab was closed, so the link ended. Open the studio and use the Agent button to link again.");
+      throw new Error(res.json?.error ?? "the studio no longer recognises this connection; pair again from the Agent button in the studio");
     }
     if (res.status === 200 && res.json?.id) await handleTask(res.json, conn, url);
     else if (res.status !== 204) {

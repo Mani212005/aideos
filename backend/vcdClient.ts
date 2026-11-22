@@ -4,7 +4,8 @@
  * jobs for English or Hindi/Hinglish text, polls until completion, and fetches the resulting 24 kHz
  * mono WAV. Network calls, polling waits and the clock are injectable so unit tests never touch the
  * network. One deadline (timeoutMs) bounds a whole synthesis: voice discovery, every submit retry and
- * its wait, polling and the audio download.
+ * its wait, polling and the audio download. A line's deadline defaults to 5 minutes and can be raised
+ * with AIDEOS_VCD_LINE_TIMEOUT_SECONDS (a bad value is reported, never ignored).
  * Inputs and outputs: loopback URL, enrolled voice id, language and text -> WAV audio buffer and provenance, or a plain-language VcdUnavailableError.
  * Used by: backend/tts.ts, backend/voiceSynthesis.ts, backend/aideosConfig.ts, editor/vite.config.ts.
  */
@@ -13,6 +14,15 @@ import { fetchWithin, HttpDeadlineError, readWithin, startDeadline, type Deadlin
 
 /** Default loopback URL where the local vcd voice-clone service listens. */
 export const DEFAULT_VCD_URL = "http://127.0.0.1:8740";
+
+/** Environment variable that sets the per-line synthesis limit in seconds. */
+export const VCD_LINE_TIMEOUT_ENV = "AIDEOS_VCD_LINE_TIMEOUT_SECONDS";
+
+/** Per-line synthesis limit used when VCD_LINE_TIMEOUT_ENV is unset: 5 minutes. */
+export const DEFAULT_VCD_LINE_TIMEOUT_MS = 5 * 60_000;
+
+/** Largest accepted per-line limit (24 hours), so a typo cannot turn the limit off in practice. */
+const MAX_VCD_LINE_TIMEOUT_SECONDS = 24 * 60 * 60;
 
 /** Studio voice key for the owner's cloned voice (auto-detects Devanagari Hindi, defaults to English). */
 export const VCD_DEFAULT_VOICE_KEY = "vcd-my-voice";
@@ -51,6 +61,8 @@ export interface VcdHttpDeps {
   sleep?: (ms: number) => Promise<void>;
   /** Clock behind the operation deadline; defaults to Date.now. */
   now?: NowFn;
+  /** Environment read for VCD_LINE_TIMEOUT_ENV; defaults to process.env. */
+  env?: NodeJS.ProcessEnv;
 }
 
 /** Successful synthesis output from vcd. */
@@ -66,6 +78,7 @@ export interface VcdSynthesisResult {
 /** Machine-readable reason why the local vcd service could not synthesize audio. */
 export type VcdErrorCode =
   | "invalid_url"
+  | "invalid_config"
   | "unreachable"
   | "no_voice_enrolled"
   | "voice_not_found"
@@ -90,7 +103,6 @@ export class VcdUnavailableError extends Error {
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const DEVANAGARI_RE = /[\u0900-\u097F]/;
 const DEFAULT_POLL_MS = 250;
-const DEFAULT_TIMEOUT_MS = 5 * 60_000;
 const MAX_QUEUE_RETRIES = 6;
 /** Names (lowercase) that identify the owner's own enrolled voice when no voice id is configured. */
 export const VCD_OWNER_VOICE_NAMES: readonly string[] = ["my-voice", "me"];
@@ -98,7 +110,23 @@ export const VCD_OWNER_VOICE_NAMES: readonly string[] = ["my-voice", "me"];
 const SHORT_REQUEST_TIMEOUT_MS = 5_000;
 /** Per-request cap for submit, poll and audio download; the operation deadline can only make it shorter. */
 const LONG_REQUEST_TIMEOUT_MS = 60_000;
+const LINE_TIMEOUT_HINT = ` On a busy machine raise ${VCD_LINE_TIMEOUT_ENV} (seconds, default ${DEFAULT_VCD_LINE_TIMEOUT_MS / 1000}).`;
 const VCD_START_HINT = "Start the local voice service with `vcd serve` on 127.0.0.1:8740 (or open an SSH tunnel to the Linux voice service on that port). My voice is the voice of choice; do not switch to another voice without the captain's word.";
+
+// Resolves the per-line synthesis limit in ms from AIDEOS_VCD_LINE_TIMEOUT_SECONDS: unset or blank means the 5 minute default, a bad value throws.
+export function resolveVcdLineTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env[VCD_LINE_TIMEOUT_ENV]?.trim();
+  if (!raw) return DEFAULT_VCD_LINE_TIMEOUT_MS;
+  const seconds = /^\d+(\.\d+)?$/.test(raw) ? Number(raw) : NaN;
+  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_VCD_LINE_TIMEOUT_SECONDS) {
+    throw new VcdUnavailableError(
+      "invalid_config",
+      DEFAULT_VCD_URL,
+      `${VCD_LINE_TIMEOUT_ENV}="${raw}" is not a valid per-line limit. Use a number of seconds above 0 and up to ${MAX_VCD_LINE_TIMEOUT_SECONDS} (default ${DEFAULT_VCD_LINE_TIMEOUT_MS / 1000}).`,
+    );
+  }
+  return Math.round(seconds * 1000);
+}
 
 // Waits for the given number of milliseconds.
 function defaultSleep(ms: number): Promise<void> {
@@ -213,7 +241,7 @@ function toVcdError(err: unknown, baseUrl: string): VcdUnavailableError {
     return new VcdUnavailableError(
       "timeout",
       baseUrl,
-      `Local voice service at ${baseUrl} did not respond within ${Math.round(err.limitMs / 1000)} s.`,
+      `Local voice service at ${baseUrl} did not respond within ${Math.round(err.limitMs / 1000)} s.${LINE_TIMEOUT_HINT}`,
     );
   }
   return unreachableError(baseUrl, err instanceof Error ? err.message : String(err));
@@ -377,7 +405,7 @@ export async function synthesizeWithVcd(
   const fetchImpl = deps.fetch ?? fetch;
   const sleep = deps.sleep ?? defaultSleep;
   const pollIntervalMs = req.pollIntervalMs ?? DEFAULT_POLL_MS;
-  const deadline = startDeadline(req.timeoutMs ?? DEFAULT_TIMEOUT_MS, deps.now);
+  const deadline = startDeadline(req.timeoutMs ?? resolveVcdLineTimeoutMs(deps.env), deps.now);
 
   const trimmedText = req.text.trim();
   if (!trimmedText) {
@@ -529,6 +557,6 @@ function jobTimeout(baseUrl: string, jobId: string): VcdUnavailableError {
   return new VcdUnavailableError(
     "timeout",
     baseUrl,
-    `Local voice service at ${baseUrl} timed out while synthesizing job ${jobId}.`,
+    `Local voice service at ${baseUrl} timed out while synthesizing job ${jobId}.${LINE_TIMEOUT_HINT}`,
   );
 }
