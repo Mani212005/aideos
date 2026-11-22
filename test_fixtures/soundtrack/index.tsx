@@ -1,7 +1,7 @@
 /**
  * File Description: Audio-only Remotion entry point for the captain-approved D6 soundtrack golden.
  * Inputs and outputs: Film and format props -> the same Soundtrack component used by studio and delivery.
- * Used by: backend/soundtrack.golden.test.ts.
+ * Used by: backend/soundtrack.golden.test.ts and backend/soundtrackEffectDuck.test.ts.
  */
 import React from "react";
 import { Composition, registerRoot } from "remotion";

@@ -126,7 +126,13 @@ export function writeLine(pkgDir: string, fingerprint: string, voiceKey: string,
   write(`${fingerprint}.json`, JSON.stringify(meta));
 }
 
-/** Deletes this voice's recordings that no current line uses, so edited-away lines do not pile up on disk. */
+/**
+ * Deletes this voice's recordings that no current line uses, so edited-away lines and re-paced leftovers do not pile up on disk.
+ * "This voice" means the same voice whatever stretch rate it was recorded at (unpacedVoiceKey equality), so switching the
+ * stretch rate retires the recordings made at the other rate, including the plain-key ones made before stretching existed.
+ * The cost: flipping back and forth between rates re-records the lines each time. Another voice, or the same voice under
+ * another take selection, has another unpaced key and is never touched.
+ */
 function pruneUnused(pkgDir: string, voiceKey: string, keep: Set<string>): void {
   const dir = voiceLinesDir(pkgDir);
   let names: string[];
@@ -135,13 +141,14 @@ function pruneUnused(pkgDir: string, voiceKey: string, keep: Set<string>): void 
   } catch {
     return;
   }
+  const voice = unpacedVoiceKey(voiceKey);
   for (const name of names) {
     if (!name.endsWith(".json")) continue;
     const fingerprint = name.slice(0, -".json".length);
     if (keep.has(fingerprint)) continue;
     try {
-      const meta = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8")) as { voiceKey?: string };
-      if (meta.voiceKey !== voiceKey) continue;
+      const meta = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8")) as { voiceKey?: unknown };
+      if (typeof meta.voiceKey !== "string" || unpacedVoiceKey(meta.voiceKey) !== voice) continue;
     } catch {
       // an unreadable entry is garbage too
     }
