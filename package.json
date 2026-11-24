@@ -64,6 +64,7 @@
     "eval:look": "tsx backend/eval/lookEval.ts",
     "review": "tsx backend/cli.ts review",
     "calibrate:review": "tsx scripts/calibrate_review.ts",
+    "intelligibility": "tsx scripts/intelligibility/round_trip.ts",
     "validate:film": "tsx scripts/validate_film.ts",
     "test": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 \"backend/**/*.test.ts\" \"scripts/**/*.test.ts\"",
     "test:journeys": "node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 --test-reporter=tap \"backend/journeys/**/*.journey.ts\"",

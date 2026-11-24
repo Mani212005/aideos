@@ -1,4 +1,4 @@
-# File Description: Minimal ruff configuration for the repository's Python files (backend/sceneKit/whisperWords.py and backend/testSupport/ptyLauncher.py).
+# File Description: Minimal ruff configuration for the repository's Python files (under backend/ and scripts/).
 # Inputs and outputs: Python sources -> ruff lint and format verdicts.
 # Used by: npm run ci (static job), .github/workflows/ci.yml.
 
