@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { EditOp } from "./schema";
+import { errorMessage, isFileNotFound } from "../fsErrors";
 
 /** A single provenance record written to the edit log. */
 export interface EditProvenanceRecord {
@@ -64,27 +65,30 @@ export function appendEditProvenanceRecord(
 
 /**
  * Reads all provenance records for a film, newest first.
- * Returns an empty array if the log file does not exist.
+ * Returns an empty array if the log file does not exist. A line that is not valid JSON is skipped
+ * with a warning that counts the skipped lines; any other read failure is thrown to the caller.
  */
 export function readEditProvenanceLog(
   videosDir: string,
   filmId: string,
 ): EditProvenanceRecord[] {
   const logPath = path.join(videosDir, filmId, "edit_log.jsonl");
-  if (!fs.existsSync(logPath)) return [];
+  let text: string;
   try {
-    const lines = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
-    return lines
-      .map((line) => {
-        try {
-          return JSON.parse(line) as EditProvenanceRecord;
-        } catch {
-          return null;
-        }
-      })
-      .filter((r): r is EditProvenanceRecord => r !== null)
-      .reverse(); // newest first
-  } catch {
-    return [];
+    text = fs.readFileSync(logPath, "utf8");
+  } catch (err) {
+    if (isFileNotFound(err)) return [];
+    throw new Error(`Could not read the edit log ${logPath}: ${errorMessage(err)}`);
   }
+  const records: EditProvenanceRecord[] = [];
+  let skipped = 0;
+  for (const line of text.trim().split("\n").filter(Boolean)) {
+    try {
+      records.push(JSON.parse(line) as EditProvenanceRecord);
+    } catch {
+      skipped++;
+    }
+  }
+  if (skipped > 0) console.warn(`[provenance] Skipped ${skipped} unreadable line(s) in ${logPath}`);
+  return records.reverse(); // newest first
 }

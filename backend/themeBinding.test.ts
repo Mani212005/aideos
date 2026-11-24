@@ -1,5 +1,5 @@
 /**
- * File Description: Tests that the theme and accent chosen in the New project dialog are binding.
+ * File Description: Tests that the theme and accent a user chose for a project (the Look lens accent pick, and the old New project dialog) are binding.
  * Captain's decision: the chosen accent is written into the agent task prompt and the project
  * context, enforced by a design check that fails on any other accent, and no stage falls back to
  * purple on its own. Only a project the user chose a theme for (`theme.accentChosen: true`) is bound;

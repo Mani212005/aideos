@@ -513,7 +513,7 @@ function sendEnded(res: ServerResponse, link: { replacementNote(t?: string): any
         ? 'you disconnected this agent in the studio'
         : reason === 'tab-closed'
           ? 'the studio tab was closed, so the link ended; open the studio and connect again'
-          : 'this connection is not recognised by the studio; connect again from Connect agent';
+          : 'this connection is not recognised by the studio; connect again from the Agent button in the studio';
   sendJson(res, 401, { error, reason, ...(replacedBy ? { replacedBy } : {}) });
 }
 
@@ -559,7 +559,7 @@ async function handleAgentLink(req: IncomingMessage, res: ServerResponse, url: s
     const body = (await readBody(req)) as { code?: string; agent?: string; machine?: string };
     if (!LINK_AGENTS.includes(body?.agent as never)) return sendJson(res, 400, { error: `agent must be one of ${LINK_AGENTS.join(', ')}` });
     const claimed = link.claim(String(body.code ?? ''), body.agent as (typeof LINK_AGENTS)[number], String(body.machine ?? ''));
-    if (!claimed) return sendJson(res, 404, { error: 'that pairing code is wrong or has expired; make a new one with Connect agent in the studio' });
+    if (!claimed) return sendJson(res, 404, { error: 'that pairing code is wrong or has expired; make a new one with the Agent button in the studio' });
     return sendJson(res, 200, claimed);
   }
   if (url === '/api/agent-link/next' && req.method === 'GET') {
