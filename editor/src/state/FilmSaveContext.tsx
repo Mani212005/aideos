@@ -7,10 +7,13 @@
 
 import { createContext, useContext } from "react";
 import type { Film } from "../../../src/dl/schema";
-import type { SaveOutcome } from "./useFilmProject";
+import type { SaveFilmOptions, SaveOutcome } from "./useFilmProject";
 
-/** Commit a film as one labelled undo step (unless it is already open) and save it; resolves with the outcome. */
-export type SaveFilm = (next: Film, label: string) => Promise<SaveOutcome>;
+/**
+ * Commit a film as one labelled undo step (unless it is already open) and save it; resolves with the outcome.
+ * With `savedAs`, a server route already wrote that film at that revision, so it is not saved again.
+ */
+export type SaveFilm = (next: Film, label: string, options?: SaveFilmOptions) => Promise<SaveOutcome>;
 
 export const FilmSaveContext = createContext<SaveFilm | null>(null);
 

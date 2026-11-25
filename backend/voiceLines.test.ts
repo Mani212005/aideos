@@ -14,7 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { lineFingerprint, pacedVoiceKey, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
+import { lineFingerprint, narratingVoiceKey, pacedVoiceKey, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
 import { produceAudioPipeline } from "./audio";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
 import { vcdVoiceCacheKey } from "./vcdClient";
@@ -211,4 +211,40 @@ test("produceAudioPipeline records only changed lines on a second run and still 
   } finally {
     fs.rmSync(pkg, { recursive: true, force: true });
   }
+});
+
+test("a line another voice spoke is stored under that voice, so the requested voice records it again next time", async () => {
+  const pkg = scratch();
+  try {
+    const requested = "kokoro-am_adam|speed=1|chars=300";
+    const texts = ["First line.", "Second line."];
+    // The requested voice fails on the second line and a fallback voice speaks it (the studio's provider chain).
+    const fallback = async (text: string) => {
+      const audio: LineAudio = { sampleRate: 24000, chunks: [{ text, samples: new Float32Array(2400).fill(0.1) }] };
+      return text === "Second line." ? { audio, voiceKey: "aura-helios-en" } : { audio, voiceKey: requested };
+    };
+    const first = await synthesizeLines({ pkgDir: pkg, texts, voiceKey: requested, synthesize: fallback });
+    assert.deepEqual(first.lines.map((line) => line.voiceKey), [requested, "aura-helios-en"]);
+    assert.deepEqual(recordedStatus(pkg, texts, requested), [true, false], "the fallback take is not filed as the requested voice");
+    assert.deepEqual(recordedStatus(pkg, ["Second line."], "aura-helios-en"), [true], "it is filed as the voice that spoke it");
+
+    const spoken: string[] = [];
+    const second = await synthesizeLines({ pkgDir: pkg, texts, voiceKey: requested, synthesize: countingSynth(spoken) });
+    assert.deepEqual(spoken, ["Second line."], "only the line the requested voice never spoke is recorded again");
+    assert.equal(second.reused, 1);
+    assert.deepEqual(recordedStatus(pkg, texts, requested), [true, true]);
+  } finally {
+    fs.rmSync(pkg, { recursive: true, force: true });
+  }
+});
+
+test("narratingVoiceKey names the one voice that spoke, and a deterministic voice when several did", () => {
+  const requested = "kokoro-am_adam|speed=1|chars=300";
+  const line = (voiceKey: string) => ({ voiceKey });
+  assert.equal(narratingVoiceKey([line(pacedVoiceKey(requested, 1.2)), line(pacedVoiceKey(requested, 1.2))], requested), requested, "one voice for every line");
+  assert.equal(narratingVoiceKey([line("aura-helios-en"), line("aura-helios-en")], requested), "aura-helios-en", "the fallback voice when it spoke every line");
+  assert.equal(narratingVoiceKey([line("aura-helios-en"), line("aura-helios-en"), line(requested)], requested), requested, "mixed: the requested voice if it spoke any line");
+  assert.equal(narratingVoiceKey([line("say-Samantha"), line("aura-helios-en"), line("aura-helios-en")], requested), "aura-helios-en", "mixed without the requested voice: the voice with most lines");
+  assert.equal(narratingVoiceKey([line("say-Samantha"), line("aura-helios-en")], requested), "say-Samantha", "a tie goes to the voice that spoke first");
+  assert.equal(narratingVoiceKey([], requested), requested, "no lines: the requested voice");
 });

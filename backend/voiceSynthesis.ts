@@ -1,7 +1,7 @@
 /**
  * File Description: Voiceover synthesis for the studio's /api/generate-voiceover route.
  * Inputs and outputs: narration text and voice preferences -> synthesized WAV audio buffer via provider chain.
- * Used by: editor/vite.config.ts (api/generate-voiceover), backend/voiceSynthesis.test.ts.
+ * Used by: editor/vite.config.ts (api/generate-voiceover, api/narration), backend/voiceSynthesis.test.ts.
  *
  * A vcd studio voice (My voice) goes only to the local vcd service and never falls through to
  * another provider. Other voices try providers in order: local Kokoro (for kokoro-* voices when
@@ -11,8 +11,13 @@
  *
  * Kokoro is only attempted on a host with the memory for it: its ONNX runtime holds ~400 MB, so
  * loading it inside the studio server on a 512 MB Render free instance OOM-killed the whole
- * container (every request then 502s while it restarts). The network, the model runtime and the
- * macOS `say` call are injectable so tests exercise the real routing without any of them.
+ * container (every request then 502s while it restarts). It runs in its own process through
+ * backend/kokoroWorker.mjs (kokoroWorkerSynthesizer), never inside the studio server. The network,
+ * the model runtime and the macOS `say` call are injectable so tests exercise the real routing
+ * without any of them.
+ *
+ * Every result names the voice that actually spoke (`voiceKey`), so a line one provider failed and
+ * another spoke is never stored or reported as the requested voice.
  */
 
 import fs from "node:fs";
@@ -21,6 +26,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { resolveVoiceCloneSettings } from "./aideosConfig";
 import { fetchWithin, HTTP_DEADLINES, readWithin, startDeadline, type NowFn } from "./httpDeadline";
+import { KOKORO_MAX_CHARS, PCM_SAMPLE_RATE, startKokoroWorker, type KokoroWorker } from "./tts";
 import {
   isVcdStudioVoice,
   synthesizeWithVcd,
@@ -28,8 +34,22 @@ import {
   type VcdLanguagePreference,
 } from "./vcdClient";
 
-/** Smallest container memory limit (bytes) on which the in-process Kokoro model is attempted. */
+/** Smallest container memory limit (bytes) on which the Kokoro model is attempted. */
 export const KOKORO_MIN_MEMORY_BYTES = 1.5 * 1024 ** 3;
+
+/**
+ * The studio's Kokoro pace, passed explicitly to the worker: 1.0 (owner decision, 2026-11-21: "Studio Kokoro speed
+ * 1.0 explicit"). The studio re-paces every line to the house narration rate by time-stretch after synthesis, so this
+ * keeps the pace the studio had while Kokoro ran in-process at its own default of 1.0. The pipeline's
+ * DEFAULT_KOKORO_SPEED in backend/tts.ts is a separate setting.
+ */
+export const STUDIO_KOKORO_SPEED = 1;
+
+/** The Deepgram Aura model used when the requested voice is not an Aura voice. */
+const DEEPGRAM_FALLBACK_MODEL = "aura-helios-en";
+
+/** The Google Cloud TTS voice every Google request speaks with. */
+const GOOGLE_VOICE_NAME = "en-US-Journey-D";
 
 /** One provider's outcome when it did not produce audio. */
 export interface ProviderAttempt {
@@ -59,8 +79,8 @@ export interface SynthesisDeps {
   fetch: typeof fetch;
   /** Synthesizes text with the local vcd cloned-voice service and returns a mono WAV buffer. */
   vcd?: (text: string, options: { url?: string; voiceId?: string; language?: VcdLanguagePreference }) => Promise<Buffer>;
-  /** Synthesizes text with local Kokoro and returns float samples. */
-  kokoro: (text: string, voice: string) => Promise<{ samples: Float32Array; sampleRate: number }>;
+  /** Synthesizes text with local Kokoro at the given pace and returns float samples. */
+  kokoro: (text: string, voice: string, speed: number) => Promise<{ samples: Float32Array; sampleRate: number }>;
   /** Synthesizes with macOS `say` and returns a WAV file's bytes. */
   say: (text: string, voice: string) => Promise<Buffer | null>;
   /** Container memory limit in bytes, or null when unknown. */
@@ -80,6 +100,8 @@ export interface SynthesisRequest {
   vcdUrl?: string;
   /** Optional enrolled vcd voice id override. */
   vcdVoiceId?: string;
+  /** Kokoro pace multiplier; defaults to STUDIO_KOKORO_SPEED. */
+  kokoroSpeed?: number;
   deepgramKey?: string;
   googleKey?: string;
   /** Time budget (ms) for each network provider attempt (vcd, Deepgram, Google); a stalled one fails over instead of hanging. */
@@ -104,7 +126,7 @@ export function readContainerMemoryLimit(): number | null {
   return null;
 }
 
-/** True when this host can hold the in-process Kokoro model; AIDEOS_KOKORO=1/0 overrides the guess. */
+/** True when this host can hold the Kokoro model (the worker process loads it); AIDEOS_KOKORO=1/0 overrides the guess. */
 export function kokoroFits(limit: number | null, env: NodeJS.ProcessEnv = process.env): boolean {
   if (env.AIDEOS_KOKORO === "1") return true;
   if (env.AIDEOS_KOKORO === "0") return false;
@@ -152,9 +174,79 @@ export function wavDataChunk(wav: Buffer): Buffer {
   throw new Error("response was not a WAV file");
 }
 
+/** The Deepgram Aura model a request speaks with: the requested Aura voice, or the fallback model. */
+function deepgramModel(voice: string): string {
+  return voice.startsWith("aura-") ? voice : DEEPGRAM_FALLBACK_MODEL;
+}
+
+/**
+ * The line-cache voice key of audio a provider spoke for `voice`: it names the voice that actually spoke, and for
+ * Kokoro the pace and request size that shape its audio. A vcd voice keeps the requested key (vcd never falls back;
+ * the studio keys vcd lines by vcdVoiceCacheKey). A Kokoro voice's own key is `<voice>|speed=<n>|chars=<n>`, so
+ * recordings made in-process with 800-character requests (which dropped words) are not reused.
+ */
+export function spokenVoiceKey(
+  provider: ProviderAttempt["provider"],
+  voice: string,
+  kokoroSpeed: number = STUDIO_KOKORO_SPEED,
+): string {
+  switch (provider) {
+    case "vcd":
+      return voice;
+    case "kokoro":
+      return `kokoro-${voice.replace(/^kokoro-/, "")}|speed=${kokoroSpeed}|chars=${KOKORO_MAX_CHARS}`;
+    case "deepgram":
+      return deepgramModel(voice);
+    case "google":
+      return `google-${GOOGLE_VOICE_NAME}`;
+    case "say":
+      return `macos-${macVoiceFor(voice).toLowerCase()}`;
+  }
+}
+
+/** The line-cache voice key a studio voice has when its own provider speaks it (what the studio looks stored lines up by). */
+export function requestedVoiceKey(voice: string, kokoroSpeed: number = STUDIO_KOKORO_SPEED): string {
+  if (voice.startsWith("kokoro-")) return spokenVoiceKey("kokoro", voice, kokoroSpeed);
+  return voice;
+}
+
+/**
+ * The studio's Kokoro dependency: one shared worker process (backend/kokoroWorker.mjs), started on first use and
+ * started again when it has died. A voice the model does not have is refused, never swapped for another voice.
+ */
+export function kokoroWorkerSynthesizer(start: () => Promise<KokoroWorker> = startKokoroWorker): SynthesisDeps["kokoro"] {
+  let worker: Promise<KokoroWorker> | null = null;
+
+  /** Returns a live worker, starting one when there is none or the last one died. */
+  const live = async (): Promise<KokoroWorker> => {
+    for (;;) {
+      const previous = worker;
+      if (previous) {
+        const current = await previous.catch(() => null);
+        if (current && !current.dead) return current;
+        if (worker !== previous) continue;
+      }
+      const starting = start();
+      worker = starting;
+      try {
+        return await starting;
+      } catch (err) {
+        if (worker === starting) worker = null;
+        throw err;
+      }
+    }
+  };
+
+  return async (text, voice, speed) => {
+    const current = await live();
+    if (!current.voices.includes(voice)) throw new Error(`Kokoro has no voice "${voice}"`);
+    return { samples: await current.synthesize(text, voice, speed), sampleRate: PCM_SAMPLE_RATE };
+  };
+}
+
 /** Deepgram Aura: raw linear16 per chunk (its request limit is 2000 characters). */
 async function synthesizeDeepgram(req: SynthesisRequest, deps: SynthesisDeps): Promise<PcmAudio> {
-  const model = req.voice.startsWith("aura-") ? req.voice : "aura-helios-en";
+  const model = deepgramModel(req.voice);
   const url = `https://api.deepgram.com/v1/speak?model=${encodeURIComponent(model)}&encoding=linear16&container=none&sample_rate=24000`;
   const deadline = startDeadline(req.timeoutMs ?? HTTP_DEADLINES.speechProviderMs, deps.now);
   const parts: Buffer[] = [];
@@ -194,7 +286,7 @@ async function synthesizeGoogle(req: SynthesisRequest, deps: SynthesisDeps): Pro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           input: { text: piece },
-          voice: { languageCode: "en-US", name: "en-US-Journey-D" },
+          voice: { languageCode: "en-US", name: GOOGLE_VOICE_NAME },
           audioConfig: { audioEncoding: "LINEAR16", sampleRateHertz: 24000 },
         }),
       },
@@ -209,14 +301,15 @@ async function synthesizeGoogle(req: SynthesisRequest, deps: SynthesisDeps): Pro
   return { pcm: Buffer.concat(parts), sampleRate: 24000 };
 }
 
-/** Local Kokoro: chunks, trims and joins with 200 ms pauses between chunks. */
+/** Local Kokoro: chunks within its request limit, trims and joins with 200 ms pauses between chunks. */
 async function synthesizeKokoro(req: SynthesisRequest, deps: SynthesisDeps): Promise<PcmAudio> {
   const voice = req.voice.replace(/^kokoro-/, "");
-  const pieces = req.chunk(req.text, 800).filter((p) => p.trim());
+  const speed = req.kokoroSpeed ?? STUDIO_KOKORO_SPEED;
+  const pieces = req.chunk(req.text, KOKORO_MAX_CHARS).filter((p) => p.trim());
   const all: Float32Array[] = [];
   let rate = 24000;
   for (let i = 0; i < pieces.length; i++) {
-    const out = await deps.kokoro(pieces[i].trim(), voice);
+    const out = await deps.kokoro(pieces[i].trim(), voice, speed);
     rate = out.sampleRate;
     const trimmed = req.trimSilence(out.samples, 0.005);
     if (trimmed.length > 0) all.push(trimmed);
@@ -258,19 +351,33 @@ export function macVoiceFor(voice: string): string {
   return "Samantha";
 }
 
+/** What one synthesis produced: the WAV, the provider that spoke it and the voice key of the voice that spoke. */
+export interface SpokenVoiceover {
+  wav: Buffer;
+  provider: ProviderAttempt["provider"];
+  /** spokenVoiceKey of the provider that spoke; differs from requestedVoiceKey when the chain fell through. */
+  voiceKey: string;
+}
+
 /** Runs the provider chain and returns a WAV, or throws VoiceSynthesisError with every reason. */
 export async function synthesizeVoiceover(
   req: SynthesisRequest,
   deps: SynthesisDeps,
   env: NodeJS.ProcessEnv = process.env,
-): Promise<{ wav: Buffer; provider: ProviderAttempt["provider"] }> {
+): Promise<SpokenVoiceover> {
   const attempts: ProviderAttempt[] = [];
+  /** The result for audio `provider` spoke. */
+  const spoken = (wav: Buffer, provider: ProviderAttempt["provider"]): SpokenVoiceover => ({
+    wav,
+    provider,
+    voiceKey: spokenVoiceKey(provider, req.voice, req.kokoroSpeed),
+  });
 
   /** Runs one provider, recording why it was skipped or how it failed. */
   const tryPcm = async (provider: ProviderAttempt["provider"], run: () => Promise<PcmAudio>) => {
     try {
       const audio = await run();
-      return { wav: pcm16ToWav(audio.pcm, audio.sampleRate), provider };
+      return spoken(pcm16ToWav(audio.pcm, audio.sampleRate), provider);
     } catch (err) {
       attempts.push({ provider, reason: err instanceof Error ? err.message : String(err) });
       return null;
@@ -303,7 +410,7 @@ export async function synthesizeVoiceover(
               { fetch: deps.fetch, now: deps.now },
             )
           ).wav;
-      return { wav, provider: "vcd" };
+      return spoken(wav, "vcd");
     } catch (err) {
       attempts.push({ provider: "vcd", reason: err instanceof Error ? err.message : String(err) });
       throw new VoiceSynthesisError(attempts);
@@ -339,7 +446,7 @@ export async function synthesizeVoiceover(
   if (deps.platform === "darwin") {
     try {
       const wav = await deps.say(req.text, macVoiceFor(req.voice));
-      if (wav) return { wav, provider: "say" };
+      if (wav) return spoken(wav, "say");
       attempts.push({ provider: "say", reason: "`say` produced no audio" });
     } catch (err) {
       attempts.push({ provider: "say", reason: err instanceof Error ? err.message : String(err) });

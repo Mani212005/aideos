@@ -5,7 +5,7 @@
  * and channel-layout mismatches at a chunk boundary, container padding, re-encode drift) that
  * used to surface as stutter and clicks in the finished voiceover.
  * Inputs and outputs: narration text segments and voice options -> raw Float32 PCM audio chunks.
- * Used by: backend/audio.ts, backend/sceneKit/voiceover.ts.
+ * Used by: backend/audio.ts, backend/sceneKit/voiceover.ts, backend/voiceSynthesis.ts (the studio's Kokoro worker).
  */
 
 import { execFileSync } from "child_process";
@@ -106,11 +106,30 @@ interface PendingRequest {
 }
 
 /**
- * Kokoro-82M running locally through a persistent ESM worker process (see
- * scripts/kokoro_worker.mjs for why it is a separate process). The default backend: no API key,
- * deterministic output, and raw Float32 samples so nothing is encoded and re-decoded.
+ * Longest text one Kokoro request may carry. Kokoro reads at most ~510 phoneme tokens per request and silently
+ * drops the rest: measured 2026-11-25 with local Kokoro am_adam at speed 1, one 559-character paragraph came back
+ * 24.85 s long while the same words in two ~280-character halves came back 33.95 s. 300 characters of English
+ * narration stays inside the limit even for phoneme-dense text.
  */
-async function createKokoroBackend(voice: string, speed: number): Promise<TtsBackend> {
+export const KOKORO_MAX_CHARS = 300;
+
+/** A running Kokoro worker process (backend/kokoroWorker.mjs): speaks any of its voices at any pace. */
+export interface KokoroWorker {
+  /** The voice ids the loaded model has. */
+  voices: string[];
+  /** Speaks `text` with `voice` at `speed` and returns mono Float32 PCM at PCM_SAMPLE_RATE. */
+  synthesize(text: string, voice: string, speed: number): Promise<Float32Array>;
+  /** True once the worker process has died or was closed; every later request fails. */
+  readonly dead: boolean;
+  /** Stops the worker process. Safe to call more than once. */
+  close(): Promise<void>;
+}
+
+/**
+ * Starts Kokoro-82M in its own persistent ESM worker process (see backend/kokoroWorker.mjs for why it
+ * is a separate process) and resolves once the model is loaded.
+ */
+export async function startKokoroWorker(): Promise<KokoroWorker> {
   const { spawn } = await import("child_process");
   const workerPath = path.resolve(__dirname, "kokoroWorker.mjs");
 
@@ -131,9 +150,9 @@ async function createKokoroBackend(voice: string, speed: number): Promise<TtsBac
 
   let rejectReady: ((err: Error) => void) | null = null;
 
-  /** Fails every in-flight request when the worker dies, so no caller hangs forever. */
+  /** Marks the worker dead and fails every in-flight request, so no caller hangs forever. */
   const failAll = (err: Error) => {
-    fatal = err;
+    if (!fatal) fatal = err;
     if (!ready && rejectReady) {
       rejectReady(err);
       rejectReady = null;
@@ -143,11 +162,10 @@ async function createKokoroBackend(voice: string, speed: number): Promise<TtsBac
   };
 
   child.on("error", (err) => failAll(err));
-  child.on("exit", (code) => {
-    if (pending.size > 0 || !ready) {
-      failAll(new Error(`kokoro worker exited with code ${code}: ${stderrTail.trim()}`));
-    }
-  });
+  // A request written after the process is gone fails here instead of crashing the parent with EPIPE.
+  child.stdin.on("error", (err) => failAll(err));
+  // Any exit, idle or not, makes the worker dead: a later request must fail plainly rather than write to a closed pipe.
+  child.on("exit", (code) => failAll(new Error(`kokoro worker exited with code ${code}: ${stderrTail.trim()}`)));
 
   const readyPromise = new Promise<{ voices: string[] }>((resolve, reject) => {
     rejectReady = reject;
@@ -198,30 +216,45 @@ async function createKokoroBackend(voice: string, speed: number): Promise<TtsBac
   });
 
   const info = await readyPromise;
-  const chosen = info.voices.includes(voice) ? voice : "af_heart";
   // The worker has done its job; let the parent exit without waiting on it.
   child.unref();
 
   return {
-    name: `kokoro:${chosen}`,
-    voice: chosen,
-    speed,
-    // Kokoro truncates past ~510 phoneme tokens. 300 characters of English narration
-    // stays comfortably inside that even for phoneme-dense text.
-    maxChars: 300,
-    async synthesize(text: string): Promise<Float32Array> {
+    voices: info.voices,
+    get dead() {
+      return fatal !== null;
+    },
+    async synthesize(text: string, voice: string, speed: number): Promise<Float32Array> {
       if (fatal) throw fatal;
       const id = nextId++;
       const outPath = path.join(os.tmpdir(), `aideos-kokoro-${id}-${Date.now().toString(36)}.f32`);
       return new Promise<Float32Array>((resolve, reject) => {
         pending.set(id, { resolve, reject, outPath });
-        child.stdin.write(`${JSON.stringify({ id, text, voice: chosen, speed, out: outPath })}\n`);
+        child.stdin.write(`${JSON.stringify({ id, text, voice, speed, out: outPath })}\n`);
       });
     },
     async close(): Promise<void> {
       child.stdin.end();
       child.kill();
     },
+  };
+}
+
+/**
+ * Kokoro-82M running locally through a persistent worker process. The default backend: no API key,
+ * deterministic output, and raw Float32 samples so nothing is encoded and re-decoded.
+ */
+async function createKokoroBackend(voice: string, speed: number): Promise<TtsBackend> {
+  const worker = await startKokoroWorker();
+  const chosen = worker.voices.includes(voice) ? voice : "af_heart";
+
+  return {
+    name: `kokoro:${chosen}`,
+    voice: chosen,
+    speed,
+    maxChars: KOKORO_MAX_CHARS,
+    synthesize: (text: string) => worker.synthesize(text, chosen, speed),
+    close: () => worker.close(),
   };
 }
 
