@@ -129,7 +129,10 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   else {
     if (scene.renderer === "three") reasons.push(...stage3dCarryReasons(scene));
     if (scene.actors && scene.actors.length > 0) reasons.push("scene actors (character rigs) are not drawn natively");
+    const seenAssetIds = new Set<string>();
     for (const asset of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
+      if (seenAssetIds.has(asset.assetId)) reasons.push(`asset ${asset.assetId}: its id is used by more than one asset`);
+      seenAssetIds.add(asset.assetId);
       if (asset.subGroups && asset.subGroups.length > 0) reasons.push(`asset ${asset.assetId}: sub-group rotation is not drawn natively`);
       if (!asset.svgSource && !asset.raster) reasons.push(`asset ${asset.assetId} has no SVG source`);
       if (!IR_ID.test(`asset-${asset.assetId}`)) reasons.push(`asset ${asset.assetId}: its id cannot be used in the native Render IR`);

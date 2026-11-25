@@ -335,6 +335,17 @@ test("asset id support agrees with validation of generated asset and node ids", 
   }
 });
 
+test("an asset id shared by two assets is refused before emission, as IR validation would reject it", () => {
+  const film = nativeSceneFilm();
+  const scene = film.scene!;
+  assert.deepEqual(nativeSupport(film, "long"), []);
+  const duplicate = structuredClone(scene.props[0]);
+  scene.props.push(duplicate);
+  const reasons = nativeSupport(film, "long");
+  assert.ok(reasons.some((reason) => reason.includes(duplicate.assetId) && reason.includes("more than one asset")), reasons.join("; "));
+  assert.throws(() => emit(film), (error: unknown) => error instanceof NativeUnsupportedError && error.reasons.includes(reasons[0]));
+});
+
 test("film-only timeline validation reports malformed clips before emission", () => {
   const film = nativeSceneFilm();
   const asset = film.scene!.props[0];
