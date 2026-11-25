@@ -181,7 +181,7 @@ async function acceptance(source: string, evidence: string, context: AcceptanceC
         requireThat(fs.existsSync(path.join(pkg, "voiceover.wav")), "Acceptance needs a real narrated package, including voiceover.wav.");
         const result = await runProduction({
           slug: film.id, title: film.title, script, formats: ["long", "reel"],
-          resume: true, force: ["render", "verify"], broll: false, skipAgent: true,
+          resume: true, keepRecordedNarration: true, force: ["render", "verify"], broll: false, skipAgent: true,
           design: "inline", deviceCaller: null, renderConcurrency: 2,
           ttsBackend: "vcd",
           ...(runtimeEnvironment.AIDEOS_BROWSER_EXECUTABLE ? { browserExecutable: runtimeEnvironment.AIDEOS_BROWSER_EXECUTABLE } : {}),

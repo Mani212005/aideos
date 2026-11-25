@@ -406,25 +406,29 @@ test("runProduction: writes a package whose film matches the narration it synthe
   }
 });
 
-// Release acceptance copies a prepared package without its run-state.json and resumes it: narration the
-// package already carries (a recorded voice) has to be used as is, because every cue in its design is
-// timed to that voice. A package without narration is still synthesized.
+// Release acceptance copies a prepared package with its run-state.json and resumes it with
+// keepRecordedNarration: narration the package already carries (a recorded voice) has to be used as is,
+// even when the saved stage fingerprint belongs to another synthesizer. A package without narration is
+// still synthesized.
 test("runProduction: a package with narration for its script keeps its voiceover.wav, one without is narrated", async () => {
   const slug = `probe-recorded-${Date.now().toString(36)}`;
   const pkgDir = path.join(VIDEOS_DIR, slug);
-  const request = { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd" as const, design: "templates" as const, broll: false, stopAfter: "narrate" as const, resume: true, syncToPreview: false };
+  const request = { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd" as const, design: "templates" as const, broll: false, stopAfter: "narrate" as const, resume: true, keepRecordedNarration: true, syncToPreview: false };
 
   try {
     const first: ProductionProgress[] = [];
     await runProduction(request, (event) => first.push(event));
     assert.ok(first.some((e) => e.message.startsWith("synthesizing")), "a package without narration must be narrated");
 
-    // Make the stored voice differ from anything a new synthesis would write, then drop the run state.
+    // Make the stored voice differ from anything a new synthesis would write, and leave a stale stage fingerprint.
     const wavPath = path.join(pkgDir, "voiceover.wav");
     const stored = fs.readFileSync(wavPath);
     stored[stored.length - 1] ^= 0x55;
     fs.writeFileSync(wavPath, stored);
-    fs.rmSync(path.join(pkgDir, "run-state.json"));
+    const statePath = path.join(pkgDir, "run-state.json");
+    const state = JSON.parse(fs.readFileSync(statePath, "utf8")) as { stages: Array<{ stage: string; fingerprint?: string }> };
+    state.stages.find((stage) => stage.stage === "narrate")!.fingerprint = "different-synthesizer-fingerprint";
+    fs.writeFileSync(statePath, JSON.stringify(state));
     const before = JSON.parse(fs.readFileSync(path.join(pkgDir, "narration.json"), "utf8")).totalAudioDuration;
 
     const second: ProductionProgress[] = [];
@@ -438,6 +442,38 @@ test("runProduction: a package with narration for its script keeps its voiceover
     const third: ProductionProgress[] = [];
     await runProduction({ ...request, script: SCRIPT.replace("the first thing", "another thing") }, (event) => third.push(event));
     assert.ok(third.some((e) => e.message.startsWith("synthesizing")), "narration for a different script must be replaced");
+  } finally {
+    fs.rmSync(pkgDir, { recursive: true, force: true });
+    fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
+});
+
+// Without keepRecordedNarration a resume keeps its old meaning: a finished narrate stage stamped by another
+// synthesizer setting is narrated again, and so is a stage a dead run left running.
+test("runProduction: without keepRecordedNarration a stale narrate fingerprint or an interrupted narrate stage is narrated again", async () => {
+  const slug = `probe-default-narrate-${Date.now().toString(36)}`;
+  const pkgDir = path.join(VIDEOS_DIR, slug);
+  const request = { script: SCRIPT, title: "Probe Film", slug, ttsBackend: "vcd" as const, design: "templates" as const, broll: false, stopAfter: "narrate" as const, resume: true, syncToPreview: false };
+  const statePath = path.join(pkgDir, "run-state.json");
+  const editNarrate = (edit: (stage: { status?: string; fingerprint?: string }) => void): void => {
+    const state = JSON.parse(fs.readFileSync(statePath, "utf8")) as { stages: Array<{ stage: string; status?: string; fingerprint?: string }> };
+    edit(state.stages.find((stage) => stage.stage === "narrate")!);
+    fs.writeFileSync(statePath, JSON.stringify(state));
+  };
+
+  try {
+    await runProduction(request, () => undefined);
+
+    editNarrate((stage) => { stage.fingerprint = "different-synthesizer-fingerprint"; });
+    const stale: ProductionProgress[] = [];
+    await runProduction(request, (event) => stale.push(event));
+    assert.ok(stale.some((e) => e.message.startsWith("synthesizing")), "a changed synthesizer setting must narrate again");
+    assert.ok(!stale.some((e) => e.message.includes("using the recorded narration")), "the recorded narration must not be adopted by default");
+
+    editNarrate((stage) => { stage.status = "running"; stage.fingerprint = "different-synthesizer-fingerprint"; });
+    const interrupted: ProductionProgress[] = [];
+    await runProduction({ ...request, keepRecordedNarration: true }, (event) => interrupted.push(event));
+    assert.ok(interrupted.some((e) => e.message.startsWith("synthesizing")), "an interrupted narrate stage must run again even when recorded narration is kept");
   } finally {
     fs.rmSync(pkgDir, { recursive: true, force: true });
     fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
