@@ -400,8 +400,8 @@ pub fn draw_captions<'n>(canvas: &Canvas, ctx: &OverlayCtx, node: &'n CaptionsNo
         for (r, (a, b)) in rows.iter().enumerate() {
             let mut x = content_left + (content_w - row_widths[r]) / 2.0;
             let row_h = row_heights[r];
-            // The text origin snaps to the pixel grid below the snapped card top (a second row sits at a fractional offset).
-            let y = box_top + (row_top - box_top + 4.0).floor();
+            // A row keeps its fractional offset below the snapped card top; `Text::paint` rounds the baseline, as Blink does.
+            let y = row_top + 4.0;
             for i in *a..*b {
                 let wf = cf.words[i];
                 let (color, shadows) = match wf.role {

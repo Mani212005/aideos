@@ -9,12 +9,13 @@ import { environment } from "../env";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execFile, execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { getProjectRoot, getAudioLibraryCacheDir } from "../../src/dl/videoPackageLoader";
 import { overrideSoundtrackLibrary } from "../../src/dl/audio/sectionMixer";
 import { audioItemIdSchema, parseAudioLibrary, type AudioItem, type AudioLibrary } from "./schema";
 import { fetchWithin, HttpDeadlineError, HTTP_DEADLINES, readWithin, startDeadline, type NowFn } from "../httpDeadline";
+import { execFileSyncBounded } from "../proc";
 
 export type AudioItemStatus = "valid" | "missing" | "mismatch" | "unavailable";
 
@@ -342,7 +343,7 @@ export async function fetchAudioItem(
         }
         options.archiveCache?.set(item.url, archiveZip);
       }
-      const extracted = execFileSync("unzip", ["-p", archiveZip, item.archivePath], {
+      const extracted = execFileSyncBounded("unzip", ["-p", archiveZip, item.archivePath], {
         maxBuffer: Math.max(item.bytes + 1, 1024),
       });
       fs.writeFileSync(tempPath, extracted);

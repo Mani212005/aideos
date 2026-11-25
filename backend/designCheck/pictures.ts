@@ -6,7 +6,6 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { converter } from "culori";
 import type { Film } from "../../src/dl/schema";
 import type { EnvironmentAsset, RasterSource, Scene } from "../../src/dl/scene/types";
@@ -24,6 +23,7 @@ import { parseTsv, toPgm } from "../review/ocr";
 import { apply, IDENTITY, leafBounds, multiply, NON_DRAWING_TAGS, parseTransform, rotation, scaling, styleValue, translation, type Affine, type Box } from "./svgBounds";
 import type { DesignFinding } from "./designCheck";
 import { sceneToFrame, stateMatrix } from "./insetRegion";
+import { spawnSyncBounded } from "../proc";
 
 /** The measured limits of the picture rules. */
 export const PICTURE_THRESHOLDS = {
@@ -214,7 +214,7 @@ export function pictureGray(image: RgbaImage, canvas: [number, number, number]):
 /** OCR with tesseract (sparse text, the same reader `aideos review` uses), or why it cannot run. */
 export const tesseractOcr: PictureOcr = (gray, width, height) => {
   const input = toPgm(gray, width, height);
-  const result = spawnSync("tesseract", ["stdin", "stdout", "--psm", "11", "tsv"], { input, maxBuffer: 64 * 1024 * 1024, encoding: "buffer" });
+  const result = spawnSyncBounded("tesseract", ["stdin", "stdout", "--psm", "11", "tsv"], { input, maxBuffer: 64 * 1024 * 1024, encoding: "buffer" });
   if (result.error) return { unavailable: `tesseract could not run (${result.error.message}); install it to check pictures for text` };
   if (result.status !== 0) return { unavailable: `tesseract exited with code ${result.status}: ${result.stderr?.toString().trim().slice(0, 200)}` };
   return parseTsv(result.stdout.toString("utf8")).map((w) => ({ text: w.text, conf: w.conf }));

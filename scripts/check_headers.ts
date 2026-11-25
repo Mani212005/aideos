@@ -4,7 +4,7 @@
  * Used by: npm run lint, .no-mistakes.yaml lint command, scripts/check_headers.test.ts.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSyncBounded } from "../backend/proc";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -136,7 +136,7 @@ export interface HeaderAuditSummary {
 // Scans all git-tracked code files in the repository and verifies their headers.
 export function checkAllHeaders(rootDir?: string): HeaderAuditSummary {
   const root = rootDir ?? path.resolve(__dirname, "..");
-  const rawList = execSync("git ls-files", {
+  const rawList = execFileSyncBounded("git", ["ls-files"], {
     cwd: root,
     encoding: "utf8",
   }).trim();

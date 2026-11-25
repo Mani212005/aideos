@@ -7,7 +7,8 @@
 import { environment } from "../backend/env";
 import { REPO_ROOT as repositoryRoot } from "../backend/paths";
 
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
+import { spawnSyncBounded } from "../backend/proc";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,6 +16,8 @@ import { freePort } from "../backend/freePort";
 
 const ROOT = repositoryRoot;
 const EDITOR_DIR = path.join(ROOT, "editor");
+/** The longest one local HTTP request may take (ms); the servers are on this machine, so a stall means the process is wedged. */
+const LOCAL_REQUEST_MS = 5000;
 
 /** Polls a URL until it answers or the deadline passes. */
 export async function waitForHttp(
@@ -28,7 +31,7 @@ export async function waitForHttp(
     const aborted = abortIf?.();
     if (aborted) throw new Error(aborted);
     try {
-      if ((await fetch(url)).ok) return;
+      if ((await fetch(url, { signal: AbortSignal.timeout(LOCAL_REQUEST_MS) })).ok) return;
     } catch {
       // Not up yet.
     }
@@ -60,7 +63,7 @@ export interface DevServer {
 /** Starts the Vite editor on a free port; `videosDir` (when given) is where it reads and writes packages. */
 export async function startEditor(videosDir?: string): Promise<DevServer> {
   if (!fs.existsSync(path.join(EDITOR_DIR, "node_modules"))) {
-    spawnSync("npm", ["--prefix", EDITOR_DIR, "ci"], { stdio: "inherit" });
+    spawnSyncBounded("npm", ["--prefix", EDITOR_DIR, "ci"], { stdio: "inherit" });
   }
   const port = await freePort();
   const url = `http://127.0.0.1:${port}/`;
@@ -223,7 +226,7 @@ export class StudioPage {
         { stdio: "ignore", detached: true },
       );
       await waitForHttp(`http://127.0.0.1:${debugPort}/json/version`, 30000);
-      const targets = (await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()) as Array<{ type: string; webSocketDebuggerUrl: string }>;
+      const targets = (await (await fetch(`http://127.0.0.1:${debugPort}/json/list`, { signal: AbortSignal.timeout(LOCAL_REQUEST_MS) })).json()) as Array<{ type: string; webSocketDebuggerUrl: string }>;
       const page = targets.find((t) => t.type === "page");
       if (!page) throw new Error("headless Chrome exposed no page target");
       ws = new WebSocket(page.webSocketDebuggerUrl);
