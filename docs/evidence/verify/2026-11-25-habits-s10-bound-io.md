@@ -31,6 +31,21 @@
 | `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test backend/studioRequestLive.test.ts` | PASS | live Studio server |
 | 32 targeted test files over the touched modules, `--test-concurrency=1` | PASS | 382 tests, 0 failed, 0 skipped |
 
+## Rust defensive guards (report row 10, H-13)
+
+All four named sites were checked on current main and are already guarded by commit a465a752 (#266), so no Rust file changes in this slice and no new Rust test is needed (`native/aideos-render/tests/bad_colours.rs` covers the colour guard):
+
+| Site | Guard on main |
+| --- | --- |
+| `native/aideos-render/src/video.rs:321` | `duration.checked_sub(1)` returns an error for a film with 0 frames instead of underflowing |
+| `native/aideos-render/src/main.rs:267` | `run_measure` treats an empty parent path as the current directory |
+| `native/aideos-render/src/raster/mod.rs:51` | `ir_color` is a total function; the loader schema guarantees the colour format |
+| `native/aideos-render/src/raster/stage3d/mod.rs:248` | a node listed before its parent returns an error instead of indexing past the posed graph |
+
+## Long-running child limit
+
+`backend/sceneKit/voiceover.ts` runs local whisper (`python3 whisperWords.py`) with an explicit 4 hour limit instead of the 30 minute default, and a timeout reports "whisper timed out" with the program, file and limit (via `isProcTimeout`) instead of a bare failure.
+
 ## Fix attempts
 
 - Attempts used: 1 / 3 (`ruff format --check` wanted one expression in `whisperWords.py` wrapped; formatted with the pinned ruff).
