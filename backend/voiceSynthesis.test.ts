@@ -8,7 +8,17 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { synthesizeVoiceover, VoiceSynthesisError, kokoroFits, pcm16ToWav, wavDataChunk } from "./voiceSynthesis";
+import {
+  kokoroFits,
+  kokoroWorkerSynthesizer,
+  pcm16ToWav,
+  requestedVoiceKey,
+  STUDIO_KOKORO_SPEED,
+  synthesizeVoiceover,
+  VoiceSynthesisError,
+  wavDataChunk,
+} from "./voiceSynthesis";
+import { KOKORO_MAX_CHARS, type KokoroWorker } from "./tts";
 import type { SynthesisDeps, SynthesisRequest } from "./voiceSynthesis";
 
 const MB = 1024 ** 2;
@@ -144,4 +154,61 @@ test("when every provider stalls the error says each one timed out", async (t) =
       return true;
     },
   );
+});
+
+test("studio Kokoro is asked for requests within its limit at the explicit studio speed, and the result names those settings", async () => {
+  const limits: number[] = [];
+  const speeds: number[] = [];
+  const out = await synthesizeVoiceover(
+    request({ chunk: (t, max) => (limits.push(max), [t]) }),
+    deps({
+      memoryLimitBytes: () => 4096 * MB,
+      kokoro: async (_text, _voice, speed) => {
+        speeds.push(speed);
+        return { samples: new Float32Array(2400).fill(0.1), sampleRate: 24000 };
+      },
+    }),
+    {},
+  );
+  assert.deepEqual(limits, [KOKORO_MAX_CHARS]);
+  assert.deepEqual(speeds, [STUDIO_KOKORO_SPEED]);
+  assert.equal(STUDIO_KOKORO_SPEED, 1);
+  assert.equal(out.voiceKey, requestedVoiceKey("kokoro-am_adam"));
+  assert.equal(out.voiceKey, "kokoro-am_adam|speed=1|chars=300");
+});
+
+test("a Kokoro line that Deepgram spoke names Deepgram's voice, not the requested one", async () => {
+  const out = await synthesizeVoiceover(
+    request({ deepgramKey: "k" }),
+    deps({ fetch: (async () => new Response(Buffer.alloc(200))) as unknown as typeof fetch }),
+    {},
+  );
+  assert.equal(out.provider, "deepgram");
+  assert.equal(out.voiceKey, "aura-helios-en");
+  assert.notEqual(out.voiceKey, requestedVoiceKey("kokoro-am_adam"));
+});
+
+test("the studio Kokoro worker is shared, started again after it dies, and refuses a voice it does not have", async () => {
+  let starts = 0;
+  let dead = false;
+  const start = async (): Promise<KokoroWorker> => {
+    starts++;
+    return {
+      voices: ["am_adam"],
+      get dead() {
+        return dead;
+      },
+      synthesize: async () => new Float32Array(10),
+      close: async () => undefined,
+    };
+  };
+  const kokoro = kokoroWorkerSynthesizer(start);
+  await kokoro("One.", "am_adam", 1);
+  await kokoro("Two.", "am_adam", 1);
+  assert.equal(starts, 1, "one worker serves every request");
+  dead = true;
+  await kokoro("Three.", "am_adam", 1);
+  assert.equal(starts, 2, "a dead worker is replaced");
+  dead = false;
+  await assert.rejects(() => kokoro("Four.", "af_nobody", 1), /Kokoro has no voice "af_nobody"/);
 });

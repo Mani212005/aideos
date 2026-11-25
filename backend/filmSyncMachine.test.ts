@@ -303,3 +303,16 @@ test("an edit after a same-content event is held prevents that event from cleani
   assert.equal(hasUnsavedEdits(settled.state), true);
   if (settled.state.phase === "conflict") assert.equal(settled.state.remote.rev, "r3");
 });
+
+test("a film a server route wrote is followed at its revision, so the next save is not based on the stale one", () => {
+  // The studio records a voiceover: the server writes the film (r2), the studio commits that same film.
+  const state = run([{ type: "edited" }, { type: "server_wrote", rev: "r2", order: 1 }], loaded("r1"));
+  assert.deepEqual(state, { phase: "clean", rev: "r2", order: 1, ownRev: "r2" });
+  assert.equal(baseRevision(state), "r2");
+  assert.equal(decideSave(baseRevision(state), "r2"), "write");
+  assert.equal(hasUnsavedEdits(state), false);
+
+  // A save already in flight settles through its own conflict reply (same content), so the event leaves it alone.
+  const saving = run([{ type: "edited" }, { type: "save_started", seq: 2 }], loaded("r1"));
+  assert.equal(transition(saving, { type: "server_wrote", rev: "r2", order: 1 }).state, saving);
+});

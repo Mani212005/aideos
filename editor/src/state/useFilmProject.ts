@@ -50,6 +50,11 @@ export interface ProjectValidation {
 /** The result of asking the project to save a film: saved, or why not. */
 export type SaveOutcome = { ok: true } | { ok: false; reason: string };
 
+/** How saveFilm treats a film: `savedAs` names the revision a server route already wrote it at. */
+export interface SaveFilmOptions {
+  savedAs?: { rev: string; order: number };
+}
+
 /** A film that changed on disk while the studio held edits of its own, kept beside the studio's version. */
 export interface FilmConflict {
   remoteFilm: Film;
@@ -77,8 +82,11 @@ export interface FilmProject {
   timeline: ReturnType<typeof buildTimeline> | null;
   toasts: ToastMessage[];
   commit: (next: Film, label: string) => void;
-  /** Commit a film (if it is not already the open one) and save it through the sync machine. */
-  saveFilm: (next: Film, label: string) => Promise<SaveOutcome>;
+  /**
+   * Commit a film (if it is not already the open one) and save it through the sync machine. With `savedAs`, a server
+   * route already wrote exactly this film at that revision: it is committed and the revision followed, not saved again.
+   */
+  saveFilm: (next: Film, label: string, options?: SaveFilmOptions) => Promise<SaveOutcome>;
   undo: () => void;
   redo: () => void;
   jumpTo: (index: number) => void;
@@ -407,14 +415,19 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
     await saveWhenReady(true);
   }, [saveWhenReady]);
 
-  /** Commit a film (unless it is already the open one) and save exactly that film. */
+  /** Commit a film (unless it is already the open one) and save exactly that film, or follow the revision a server route wrote it at. */
   const saveFilm = useCallback(
-    async (next: Film, label: string): Promise<SaveOutcome> => {
+    async (next: Film, label: string, options: SaveFilmOptions = {}): Promise<SaveOutcome> => {
       if (syncRef.current.phase === "loading") return { ok: false, reason: "The film is still loading." };
       if (next !== filmRef.current && JSON.stringify(next) !== JSON.stringify(filmRef.current)) commit(next, label);
+      if (options.savedAs) {
+        dispatchSync({ type: "server_wrote", rev: options.savedAs.rev, order: options.savedAs.order });
+        setLastSavedAt(Date.now());
+        return { ok: true };
+      }
       return saveWhenReady(false);
     },
-    [commit, saveWhenReady],
+    [commit, dispatchSync, saveWhenReady],
   );
 
   /** Take the film from disk after the studio and another writer both changed it. */

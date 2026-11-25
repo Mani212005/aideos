@@ -46,7 +46,14 @@ import {
   resolveResourcePolicy,
   resolveStudioHost,
 } from '../backend/studioApiGuard.ts'
-import { synthesizeVoiceover, VoiceSynthesisError, readContainerMemoryLimit, sayToWav } from '../backend/voiceSynthesis.ts'
+import {
+  kokoroWorkerSynthesizer,
+  readContainerMemoryLimit,
+  requestedVoiceKey,
+  sayToWav,
+  synthesizeVoiceover,
+  VoiceSynthesisError,
+} from '../backend/voiceSynthesis.ts'
 import { AideosConfigError, resolveVoiceCloneSettings } from '../backend/aideosConfig.ts'
 import {
   VCD_DEFAULT_VOICE_KEY,
@@ -79,7 +86,7 @@ import { narrationLines } from '../backend/storyScript.ts'
 import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
 import { bodyLimitFor, declaredBodyTooLarge, isSafeId, readJsonBody, SAFE_ID } from '../backend/studioRequest.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
-import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, pacedVoiceKey, unpacedVoiceKey, type LineAudio } from '../backend/voiceLines.ts'
+import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, pacedVoiceKey, unpacedVoiceKey, type SpokenLine } from '../backend/voiceLines.ts'
 import { NARRATION_RATE } from '../backend/pacingProfile.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
 import {
@@ -111,6 +118,8 @@ const videosDir = getVideosDir();
 const PUBLIC_DIR = path.resolve(__dirname, '../public')
 // Studio exports run as cancellable jobs; a render still going when the dev server exits is killed with it.
 const exportJobs = createExportJobs();
+// Studio Kokoro runs in its own worker process (backend/kokoroWorker.mjs), shared by every voiceover request.
+const studioKokoro = kokoroWorkerSynthesizer();
 process.on('exit', () => exportJobs.killAll());
 // The render runs in its own process group, so Ctrl+C on the dev server never reaches it: stop it here.
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
@@ -129,8 +138,8 @@ function mapStoredVoiceToStudioId(raw: string): string | null {
   if (!key) return null;
   if (key === VCD_DEFAULT_VOICE_KEY || key === VCD_HINDI_VOICE_KEY) return key;
   if (key.startsWith('vcd:')) return key.endsWith(':hi') ? VCD_HINDI_VOICE_KEY : VCD_DEFAULT_VOICE_KEY;
-  if (key.startsWith('kokoro-') || key.startsWith('aura-') || key.startsWith('macos-')) return key;
   const head = key.split('|')[0];
+  if (head.startsWith('kokoro-') || head.startsWith('aura-') || head.startsWith('macos-')) return head;
   if (head.startsWith('kokoro:')) return `kokoro-${head.slice('kokoro:'.length)}`;
   if (head.startsWith('say:')) return `macos-${head.slice('say:'.length).toLowerCase()}`;
   return null;
@@ -1155,7 +1164,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             const lines = narrationLines(text);
             const projectVoice = detectProjectVoice(pkgDir, readFilm(narrationId));
             const requestedVoice = parsedUrl.searchParams.get('voice') || projectVoice || DEFAULT_VOICE_KEY;
-            let cacheVoiceKey = requestedVoice;
+            let cacheVoiceKey = requestedVoiceKey(requestedVoice);
             let voiceService: Awaited<ReturnType<typeof probeVcdService>> | null = null;
             if (isVcdStudioVoice(requestedVoice)) {
               const settings = resolveVoiceCloneSettings();
@@ -1786,10 +1795,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             }
 
             let lineSummary = { total: narrationLinesToSpeak.length, recorded: 0, reused: 0 };
+            const otherVoices: { voice: string; lines: number }[] = [];
             let resolvedVcdVoiceId: string | undefined;
             let resolvedVcdUrl: string | undefined;
             let resolvedVcdLanguage: VcdLanguagePreference | undefined;
-            let cacheVoiceKey = voice;
+            let cacheVoiceKey = requestedVoiceKey(voice);
             let assembledShotDurations: number[] | undefined;
             const isClonedVoice = isVcdStudioVoice(voice);
 
@@ -1809,20 +1819,15 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
               const synthDeps = {
                 fetch,
-                kokoro: async (text: string, kokoroVoice: string) => {
-                  // Model load is cached by transformers.js after the first call.
-                  const { KokoroTTS } = await import('kokoro-js');
-                  const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8' });
-                  const audio = await tts.generate(text, { voice: kokoroVoice as never });
-                  return { samples: audio.audio, sampleRate: audio.sampling_rate };
-                },
+                kokoro: studioKokoro,
                 say: sayToWav,
                 memoryLimitBytes: readContainerMemoryLimit,
                 platform: process.platform,
               };
               // One recording per line, kept under videos/<id>/voiceover_lines/ by content fingerprint: a line whose
               // words and voice are unchanged is reused as is, so only edited or new lines are recorded again.
-              const recordLine = async (text: string): Promise<LineAudio> => {
+              // A line is stored under the voice that actually spoke it, so a fallback voice is never reused as the requested one.
+              const recordLine = async (text: string): Promise<SpokenLine> => {
                 const spoken = await synthesizeVoiceover(
                   {
                     text,
@@ -1839,10 +1844,22 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 );
                 const wav = decodeWav(spoken.wav);
                 // Studio voices have no speaking-rate setting here, so every line is re-paced to the house rate.
-                return { sampleRate: wav.sampleRate, chunks: [{ text, samples: timeStretch(wav.samples, NARRATION_RATE, wav.sampleRate) }] };
+                return {
+                  audio: { sampleRate: wav.sampleRate, chunks: [{ text, samples: timeStretch(wav.samples, NARRATION_RATE, wav.sampleRate) }] },
+                  voiceKey: pacedVoiceKey(spoken.provider === 'vcd' ? cacheVoiceKey : spoken.voiceKey, NARRATION_RATE),
+                };
               };
-              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: pacedVoiceKey(cacheVoiceKey, NARRATION_RATE), synthesize: recordLine });
+              const requestedLineKey = pacedVoiceKey(cacheVoiceKey, NARRATION_RATE);
+              const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: requestedLineKey, synthesize: recordLine });
               lineSummary = { total: lineResult.lines.length, recorded: lineResult.recorded, reused: lineResult.reused };
+              // Lines another voice spoke because the requested one failed, so the studio can say so.
+              for (const line of lineResult.lines) {
+                if (line.voiceKey === requestedLineKey) continue;
+                const voiceName = unpacedVoiceKey(line.voiceKey);
+                const entry = otherVoices.find((v) => v.voice === voiceName);
+                if (entry) entry.lines += 1;
+                else otherVoices.push({ voice: voiceName, lines: 1 });
+              }
 
               const rate = lineResult.lines[0].audio.sampleRate;
               if (!isClonedVoice) {
@@ -1931,6 +1948,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
               // Automatically scale film shot durations to match the newly synthesized audio (Axiom 2 / D4 Master Clock Invariant)
               let updatedFilm: Film | undefined = undefined;
+              let updatedRev: string | undefined = undefined;
               let updatedShots: any[] | undefined = undefined;
 
               try {
@@ -1968,11 +1986,15 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                       speed: 1,
                       version: Date.now().toString(),
                       durationSec: measuredDuration,
-                      ...(isClonedVoice ? { voice, ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}) } : {}),
+                      voice,
+                      ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}),
                     },
                     audioClips: undefined,
                   } as Film;
-                  writeFilm(projectId, updatedFilm);
+                  // The studio adopts exactly the film written here at its revision, instead of saving it again on a stale one.
+                  const written = writeFilm(projectId, updatedFilm);
+                  updatedFilm = written.film;
+                  updatedRev = written.rev;
                 }
               } catch (syncErr) {
                 console.warn('[TTS] Automatic shot duration scaling error:', syncErr);
@@ -2012,9 +2034,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 actualDurationSec: measuredDuration,
                 ...(isClonedVoice ? { voice, voiceKey: cacheVoiceKey } : {}),
                 lines: lineSummary,
+                otherVoices,
                 intakeNotices,
                 shots: updatedShots,
                 film: updatedFilm,
+                ...(updatedRev ? { rev: updatedRev, order: traceBus.getFilmUpdateOrder(projectId) } : {}),
                 agentPrompt,
                 taskFile: `videos/${projectId}/director_task.md`,
                 dispatch,

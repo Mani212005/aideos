@@ -730,11 +730,14 @@ export function ScriptEditor({
         setDuration(data.actualDurationSec);
       }
 
+      // The server writes the film with the new voiceover and returns it with its revision; without one, the studio
+      // builds that voiceover itself (its path is repo-relative under the film's package, as the server writes it).
+      const serverWrote = Boolean(data.film && typeof data.rev === "string");
       const updatedFilm: Film = data.film || {
         ...film,
         shots: data.shots || film.shots,
         voiceover: {
-          src: data.filename,
+          src: `videos/${film.id}/${data.filename}`,
           volume: 1.0,
           version: Date.now().toString(),
           speed: film.voiceover?.speed ?? 1.0,
@@ -743,8 +746,6 @@ export function ScriptEditor({
         },
         audioClips: undefined, // Clear stale clip overrides so fresh voiceover spine takes effect across the player
       };
-      onUpdateFilm(updatedFilm);
-
       const prompt = data.agentPrompt || generateAgentPrompt({
         projectId: film.id,
         filmTitle: film.title,
@@ -763,19 +764,32 @@ export function ScriptEditor({
         setLastDispatchResult(data.dispatch);
       }
 
+      // Lines another voice spoke because the selected one failed are said plainly, never passed off as the selected voice.
+      const otherVoices: { voice: string; lines: number }[] = Array.isArray(data.otherVoices) ? data.otherVoices : [];
+      const otherVoiceNote = otherVoices.length
+        ? ` ${selectedVoiceLabel} was unavailable for ${otherVoices
+            .map((v) => `${v.lines} line${v.lines === 1 ? "" : "s"} (spoken by ${VOICES.find((known) => known.id === v.voice)?.name ?? v.voice})`)
+            .join(" and ")}.`
+        : "";
       setStatusMsg({
-        type: "success",
-        text: data.dispatch?.ok
+        type: otherVoices.length ? "info" : "success",
+        text: (data.dispatch?.ok
           ? `⚡ Synthesized voiceover (${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s) & ${data.dispatch.message}`
           : `Voiceover ready (${data.spokenWordCount} spoken words, ${data.actualDurationSec ? data.actualDurationSec.toFixed(1) : data.estimatedDurationSec}s)${
               data.lines ? `: ${data.lines.recorded} line${data.lines.recorded === 1 ? "" : "s"} recorded, ${data.lines.reused} kept as they were` : ""
-            }.`,
+            }.`) + otherVoiceNote,
       });
       setDirty(false);
       void refreshNarration(true);
 
-      // Persist the updated film with voiceover to server
-      await saveFilm(updatedFilm, "Update script");
+      // One undo step. A film the server already wrote is adopted at its revision; saving it again would be based on
+      // the revision before that write and come back as a conflict.
+      const saved = await saveFilm(
+        updatedFilm,
+        "Record voiceover",
+        serverWrote ? { savedAs: { rev: data.rev, order: typeof data.order === "number" ? data.order : 0 } } : {},
+      );
+      if (!saved.ok) setStatusMsg({ type: "error", text: `The voiceover was recorded but the film was not saved: ${saved.reason}` });
 
       if (audioRef.current) {
         audioRef.current.load();

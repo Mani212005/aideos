@@ -212,3 +212,28 @@ test("produceAudioPipeline records only changed lines on a second run and still 
     fs.rmSync(pkg, { recursive: true, force: true });
   }
 });
+
+test("a line another voice spoke is stored under that voice, so the requested voice records it again next time", async () => {
+  const pkg = scratch();
+  try {
+    const requested = "kokoro-am_adam|speed=1|chars=300";
+    const texts = ["First line.", "Second line."];
+    // The requested voice fails on the second line and a fallback voice speaks it (the studio's provider chain).
+    const fallback = async (text: string) => {
+      const audio: LineAudio = { sampleRate: 24000, chunks: [{ text, samples: new Float32Array(2400).fill(0.1) }] };
+      return text === "Second line." ? { audio, voiceKey: "aura-helios-en" } : { audio, voiceKey: requested };
+    };
+    const first = await synthesizeLines({ pkgDir: pkg, texts, voiceKey: requested, synthesize: fallback });
+    assert.deepEqual(first.lines.map((line) => line.voiceKey), [requested, "aura-helios-en"]);
+    assert.deepEqual(recordedStatus(pkg, texts, requested), [true, false], "the fallback take is not filed as the requested voice");
+    assert.deepEqual(recordedStatus(pkg, ["Second line."], "aura-helios-en"), [true], "it is filed as the voice that spoke it");
+
+    const spoken: string[] = [];
+    const second = await synthesizeLines({ pkgDir: pkg, texts, voiceKey: requested, synthesize: countingSynth(spoken) });
+    assert.deepEqual(spoken, ["Second line."], "only the line the requested voice never spoke is recorded again");
+    assert.equal(second.reused, 1);
+    assert.deepEqual(recordedStatus(pkg, texts, requested), [true, true]);
+  } finally {
+    fs.rmSync(pkg, { recursive: true, force: true });
+  }
+});

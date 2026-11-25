@@ -53,6 +53,8 @@ export type SyncEvent<F> =
   | { type: "save_failed"; seq: number }
   | { type: "save_conflicted"; seq: number; remote: RemoteFilm<F> }
   | { type: "external_update"; remote: RemoteFilm<F> }
+  /** A studio server route wrote exactly the film the studio now holds (for example a recorded voiceover), at this revision. */
+  | { type: "server_wrote"; rev: string; order: number }
   | { type: "keep_mine" }
   | { type: "take_theirs" };
 
@@ -245,6 +247,16 @@ export function transition<F>(state: SyncState<F>, event: SyncEvent<F>): Transit
 
     case "external_update":
       return applyExternal(state, event.remote);
+
+    case "server_wrote": {
+      // The disk already holds the open film: follow its revision instead of saving it again on the old one (a stale save).
+      // A save in flight settles through save_conflicted (same content), and a conflict still needs the user's choice.
+      if (state.phase !== "clean" && state.phase !== "dirty") return ignore(state);
+      return {
+        state: { phase: "clean", rev: event.rev, order: Math.max(state.order, event.order), ownRev: event.rev },
+        effects: [],
+      };
+    }
 
     case "keep_mine": {
       if (state.phase !== "conflict") return reject(state, "there is no conflict to resolve");

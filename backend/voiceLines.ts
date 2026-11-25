@@ -24,12 +24,23 @@ export interface LineAudio {
   chunks: LineChunk[];
 }
 
+/**
+ * A fresh recording together with the voice key of the voice that actually spoke it, for a synthesizer whose
+ * provider can fall through to another voice than the one requested.
+ */
+export interface SpokenLine {
+  audio: LineAudio;
+  voiceKey: string;
+}
+
 /** What `synthesizeLines` did for one line. */
 export interface LineOutcome {
   text: string;
   fingerprint: string;
   /** True when the stored recording was used and nothing was synthesized. */
   reused: boolean;
+  /** The voice key of the voice that spoke this recording. */
+  voiceKey: string;
   audio: LineAudio;
 }
 
@@ -161,12 +172,16 @@ function pruneUnused(pkgDir: string, voiceKey: string, keep: Set<string>): void 
  * Records every line, reusing the stored recording for each line whose fingerprint is unchanged and
  * calling `synthesize` only for the rest. A line is stored the moment it is recorded, so a run that
  * fails part way keeps what it finished and the retry continues from there.
+ *
+ * When `synthesize` reports that another voice spoke a line (a SpokenLine whose voiceKey differs), the
+ * line is stored under that voice, never under the requested one: the next run looks the requested
+ * voice up again and records the line afresh. Only the requested voice's unused recordings are pruned.
  */
 export async function synthesizeLines(options: {
   pkgDir: string;
   texts: string[];
   voiceKey: string;
-  synthesize: (text: string) => Promise<LineAudio>;
+  synthesize: (text: string) => Promise<LineAudio | SpokenLine>;
   onLine?: (done: number, total: number, text: string, reused: boolean) => void;
 }): Promise<LineSynthesisResult> {
   const { pkgDir, texts, voiceKey, synthesize, onLine } = options;
@@ -179,12 +194,14 @@ export async function synthesizeLines(options: {
     const stored = readLine(pkgDir, fingerprint);
     if (stored) {
       reused += 1;
-      lines.push({ text, fingerprint, reused: true, audio: stored });
+      lines.push({ text, fingerprint, reused: true, voiceKey, audio: stored });
     } else {
-      const audio = await synthesize(text);
-      writeLine(pkgDir, fingerprint, voiceKey, audio);
+      const fresh = await synthesize(text);
+      const spoken: SpokenLine = "audio" in fresh ? fresh : { audio: fresh, voiceKey };
+      const spokenFingerprint = spoken.voiceKey === voiceKey ? fingerprint : lineFingerprint(text, spoken.voiceKey);
+      writeLine(pkgDir, spokenFingerprint, spoken.voiceKey, spoken.audio);
       recorded += 1;
-      lines.push({ text, fingerprint, reused: false, audio });
+      lines.push({ text, fingerprint: spokenFingerprint, reused: false, voiceKey: spoken.voiceKey, audio: spoken.audio });
     }
     onLine?.(lines.length, texts.length, text, lines[lines.length - 1].reused);
   }
