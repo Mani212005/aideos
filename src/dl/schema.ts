@@ -815,8 +815,15 @@ export const filmBaseSchema = z.object({
   /** Editor timeline lanes. Absent means the editor derives its default lane set. */
   layers: z.array(timelineLayerSchema).optional(),
   captionPlacement: captionPlacementByFormatSchema.optional(),
-  /** Burned-in captions rendering. default is "bottom" */
-  captions: z.union([z.enum(["bottom", "off"]), z.string()]).default("bottom").optional(),
+  /** Burned-in captions rendering. default is "bottom". A named mode, "" (no words), or inline WebVTT text (it has a "-->" cue timing line). */
+  captions: z
+    .union([
+      z.enum(["bottom", "off", "kinetic", "auto"]),
+      z.literal(""),
+      z.string().refine((value) => value.includes("-->"), { message: 'captions must be "bottom", "off", "kinetic", "auto" or inline WebVTT text with a "-->" cue' }),
+    ])
+    .default("bottom")
+    .optional(),
   /**
    * Burn kinetic subtitles into the picture. Omit to keep the long-standing default of on.
    * Set false for a film that puts its own words on screen: §04 leaves subtitles to the platform,
