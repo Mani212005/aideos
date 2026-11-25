@@ -17,7 +17,7 @@ export const REQUIRED_LABELS = [
 
 // Determines whether a git-tracked file is a code file that requires a three-field header.
 export function isCodeFile(file: string): boolean {
-  if (file.startsWith("test_fixtures/")) return false;
+  if (file.startsWith("test_fixtures/") && !file.startsWith("test_fixtures/stillTalking/")) return false;
   if (file === "Dockerfile") return true;
   if (file === "bin/aideos" || file.startsWith("bin/")) return true;
   return /\.(ts|tsx|js|mjs|cjs|mts|py|css|yaml|yml|html)$/.test(file);

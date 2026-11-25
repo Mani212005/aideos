@@ -5,7 +5,7 @@
  * retimes the whole picture instead of drifting away from it, and a rewritten line that drops a
  * cued word fails the build instead of silently mis-timing the film.
  * Inputs and outputs: word timings and cue definitions -> resolved frame cues locked to narration.
- * Used by: backend/stillTalking/scene.ts.
+ * Used by: test_fixtures/stillTalking/scene.ts.
  */
 
 import { FPS } from "./stage";

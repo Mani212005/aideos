@@ -7,7 +7,7 @@
  * Whisper model aligned back onto the script's own words. The picture is compiled from the spine
  * alone, so a re-recorded take retimes the whole film.
  * Inputs and outputs: beat sheet and narration options -> synthesized, mastered voiceover and word alignment timings.
- * Used by: backend/stillTalking/produceVoiceover.ts.
+ * Used by: test_fixtures/stillTalking/produceVoiceover.ts.
  */
 
 import { environment } from "../env";

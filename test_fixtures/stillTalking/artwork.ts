@@ -7,10 +7,10 @@
  * emitted here animates itself: the assets are static documents, exactly as the scene engine
  * requires, and all motion lives in the separate declarative timelines.
  * Inputs and outputs: none -> static SVG asset sources for the Still Talking film.
- * Used by: backend/stillTalking/writeAssets.ts.
+ * Used by: test_fixtures/stillTalking/writeAssets.ts.
  */
 
-import { rng } from "../sceneKit";
+import { rng } from "../../backend/sceneKit";
 
 /** Colour tokens of the rendered-video design language, written literally into SVG attributes. */
 export const COLOR = {

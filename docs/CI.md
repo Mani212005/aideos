@@ -25,7 +25,7 @@ GitHub job summary), so one run reports every problem.
 | Job | Steps | Runs |
 | --- | --- | --- |
 | `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy, and reports shadow PR risk rating | every PR and push to main |
-| `static` | file headers, every test file is wired, eslint (src, backend, scripts, `editor/src`, `editor/vite.config.ts`), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
+| `static` | file headers, every test file is wired, eslint (src, backend, scripts, `editor/src`, `editor/vite.config.ts`, `test_fixtures/stillTalking`), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | warm the system Chrome (`scripts/warmChrome.ts`), `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), native Render IR and renderer tests (`cargo test --locked --manifest-path native/Cargo.toml`), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
 | `journeys` (3 shards) | each shard: install ffmpeg, tesseract and the browser libraries (the pictures journey needs tesseract for the OCR design rule), restore the Rust cache and build the release `aideos-render` (the render jobs of the Three-stage journeys, cel or dots-v1, one performer or several, draw natively), warm the system Chrome (`scripts/warmChrome.ts`), `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, undo and redo, autosave, reload); the three shards split these between them (see [Journeys shards](#journeys-shards)) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
@@ -165,7 +165,7 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
   gate, skip, or fail any jobs.
   * **High risk triggers**:
     * Touches render code: `backend/pipeline/render*`, `src/dl/render*`, `native/**`
-    * Touches stage or scene code: `src/dl/scene/**`, `src/dl/Stage*`, `src/dl/Scene*`, `backend/stage/**`, `backend/stillTalking/**`
+    * Touches stage or scene code: `src/dl/scene/**`, `src/dl/Stage*`, `src/dl/Scene*`, `backend/stage/**`, `test_fixtures/stillTalking/**`
     * Touches golden regression code or baselines: `backend/journeys/goldens/**`, `backend/journeys/legacy.golden.ts`, `backend/journeys/goldenResult.ts`
     * Touches CI workflows: `.github/**`
     * Touches dependencies or lockfiles: `package.json`, `package-lock.json`, `editor/package.json`, `editor/package-lock.json`
