@@ -79,6 +79,32 @@ export function unpacedVoiceKey(voiceKey: string): string {
   return at < 0 ? voiceKey : voiceKey.slice(0, at);
 }
 
+/**
+ * The one voice key a recording is recorded as narrated by (narration.json `ttsBackend`), from the voice that actually
+ * spoke each line (re-pacing suffixes ignored). One voice for every line: that voice. Mixed voices: the requested voice
+ * if it spoke at least one line, otherwise the voice that spoke the most lines (a tie goes to the one that spoke first).
+ * Per-line truth stays in the line cache; this is only the single value a file with one narrator field can hold.
+ */
+export function narratingVoiceKey(lines: ReadonlyArray<{ voiceKey: string }>, requestedVoiceKey: string): string {
+  const counts = new Map<string, number>();
+  for (const line of lines) {
+    const voice = unpacedVoiceKey(line.voiceKey);
+    counts.set(voice, (counts.get(voice) ?? 0) + 1);
+  }
+  if (counts.size === 0) return requestedVoiceKey;
+  const requested = unpacedVoiceKey(requestedVoiceKey);
+  if (counts.has(requested)) return requested;
+  let best = "";
+  let bestCount = 0;
+  for (const [voice, count] of counts) {
+    if (count > bestCount) {
+      best = voice;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 /** The content fingerprint of one line: its words plus the voice key that speaks them. */
 export function lineFingerprint(text: string, voiceKey: string): string {
   return createHash("sha256").update(JSON.stringify([STORE_VERSION, voiceKey, text])).digest("hex").slice(0, 24);

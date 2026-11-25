@@ -31,6 +31,7 @@
 | Studio E2E, `origin/main` code | Reproduced | No Kokoro worker process (in-process model), audio 22.30 s, line keys `kokoro-am_adam\|stretch=1.2`, no `rev` in the reply, so the studio's follow-up save on its pre-recording revision gets 409 `stale_revision`. |
 | Studio E2E, this branch | PASS | One `kokoroWorker.mjs` child, audio 28.72 s, line keys `kokoro-am_adam\|speed=1\|chars=300\|stretch=1.2`, `film.voiceover.voice` set, reply carries `rev` and `order`; a save on that `rev` is 200, re-recording reuses both lines, `/api/narration` reports both recorded. |
 | Browser (Chrome, Words stage) | PASS | After Generate Voiceover the studio sends no film save (no 409), status reads the recorded and kept line counts, no conflict banner. |
+| Narrator of record (`narratingVoiceKey`) | PASS | `backend/voiceLines.test.ts` covers one voice, mixed with and without the requested voice, a tie and no lines. `backend/voiceOfChoice.test.ts` drives `/api/generate-voiceover` on a real dev server (scratch videos dir, fake voice service, no network or real audio) and reads `ttsBackend` from `narration.json`. Only the cloned-voice branch writes `narration.json`, and it never falls back, so there it equals the requested key. |
 | `npm run lint` (ci static) | PASS | headers, tests wired, eslint, tsc root, oxlint, editor build (`tsc -b` plus vite), ruff. |
 | `node --import tsx ... --test` voiceSynthesis, voiceLines, filmSyncMachine, vcdClient, audio, narrationTakes, voiceOfChoice, screenplay_lines, sync | PASS (124/124) | Targeted only. |
 

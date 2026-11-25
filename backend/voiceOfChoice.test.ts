@@ -3,7 +3,8 @@
  * cloned voice is the default voice for every film, test and run). They prove the deterministic fake
  * voice service speaks the real vcd protocol so the real client, backend name and cache key come out
  * as production's, that tests default to the owner voice, and that the design check fails a package
- * narrated by another voice unless the override is set.
+ * narrated by another voice unless the override is set, and that Studio records the voice that spoke as the
+ * narrator of record in narration.json.
  * Inputs and outputs: the fake voice service, the real vcd client and a fixture film -> narrator, cache key and design check assertions.
  * Used by: npm test.
  */
@@ -13,7 +14,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { TEST_VIDEOS_DIR } from "./testSupport/fixtureVideosDir";
-import { FAKE_OWNER_BACKEND_NAME, FAKE_OWNER_VOICE_ID, FAKE_OWNER_VOICE_NAME } from "./testSupport/fakeVcd";
+import { FAKE_OWNER_BACKEND_NAME, FAKE_OWNER_VOICE_ID, FAKE_OWNER_VOICE_NAME, voiceOfChoiceChildEnv } from "./testSupport/fakeVcd";
+import { startEditor } from "../scripts/studioDriver";
 import { checkFilmDesign, checkFilmDesignById } from "./designCheck/designCheck";
 import { PCM_SAMPLE_RATE, createTtsBackend } from "./tts";
 import { resolveVcdVoiceId, synthesizeWithVcd, VcdUnavailableError } from "./vcdClient";
@@ -146,5 +148,31 @@ test("voice of choice: the design check by film id reads narration.json and hono
     assert.deepEqual(withOverride(undefined, voiceFindings), [], "unreadable narration.json is left to the stages that own it");
   } finally {
     fs.rmSync(narrationFile, { force: true });
+  }
+});
+
+test("Studio /api/generate-voiceover writes the voice that spoke as narration.json ttsBackend", async () => {
+  const videosDir = path.resolve(".tmp", `m6-narrator-of-record-${process.pid}`);
+  fs.mkdirSync(videosDir, { recursive: true });
+  // The dev server child narrates through the deterministic fake voice service, never a real one.
+  const childEnv = voiceOfChoiceChildEnv();
+  const previousOptions = process.env.NODE_OPTIONS;
+  process.env.NODE_OPTIONS = childEnv.NODE_OPTIONS;
+  let server: Awaited<ReturnType<typeof startEditor>> | undefined;
+  try {
+    server = await startEditor(videosDir);
+    const response = await fetch(new URL("/api/generate-voiceover", server.url), {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: new URL(server.url).origin },
+      body: JSON.stringify({ projectId: "m6-narrator", voice: "vcd-my-voice", spokenTextOverride: "First line of the story.\n\nSecond line of the story." }),
+    });
+    assert.equal(response.status, 200);
+    const narration = JSON.parse(fs.readFileSync(path.join(videosDir, "m6-narrator", "narration.json"), "utf8")) as { ttsBackend?: string };
+    assert.equal(narration.ttsBackend, FAKE_OWNER_BACKEND_NAME, "every line was spoken by the owner voice, so it is the narrator of record");
+  } finally {
+    if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previousOptions;
+    server?.stop();
+    fs.rmSync(videosDir, { recursive: true, force: true });
   }
 });

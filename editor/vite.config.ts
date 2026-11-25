@@ -86,7 +86,7 @@ import { narrationLines } from '../backend/storyScript.ts'
 import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
 import { bodyLimitFor, declaredBodyTooLarge, isSafeId, readJsonBody, SAFE_ID } from '../backend/studioRequest.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
-import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, pacedVoiceKey, unpacedVoiceKey, type SpokenLine } from '../backend/voiceLines.ts'
+import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, pacedVoiceKey, unpacedVoiceKey, narratingVoiceKey, type SpokenLine } from '../backend/voiceLines.ts'
 import { NARRATION_RATE } from '../backend/pacingProfile.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
 import {
@@ -1910,7 +1910,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                       captionsVttContent: vttContent,
                       words: absoluteWords,
                       wordsPath: path.join(pkgDir, 'voiceover_words.json'),
-                      ttsBackend: cacheVoiceKey,
+                      // The voice that actually spoke (not the requested one) is the narrator of record.
+                      ttsBackend: narratingVoiceKey(lineResult.lines, cacheVoiceKey),
                       voice: resolvedVcdVoiceId,
                       speed: null,
                       lines: { recorded: lineSummary.recorded, reused: lineSummary.reused },

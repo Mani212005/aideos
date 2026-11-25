@@ -14,7 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { lineFingerprint, pacedVoiceKey, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
+import { lineFingerprint, narratingVoiceKey, pacedVoiceKey, recordedStatus, resampleLinear, synthesizeLines, voiceLinesDir, type LineAudio } from "./voiceLines";
 import { produceAudioPipeline } from "./audio";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
 import { vcdVoiceCacheKey } from "./vcdClient";
@@ -236,4 +236,15 @@ test("a line another voice spoke is stored under that voice, so the requested vo
   } finally {
     fs.rmSync(pkg, { recursive: true, force: true });
   }
+});
+
+test("narratingVoiceKey names the one voice that spoke, and a deterministic voice when several did", () => {
+  const requested = "kokoro-am_adam|speed=1|chars=300";
+  const line = (voiceKey: string) => ({ voiceKey });
+  assert.equal(narratingVoiceKey([line(pacedVoiceKey(requested, 1.2)), line(pacedVoiceKey(requested, 1.2))], requested), requested, "one voice for every line");
+  assert.equal(narratingVoiceKey([line("aura-helios-en"), line("aura-helios-en")], requested), "aura-helios-en", "the fallback voice when it spoke every line");
+  assert.equal(narratingVoiceKey([line("aura-helios-en"), line("aura-helios-en"), line(requested)], requested), requested, "mixed: the requested voice if it spoke any line");
+  assert.equal(narratingVoiceKey([line("say-Samantha"), line("aura-helios-en"), line("aura-helios-en")], requested), "aura-helios-en", "mixed without the requested voice: the voice with most lines");
+  assert.equal(narratingVoiceKey([line("say-Samantha"), line("aura-helios-en")], requested), "say-Samantha", "a tie goes to the voice that spoke first");
+  assert.equal(narratingVoiceKey([], requested), requested, "no lines: the requested voice");
 });
