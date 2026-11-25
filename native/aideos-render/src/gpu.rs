@@ -7,7 +7,7 @@ use std::fmt;
 use khronos_egl as egl;
 use skia_safe::{gpu, AlphaType, ColorType, ImageInfo};
 
-use crate::renderer::{read_rgba, RenderedFrame};
+use crate::renderer::{frame_surface_props, read_rgba, RenderedFrame};
 use crate::{Format, RenderError, Renderer};
 
 /// Mesa's surfaceless EGL platform.
@@ -109,7 +109,7 @@ impl GpuContext {
             &info,
             None,
             gpu::SurfaceOrigin::TopLeft,
-            None,
+            Some(&frame_surface_props()),
             false,
             None,
         )
