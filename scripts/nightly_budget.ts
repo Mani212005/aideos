@@ -8,7 +8,7 @@ import { environment } from "../backend/env";
 import { REPO_ROOT as repositoryRoot } from "../backend/paths";
 
 import "../backend/testSupport/fixtureVideosDir";
-import { execFileSync } from "node:child_process";
+import { execFileSyncBounded } from "../backend/proc";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -40,7 +40,7 @@ export const BUDGETS = {
 
 /** Resident memory in MB of this process and every descendant, from one `ps` listing. */
 function treeRssMB(): number {
-  const rows = execFileSync("ps", ["-A", "-o", "pid=,ppid=,rss="]).toString().trim().split("\n").map((l) => l.trim().split(/\s+/).map(Number));
+  const rows = execFileSyncBounded("ps", ["-A", "-o", "pid=,ppid=,rss="]).toString().trim().split("\n").map((l) => l.trim().split(/\s+/).map(Number));
   const children = new Map<number, number[]>();
   for (const [pid, ppid] of rows) children.set(ppid, [...(children.get(ppid) ?? []), pid]);
   const rss = new Map(rows.map(([pid, , kb]) => [pid, kb]));

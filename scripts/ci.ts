@@ -13,7 +13,8 @@
 import { environment } from "../backend/env";
 import { REPO_ROOT as repositoryRoot } from "../backend/paths";
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { spawnSyncBounded } from "../backend/proc";
 import fs from "node:fs";
 import path from "node:path";
 import { clearGoldenOutcome, readGoldenOutcome } from "../backend/journeys/goldenResult";
@@ -83,7 +84,7 @@ export function resolveRuff(probe: (cmd: string[]) => boolean = defaultProbe): s
 
 /** Runs a command quietly and reports whether it exited 0. */
 function defaultProbe(cmd: string[]): boolean {
-  const r = spawnSync(cmd[0], cmd.slice(1), { stdio: "ignore", cwd: ROOT });
+  const r = spawnSyncBounded(cmd[0], cmd.slice(1), { stdio: "ignore", cwd: ROOT });
   return r.status === 0;
 }
 
@@ -102,7 +103,7 @@ function ruffStep(name: string, args: string[]): CiStep {
 
 /** Reason to skip a step that needs a Rust toolchain: none under CI (the runner ships one and a missing cargo must fail), a hint on a laptop without it. */
 const cargoMissing = (): string | null =>
-  inCi() || spawnSync("cargo", ["--version"], { stdio: "ignore", cwd: ROOT }).status === 0
+  inCi() || spawnSyncBounded("cargo", ["--version"], { stdio: "ignore", cwd: ROOT }).status === 0
     ? null
     : "cargo is not installed (see https://rustup.rs); CI always runs it";
 

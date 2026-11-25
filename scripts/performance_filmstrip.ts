@@ -4,7 +4,7 @@
  * Used by: npm run performance:filmstrip; no production film, server or model generation.
  */
 import { build } from "esbuild";
-import { execFileSync } from "node:child_process";
+import { execFileSyncBounded } from "../backend/proc";
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import fs from "node:fs/promises";
@@ -42,7 +42,7 @@ async function main(): Promise<void> {
         () => false,
       );
       if (!exists)
-        execFileSync("ffmpeg", [
+        execFileSyncBounded("ffmpeg", [
           "-v",
           "error",
           "-i",

@@ -18,7 +18,6 @@
 
 import { callerWorkingDirectory, REPO_ROOT as repositoryRoot } from "./paths";
 
-import { execFileSync } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { type Film, parseFilm } from "../src/dl/schema";
@@ -134,7 +133,7 @@ export const NARRATION_LOUDNESS_TARGET = { integratedLufs: -16, truePeakDb: -1 }
 
 /** Normalizes a narration WAV to the review loudness target without changing its duration. */
 export function normalizeNarrationLoudness(inputPath: string, outputPath: string): void {
-  execFileSync("ffmpeg", [
+  execFileSyncBounded("ffmpeg", [
     "-hide_banner", "-loglevel", "error", "-y", "-i", inputPath,
     "-af", `loudnorm=I=${NARRATION_LOUDNESS_TARGET.integratedLufs}:TP=${NARRATION_LOUDNESS_TARGET.truePeakDb}:LRA=11`,
     "-ar", String(PCM_SAMPLE_RATE), "-ac", "1", "-c:a", "pcm_s16le", outputPath,
@@ -574,6 +573,7 @@ export function buildCaptionsVtt(words: WordInfo[]): string {
 import { buildBriefFromSegmentFallback } from "./ideation/segmentSync";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "./ideation/graphLayout";
 import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { execFileSyncBounded } from "./proc";
 
 /**
  * The part of a narration result a film is built from: the spoken segments and their
@@ -761,7 +761,7 @@ export function retimeAudioSync(
   }
 
   const filter = buildAtempoFilter(speed);
-  execFileSync("ffmpeg", ["-y", "-i", resolved, "-filter:a", filter, "-vn", "-c:a", "pcm_s16le", outPath], {
+  execFileSyncBounded("ffmpeg", ["-y", "-i", resolved, "-filter:a", filter, "-vn", "-c:a", "pcm_s16le", outPath], {
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -771,7 +771,7 @@ export function retimeAudioSync(
     const decoded = decodeWav(buf);
     durationSec = Number((decoded.samples.length / decoded.sampleRate).toFixed(3));
   } catch {
-    const durOutput = execFileSync("ffprobe", [
+    const durOutput = execFileSyncBounded("ffprobe", [
       "-v",
       "error",
       "-show_entries",

@@ -7,13 +7,13 @@
 import { DEFAULT_STUDIO_PORT } from "../src/dl/defaults";
 import { environment } from "./env";
 
-import { execFileSync } from "node:child_process";
+import { execFileSyncBounded } from "./proc";
 
 /** Reads Git metadata without allowing inherited Git directory overrides. */
 export function git(root: string, args: string[]): string {
   const env = { ...environment };
   for (const key of Object.keys(env)) if (key.startsWith("GIT_")) delete env[key];
-  return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", env, stdio: ["ignore", "pipe", "pipe"] }).trim();
+  return execFileSyncBounded("git", ["-C", root, ...args], { encoding: "utf8", env, stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
 /** Reads optional Git metadata, returning an empty string when a ref does not exist. */

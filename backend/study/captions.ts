@@ -7,7 +7,7 @@
  * Used by: backend/study/study.ts.
  */
 
-import { spawnSync } from "node:child_process";
+import { spawnSyncBounded } from "../proc";
 import { analyzeSample, ocrFrame, type OcrWord } from "../review/ocr";
 import { streamSampleFrames } from "../review/media";
 import type { VideoFacts } from "../review/types";
@@ -24,7 +24,7 @@ export interface CaptionDeps {
 
 // True when a tesseract binary answers `--version`.
 function defaultHasTesseract(): boolean {
-  return spawnSync("tesseract", ["--version"], { stdio: "ignore" }).status === 0;
+  return spawnSyncBounded("tesseract", ["--version"], { stdio: "ignore" }).status === 0;
 }
 
 // Method B: whether the bottom band of a gray frame holds ink (pixels more than inkLevels off the band median) in a plausible share for captions.

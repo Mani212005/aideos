@@ -31,6 +31,7 @@ import { formatPreflight, packageProblems, REAL_PREFLIGHT_DEPS, runPreflight, ty
 import { finishRun } from "./finish";
 import { latestRound, readConfig, readRecords } from "./round";
 import { allCheckDir, AllCheckError, type AgentName, type AllCheckConfig, type AllCheckOptions, type AllCheckResult } from "./types";
+import { spawnSyncBounded } from "../proc";
 
 export * from "./types";
 export { parseAllCheckOptions } from "./options";
@@ -63,7 +64,7 @@ export function realStartDeps(): StartDeps {
     lock: realLockDeps((location) => paneLive(location, herdr)),
     herdr,
     studioRunning: () => {
-      const r = spawnSync("lsof", [`-tiTCP:${DEFAULT_STUDIO_PORT}`, "-sTCP:LISTEN"], { encoding: "utf8" });
+      const r = spawnSyncBounded("lsof", [`-tiTCP:${DEFAULT_STUDIO_PORT}`, "-sTCP:LISTEN"], { encoding: "utf8" });
       return r.status === 0 && r.stdout.trim().length > 0;
     },
     now: () => new Date(),

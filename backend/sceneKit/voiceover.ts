@@ -14,7 +14,7 @@ import { environment } from "../env";
 
 import * as fs from "fs";
 import * as path from "path";
-import { spawnSync } from "child_process";
+import { spawnSyncBounded } from "../proc";
 import dotenv from "dotenv";
 import { produceAudioPipeline } from "../audio";
 import { HOUSE_PACE, NARRATION_RATE } from "../pacingProfile";
@@ -90,7 +90,7 @@ export function timingPath(slug: string, spineFile: string = DEFAULTS.spineFile,
 
 // Runs ffmpeg and hands back its stderr report.
 function ffmpegReport(args: string[]): string {
-  const run = spawnSync("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+  const run = spawnSyncBounded("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
   if (run.error) throw run.error;
   return run.stderr ?? "";
 }
@@ -144,7 +144,7 @@ function whisperWords(wavPath: string, ranges: Array<[number, number]>): HeardWo
   const out = `${wavPath}.words.json`;
   fs.writeFileSync(rangesFile, JSON.stringify(ranges));
   const script = path.resolve(__dirname, "whisperWords.py");
-  const run = spawnSync("python3", [script, wavPath, rangesFile, out], {
+  const run = spawnSyncBounded("python3", [script, wavPath, rangesFile, out], {
     encoding: "utf8",
     env: { ...environment, KMP_DUPLICATE_LIB_OK: "TRUE" },
     maxBuffer: 32 * 1024 * 1024,

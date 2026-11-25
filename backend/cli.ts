@@ -9,7 +9,7 @@ import { REPO_ROOT as repositoryRoot } from "./paths";
 import { Command, Option } from "commander";
 import fs from "fs/promises";
 import path from "path";
-import { execSync } from "child_process";
+import { execFileSyncBounded } from "./proc";
 import dotenv from "dotenv";
 import type { Film } from "../src/dl/schema";
 import { getVideosDir } from "../src/dl/videoPackageLoader";
@@ -45,6 +45,12 @@ program
   .version("1.0.0");
 
 
+
+/** The npm launcher for this platform (Windows installs it as npm.cmd, which a direct spawn needs spelled out). */
+const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
+
+/** The longest one format render may run (ms) before it is killed: two hours, far past any real film. */
+const RENDER_TIMEOUT_MS = 2 * 60 * 60_000;
 
 const FORMATS = {
   long: { script: "render", label: "long (1920x1080) -> videos/<slug>/renders/long.mp4" },
@@ -175,7 +181,7 @@ program
 
       console.log(`Validating...`);
       try {
-        execSync("npm run validate", { stdio: "inherit", cwd: ROOT });
+        execFileSyncBounded(NPM, ["run", "validate"], { stdio: "inherit", cwd: ROOT });
         console.log(`Validation successful.`);
       } catch {
         if (previousActive !== null) {
@@ -190,7 +196,7 @@ program
         for (const key of formats) {
           console.log(`Rendering ${FORMATS[key].label}...`);
           try {
-            execSync(`npm run ${FORMATS[key].script}`, { stdio: "inherit", cwd: ROOT });
+            execFileSyncBounded(NPM, ["run", FORMATS[key].script], { stdio: "inherit", cwd: ROOT, timeout: RENDER_TIMEOUT_MS });
           } catch {
             throw new Error(`Render failed for the ${key} format.`);
           }

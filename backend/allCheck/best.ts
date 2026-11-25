@@ -9,10 +9,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { ensureGenerated } from "../pipeline/generatedFiles";
 import { allCheckDir, AllCheckError, type CheckFormat, type FormatRoundRecord } from "./types";
+import { spawnSyncBounded } from "../proc";
 
 /** A round has to be this much worse than the best one before a rollback is forced (score points). */
 const ROLLBACK_MARGIN = 0.05;
@@ -116,7 +116,7 @@ export interface RepoBaseline {
 
 // The paths git reports as modified or untracked in the repo, relative to the repo root.
 export function dirtyRepoPaths(repoRoot: string): string[] {
-  const r = spawnSync("git", ["status", "--porcelain", "--untracked-files=all"], { cwd: repoRoot, encoding: "utf8" });
+  const r = spawnSyncBounded("git", ["status", "--porcelain", "--untracked-files=all"], { cwd: repoRoot, encoding: "utf8" });
   if (r.status !== 0) return [];
   return r.stdout
     .split("\n")

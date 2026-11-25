@@ -11,16 +11,49 @@ import sys
 
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
-import whisper  # noqa: E402
-
 SAMPLE_RATE = 16000
+
+
+# Stops with a one-line message (exit code 1) instead of a traceback when the arguments or the ranges file are unusable.
+def fail(message: str) -> None:
+    sys.exit(f"whisperWords: {message}")
+
+
+# Checks argv and the ranges file before the slow model load; returns (wav_path, ranges, out_path).
+def read_arguments(argv: list) -> tuple:
+    if len(argv) != 4:
+        fail("usage: whisperWords.py <voiceover.wav> <ranges.json> <out.json>")
+    wav_path, ranges_path, out_path = argv[1], argv[2], argv[3]
+    if not os.path.isfile(wav_path):
+        fail(f"audio file not found: {wav_path}")
+    if not os.path.isfile(ranges_path):
+        fail(f"ranges file not found: {ranges_path}")
+    try:
+        with open(ranges_path) as fh:
+            ranges = json.load(fh)
+    except ValueError as err:
+        fail(f"ranges file is not valid JSON: {err}")
+    if not isinstance(ranges, list):
+        fail("ranges file must hold a list of [start, end] pairs")
+    for item in ranges:
+        ok = (
+            isinstance(item, list)
+            and len(item) == 2
+            and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in item)
+        )
+        if not ok or not 0 <= item[0] < item[1]:
+            fail(f"each range must be [start, end] in seconds with 0 <= start < end, got {item!r}")
+    out_dir = os.path.dirname(os.path.abspath(out_path))
+    if not os.path.isdir(out_dir):
+        fail(f"output folder not found: {out_dir}")
+    return wav_path, ranges, out_path
 
 
 # Reads [[start, end], ...] ranges from argv[2] and writes one list of {word, start, end} per range (absolute seconds).
 def main() -> None:
-    wav_path, ranges_path, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
-    with open(ranges_path) as fh:
-        ranges = json.load(fh)
+    wav_path, ranges, out_path = read_arguments(sys.argv)
+    import whisper  # imported after the argument check, so a bad call fails at once without loading the model stack
+
     model = whisper.load_model("small")
     audio = whisper.load_audio(wav_path)
     lines = []

@@ -18,19 +18,20 @@ export function useDesignOverview(filmId: string, revision: unknown) {
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    let live = true;
-    fetch(`/api/design/${filmId}`)
+    // One controller per request: a newer film or revision (or leaving the screen) cancels the one still in flight.
+    const controller = new AbortController();
+    fetch(`/api/design/${filmId}`, { signal: controller.signal })
       .then(async (res) => {
         const body = await res.json();
-        if (!live) return;
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         setOverview(body.overview);
         setError(null);
       })
-      .catch((err) => live && setError(err instanceof Error ? err.message : String(err)));
-    return () => {
-      live = false;
-    };
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => controller.abort();
   }, [filmId, revision, nonce]);
 
   const refresh = useCallback(() => setNonce((n) => n + 1), []);
