@@ -264,6 +264,7 @@ test("run takes fail-safe path when BASE_SHA or HEAD_SHA is missing even if bran
 
 test("computeRisk rates High for render, stage, golden, workflows, dependencies, security, and large PRs", () => {
   assert.equal(computeRisk({ event: "pull_request", files: ["backend/pipeline/render.ts"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["native/aideos-render/src/main.rs"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["src/dl/scene/ThreeStage.tsx"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["src/dl/scene/compile.ts"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["backend/stillTalking/scene.ts"] }).risk, "High");

@@ -149,8 +149,8 @@ fn render_small(renderer: &Renderer, format: Format, frame: u32) -> (u32, u32, V
             for dy in 0..SHRINK {
                 for dx in 0..SHRINK {
                     let i = (((y * SHRINK + dy) * full.width + x * SHRINK + dx) * 4) as usize;
-                    for c in 0..3 {
-                        sum[c] += u32::from(full.rgba[i + c]);
+                    for (c, total) in sum.iter_mut().enumerate() {
+                        *total += u32::from(full.rgba[i + c]);
                     }
                 }
             }

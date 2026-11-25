@@ -25,7 +25,7 @@ GitHub job summary), so one run reports every problem.
 | Job | Steps | Runs |
 | --- | --- | --- |
 | `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy, and reports shadow PR risk rating | every PR and push to main |
-| `static` | file headers, every test file is wired, eslint (src, backend, scripts, editor), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
+| `static` | file headers, every test file is wired, eslint (src, backend, scripts, `editor/src`, `editor/vite.config.ts`), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
 | `unit` | warm the system Chrome (`scripts/warmChrome.ts`), `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), native Render IR and renderer tests (`cargo test --locked --manifest-path native/Cargo.toml`), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
 | `journeys` (3 shards) | each shard: install ffmpeg, tesseract and the browser libraries (the pictures journey needs tesseract for the OCR design rule), restore the Rust cache and build the release `aideos-render` (the render jobs of the Three-stage journeys, cel or dots-v1, one performer or several, draw natively), warm the system Chrome (`scripts/warmChrome.ts`), `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, undo and redo, autosave, reload); the three shards split these between them (see [Journeys shards](#journeys-shards)) | every PR and push to main |
 | `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
@@ -108,7 +108,7 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
   read a cache that another pull request created, so its first run is a miss; caches made by `main` are
   readable everywhere. Jobs that render
   install `ffmpeg` and the Remotion browser libraries, and cache `node_modules/.remotion`. APT packages
-  are cached across runs under `/home/runner/.apt-cache` with retry-hardened installs (detailed under
+  are cached across runs under `/home/runner/.apt-cache` with retry-hardened installs through one composite action, `.github/actions/setup-apt` (detailed under
   [Runner hardening and red-main alert](#runner-hardening-and-red-main-alert)).
 * The `unit` job restores the Remotion browser cache, runs `remotion browser ensure` before tests,
   restores the Cargo registry and `native/target` cache keyed by `native/Cargo.lock`, runs the Rust
@@ -164,7 +164,7 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
   The rating is computed from rules and operates in shadow mode alongside no-mistakes: it does not
   gate, skip, or fail any jobs.
   * **High risk triggers**:
-    * Touches render code: `backend/pipeline/render*`, `src/dl/render*`
+    * Touches render code: `backend/pipeline/render*`, `src/dl/render*`, `native/**`
     * Touches stage or scene code: `src/dl/scene/**`, `src/dl/Stage*`, `src/dl/Scene*`, `backend/stage/**`, `backend/stillTalking/**`
     * Touches golden regression code or baselines: `backend/journeys/goldens/**`, `backend/journeys/legacy.golden.ts`, `backend/journeys/goldenResult.ts`
     * Touches CI workflows: `.github/**`
@@ -181,9 +181,9 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
 
 ## Runner hardening and red-main alert
 
-* **APT caching and retry with timeouts**: Every `apt-get` step in `ci.yml` and `nightly.yml` restores
-  and saves `/home/runner/.apt-cache` via `actions/cache@v4` with `-o Dir::Cache::Archives=/home/runner/.apt-cache`.
-  All apt steps use three attempts, 80-second per-command timeouts, 20-second HTTP and HTTPS request
+* **APT caching and retry with timeouts**: Every apt install in `ci.yml`, `nightly.yml` and `update-goldens.yml` goes through the one `.github/actions/setup-apt` composite action (input: `packages`). The workflow restores
+  and saves `/home/runner/.apt-cache` via `actions/cache@v4`; the action installs with `-o Dir::Cache::Archives=/home/runner/.apt-cache`.
+  The action uses three attempts, 80-second per-command timeouts, 20-second HTTP and HTTPS request
   timeouts, increasing 20/40-second backoff, and `-o Acquire::Retries=3`. When the runner's mirror list
   uses Azure's Ubuntu archive, the step adds `archive.ubuntu.com` as a lower-priority fallback. Each
   apt step has its own `timeout-minutes: 10`, which fits the 540-second worst-case retry budget.
@@ -369,8 +369,8 @@ Remaining scope:
 * `J1 full-film measured review and captain watch` are not part of the pull-request excerpt or
   nightly budget job; the separate real-film task owns those checks.
 * Legacy `any` annotations remain in the shrink-only `LEGACY_ANY` ledger in `eslint.config.mjs`.
-  The editor eslint step covers `editor/src`; expanding it to the legacy `editor/vite.config.ts`
-  (which also carries existing `any` diagnostics) is outside this journey follow-up.
+  The eslint step covers `editor/src` and `editor/vite.config.ts`; `editor/vite.config.ts` is itself
+  a ledger entry (26 `any`), to be typed as its routes move out of it.
 
 ## Studio browser smoke check (moved from AGENTS.md)
 

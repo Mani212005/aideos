@@ -200,48 +200,57 @@ test("ci.yml changes job is pinned by full SHA, has no if condition, and all-gre
   );
 });
 
-test("ci.yml wraps every apt-get update and install in a retry loop with timeouts", () => {
-  const ci = YAML.parse(fs.readFileSync(path.join(workflowDir, "ci.yml"), "utf8")) as WorkflowDocument;
-  const aptSteps: { job: string; step: WorkflowStep }[] = [];
-  for (const [jobKey, job] of Object.entries(ci.jobs ?? {})) {
-    for (const step of job.steps ?? []) {
-      if (step.run?.includes("apt-get")) {
-        aptSteps.push({ job: jobKey, step });
+test("every apt install in the workflows goes through the setup-apt action, which retries with timeouts", () => {
+  const actionPath = path.join(workflowDir, "..", "actions", "setup-apt", "action.yml");
+  const action = YAML.parse(fs.readFileSync(actionPath, "utf8")) as { runs?: { steps?: WorkflowStep[] } };
+  const script = action.runs?.steps?.map((step) => step.run ?? "").join("\n") ?? "";
+  assert.ok(script.includes("apt-get"), "the setup-apt action must run apt-get");
+
+  // The retry recipe lives in the action alone: no workflow may call apt-get inline and drift from it.
+  const aptSteps: { file: string; job: string; step: WorkflowStep }[] = [];
+  for (const file of ["ci.yml", "nightly.yml", "update-goldens.yml"]) {
+    const workflow = YAML.parse(fs.readFileSync(path.join(workflowDir, file), "utf8")) as WorkflowDocument;
+    for (const [jobKey, job] of Object.entries(workflow.jobs ?? {})) {
+      for (const step of job.steps ?? []) {
+        assert.ok(!step.run?.includes("apt-get"), `${file} ${jobKey} step "${step.name}" must use ./.github/actions/setup-apt, not call apt-get inline`);
+        if (step.uses === "./.github/actions/setup-apt") aptSteps.push({ file, job: jobKey, step });
       }
     }
+  }
+  assert.ok(aptSteps.filter((s) => s.file === "ci.yml").length >= 3, "expected at least 3 setup-apt steps in ci.yml (unit, journeys, legacy)");
+
+  for (const { file, job, step } of aptSteps) {
+    assert.ok(step["timeout-minutes"], `${file} ${job} step "${step.name}" must have its own timeout-minutes`);
+    assert.ok(step["timeout-minutes"] <= 10, `${file} ${job} step "${step.name}" timeout-minutes should be at most 10`);
   }
 
-  assert.ok(aptSteps.length >= 3, "expected at least 3 apt-get steps in ci.yml (unit, journeys, legacy)");
-  for (const { job, step } of aptSteps) {
-    assert.ok(step["timeout-minutes"], `${job} step "${step.name}" must have its own timeout-minutes`);
-    assert.ok(step["timeout-minutes"] <= 10, `${job} step "${step.name}" timeout-minutes should be at most 10`);
-    assert.match(step.run!, /for\s+\w+\s+in\s+1\s+2\s+3/, `${job} step "${step.name}" must have 3 retry attempts`);
-    assert.match(step.run!, /Acquire::Retries=3/, `${job} step "${step.name}" must pass -o Acquire::Retries=3`);
-    const commandTimeouts = Array.from(step.run!.matchAll(/\btimeout\s+(\d+)/g), (m) => Number(m[1]));
-    assert.ok(commandTimeouts.length > 0, `${job} step "${step.name}" must define per-command timeouts`);
-    const attempts = step.run!.match(/for\s+\w+\s+in\s+([\d\s]+)/)?.[1].trim().split(/\s+/).length ?? 3;
-    const backoffMatch = step.run!.match(/(?:attempt\s*\*\s*(\d+)|(\d+)\s*\*\s*attempt)/);
-    let maxBackoffSleep = 0;
-    if (backoffMatch) {
-      const multiplier = Number(backoffMatch[1] ?? backoffMatch[2]);
-      for (let attempt = 1; attempt < attempts; attempt++) {
-        maxBackoffSleep += attempt * multiplier;
-      }
-    } else {
-      const fixedSleepMatch = step.run!.match(/sleep\s+(\d+)/);
-      if (fixedSleepMatch) {
-        maxBackoffSleep = (attempts - 1) * Number(fixedSleepMatch[1]);
-      }
+  assert.match(script, /for\s+\w+\s+in\s+1\s+2\s+3/, "the setup-apt action must have 3 retry attempts");
+  assert.match(script, /Acquire::Retries=3/, "the setup-apt action must pass -o Acquire::Retries=3");
+  const commandTimeouts = Array.from(script.matchAll(/\btimeout\s+(\d+)/g), (m) => Number(m[1]));
+  assert.ok(commandTimeouts.length > 0, "the setup-apt action must define per-command timeouts");
+  const attempts = script.match(/for\s+\w+\s+in\s+([\d\s]+)/)?.[1].trim().split(/\s+/).length ?? 3;
+  const backoffMatch = script.match(/(?:attempt\s*\*\s*(\d+)|(\d+)\s*\*\s*attempt)/);
+  let maxBackoffSleep = 0;
+  if (backoffMatch) {
+    const multiplier = Number(backoffMatch[1] ?? backoffMatch[2]);
+    for (let attempt = 1; attempt < attempts; attempt++) {
+      maxBackoffSleep += attempt * multiplier;
     }
-    const sumCommandTimeouts = commandTimeouts.reduce((sum, t) => sum + t, 0);
-    const budgetSeconds = (step["timeout-minutes"] ?? 0) * 60;
-    assert.ok(
-      attempts * sumCommandTimeouts + maxBackoffSleep < budgetSeconds,
-      `${job} step "${step.name}" worst-case apt retry duration must fit strictly inside timeout-minutes budget`,
-    );
-    assert.match(step.run!, /Acquire::http::Timeout/);
-    assert.match(step.run!, /Acquire::https::Timeout/);
+  } else {
+    const fixedSleepMatch = script.match(/sleep\s+(\d+)/);
+    if (fixedSleepMatch) {
+      maxBackoffSleep = (attempts - 1) * Number(fixedSleepMatch[1]);
+    }
   }
+  const sumCommandTimeouts = commandTimeouts.reduce((sum, t) => sum + t, 0);
+  // The tightest step timeout among the callers is the budget the worst case has to fit in.
+  const budgetSeconds = Math.min(...aptSteps.map(({ step }) => step["timeout-minutes"] ?? 0)) * 60;
+  assert.ok(
+    attempts * sumCommandTimeouts + maxBackoffSleep < budgetSeconds,
+    "worst-case apt retry duration must fit strictly inside the timeout-minutes budget of every caller",
+  );
+  assert.match(script, /Acquire::http::Timeout/);
+  assert.match(script, /Acquire::https::Timeout/);
 });
 
 test("main-red-alert workflow satisfies least privilege, triggers only on workflow_run, has no secrets, and uses no third-party actions", () => {

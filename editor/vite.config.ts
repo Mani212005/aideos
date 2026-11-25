@@ -925,7 +925,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               sendJson(res, 400, { error: 'Film payload must match the requested id' });
               return;
             }
-            let exportFilm = postedFilm;
+            const exportFilm = postedFilm;
             if (format === 'reel') {
               const reelInputs = formatInputs(id, 'reel');
               if (path.resolve(reelInputs.film) !== path.resolve(path.join(videosDir, id, 'film.json'))) {
@@ -1029,7 +1029,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               }
 
               // Load film definition (prefer clientFilm if provided)
-              let filmObj: Film | null = clientFilm || readFilm(filmId);
+              const filmObj: Film | null = clientFilm || readFilm(filmId);
 
               if (!filmObj) {
                 sendJson(res, 404, { error: `Film ${filmId} not found` });
