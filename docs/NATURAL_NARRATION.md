@@ -18,7 +18,9 @@ only the samples one synthesizer returns for one line.
   `backend/tts.ts`; see [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice)). The service returns one take per
   request. aideos asks once per line and keeps the result.
 - Each line is cached by content fingerprint in `voiceover_lines/` (`backend/voiceLines.ts`): its words plus a voice key
-  made of the backend name, voice, speed, chunk limit, sample rate and the time-stretch.
+  made of the backend name, voice, speed, chunk limit, sample rate and the time-stretch. A line is stored under the
+  voice key of the voice that actually spoke it: when a provider falls through to another voice, the take is never
+  cached under the requested voice.
 - A backend with no pace control of its own (`vcd`) is re-paced to the house rate (1.2x) line by line with a
   pitch-preserving stretch before the line is cached. Stretching can add artefacts, so a take is judged after it.
 - The assembled narration is normalized to -16 LUFS with -1 dB true peak (`NARRATION_LOUDNESS_TARGET`). Level against
