@@ -59,7 +59,6 @@ async function until(check: () => boolean): Promise<void> {
 
 // Waits for a set of fixture markers without fixed-delay polling.
 function watchForFiles(dir: string, names: string[]): { promise: Promise<void>; close: () => void } {
-  let watcher: fs.FSWatcher | undefined;
   let resolveFiles: () => void = () => {};
   let rejectFiles: (error: Error) => void = () => {};
   const promise = new Promise<void>((resolve, reject) => {
@@ -78,7 +77,7 @@ function watchForFiles(dir: string, names: string[]): { promise: Promise<void>; 
       rejectFiles(error as Error);
     }
   };
-  watcher = fs.watch(dir, check);
+  const watcher = fs.watch(dir, check);
   watcher.once("error", (error) => {
     watcher?.close();
     rejectFiles(error);
