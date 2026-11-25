@@ -9,6 +9,8 @@
  * Used by: backend/review/renderFacts.ts.
  */
 
+import { environment } from "../env";
+
 import type { CaptionRect } from "../../src/dl/captionPlacement";
 import { spawn } from "node:child_process";
 import { THRESHOLDS } from "./thresholds";
@@ -80,7 +82,7 @@ function readOcr(gray: Uint8Array, width: number, height: number, mode: "sparse"
     const args = ["stdin", "stdout", "--psm", mode === "sparse" ? "11" : "8"];
     if (mode === "number") args.push("-c", "tessedit_char_whitelist=0123456789,.%");
     args.push("tsv");
-    const child = spawn("tesseract", args, { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, OMP_THREAD_LIMIT: "1" } });
+    const child = spawn("tesseract", args, { stdio: ["pipe", "pipe", "pipe"], env: { ...environment, OMP_THREAD_LIMIT: "1" } });
     let out = "";
     let err = "";
     child.stdout.on("data", (d) => (out += d));

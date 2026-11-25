@@ -4,6 +4,8 @@
  * Used by: backend/designCheck/designCheck.ts, backend/designCheck/pictureComposition.test.ts.
  */
 
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import fs from "node:fs";
 import type { Film } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
@@ -215,7 +217,7 @@ function sampleFrames(film: Film, compiled: CompiledScene): number[] {
   if (last < 0) return [];
   const frames = new Set<number>();
   for (const timed of buildTimeline(film)) frames.add(Math.max(0, Math.min(last, Math.round((timed.from + timed.to) / 2))));
-  const step = Math.max(1, Math.round(PICTURE_THRESHOLDS.compositionSampleSec * (compiled.fps || 30)));
+  const step = Math.max(1, Math.round(PICTURE_THRESHOLDS.compositionSampleSec * (compiled.fps || DEFAULT_FPS)));
   for (let f = 0; f <= last; f += step) frames.add(f);
   return [...frames].sort((a, b) => a - b);
 }

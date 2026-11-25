@@ -4,6 +4,9 @@
  * Used by: npm run editor, Vite build, and Render container.
  */
 
+import { environment, resolveStudioPort } from "../backend/env.ts";
+import { DEFAULT_FPS, DEFAULT_STUDIO_PORT } from "../src/dl/defaults.ts";
+
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { releaseChannel } from '../backend/releaseChannel.ts';
@@ -253,9 +256,9 @@ const bearerOf = (req: IncomingMessage): string | undefined => {
 
 // The URL a connector should dial: the configured public API URL, else the one this request reached.
 const publicApiUrl = (req: IncomingMessage): string => {
-  if (process.env.AIDEOS_PUBLIC_API_URL) return process.env.AIDEOS_PUBLIC_API_URL.replace(/\/$/, '');
+  if (environment.AIDEOS_PUBLIC_API_URL) return environment.AIDEOS_PUBLIC_API_URL.replace(/\/$/, '');
   const proto = String(req.headers['x-forwarded-proto'] ?? 'http').split(',')[0];
-  const host = String(req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost:3001').split(',')[0];
+  const host = String(req.headers['x-forwarded-host'] ?? req.headers.host ?? `localhost:${DEFAULT_STUDIO_PORT}`).split(',')[0];
   return `${proto}://${host}`;
 };
 
@@ -877,7 +880,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 filmId: postedFilm.id,
                 format: outFormat,
                 filmTitle: postedFilm.title,
-                fps: postedFilm.fps || 30,
+                fps: postedFilm.fps || DEFAULT_FPS,
                 durationInFrames: deliveryTimeline(postedFilm, outFormat).totalFrames,
                 filename,
                 outPath,
@@ -1601,7 +1604,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               const durationSec = layered.clips.reduce((max: number, c: any) => Math.max(max, c.position + (c.end - c.start)), 0) || 30;
 
               const context = buildEditContext(layered, transcript, fillers, silences, {
-                fps: layered.fps || 30,
+                fps: layered.fps || DEFAULT_FPS,
                 durationSec,
                 accent: layered.accent,
                 theme: layered.theme,
@@ -1785,14 +1788,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             let synthesisError: VoiceSynthesisError | undefined;
             let vcdError: Error | undefined;
 
-            let deepgramKey = process.env.DEEPGRAM_API_KEY || '';
-            if (!deepgramKey) {
-              const envPath = path.resolve(__dirname, '../.env');
-              if (fs.existsSync(envPath)) {
-                const match = fs.readFileSync(envPath, 'utf8').match(/DEEPGRAM_API_KEY\s*=\s*([a-zA-Z0-9_-]+)/);
-                if (match) deepgramKey = match[1];
-              }
-            }
+            const deepgramKey = environment.DEEPGRAM_API_KEY || '';
 
             let lineSummary = { total: narrationLinesToSpeak.length, recorded: 0, reused: 0 };
             const otherVoices: { voice: string; lines: number }[] = [];
@@ -1836,7 +1832,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                     ...(resolvedVcdVoiceId ? { vcdVoiceId: resolvedVcdVoiceId } : {}),
                     ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}),
                     deepgramKey,
-                    googleKey: process.env.GOOGLE_API_KEY || '',
+                    googleKey: environment.GOOGLE_API_KEY || '',
                     chunk: chunkTextForTTS,
                     trimSilence,
                   },
@@ -2359,7 +2355,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 }
 
 // Tests cache a synthetic audio library (AIDEOS_AUDIO_LIBRARY): serve that manifest in place of the committed audio/library.json the mixer imports. A no-op when unset.
-const audioLibraryOverride = process.env.AIDEOS_AUDIO_LIBRARY?.trim()
+const audioLibraryOverride = environment.AIDEOS_AUDIO_LIBRARY?.trim()
 function audioLibraryOverridePlugin(): Plugin {
   return {
     name: 'aideos-audio-library-override',
@@ -2374,7 +2370,7 @@ export default defineConfig({
   plugins: [react(), filmApiPlugin(), audioLibraryOverridePlugin()],
   publicDir: path.resolve(__dirname, '../public'),
   server: {
-    port: Number(process.env.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
+    port: resolveStudioPort(releaseChannel(path.resolve(__dirname, '..')).port),
     // Bind loopback (127.0.0.1) by default so LAN peers cannot reach the local Studio API.
     // Opt in to binding other interfaces explicitly with HOST=0.0.0.0 (or `vite --host 0.0.0.0`, as Dockerfile does).
     host: resolveStudioHost(),
@@ -2401,7 +2397,7 @@ export default defineConfig({
     }
   },
   preview: {
-    port: Number(process.env.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
+    port: resolveStudioPort(releaseChannel(path.resolve(__dirname, '..')).port),
     host: resolveStudioHost(),
     cors: false,
   },

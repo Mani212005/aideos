@@ -4,6 +4,8 @@
  * Used by: scripts/farm.ts (load-test command) and backend/farm/loadTest.test.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import { createHash } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
@@ -19,7 +21,7 @@ import type { PriorityClass } from "./taskSpec";
 import { stubBytes, stubEmit, stubFilm } from "../testSupport/farmStub";
 import { freeDiskBytes } from "./resources";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 export interface LoadTestOptions {
   /** Farm root; the test creates its queue, store, cache, work root and logs here. */

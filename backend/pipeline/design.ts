@@ -16,6 +16,8 @@
  * beat keeps its text card rather than showing stand-in numbers.
  */
 
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import type { LookPlan, LookShot } from "../lookPlan/schema";
 import type { BackgroundPreset, Block, CanvasEdge, CanvasNode, Film, Shot } from "../../src/dl/schema";
 import { blockSchema, DEVICE_BLOCKS, parseFilm } from "../../src/dl/schema";
@@ -372,7 +374,7 @@ export async function compileFilmFromScreenplayAsync(
   const gridDurations = shotDurationsOnMillisecondGrid(narration.map((segment) => segment.startOffset), shotDurations);
 
   const slug = options.slug ?? slugify(options.title);
-  const fps = options.fps ?? 30;
+  const fps = options.fps ?? DEFAULT_FPS;
   const maxFootageSec = options.maxFootageSec ?? 8;
   const maxFootageShots = options.maxFootageShots ?? 4;
 

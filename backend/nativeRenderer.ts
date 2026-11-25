@@ -4,6 +4,9 @@
  * Used by: backend/rendererSelection.ts (the renderer choice), backend/pipeline/run.ts, backend/exportJobs.ts, backend/geminiReview/render.ts, scripts/render_active.ts, backend/nativeRenderer.test.ts.
  */
 
+import { environment } from "./env";
+import { REPO_ROOT as repositoryRoot } from "./paths";
+
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -16,10 +19,10 @@ import { runRenderCommand, RENDER_RESERVE_BYTES, type RenderProcessDeps } from "
 import type { Renderer, RenderProfileSetting, RenderRequest } from "./renderJob";
 
 /** The repository root (this file lives in backend/). */
-export const REPO_ROOT = path.resolve(__dirname, "..");
+export const REPO_ROOT = repositoryRoot;
 
 /** Where `cargo build --release` puts the renderer binary; `AIDEOS_RENDER_BIN` overrides it. */
-export function nativeRendererBinary(env: NodeJS.ProcessEnv = process.env): string {
+export function nativeRendererBinary(env: NodeJS.ProcessEnv = environment): string {
   return env.AIDEOS_RENDER_BIN || path.join(REPO_ROOT, "native", "target", "release", "aideos-render");
 }
 

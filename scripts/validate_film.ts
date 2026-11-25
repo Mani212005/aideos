@@ -7,6 +7,8 @@
  * Used by: npm run validate, npm run validate:film, bin/aideos validate, backend/cli.ts.
  */
 
+import { callerWorkingDirectory } from "../backend/paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -41,7 +43,7 @@ async function loadRawFilm(arg: string | undefined): Promise<{ raw: unknown; sou
     const { ACTIVE_FILM } = await import("../src/dl/activeFilm");
     return { raw: ACTIVE_FILM, source: "src/dl/activeFilm.ts" };
   }
-  const target = path.resolve(process.cwd(), arg);
+  const target = path.resolve(callerWorkingDirectory(), arg);
   if (!fs.existsSync(target)) throw new Error(`film file not found: ${target}`);
   if (target.endsWith(".json")) {
     try {

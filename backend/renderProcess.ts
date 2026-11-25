@@ -4,6 +4,8 @@
  * Used by: the Remotion renderer adapter and pipeline render compatibility entry point.
  */
 
+import { environment } from "./env";
+
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -92,7 +94,7 @@ export async function runRenderCommand(
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
       env: {
-        ...process.env,
+        ...environment,
         ...command.env,
         TMPDIR: temp,
         TMP: temp,

@@ -4,6 +4,8 @@
  * Used by: editor/vite.config.ts, backend/studioApiGuard.test.ts.
  */
 
+import { environment } from "./env";
+
 import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from "node:http";
 
 /** Minimal request shape needed by the Studio API guard (works for Node IncomingMessage and unit tests). */
@@ -47,13 +49,13 @@ function singleHeader(headers: IncomingHttpHeaders, name: string): string | unde
 }
 
 // Returns the host the Studio dev/preview server binds: loopback by default, explicit HOST opt-in otherwise.
-export function resolveStudioHost(env: NodeJS.ProcessEnv = process.env): string {
+export function resolveStudioHost(env: NodeJS.ProcessEnv = environment): string {
   const configured = env.HOST?.trim();
   return configured ? configured : DEFAULT_STUDIO_HOST;
 }
 
 // Returns the Vite allowedHosts list for hosted Render/custom domains without opening CORS.
-export function resolveAllowedHosts(env: NodeJS.ProcessEnv = process.env): string[] {
+export function resolveAllowedHosts(env: NodeJS.ProcessEnv = environment): string[] {
   const extras = (env.AIDEOS_ALLOWED_HOSTS ?? "")
     .split(",")
     .map((entry) => entry.trim())
@@ -113,7 +115,7 @@ export function hasProxyForwardingHeaders(req: StudioGuardRequest): boolean {
 }
 
 // Builds the explicit set of allowed non-local origins from AIDEOS_ALLOWED_ORIGINS and AIDEOS_PUBLIC_API_URL.
-export function resolveAllowedOrigins(env: NodeJS.ProcessEnv = process.env): Set<string> {
+export function resolveAllowedOrigins(env: NodeJS.ProcessEnv = environment): Set<string> {
   const allowed = new Set<string>();
   const rawOrigins = (env.AIDEOS_ALLOWED_ORIGINS ?? "")
     .split(",")
@@ -182,7 +184,7 @@ export function isLocalStudioRequest(req: StudioGuardRequest): boolean {
 // Resolves the exact allowlisted CORS origin to echo for a request, or null when no CORS grant applies.
 export function resolveAllowedCorsOrigin(
   req: StudioGuardRequest,
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = environment,
 ): string | null {
   const origin = parseHttpOrigin(singleHeader(req.headers, "origin"));
   if (!origin) return null;
@@ -219,7 +221,7 @@ export function resolveAllowedCorsOrigin(
 // Checks whether a hosted Studio browser request (direct Render or Vercel same-origin rewrite) is permitted for hosted-safe routes.
 function isAllowedHostedStudioBrowserRequest(
   req: StudioGuardRequest,
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = environment,
 ): boolean {
   const fetchSite = singleHeader(req.headers, "sec-fetch-site")?.toLowerCase();
   if (fetchSite === "cross-site") return false;
@@ -262,7 +264,7 @@ export function applyStudioCorsHeaders(
   req: IncomingMessage,
   res: ServerResponse,
   options: CorsHeaderOptions = {},
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = environment,
 ): string | null {
   appendVaryHeader(res, "Origin");
   const allowedOrigin = resolveAllowedCorsOrigin(req, env);
@@ -304,7 +306,7 @@ function localGuardMessage(pathname: string): string {
 export function guardStudioApiRequest(
   req: StudioGuardRequest,
   pathname: string,
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = environment,
 ): StudioGuardDecision {
   if (!pathname.startsWith("/api/")) return { allow: true };
 

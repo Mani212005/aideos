@@ -269,7 +269,7 @@ frame duration within 50ms of its audio duration.
 - A film's canvas is either the node graph (`film.canvas`) or a vector scene (`film.scene`), never
   both: `src/dl/Film.tsx` renders `SceneStage` in place of `CanvasGraph` when `scene` is present.
   `examples/hello-scene/` is the tiny worked example (see its [README](../../../examples/hello-scene/README.md))
-  and `test_fixtures/packages/still-talking/` the full-length one; `backend/stillTalking/` rebuilds it
+  and `test_fixtures/packages/still-talking/` the full-length one; `test_fixtures/stillTalking/` rebuilds it
   into `videos/still-talking/` on the shared kit.
 - One `Scene` spans the whole film, not one per shot. That is what makes continuity real, because
   the engine holds each element's last value until another clip takes over. Shots then carry only
@@ -314,5 +314,5 @@ frame duration within 50ms of its audio duration.
   back across the 1500-world-unit line into the shared safe square: it leaks a truncated fragment
   into the other format. Compute the local bounding box (not just the authored viewBox, which can
   be smaller than what a curve's control points actually draw) and choose `position`/`scale` so
-  the whole thing clears the line with margin, the way `backend/stillTalking/scene.ts`'s
+  the whole thing clears the line with margin, the way `test_fixtures/stillTalking/scene.ts`'s
   `trajectory` asset does.

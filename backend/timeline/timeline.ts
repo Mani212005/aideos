@@ -10,6 +10,8 @@
  * Used by: editor/src/state/useLayeredTimeline.ts, backend/timeline/timeline.test.ts.
  */
 
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import type { Film, Shot } from "../../src/dl/schema";
 import {
   type UpdateAction,
@@ -87,7 +89,7 @@ export function moveShot(
     throw new Error(`Invalid shotIndex ${shotIndex}`);
   }
 
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const clampedPos = Math.max(0, Math.round(newPositionSec * fps) / fps);
   const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
   const targetShot = newShots[shotIndex];
@@ -131,7 +133,7 @@ export function moveMultipleShots(
     return { film, actions: [], transactionId: generateUUID() };
   }
 
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const frameDelta = Math.round(deltaSec * fps) / fps;
   const currentStarts = computeShotStartTimes(film.shots);
   const minCurrentStart = Math.min(...shotIndices.map((i) => currentStarts[i]));
@@ -230,7 +232,7 @@ export function trimShotEdge(
 
   const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
   const shot = newShots[shotIndex];
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const frameDelta = Math.round(deltaSec * fps) / fps;
   const MIN_DUR = 0.5; // 0.5s schema minimum duration
 
@@ -310,7 +312,7 @@ export function splitShotAtTime(
   playheadSec: number
 ): { film: Film; actions: UpdateAction[]; transactionId: string } {
   const startTimes = computeShotStartTimes(film.shots);
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   let targetIndex = -1;
   let splitOffsetSec = 0;
 
@@ -458,7 +460,7 @@ export function rippleTrimShotEdge(
 
   const newShots = JSON.parse(JSON.stringify(film.shots)) as Shot[];
   const shot = newShots[shotIndex];
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const frameDelta = Math.round(deltaSec * fps) / fps;
   const MIN_DUR = 0.5; // 0.5s schema minimum duration
 

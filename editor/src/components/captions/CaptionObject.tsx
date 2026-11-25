@@ -3,6 +3,8 @@
  * Inputs and outputs: film, playhead and scaled Player -> a selection ring that hugs the rendered caption card, live drafts while dragging and one labelled undo step per gesture.
  * Used by: EditStage.
  */
+
+import { DEFAULT_FPS } from "../../../../src/dl/defaults";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { z } from "zod";
@@ -121,7 +123,7 @@ export function CaptionObject({
   shownFilmRef.current = shownFilm;
   const latest = useRef({ onCommit, onDraft });
   latest.current = { onCommit, onDraft };
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const words = useMemo(() => captionWordsForFilm(previewFilm), [previewFilm]);
   const phraseLayoutKey = JSON.stringify([
     resolveCaptionPlacement(shownFilm, format).w,

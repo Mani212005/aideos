@@ -76,7 +76,7 @@ export function isStageFile(file) {
   if (normalized.startsWith("src/dl/Stage")) return true;
   if (normalized.startsWith("src/dl/Scene")) return true;
   if (normalized === "backend/stage" || normalized.startsWith("backend/stage/")) return true;
-  if (normalized === "backend/stillTalking" || normalized.startsWith("backend/stillTalking/")) return true;
+  if (normalized === "test_fixtures/stillTalking" || normalized.startsWith("test_fixtures/stillTalking/")) return true;
   return false;
 }
 

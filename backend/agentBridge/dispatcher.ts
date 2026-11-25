@@ -8,6 +8,8 @@
  * Used by: backend/agentBridge/index.ts, backend/designSpec/designer.ts.
  */
 
+import { environment } from "../env";
+
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -106,7 +108,7 @@ export function writeFirstmateInboxMessage(
   task: AgentTask,
   targetInboxDir?: string,
 ): { written: boolean; filePath?: string; error?: string } {
-  const inboxDir = targetInboxDir || process.env.FIRSTMATE_STEERING_INBOX || process.env.AIDEOS_AGENT_INBOX;
+  const inboxDir = targetInboxDir || environment.FIRSTMATE_STEERING_INBOX || environment.AIDEOS_AGENT_INBOX;
   if (!inboxDir || typeof inboxDir !== "string" || !inboxDir.trim()) {
     return { written: false };
   }
@@ -192,7 +194,7 @@ export function dispatchLocalAndTmux(
   const sessionInfo = getAgentSession();
   const targetSession = opts?.sessionName || sessionInfo.tmuxSession || "aideos";
   const targetPane = opts?.pane || sessionInfo.tmuxPane;
-  const tmux = deps.tmux ?? (process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === "test" ? undefined : runTmux);
+  const tmux = deps.tmux ?? (environment.NODE_TEST_CONTEXT || environment.NODE_ENV === "test" ? undefined : runTmux);
   // Only stable pane IDs are safe: tmux also accepts session names as pane targets.
   if (!targetPane || !/^%\d+$/.test(targetPane) || !tmux) return { fileWritten };
 

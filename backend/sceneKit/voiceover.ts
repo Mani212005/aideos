@@ -7,8 +7,10 @@
  * Whisper model aligned back onto the script's own words. The picture is compiled from the spine
  * alone, so a re-recorded take retimes the whole film.
  * Inputs and outputs: beat sheet and narration options -> synthesized, mastered voiceover and word alignment timings.
- * Used by: backend/stillTalking/produceVoiceover.ts.
+ * Used by: test_fixtures/stillTalking/produceVoiceover.ts.
  */
+
+import { environment } from "../env";
 
 import * as fs from "fs";
 import * as path from "path";
@@ -144,7 +146,7 @@ function whisperWords(wavPath: string, ranges: Array<[number, number]>): HeardWo
   const script = path.resolve(__dirname, "whisperWords.py");
   const run = spawnSync("python3", [script, wavPath, rangesFile, out], {
     encoding: "utf8",
-    env: { ...process.env, KMP_DUPLICATE_LIB_OK: "TRUE" },
+    env: { ...environment, KMP_DUPLICATE_LIB_OK: "TRUE" },
     maxBuffer: 32 * 1024 * 1024,
   });
   try {

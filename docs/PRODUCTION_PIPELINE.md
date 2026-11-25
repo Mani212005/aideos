@@ -477,14 +477,19 @@ and `placement` (`{x,y,w}` or `{preset:"top"|"middle"|"bottom"}`). Locked target
   always flags a fixed strong-filler lexicon ("um", "uh", ...) and only flags a context-dependent
   word or phrase ("like", "you know") when the ASR backend's own confidence for every word in the
   span falls below a threshold, so a clearly-spoken "I like this" is never touched.
-- `backend/audio.ts`'s `resolveAudioSourcePath` resolves candidates against both `process.cwd()`
-  and a `REPO_ROOT` computed from `__dirname`. The editor dev server is launched with
-  `cd editor && npm run dev`, so its `process.cwd()` is `editor/`, not the repo root every other
+- `backend/audio.ts`'s `resolveAudioSourcePath` resolves candidates against both the caller's
+  working directory (`callerWorkingDirectory()` in `backend/paths.ts`) and `REPO_ROOT` (also from
+  `backend/paths.ts`, computed from the module location). The editor dev server is launched with
+  `cd editor && npm run dev`, so its working directory is `editor/`, not the repo root every other
   caller (the pipeline CLI, `npm test`) runs from; a cwd-only lookup silently failed to find any
   asset resolved from inside the editor (media upload playback, footage audio peaks, and now
   transcription) whenever the source was a relative path like `media/<file>`. Any new code that
   resolves a repo-relative asset path from within `editor/vite.config.ts` should reuse this helper
-  rather than building its own `process.cwd()`-relative lookup.
+  rather than building its own working-directory-relative lookup. ESLint (`eslint.config.mjs`)
+  rejects raw `process.env` and `process.cwd()` outside `backend/env.ts` and `backend/paths.ts`:
+  read environment values through `environment` from `backend/env.ts`, the Studio port through
+  `resolveStudioPort`, and the repo root, caller directory, `DEFAULT_FPS` and `DEFAULT_STUDIO_PORT`
+  through `backend/paths.ts`.
 
 ### Production pipeline notes
 

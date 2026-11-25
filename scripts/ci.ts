@@ -10,6 +10,9 @@
  * Used by: npm run ci, .github/workflows/*.yml, .no-mistakes.yaml, scripts/ci.test.ts.
  */
 
+import { environment } from "../backend/env";
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -17,7 +20,7 @@ import { clearGoldenOutcome, readGoldenOutcome } from "../backend/journeys/golde
 import { findChromeBinary } from "../backend/scene/chromeBinary";
 import { parseShardSpec, planJourneyShard, type ShardPlan, type ShardSpec } from "./ciJourneyShards";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 
 /** One command of a job. `skip` returns a reason to leave the step out on this machine. */
 export interface CiStep {
@@ -67,7 +70,7 @@ export interface StepResult {
 export const RUFF_VERSION = "0.17.0";
 
 /** True when running under GitHub Actions (or any CI that sets CI=true). */
-const inCi = (): boolean => process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+const inCi = (): boolean => environment.CI === "true" || environment.GITHUB_ACTIONS === "true";
 
 /**
  * Finds a way to run ruff: an installed binary, `python3 -m ruff`, or `uvx ruff`. Returns the
@@ -104,7 +107,7 @@ const cargoMissing = (): string | null =>
     : "cargo is not installed (see https://rustup.rs); CI always runs it";
 
 /** Rendering steps use software GL unless the caller chose one, so pixels do not depend on a GPU. */
-const softwareGl = (): Record<string, string> => ({ AIDEOS_GL: process.env.AIDEOS_GL ?? "swangle" });
+const softwareGl = (): Record<string, string> => ({ AIDEOS_GL: environment.AIDEOS_GL ?? "swangle" });
 
 /** Goldens are generated on the CI platform; a laptop render is not comparable, so legacy runs on Linux only. */
 export const notLinux = (): string | null =>
@@ -177,7 +180,7 @@ export const JOBS: CiJob[] = [
       { name: "ensure generated files", cmd: ["npm", "run", "ensure:generated", "--silent"] },
       { name: "file headers", cmd: ["npx", "tsx", "scripts/check_headers.ts"] },
       { name: "every test file is wired", cmd: ["npx", "tsx", "scripts/check_tests_wired.ts"] },
-      { name: "eslint (src, backend, scripts, editor)", cmd: ["npx", "eslint", "src", "backend", "scripts", "editor/src", "editor/vite.config.ts"] },
+      { name: "eslint (src, backend, scripts, editor, test_fixtures/stillTalking)", cmd: ["npx", "eslint", "src", "backend", "scripts", "editor/src", "editor/vite.config.ts", "test_fixtures/stillTalking"] },
       { name: "tsc root (tracked source only)", cmd: ["npx", "tsx", "scripts/typecheck_tracked.ts"] },
       { name: "oxlint editor", cmd: ["npm", "--prefix", "editor", "run", "lint"] },
       { name: "editor build (tsc -b plus vite)", cmd: ["npm", "--prefix", "editor", "run", "build"] },
@@ -271,7 +274,7 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
     const child = spawn(runCmd[0], runCmd.slice(1), {
       cwd: ROOT,
       stdio: step.todoCases ? ["inherit", "pipe", "inherit"] : "inherit",
-      env: { ...process.env, ...step.env },
+      env: { ...environment, ...step.env },
     });
     if (step.todoCases) child.stdout?.on("data", (chunk: Buffer) => {
       process.stdout.write(chunk);
@@ -351,7 +354,7 @@ export function knownGapNotices(results: StepResult[]): string[] {
 
 /** Prints a group header that GitHub Actions folds, and a plain banner elsewhere. */
 function banner(text: string, open: boolean): void {
-  if (process.env.GITHUB_ACTIONS === "true") console.log(open ? `::group::${text}` : "::endgroup::");
+  if (environment.GITHUB_ACTIONS === "true") console.log(open ? `::group::${text}` : "::endgroup::");
   else if (open) console.log(`\n=== ${text}`);
 }
 
@@ -419,20 +422,20 @@ async function main(): Promise<void> {
   const results = await runJobs(named.length ? named : PR_JOBS, { bail, shard });
   const table = summaryTable(results);
   console.log(`\n${table}\n`);
-  if (process.env.GITHUB_STEP_SUMMARY) {
+  if (environment.GITHUB_STEP_SUMMARY) {
     const heading = shard ? `**${describeShardPlan(planJourneyShard(shard, ROOT)).split("\n")[0]}**\n\n` : "";
-    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${heading}${table}\n`);
+    fs.appendFileSync(environment.GITHUB_STEP_SUMMARY, `${heading}${table}\n`);
   }
   // A check that compared nothing is never a pass line: a warning annotation, a note in the job summary, exit code still 0.
   for (const text of notCoveredNotices(results)) {
-    if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=NOT COVERED::${text}`);
+    if (environment.GITHUB_ACTIONS === "true") console.log(`::warning title=NOT COVERED::${text}`);
     else console.warn(`[ci] WARNING ${text}`);
-    if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `> **NOT COVERED** - ${text}\n`);
+    if (environment.GITHUB_STEP_SUMMARY) fs.appendFileSync(environment.GITHUB_STEP_SUMMARY, `> **NOT COVERED** - ${text}\n`);
   }
   for (const text of knownGapNotices(results)) {
-    if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=KNOWN GAPS::${text}`);
+    if (environment.GITHUB_ACTIONS === "true") console.log(`::warning title=KNOWN GAPS::${text}`);
     else console.warn(`[ci] WARNING ${text}`);
-    if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `> **${text}**\n`);
+    if (environment.GITHUB_STEP_SUMMARY) fs.appendFileSync(environment.GITHUB_STEP_SUMMARY, `> **${text}**\n`);
   }
   const failed = results.filter((r) => r.status === "failed");
   if (failed.length) {

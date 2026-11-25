@@ -1,7 +1,7 @@
 /**
- * File Description: ESLint flat configuration. Remotion's preset applies to the video code in src; backend, scripts, bin, root *.mjs/*.config.*, editor/src and editor/vite.config.ts get the same base rules with Node or browser globals and without the Remotion-only rules. `npm run lint` runs the CI static job, so it checks exactly what CI checks.
+ * File Description: ESLint flat configuration. Remotion's preset applies to the video code in src; backend, scripts, bin, root *.mjs/*.config.*, editor/src, editor/vite.config.ts and test_fixtures/stillTalking get the same base rules with Node or browser globals and without the Remotion-only rules. `npm run lint` runs the CI static job, so it checks exactly what CI checks.
  * Inputs and outputs: Remotion flat ESLint config -> exported ESLint configuration array for passed repository paths.
- * Used by: npm run lint and npm run ci (static job: src, backend, scripts, editor/src, editor/vite.config.ts).
+ * Used by: npm run lint and npm run ci (static job: src, backend, scripts, editor/src, editor/vite.config.ts, test_fixtures/stillTalking).
  */
 
 import { config as remotionConfig } from "@remotion/eslint-config-flat";
@@ -54,7 +54,7 @@ export default [
     },
   },
   {
-    files: ["backend/**", "scripts/**", "bin/**", "*.mjs", "*.config.*", "editor/vite.config.ts"],
+    files: ["backend/**", "scripts/**", "bin/**", "*.mjs", "*.config.*", "editor/vite.config.ts", "test_fixtures/stillTalking/**"],
     languageOptions: { globals: { ...globals.node } },
   },
   {
@@ -63,8 +63,22 @@ export default [
   },
   {
     // Remotion's rules police animation purity inside compositions; they mean nothing in Node tooling or editor chrome.
-    files: ["backend/**", "scripts/**", "bin/**", "editor/**", "*.mjs"],
+    files: ["backend/**", "scripts/**", "bin/**", "editor/**", "*.mjs", "test_fixtures/stillTalking/**"],
     rules: Object.fromEntries(remotionRules.map((name) => [name, "off"])),
+  },
+  {
+    // Runtime environment and caller directory access belong to their shared Node modules.
+    // Standalone .mjs entry points run without a TypeScript loader; tests control process state directly.
+    files: ["backend/**/*.{ts,tsx}", "scripts/**/*.{ts,tsx}", "src/**/*.{ts,tsx}", "editor/**/*.{ts,tsx}"],
+    ignores: ["backend/env.ts", "backend/paths.ts", "**/*.test.ts", "**/*.journey.ts", "**/*.golden.ts", "**/*.live.ts", "backend/testSupport/**", "backend/journeys/**"],
+    rules: {
+      "no-restricted-syntax": ["error",
+        { selector: "MemberExpression[object.name='process'][property.name='env']", message: "Use environment from backend/env.ts." },
+        { selector: "MemberExpression[object.name='process'][property.value='env']", message: "Use environment from backend/env.ts." },
+        { selector: "CallExpression[callee.object.name='process'][callee.property.name='cwd']", message: "Use callerWorkingDirectory from backend/paths.ts." },
+        { selector: "CallExpression[callee.object.name='process'][callee.property.value='cwd']", message: "Use callerWorkingDirectory from backend/paths.ts." },
+      ],
+    },
   },
   {
     files: LEGACY_ANY,

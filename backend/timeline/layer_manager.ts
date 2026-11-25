@@ -10,6 +10,8 @@
  * Used by: backend/timeline/layer_engine.ts, editor/src/state/useLayeredTimeline.ts.
  */
 
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";
 import {
   type UpdateAction,
@@ -289,7 +291,7 @@ function isClipLiveAt(clip: Clip, timeSec: number): boolean {
  * keep their stored document order, which keeps the composite stable across re-renders.
  */
 export function getRenderableClipsAtFrame(film: LayeredFilm, frame: number): Clip[] {
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const timeSec = frame / fps;
   const layerMap = buildLayerMap(film);
 
@@ -311,7 +313,7 @@ export function getRenderableClipsAtFrame(film: LayeredFilm, frame: number): Cli
  * mute flag means.
  */
 export function getAudibleClipsAtFrame(film: LayeredFilm, frame: number): Clip[] {
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const timeSec = frame / fps;
   const layerMap = buildLayerMap(film);
 

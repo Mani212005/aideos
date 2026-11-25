@@ -7,6 +7,8 @@
  * Used by: editor/vite.config.ts (designOverview, approveLookPlan, requestFilmDesign), backend/designSpec/shotTools.test.ts.
  */
 
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import type { Film } from "../../src/dl/schema";
 import fs from "node:fs";
 import path from "node:path";
@@ -69,7 +71,7 @@ export function approveLookPlan(filmId: string): LookPlan {
 // Collects a film's design overview for the Look stage.
 export function designOverview(film: Film): DesignOverview {
   const lookResult = readLookOverview(film.id);
-  const fps = film.scene?.fps ?? film.fps ?? 30;
+  const fps = film.scene?.fps ?? film.fps ?? DEFAULT_FPS;
   const motion: MotionBeat[] = [];
   for (const prop of film.scene?.props ?? []) {
     for (const clip of prop.animation?.clips ?? []) {

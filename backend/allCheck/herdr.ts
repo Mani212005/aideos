@@ -4,6 +4,8 @@
  * Used by: all-check launch, preflight, lock liveness and idle watchdog.
  */
 
+import { environment } from "../env";
+
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -60,14 +62,14 @@ function isMissingPane(error: unknown): boolean {
 
 // Runs a bounded CLI call, removing ambient session selection in favor of the recorded socket.
 export const realHerdr: HerdrRun = (args, target) => {
-  const env: NodeJS.ProcessEnv = { ...process.env, ...target };
+  const env: NodeJS.ProcessEnv = { ...environment, ...target };
   delete env.HERDR_SESSION;
   const r = spawnSync("herdr", args, { env, encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] });
   return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr || r.error?.message || "" };
 };
 
 // Uses the caller's server only inside Herdr; a plain terminal addresses the default session.
-export function herdrSocket(env: NodeJS.ProcessEnv = process.env): string {
+export function herdrSocket(env: NodeJS.ProcessEnv = environment): string {
   if (env.HERDR_ENV === "1" && env.HERDR_SOCKET_PATH) return env.HERDR_SOCKET_PATH;
   return path.join(env.HOME || os.homedir(), ".config", "herdr", "herdr.sock");
 }

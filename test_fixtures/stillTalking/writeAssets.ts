@@ -4,11 +4,11 @@
  * with the scene engine's own SVG parser before it lands, so a malformed document is caught here
  * rather than as a missing prop halfway through a render.
  * Inputs and outputs: target visuals directory -> written SVG asset files for Still Talking.
- * Used by: backend/stillTalking/buildFilm.ts.
+ * Used by: test_fixtures/stillTalking/buildFilm.ts.
  */
 
 import * as path from "path";
-import { writeSvgAssets } from "../sceneKit";
+import { writeSvgAssets } from "../../backend/sceneKit";
 import { buildAllArtwork } from "./artwork";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 
