@@ -313,7 +313,9 @@ test("picture animation support agrees with the emitted IR validator for every s
       picture.elementTracks[0].property = property;
       const expected = validateRenderIr(candidate).ok;
       asset.animation.clips[0].property = property;
-      assert.equal(nativeSupport(film, format).length === 0, expected, `${format}: ${property}`);
+      const reasons = nativeSupport(film, format);
+      assert.equal(reasons.length === 0, expected, `${format}: ${property}`);
+      if (!expected) assert.ok(reasons.some((reason) => reason.includes(property)), `${format}: ${property}: ${reasons.join("; ")}`);
       asset.animation.clips[0].property = "translateX";
     }
   }
@@ -331,7 +333,10 @@ test("asset id support agrees with validation of generated asset and node ids", 
     node.id = `asset-${id}`;
     node.asset = svg.id;
     film.scene!.props[0].assetId = id;
-    assert.equal(nativeSupport(film, "long").length === 0, validateRenderIr(candidate).ok, id);
+    const reasons = nativeSupport(film, "long");
+    const accepted = validateRenderIr(candidate).ok;
+    assert.equal(reasons.length === 0, accepted, id);
+    if (!accepted) assert.ok(reasons.some((reason) => reason.includes(id) && reason.includes("cannot be used")), `${id}: ${reasons.join("; ")}`);
   }
 });
 
