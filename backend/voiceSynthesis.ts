@@ -126,7 +126,7 @@ export function readContainerMemoryLimit(): number | null {
   return null;
 }
 
-/** True when this host can hold the in-process Kokoro model; AIDEOS_KOKORO=1/0 overrides the guess. */
+/** True when this host can hold the Kokoro model (the worker process loads it); AIDEOS_KOKORO=1/0 overrides the guess. */
 export function kokoroFits(limit: number | null, env: NodeJS.ProcessEnv = process.env): boolean {
   if (env.AIDEOS_KOKORO === "1") return true;
   if (env.AIDEOS_KOKORO === "0") return false;
