@@ -25,41 +25,11 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 
 ---
 
-## 📐 System Architecture Diagram
+## 📐 System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   AIDEOS WEB EDITOR SHELL                                   │
-│            (React 19 + TailwindCSS + Strip UI Primitives + Vite Dev Server)                  │
-│                      [Top Bar: Transport | Timecode | Aspect Ratio | Undo/Redo]             │
-└──────────────────────────────────────────────┬──────────────────────────────────────────────┘
-                                               │
-    ┌──────────────┬──────────────┬────────────┼─────────────┬──────────────┬──────────────┐
-    ▼              ▼              ▼            ▼             ▼              ▼              ▼
-┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
-│ 1. SCRIPT  │ │ 2. STORY   │ │ 3. LOOK    │ │ 4. MOTION  │ │ 5. EDIT    │ │ 6. CAPTIONS│ │ 7. CHECK   │
-│ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │ │ STAGE      │
-├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤ ├────────────┤
-│ • Markdown │ │ • 2D Spatial│ │ • Accent    │ │ • Custom SVG│ │ • Layered  │ │ • Word Sync│ │ • State    │
-│   Screenplay│ │   Mind Map │ │   Color    │ │   Animation│ │   Timeline │ │ • Kinetic   │ │ • 6 Gates  │
-│ • Claude   │ │ • Node Drag│ │ • Background│ │ • Keyframe  │ │ • Waveforms│ │   Highlight │ │ • 9.0 Bar  │
-│   Intake   │ │ • Directed │ │   Color    │ │   Timeline │ │ • Drag     │ │ • Phrase   │ │ • Fix List │
-│ • Spoken VO│ │   Edges    │ │ • Shot     │ │ • Motion   │ │   Machine  │ │   Locks    │ │ • Export   │
-│   Extract  │ │ • Camera   │ │   Pictures │ │   Templates│ │ • Inspector│ │ • Subtitle │ │   Start    │
-│ • TTS Synth│ │   Anchors  │ │ • Ask box  │ │ • Frame-Sync│ │ • Asset Bin │ │   Timing   │ │   Download │
-└─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘
-      │              │              │              │              │              │              │
-      └──────────────┴──────────────┴───────┬──────┴──────────────┴──────────────┴──────────────┘
-                                            │
-                                            ▼
-                    STATE LAYER: useFilmProject + useLayeredTimeline
-               (Single-Transaction Labelled Undo/Redo | Lossless Film Round-Trip)
-                                            │
-                    ┌───────────────────────┴───────────────────────┐
-                    ▼                                               ▼
-         BACKEND TIMELINE ENGINE                         REMOTION PREVIEW PLAYER
-     (layer_engine | drag_machine | snap)          (Browser WebGL Player | MP4 Renderer)
-```
+The studio is one shell: a header, a lens bar with four lenses (Words, Look, Cut, Check) and one surface that is the Films home or the open lens, plus the Agent sheet. `editor/README.md`, section "One Shell: Films Home, 4 Lenses, Agent Sheet", is the single description of that shell, so there is no diagram here to drift from it.
+
+Every lens reads and writes the film through one state layer, described in `editor/README.md`, section "State Management & Timeline Layer Engine". The preview is the Remotion player, and the exported mp4 comes from the same render tree.
 
 ---
 
