@@ -1,7 +1,7 @@
 /**
- * File Description: Builds the multi-character Three-stage film packages (journey-three-characters, pixels-stage-pip, pixels-stage-marlo, journey-j3-j4-dots) from the committed iona-receive fixture package (copied untouched), with the same design and look edits the J5 and character_pixels journeys make, so native renderer tests and golden scripts can draw them without a production run.
- * Inputs and outputs: a film slug -> the film built through the real buildDesign in the test videos directory (the package is written there first).
- * Used by: backend/renderIr/stage3d.test.ts, scripts/native_golden_ir.ts.
+ * File Description: The one shared builder of the character film packages (journey-three-characters, pixels-stage-pip, pixels-stage-marlo, journey-j3-j4-dots, and one-character packages for any committed character) from the committed iona-receive fixture package (copied untouched). The journeys (character_pixels, J4 crops, J5 three characters) and the native renderer tests and golden scripts all take their package and their design and look edits from here, so a fixture is changed in one place and a test can draw it without a production run.
+ * Inputs and outputs: a film slug (or a slug and a character) -> a package written in the test videos directory, and for buildCharacterFilm the film built through the real buildDesign; the plan edits are also exported as pure functions over a design and a look plan.
+ * Used by: backend/renderIr/stage3d.test.ts, backend/renderIr/dots.test.ts, scripts/native_golden_ir.ts, backend/journeys/character_pixels.journey.ts, backend/journeys/j4_character_crops.journey.ts, backend/journeys/j3_j5_stage.journey.ts, backend/journeys/native_character_goldens.journey.ts.
  */
 
 import fs from "node:fs";
@@ -22,7 +22,8 @@ type Loose = Record<string, any>;
 
 /** The committed package every character film starts from (copied untouched, so no earlier build leaks in). */
 const FIXTURE_PACKAGE = path.resolve(__dirname, "../../test_fixtures/packages/iona-receive");
-const THREE: readonly FixtureCharacter[] = ["iona", "pip", "marlo"];
+/** The three characters the J5 film puts side by side, in the order their performances are listed. */
+export const THREE_CHARACTERS: readonly FixtureCharacter[] = ["iona", "pip", "marlo"];
 
 // Copies the iona-receive package to a new slug (film id rewritten) with an empty characters folder.
 function copyFixturePackage(slug: string): string {
@@ -46,45 +47,66 @@ function editPlans(target: string, edit: (design: Loose, look: Loose) => void): 
   fs.writeFileSync(lookFile, JSON.stringify(look, null, 2));
 }
 
-// The receive on one other character instead of Iona (character_pixels: Pip is clamped, scaled and placed as that journey does).
-function writeOneCharacter(slug: string, character: "pip" | "marlo"): void {
-  const target = copyFixturePackage(slug);
-  fs.copyFileSync(CHARACTER_FILES[character], path.join(target, "characters", `${character}.character.json`));
-  editPlans(target, (design, look) => {
-    const asset = design.assets.find((item: Loose) => item.kind === "character"), cast = look.film.cast.find((item: Loose) => item.id === "iona");
-    if (!asset || !cast) throw new Error("the iona-receive fixture is missing its character asset or look cast entry");
-    asset.character = character;
-    cast.character = character;
-    for (const performance of look.film.performances ?? []) if (performance.actor === "iona") performance.character = characterPin(character);
-    if (character === "pip") {
-      design.performances[0].limits = "clamp";
-      asset.unitsToStage = 110;
-    } else {
-      asset.unitsToStage = 70;
-      asset.position = [960, 1220];
-    }
-  });
+/** Copies the committed spec of each named character into the package's characters folder, so the package carries them. */
+export function copyCharacterSpecs(packageDir: string, names: readonly FixtureCharacter[]): void {
+  const dir = path.join(packageDir, "characters");
+  fs.mkdirSync(dir, { recursive: true });
+  for (const name of names) fs.copyFileSync(CHARACTER_FILES[name], path.join(dir, `${name}.character.json`));
 }
 
-// The same receive on Iona, Pip and Marlo at once, each with its own glider, in one persistent stage (J5).
+/** Points the fixture's Iona design asset and look cast entry at `character`, pins its look performances, and fits Pip (clamped) and Marlo (placed) on the stage as character_pixels and J4 do; Iona keeps the fixture's fit. */
+export function editForOneCharacter(design: Loose, look: Loose, character: FixtureCharacter): void {
+  const asset = design.assets.find((item: Loose) => item.kind === "character"), cast = look.film.cast.find((item: Loose) => item.id === "iona");
+  if (!asset || !cast) throw new Error("the iona-receive fixture is missing its character asset or look cast entry");
+  asset.character = character;
+  cast.character = character;
+  for (const performance of look.film.performances ?? []) if (performance.actor === "iona") performance.character = characterPin(character);
+  if (character === "pip") {
+    design.performances[0].limits = "clamp";
+    asset.unitsToStage = 110;
+  } else if (character === "marlo") {
+    asset.unitsToStage = 70;
+    asset.position = [960, 1220];
+  }
+}
+
+/** Writes the receive package for one committed character instead of the fixture's own Iona (the library Iona needs no copy) and returns its slug. */
+export function writeCharacterPackage(slug: string, character: FixtureCharacter): string {
+  const target = copyFixturePackage(slug);
+  if (character !== "iona") copyCharacterSpecs(target, [character]);
+  editPlans(target, (design, look) => editForOneCharacter(design, look, character));
+  return slug;
+}
+
+/** Edits a design so the same receive runs on Iona, Pip and Marlo at once, each with its own glider, in one persistent stage (J5). */
+export function editDesignForThreeCharacters(design: Loose): void {
+  const receive = design.performances[0];
+  design.assets = THREE_CHARACTERS.flatMap((character, i) => [
+    { id: character, renderer: "three", kind: "character", character, position: [1060, 760 + i * 240], unitsToStage: 30, treatment: "cel-v1" },
+    { id: `glider-${character}`, renderer: "three", kind: "prop", asset: "paper-glider-v1", treatment: "cel-v1" },
+  ]);
+  design.performances = THREE_CHARACTERS.map((actor) => ({ ...receive, id: `receive-${actor}`, actor, prop: `glider-${actor}`, limits: actor === "pip" ? "clamp" : "fail" }));
+}
+
+/** Edits a look plan to match editDesignForThreeCharacters: three cast characters with their gliders, a pinned receive each, and every shot carrying them all. */
+export function editLookForThreeCharacters(look: Loose): void {
+  const actor = look.film.cast.find((c: Loose) => c.id === "iona"), prop = look.film.cast.find((c: Loose) => c.id === "glider");
+  const lookReceive = look.film.performances[0];
+  look.film.cast = THREE_CHARACTERS.flatMap((character) => [{ ...actor, id: character, character }, { ...prop, id: `glider-${character}` }]);
+  look.film.performances = THREE_CHARACTERS.map((a) => ({ ...lookReceive, id: `receive-${a}`, actor: a, character: characterPin(a), prop: `glider-${a}` }));
+  for (const shot of look.shots) {
+    shot.carries = look.film.cast.map((c: Loose) => c.id);
+    shot.performances = look.film.performances.map((p: Loose) => p.id);
+  }
+}
+
+// Writes the three-character film package (J5): all three specs, with the design and look edited to match.
 function writeThreeCharacters(slug: string): void {
   const target = copyFixturePackage(slug);
-  for (const name of THREE) fs.copyFileSync(CHARACTER_FILES[name], path.join(target, "characters", `${name}.character.json`));
+  copyCharacterSpecs(target, THREE_CHARACTERS);
   editPlans(target, (design, look) => {
-    const receive = design.performances[0];
-    design.assets = THREE.flatMap((character, i) => [
-      { id: character, renderer: "three", kind: "character", character, position: [1060, 760 + i * 240], unitsToStage: 30, treatment: "cel-v1" },
-      { id: `glider-${character}`, renderer: "three", kind: "prop", asset: "paper-glider-v1", treatment: "cel-v1" },
-    ]);
-    design.performances = THREE.map((actor) => ({ ...receive, id: `receive-${actor}`, actor, prop: `glider-${actor}`, limits: actor === "pip" ? "clamp" : "fail" }));
-    const actor = look.film.cast.find((c: Loose) => c.id === "iona"), prop = look.film.cast.find((c: Loose) => c.id === "glider");
-    const lookReceive = look.film.performances[0];
-    look.film.cast = THREE.flatMap((character) => [{ ...actor, id: character, character }, { ...prop, id: `glider-${character}` }]);
-    look.film.performances = THREE.map((a) => ({ ...lookReceive, id: `receive-${a}`, actor: a, character: characterPin(a), prop: `glider-${a}` }));
-    for (const shot of look.shots) {
-      shot.carries = look.film.cast.map((c: Loose) => c.id);
-      shot.performances = look.film.performances.map((p: Loose) => p.id);
-    }
+    editDesignForThreeCharacters(design);
+    editLookForThreeCharacters(look);
   });
 }
 
@@ -116,8 +138,8 @@ function writeDotsFilm(slug: string): void {
 export function buildCharacterFilm(slug: CharacterFilmSlug): Film {
   if (slug === "journey-three-characters") writeThreeCharacters(slug);
   else if (slug === "journey-j3-j4-dots") writeDotsFilm(slug);
-  else if (slug === "pixels-stage-pip") writeOneCharacter(slug, "pip");
-  else if (slug === "pixels-stage-marlo") writeOneCharacter(slug, "marlo");
+  else if (slug === "pixels-stage-pip") writeCharacterPackage(slug, "pip");
+  else if (slug === "pixels-stage-marlo") writeCharacterPackage(slug, "marlo");
   else throw new Error(`unknown character film ${String(slug)}`);
   const result = buildDesign(slug, "hand-built");
   if (result.state !== "passed") throw new Error(`cannot build ${slug}: ${JSON.stringify(result).slice(0, 800)}`);

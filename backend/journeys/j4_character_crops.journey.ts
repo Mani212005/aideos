@@ -5,11 +5,9 @@
  */
 import "../testSupport/fixtureVideosDir";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
-import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { journey } from "./harness";
-import { CHARACTER_FILES, characterPin, type FixtureCharacter } from "../testSupport/characters";
+import type { FixtureCharacter } from "../testSupport/characters";
+import { writeCharacterPackage } from "../testSupport/characterFilms";
 import { buildDesign } from "../designSpec/build";
 import { readFilm } from "../pipeline/filmStore";
 import { checkFilmDesign } from "../designCheck/designCheck";
@@ -18,44 +16,11 @@ import { getStageSafeRegion } from "../../src/dl/fullScreenHeroLayout";
 import { rectInside } from "../../src/dl/scene/projection";
 import type { Scene } from "../../src/dl/scene/types";
 
-const SOURCE = path.join(TEST_VIDEOS_DIR, "iona-receive");
 let serial = 0;
-type Json = Record<string, unknown>;
-type DesignFixture = Json & { assets: Json[]; performances: Json[] };
-type LookFixture = Json & { film: Json & { cast: Json[]; performances?: Json[] } };
 
 // Copies the real package fixture and changes only its selected character and fit policy.
 function packageWithCharacter(character: FixtureCharacter): string {
-  const slug = `journey-j4-${character}-${++serial}`;
-  const directory = path.join(TEST_VIDEOS_DIR, slug);
-  fs.cpSync(SOURCE, directory, { recursive: true });
-  for (const file of ["film.json", "design/base-film.json"]) {
-    const target = path.join(directory, file);
-    if (fs.existsSync(target)) fs.writeFileSync(target, JSON.stringify({ ...JSON.parse(fs.readFileSync(target, "utf8")), id: slug }, null, 2));
-  }
-  if (character !== "iona") {
-    fs.mkdirSync(path.join(directory, "characters"), { recursive: true });
-    fs.copyFileSync(CHARACTER_FILES[character], path.join(directory, "characters", `${character}.character.json`));
-  }
-  const designFile = path.join(directory, "design/design.json"), lookFile = path.join(directory, "design/look.json");
-  const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as DesignFixture;
-  const look = JSON.parse(fs.readFileSync(lookFile, "utf8")) as LookFixture;
-  const actor = design.assets.find((asset: Json) => asset.kind === "character");
-  const lookActor = look.film.cast.find((cast: Json) => cast.id === "iona");
-  if (!actor || !lookActor) throw new Error("iona-receive fixture is missing its character asset or look cast entry");
-  actor.character = character;
-  lookActor.character = character;
-  for (const performance of look.film.performances ?? []) if (performance.actor === "iona") performance.character = characterPin(character);
-  if (character === "pip") {
-    design.performances[0].limits = "clamp";
-    design.assets[0].unitsToStage = 110;
-  } else if (character === "marlo") {
-    design.assets[0].unitsToStage = 70;
-    design.assets[0].position = [960, 1220];
-  }
-  fs.writeFileSync(designFile, JSON.stringify(design, null, 2));
-  fs.writeFileSync(lookFile, JSON.stringify(look, null, 2));
-  return slug;
+  return writeCharacterPackage(`journey-j4-${character}-${++serial}`, character);
 }
 
 journey("J4 Iona, Pip and Marlo keep the full moving character and prop inside both caption-safe crops", async () => {
