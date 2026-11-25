@@ -8,12 +8,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { ensureBrowser } from "@remotion/renderer";
 import { journey, decodeFrame, frameDiff, probeVideo, type Rgb } from "./harness";
-import { produceIona, type Loose } from "./ionaFilm";
+import { produceIona } from "./ionaFilm";
 import { openFilm } from "./remotionFrames";
 import { openPlayer } from "./playerFrames";
 import { readFilm } from "../pipeline/filmStore";
 import { checkLookPlanById } from "../lookPlan/check";
-import { CHARACTER_FILES, characterPin } from "../testSupport/characters";
+import { THREE_CHARACTERS, copyCharacterSpecs, editDesignForThreeCharacters, editLookForThreeCharacters } from "../testSupport/characterFilms";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import type { Scene } from "../../src/dl/scene/types";
@@ -57,7 +57,7 @@ async function captureMissingProp(player: Awaited<ReturnType<typeof openPlayer>>
 }
 
 const SLUG = "journey-three-characters";
-const CHARACTERS = ["iona", "pip", "marlo"] as const;
+const CHARACTERS = THREE_CHARACTERS;
 let production: ReturnType<typeof produceIona> | undefined;
 
 // Runs the same receive on three distinct data-defined characters in one persistent stage and one production.
@@ -65,27 +65,10 @@ function produced() {
   return production ??= produceIona(SLUG, {
     windowFrames: 6,
     design: (design) => {
-      const dir = path.join(getVideosDir(), SLUG, "characters");
-      fs.mkdirSync(dir, { recursive: true });
-      for (const name of CHARACTERS) fs.copyFileSync(CHARACTER_FILES[name], path.join(dir, `${name}.character.json`));
-      const receive = design.performances[0];
-      design.assets = CHARACTERS.flatMap((character, i) => [
-        { id: character, renderer: "three", kind: "character", character, position: [1060, 760 + i * 240], unitsToStage: 30, treatment: "cel-v1" },
-        { id: `glider-${character}`, renderer: "three", kind: "prop", asset: "paper-glider-v1", treatment: "cel-v1" },
-      ]);
-      design.performances = CHARACTERS.map((actor) => ({ ...receive, id: `receive-${actor}`, actor, prop: `glider-${actor}`, limits: actor === "pip" ? "clamp" : "fail" }));
+      copyCharacterSpecs(path.join(getVideosDir(), SLUG), CHARACTERS);
+      editDesignForThreeCharacters(design);
     },
-    look: (look) => {
-      const actor = look.film.cast.find((c: Loose) => c.id === "iona");
-      const prop = look.film.cast.find((c: Loose) => c.id === "glider");
-      const receive = look.film.performances[0];
-      look.film.cast = CHARACTERS.flatMap((character) => [{ ...actor, id: character, character }, { ...prop, id: `glider-${character}` }]);
-      look.film.performances = CHARACTERS.map((actor) => ({ ...receive, id: `receive-${actor}`, actor, character: characterPin(actor), prop: `glider-${actor}` }));
-      for (const shot of look.shots) {
-        shot.carries = look.film.cast.map((c: Loose) => c.id);
-        shot.performances = look.film.performances.map((p: Loose) => p.id);
-      }
-    },
+    look: editLookForThreeCharacters,
   });
 }
 

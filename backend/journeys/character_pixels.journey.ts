@@ -12,14 +12,14 @@ import path from "node:path";
 import { build } from "esbuild";
 import { createReceiveAction } from "../../src/dl/performance/receive";
 import { readPngDimensions } from "../scene/renderStill";
-import { CHARACTER_FILES, characterPin, loadSpec } from "../testSupport/characters";
+import { CHARACTER_FILES, loadSpec } from "../testSupport/characters";
+import { writeCharacterPackage } from "../testSupport/characterFilms";
 import { chromeAvailable, evaluatePage } from "../characters/browser";
 import { renderCharacterSheet } from "../characters/sheet";
 import type { PixelRequest, PixelResult } from "../characters/pixelPage";
 import { parseFilm } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
 import type { StageCast } from "../../src/dl/scene/stageContract";
-import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { buildDesign } from "../designSpec/build";
 import { readFilm } from "../pipeline/filmStore";
 import { holdActiveFilm } from "../journeys/harness";
@@ -33,33 +33,7 @@ let stageFixtureSerial = 0;
 
 // Builds the receive package with one selected character and returns its isolated slug.
 function packageWithCharacter(character: "pip" | "marlo"): string {
-  const slug = `pixels-stage-${character}-${++stageFixtureSerial}`;
-  const source = path.join(TEST_VIDEOS_DIR, "iona-receive"), directory = path.join(TEST_VIDEOS_DIR, slug);
-  fs.cpSync(source, directory, { recursive: true });
-  for (const file of ["film.json", "design/base-film.json"]) {
-    const target = path.join(directory, file);
-    if (fs.existsSync(target)) fs.writeFileSync(target, JSON.stringify({ ...JSON.parse(fs.readFileSync(target, "utf8")), id: slug }, null, 2));
-  }
-  fs.mkdirSync(path.join(directory, "characters"), { recursive: true });
-  fs.copyFileSync(CHARACTER_FILES[character], path.join(directory, "characters", `${character}.character.json`));
-  const designFile = path.join(directory, "design/design.json"), lookFile = path.join(directory, "design/look.json");
-  const design = JSON.parse(fs.readFileSync(designFile, "utf8")) as { assets: Array<Record<string, unknown>>; performances: Array<Record<string, unknown>> };
-  const look = JSON.parse(fs.readFileSync(lookFile, "utf8")) as { film: { cast: Array<Record<string, unknown>>; performances?: Array<Record<string, unknown>> } };
-  const asset = design.assets.find((item) => item.kind === "character"), cast = look.film.cast.find((item) => item.id === "iona");
-  if (!asset || !cast) throw new Error("iona-receive fixture is missing its character asset or look cast entry");
-  asset.character = character;
-  cast.character = character;
-  for (const performance of look.film.performances ?? []) if (performance.actor === "iona") performance.character = characterPin(character);
-  if (character === "pip") {
-    design.performances[0].limits = "clamp";
-    asset.unitsToStage = 110;
-  } else {
-    asset.unitsToStage = 70;
-    asset.position = [960, 1220];
-  }
-  fs.writeFileSync(designFile, JSON.stringify(design, null, 2));
-  fs.writeFileSync(lookFile, JSON.stringify(look, null, 2));
-  return slug;
+  return writeCharacterPackage(`pixels-stage-${character}-${++stageFixtureSerial}`, character);
 }
 
 // Renders each compiled character performance at contact through the Remotion stage (the engine the committed stage stills were made with).
