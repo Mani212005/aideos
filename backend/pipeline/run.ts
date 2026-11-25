@@ -415,11 +415,10 @@ export async function runProduction(
     );
     const narrationCachePath = path.join(pkgDir, "narration.json");
 
-    // A package that already carries narration spoken from this script (a recorded voice, or one made
-    // before run-state.json existed or was copied along) is resumed as is: re-synthesizing it would
-    // replace the voice and move every cue the design was timed to. A deliberate re-narration is force.
-    const narrateRecord = machine.record("narrate");
-    const recorded = resume && !forced.has("narrate") && !narrateRecord.fingerprint ? readRecordedNarration(pkgDir, script) : null;
+    // A package that already carries narration spoken from this script is resumed as is, even when
+    // run-state.json carries a different synthesizer fingerprint: re-synthesizing it would replace
+    // the voice and move every cue the design was timed to. A deliberate re-narration is force.
+    const recorded = resume && !forced.has("narrate") ? readRecordedNarration(pkgDir, script) : null;
     if (recorded) {
       machine.adopt("narrate", narrationFingerprint);
       emit("narrate", "running", `using the recorded narration in the package (voiceover.wav, ${recorded.totalAudioDuration.toFixed(2)}s, ${recorded.ttsBackend}); not synthesizing it again`);
