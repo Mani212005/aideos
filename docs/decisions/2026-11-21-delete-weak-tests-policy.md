@@ -9,7 +9,7 @@
 
 ## Context
 
-`AGENTS.md` says never to delete an existing assertion and not to add tests on your own. A sweep on 2026-11-21 found weak tests that give false confidence: 12 `assert.ok(true)` placeholders in `backend/scene/scene.test.ts` (all 12 are still on main), real `setTimeout` sleeps in unit tests and tests of code that no longer exists.
+`AGENTS.md` says never to delete an existing assertion and not to add tests on your own. A sweep on 2026-11-21 found weak tests that give false confidence: 12 `assert.ok(true)` placeholders in `backend/scene/scene.test.ts` (removed by slice 14, see below), real `setTimeout` sleeps in unit tests and tests of code that no longer exists.
 
 ## Decision
 
