@@ -1,6 +1,6 @@
 /**
  * File Description: Comprehensive test suite for Phase 1 Scene Graph Data Model.
- * Verifies S-1 through S-8, pure JSON round-trip serialization, and 18 exhaustive negative cases for every validation rule.
+ * Verifies the valid scene, pure JSON round-trip serialization, and the negative cases for the validation rules covered here (rules 1, 11, 14, 15, 16 and 21).
  * Inputs and outputs: scene data models and validation rules -> test assertions.
  * Used by: npm test.
  */
@@ -78,7 +78,7 @@ test("Scene actors fail explicitly because character rigs are not rendered", () 
   assert.match(result.errors[0].message, /SVG backgrounds and props only/);
 });
 
-// S-2: 18 Separate Negative Cases for Every Validation Rule
+// S-2: Negative cases for the validation rules that this suite covers
 test("S-2 Negative Case 1: Rule 1 rejects unsupported schemaVersion", () => {
   const scene = makeValidScene();
   scene.schemaVersion = "2.0.0";
@@ -118,48 +118,12 @@ test("S-2 Negative Case 3: Unsupported actor validation names the actor", () => 
   assert.equal(err.entityId, "actor-astro-1");
 });
 
-test("S-2 Negative Case 4: Rule 4 rejects duplicate assetId", () => {
-  assert.ok(true);
-});
-
-test("S-2 Negative Case 5: Rule 5 rejects non-integer layer value", () => {
-  assert.ok(true);
-});
-
-test("S-2 Negative Case 6: Rule 6 rejects unknown rigId", () => {
-  assert.ok(true);
-});
-
-test("S-2 Negative Case 7: Rule 7 rejects unknown joint group in jointTracks", () => {
-  assert.ok(true);
-});
-
-test("S-2 Negative Case 8: Rule 8 rejects keyframe frame outside [0, durationFrames - 1]", () => {
-  assert.ok(true);
-});
-
-test("S-2 Negative Case 9: Rule 9 rejects non-ascending keyframe frames", () => {
-  assert.ok(true);
-});
-
-test("S-2 Negative Case 10: Rule 10 rejects negative scale or opacity > 1", () => {
-  assert.ok(true);
-});
-
 test("S-2 Negative Case 11: Rule 11 rejects non-existent svgSource file", () => {
   const scene = makeValidScene();
   scene.background.svgSource = "non/existent/path/bg.svg";
   const res = validateScene(scene);
   assert.equal(res.isValid, false);
   assert.ok(res.errors.some((e) => e.rule === 11));
-});
-
-test("S-2 Negative Case 12: Rule 12 rejects unknown actionId", () => {
-  assert.ok(true);
-});
-
-test("S-2 Negative Case 13: Rule 13 rejects action exceeding scene durationFrames", () => {
-  assert.ok(true);
 });
 
 test("S-2 Negative Case 14 (S-6): Rule 14 rejects audio mismatch > 50ms (51ms fail, 49ms pass)", () => {
@@ -219,14 +183,6 @@ test("S-2 Negative Case 16: Rule 16 rejects elementId not found in SVG document"
   assert.ok(res.errors.some((e) => e.rule === 16));
 });
 
-test("S-2 Negative Case 17: Rule 17 rejects rigId missing ModelSheet", () => {
-  assert.ok(true);
-});
-
-test("S-2 Negative Case 18: Rule 18 rejects simultaneous action collision at same startFrame on shared joint", () => {
-  assert.ok(true);
-});
-
 // S-5: Round-trip pure JSON serialization deep-equality
 test("S-5: Round-trip JSON.parse(JSON.stringify(scene)) deep-equals original (pure data)", () => {
   const scene = makeValidScene();
@@ -235,12 +191,7 @@ test("S-5: Round-trip JSON.parse(JSON.stringify(scene)) deep-equals original (pu
   assert.deepEqual(parsed, scene);
 });
 
-// S-8: Scale warning W1 produces warning and ZERO errors
-test("S-8: Scale warning W1 produces warning and ZERO errors for outlier scale", () => {
-  assert.ok(true);
-});
-
-test("W1 Confirmation: Single-actor scene produces exactly ZERO warnings (median equals own scale)", () => {
+test("Single solo actor scene fails with exactly one unsupported character rig error", () => {
   const scene = makeValidScene();
   scene.actors = [
     {
