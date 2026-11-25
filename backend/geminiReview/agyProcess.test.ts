@@ -203,14 +203,17 @@ const dir = process.argv[1];
 const stopFile = path.join(dir, 'stop');
 fs.writeFileSync(path.join(dir, 'child.pid'), String(process.pid));
 fs.writeFileSync(path.join(dir, 'ready'), 'ready');
-// Burns two seconds of CPU, then keeps burning until the test releases the worker.
+// Extra burner threads raise the CPU rate above one second per second, so whole-second ps time ticks well inside the idle window.
+const burnThreads = () => {
+  const { Worker } = require('node:worker_threads');
+  const body = "const fs = require('node:fs'); const stop = process.argv[1]; while (!fs.existsSync(stop)) process.cpuUsage();";
+  for (let n = 0; n < 3; n += 1) new Worker(body, { eval: true, argv: [stopFile] }).unref();
+};
+// Burns for two wall-clock seconds, then keeps burning until the test releases the worker.
 const burnUntilReleased = () => {
-  const started = process.cpuUsage();
-  let used = 0;
-  while (used < 2000000 && !fs.existsSync(stopFile)) {
-    const current = process.cpuUsage(started);
-    used = current.user + current.system;
-  }
+  burnThreads();
+  const started = Date.now();
+  while (Date.now() - started < 2000 && !fs.existsSync(stopFile)) process.cpuUsage();
   fs.writeFileSync(path.join(dir, 'burn-complete'), 'done');
   while (!fs.existsSync(stopFile)) process.cpuUsage();
   console.log(JSON.stringify({ status: 'SUCCESS', response: '{"rating":8}' }));

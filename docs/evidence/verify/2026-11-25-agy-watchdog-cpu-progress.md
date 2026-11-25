@@ -85,3 +85,10 @@
 - **Negative control**: Temporarily disabled the `cpu > lastCpu` activity update in `agyProcess.ts`; the final single-burner test failed with the watchdog rejection before `burn-complete`. Restored the production file; it has no diff.
 - **PR statement**: The original CI flake was not reproduced locally. This change removes the stdout keep-alive masking and unsynchronized-start weaknesses and records the repeat counts. These local runs do not prove the CI flake is gone.
 - **Production changes**: None.
+
+## Burner-thread fix: 2026-11-26
+
+- **Cause**: With one burner, the group's whole-second `ps time` ticks only once per CPU second, so the margin before the 1s idle window expires is the startup CPU plus poll phase (about 150ms). Reproduced before the fix: 11/30 and 22/30 CPU-case failures with 12 and 14 concurrent `yes > /dev/null` workers on 12 cores.
+- **Fix**: The CPU worker burns on three extra threads inside the same process (still one `child.pid`), so group CPU grows several seconds per second and `ps time` ticks inside every idle window. The two-second burn is now measured in wall-clock time, because process CPU time would reach two seconds in under one second and end the test before the idle window could expire.
+- **Result after the fix**: 0/30 failures with 12 workers, 0/30 with 14 workers, 0/30 with no load. No timeout, tolerance or assertion changed.
+- **Negative control**: With the `cpu > lastCpu` update disabled in `agyProcess.ts`, the CPU case fails with the watchdog rejection. The production file was restored; it has no diff.
