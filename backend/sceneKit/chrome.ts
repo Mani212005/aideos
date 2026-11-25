@@ -3,7 +3,7 @@
  * with its soft accent glow, a muted mono tag, and a readout whose value changes over the film.
  * These are the quiet, persistent pieces that keep a dark canvas from being flat; they carry no topic.
  * Inputs and outputs: frame title, readout values, and theme accent -> decorative frame chrome SVG elements.
- * Used by: backend/stillTalking/scene.ts.
+ * Used by: test_fixtures/stillTalking/scene.ts.
  */
 
 import type { Canvas } from "./canvas";

@@ -24,7 +24,7 @@ import { loadSceneAssets } from "./scene/loadSceneAssets";
 import { renderFrameSvgMarkup } from "./scene/renderStill";
 import { buildSvgSources, collectSvgSources, renderModule, generatedModulePath } from "./scene/buildSvgSources";
 import { ensureGenerated } from "./pipeline/generatedFiles";
-import { BEATS } from "./stillTalking/beats";
+import { BEATS } from "../test_fixtures/stillTalking/beats";
 import { getVideosDir } from "../src/dl/videoPackageLoader";
 
 const ROOT = path.resolve(__dirname, "..");

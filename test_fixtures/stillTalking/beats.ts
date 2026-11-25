@@ -5,7 +5,7 @@
  * single source of truth the voiceover producer and the film builder both read, so the narration
  * that is spoken and the narration recorded in the manifest can never drift apart.
  * Inputs and outputs: none -> beat sheet defining spoken narration and shot cards for Still Talking.
- * Used by: backend/stillTalking/buildFilm.ts, backend/stillTalking/produceVoiceover.ts.
+ * Used by: test_fixtures/stillTalking/buildFilm.ts, test_fixtures/stillTalking/produceVoiceover.ts.
  */
 
 import type { Block } from "../../src/dl/schema";

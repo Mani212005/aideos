@@ -165,7 +165,7 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
   gate, skip, or fail any jobs.
   * **High risk triggers**:
     * Touches render code: `backend/pipeline/render*`, `src/dl/render*`, `native/**`
-    * Touches stage or scene code: `src/dl/scene/**`, `src/dl/Stage*`, `src/dl/Scene*`, `backend/stage/**`, `backend/stillTalking/**`
+    * Touches stage or scene code: `src/dl/scene/**`, `src/dl/Stage*`, `src/dl/Scene*`, `backend/stage/**`, `test_fixtures/stillTalking/**`
     * Touches golden regression code or baselines: `backend/journeys/goldens/**`, `backend/journeys/legacy.golden.ts`, `backend/journeys/goldenResult.ts`
     * Touches CI workflows: `.github/**`
     * Touches dependencies or lockfiles: `package.json`, `package-lock.json`, `editor/package.json`, `editor/package-lock.json`
