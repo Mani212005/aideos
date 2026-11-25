@@ -3,6 +3,8 @@
  * Inputs and outputs: spec files or library ids -> per-field findings, stamped hash, rig/receive summary and sheet PNGs; exit 1 on any error.
  * Used by: backend/cli.ts (registerCharacterCommands) and the character journey tests (checkCharacterFile).
  */
+
+import { callerWorkingDirectory } from "../paths";
 import fs from "node:fs";
 import path from "node:path";
 import { Box3 } from "three";
@@ -73,7 +75,7 @@ export function checkCharacterFile(file: string, options: { stamp?: boolean } = 
 
 // Renders one report for a terminal or an agent to act on.
 export function formatCharacterReport(report: CharacterReport): string {
-  const lines = [`${report.ok ? "PASS" : "FAIL"} character ${path.relative(process.cwd(), report.file) || report.file}${report.stamped ? " (hash stamped)" : ""}`];
+  const lines = [`${report.ok ? "PASS" : "FAIL"} character ${path.relative(callerWorkingDirectory(), report.file) || report.file}${report.stamped ? " (hash stamped)" : ""}`];
   for (const e of report.errors) lines.push(`  error ${e}`);
   for (const w of report.warnings) lines.push(`  warn  ${w}`);
   for (const note of report.notes) lines.push(`  note  ${note}`);
@@ -119,6 +121,6 @@ export function registerCharacterCommands(program: Command): void {
       console.log(`${result.hashStatus}`);
       if (!result.retarget.ok) console.log(`receive-v1 not drawn: ${result.retarget.error}`);
       for (const w of result.retarget.warnings) console.log(`warn  ${w}`);
-      for (const file of result.files) console.log(`wrote ${path.relative(process.cwd(), file)}`);
+      for (const file of result.files) console.log(`wrote ${path.relative(callerWorkingDirectory(), file)}`);
     });
 }

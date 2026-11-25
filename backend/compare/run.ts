@@ -6,6 +6,8 @@
  * Used by: backend/compare/cli.ts, backend/compare/compare.test.ts.
  */
 
+import { callerWorkingDirectory } from "../paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import { deliverMessageToOrigin, type FeedbackDeps, type FeedbackOutcome } from "../allCheck/feedback";
@@ -73,7 +75,7 @@ export function formatSendMessage(slug: string, report: CompareReport, dir: stri
 
 // Runs the comparison and writes the output folder.
 export async function runCompare(options: CompareRunOptions): Promise<CompareRunResult> {
-  const cwd = options.cwd ?? process.cwd();
+  const cwd = options.cwd ?? callerWorkingDirectory();
   const say = options.deps?.onProgress ?? (() => undefined);
   const oursFile = resolveInput("ours", options.ours, cwd);
   const refFile = resolveInput("reference", options.ref, cwd);

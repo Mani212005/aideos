@@ -5,6 +5,9 @@
  * Used by: backend/cli.ts, bin/aideos.
  */
 
+import { environment } from "../env";
+import { callerWorkingDirectory } from "../paths";
+
 import type { Command } from "commander";
 import { runStudy } from "./run";
 import { IP_BOUNDARY, type Metric } from "./types";
@@ -35,7 +38,7 @@ export function registerStudyCommands(program: Command): void {
           outRoot: options.out,
           wordsFile: options.words,
           into: options.into,
-          cwd: process.env.AIDEOS_CALLER_CWD || process.cwd(),
+          cwd: environment.AIDEOS_CALLER_CWD || callerWorkingDirectory(),
           deps: { onProgress: (m) => console.error(`[study] ${m}`) },
         });
         if (options.json) {

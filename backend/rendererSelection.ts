@@ -4,6 +4,8 @@
  * Used by: backend/pipeline/run.ts (render stage), backend/exportJobs.ts (studio Export), backend/geminiReview/render.ts (review and all-check renders), scripts/render_active.ts (`aideos render`, `aideos reel`), backend/rendererSelection.test.ts.
  */
 
+import { environment } from "./env";
+
 import type { Film } from "../src/dl/schema";
 import { nativeSupport, type NativeFormat } from "./renderIr/emit";
 import { nativeBinaryProblem, NativeLoadRefusal } from "./nativeRenderer";
@@ -23,12 +25,12 @@ export function parseRendererMode(raw: string | undefined): RendererMode {
 }
 
 /** Reads the renderer mode from `AIDEOS_RENDERER`; `auto` when unset. */
-export function rendererModeFromEnv(env: NodeJS.ProcessEnv = process.env): RendererMode {
+export function rendererModeFromEnv(env: NodeJS.ProcessEnv = environment): RendererMode {
   return parseRendererMode(env.AIDEOS_RENDERER);
 }
 
 /** Reads the requested mode from a `--renderer X` argument or `AIDEOS_RENDERER` (the argument wins); `auto` by default. */
-export function requestedRenderer(argv: string[], env: NodeJS.ProcessEnv = process.env): { name: RendererMode; rest: string[] } {
+export function requestedRenderer(argv: string[], env: NodeJS.ProcessEnv = environment): { name: RendererMode; rest: string[] } {
   const rest = [...argv];
   let raw = env.AIDEOS_RENDERER;
   for (let i = 0; i < rest.length; i++) {

@@ -11,6 +11,11 @@
  * Used by: backend/allCheck/cli.ts, backend/allCheck/agent.ts.
  */
 
+import { DEFAULT_STUDIO_PORT } from "../../src/dl/defaults";
+
+import { environment } from "../env";
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import { formatScore } from "../geminiReview/verdictPolicy";
 import fs from "node:fs";
 import path from "node:path";
@@ -33,7 +38,7 @@ export { rollbackFilm, settleRound, strayFiles, rankRecord } from "./best";
 export { runRound, recordFrameCheck, evaluateRecord, realRoundDeps, readRecords, readConfig } from "./round";
 export { finishRun } from "./finish";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 /** The outside world a start touches; the defaults are real. */
 export interface StartDeps {
@@ -53,17 +58,17 @@ export interface StartDeps {
 export function realStartDeps(): StartDeps {
   const herdr = realHerdr;
   return {
-    env: process.env,
+    env: environment,
     preflight: REAL_PREFLIGHT_DEPS,
     lock: realLockDeps((location) => paneLive(location, herdr)),
     herdr,
     studioRunning: () => {
-      const r = spawnSync("lsof", ["-tiTCP:3001", "-sTCP:LISTEN"], { encoding: "utf8" });
+      const r = spawnSync("lsof", [`-tiTCP:${DEFAULT_STUDIO_PORT}`, "-sTCP:LISTEN"], { encoding: "utf8" });
       return r.status === 0 && r.stdout.trim().length > 0;
     },
     now: () => new Date(),
     session: () => detectOriginSession(realDetectDeps()),
-    launch: (slug, scriptPath, agent, onCreated) => launchAgentWorkspace(slug, scriptPath, { agent, onCreated, env: process.env, herdr }),
+    launch: (slug, scriptPath, agent, onCreated) => launchAgentWorkspace(slug, scriptPath, { agent, onCreated, env: environment, herdr }),
   };
 }
 

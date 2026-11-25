@@ -8,6 +8,8 @@
  * Used by: backend/audio.ts, backend/sceneKit/voiceover.ts, backend/voiceSynthesis.ts (the studio's Kokoro worker).
  */
 
+import { environment } from "./env";
+
 import { execFileSync } from "child_process";
 import fs from "fs/promises";
 import os from "os";
@@ -135,7 +137,7 @@ export async function startKokoroWorker(): Promise<KokoroWorker> {
 
   const child = spawn(process.execPath, [workerPath], {
     stdio: ["pipe", "pipe", "pipe"],
-    env: process.env,
+    env: environment,
   });
 
   const pending = new Map<number, PendingRequest>();
@@ -261,7 +263,7 @@ async function createKokoroBackend(voice: string, speed: number): Promise<TtsBac
 /** Google Cloud Text-to-Speech, used only when credentials are configured and requested. */
 async function createGoogleBackend(voiceName: string): Promise<TtsBackend> {
   const { TextToSpeechClient } = await import("@google-cloud/text-to-speech");
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = environment.GOOGLE_API_KEY;
   const client = new TextToSpeechClient(apiKey ? { apiKey } : undefined);
 
   return {
@@ -389,10 +391,10 @@ export async function createTtsBackend(options?: {
   /** Injectable HTTP dependencies for vcd tests. */
   vcdDeps?: VcdHttpDeps;
 }): Promise<TtsBackend> {
-  const requested = (options?.backend ?? (process.env.AIDEOS_TTS as TtsBackendName | undefined)) || undefined;
-  const explicitVoice = options?.voice ?? process.env.AIDEOS_TTS_VOICE;
+  const requested = (options?.backend ?? (environment.AIDEOS_TTS as TtsBackendName | undefined)) || undefined;
+  const explicitVoice = options?.voice ?? environment.AIDEOS_TTS_VOICE;
   const voice = explicitVoice ?? "af_heart";
-  const envSpeed = Number(process.env.AIDEOS_TTS_SPEED);
+  const envSpeed = Number(environment.AIDEOS_TTS_SPEED);
   const requestedSpeed = options?.speed ?? (Number.isFinite(envSpeed) && envSpeed > 0 ? envSpeed : DEFAULT_KOKORO_SPEED);
   const speed = Math.min(2, Math.max(0.5, requestedSpeed));
 

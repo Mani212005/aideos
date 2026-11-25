@@ -7,6 +7,8 @@
  * Used by: backend/allCheck/index.ts.
  */
 
+import { environment } from "../env";
+
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -39,7 +41,7 @@ export interface PreflightDeps {
 
 // Resolves a command on PATH.
 function realWhich(command: string): string | null {
-  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
+  for (const dir of (environment.PATH ?? "").split(path.delimiter)) {
     if (!dir) continue;
     const candidate = path.join(dir, command);
     try {

@@ -3,6 +3,8 @@
  * Inputs and outputs: package slug and delivery policy -> passing reel film or actionable needs_reel_cut stop.
  * Used by: production reel stage and aideos reel build.
  */
+
+import { environment } from "../env";
 import fs from "node:fs";
 import path from "node:path";
 import { generationCallerOrNull } from "../aideosConfig";
@@ -69,7 +71,7 @@ export async function deliverReel(slug: string, opts: ReelWriterOptions = {}): P
     throw new ProductionError("reel", `server reel writer exhausted three attempts:\n${failure}`);
   }
   if (mode === "agent") {
-    if (opts.skipAgent || process.env.NODE_TEST_CONTEXT) throw new ProductionError("reel", "agent reel delivery is disabled");
+    if (opts.skipAgent || environment.NODE_TEST_CONTEXT) throw new ProductionError("reel", "agent reel delivery is disabled");
     for (let attempt = 1; attempt <= 3; attempt++) {
       const requestedAt = Date.now();
       const dispatch = await dispatchTask({ eventType: "reel_cut", filmId: slug, filmTitle: long.title, enableFallback: false,

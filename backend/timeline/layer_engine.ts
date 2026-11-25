@@ -12,6 +12,8 @@
  * Used by: backend/timeline/timeline.ts, editor/src/state/useLayeredTimeline.ts.
  */
 
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";
 import {
   type UpdateAction,
@@ -438,7 +440,7 @@ export function moveLayerClip(
     assertLayerEditable(film, targetLayerId, "Move");
   }
 
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const clampedPos = Math.max(0, Math.round(newPositionSec * fps) / fps);
   const newClips = JSON.parse(JSON.stringify(film.clips)) as Clip[];
   const targetClip = newClips[clipIndex];
@@ -530,7 +532,7 @@ export function moveMultipleLayerClips(
     assertLayerEditable(film, clip.layerId, "Move");
   }
 
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const frameDelta = Math.round(deltaSec * fps) / fps;
   const minPos = Math.min(...targetClips.map((c) => c.position));
   const effectiveDelta = Math.max(-minPos, frameDelta);
@@ -583,7 +585,7 @@ export function trimLayerClipEdge(
   assertLayerEditable(film, film.clips[clipIndex].layerId, "Trim");
 
   const newClips = JSON.parse(JSON.stringify(film.clips)) as Clip[];
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const frameDelta = Math.round(deltaSec * fps) / fps;
   const txId = generateUUID();
   const actions: UpdateAction[] = [];
@@ -937,7 +939,7 @@ export function rippleTrimLayerClipEdge(
   assertLayerEditable(film, targetClip.layerId, "Ripple trim");
 
   const newClips = JSON.parse(JSON.stringify(film.clips)) as Clip[];
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const frameDelta = Math.round(deltaSec * fps) / fps;
   const txId = generateUUID();
   const actions: UpdateAction[] = [];

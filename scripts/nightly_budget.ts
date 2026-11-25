@@ -4,6 +4,9 @@
  * Used by: npm run ci -- nightly, .github/workflows/nightly.yml.
  */
 
+import { environment } from "../backend/env";
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
 import "../backend/testSupport/fixtureVideosDir";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -13,7 +16,7 @@ import { bundle } from "@remotion/bundler";
 import { produceIona } from "../backend/journeys/ionaFilm";
 import { ARTIFACT_DIR, assertDiskHeadroom, holdActiveFilm, sizeOf, tempEntries } from "../backend/journeys/harness";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 const MB = 1024 * 1024;
 
 /**
@@ -87,8 +90,8 @@ async function main(): Promise<void> {
     const table = ["| metric | measured | budget | |", "| --- | --- | --- | --- |", ...rows.map((r) => `| ${r.metric} | ${r.measured} | ${r.budget} | ${r.ok ? "ok" : "OVER"} |`)].join("\n");
     console.log(`\n${table}\n`);
     fs.mkdirSync(path.join(ARTIFACT_DIR, "nightly"), { recursive: true });
-    fs.writeFileSync(path.join(ARTIFACT_DIR, "nightly/budget.json"), JSON.stringify({ measured, budgets: BUDGETS, outputs, platform: `${process.platform}-${process.arch}`, node: process.version, gl: process.env.AIDEOS_GL ?? "angle" }, null, 2));
-    if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Nightly render budget\n\n${table}\n`);
+    fs.writeFileSync(path.join(ARTIFACT_DIR, "nightly/budget.json"), JSON.stringify({ measured, budgets: BUDGETS, outputs, platform: `${process.platform}-${process.arch}`, node: process.version, gl: environment.AIDEOS_GL ?? "angle" }, null, 2));
+    if (environment.GITHUB_STEP_SUMMARY) fs.appendFileSync(environment.GITHUB_STEP_SUMMARY, `### Nightly render budget\n\n${table}\n`);
     const over = rows.filter((r) => !r.ok);
     if (over.length) throw new Error(`over budget: ${over.map((r) => `${r.metric} ${r.measured} > ${r.budget}`).join(", ")}`);
     if (tempEntries(["aideos-public-", "aideos-journey-bundle-"]).length) throw new Error("staged public dir or bundle left behind in the temp dir");

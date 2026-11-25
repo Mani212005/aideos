@@ -4,6 +4,8 @@
  * Used by: backend/cli.ts, bin/aideos.
  */
 
+import { callerWorkingDirectory } from "../paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import type { Command } from "commander";
@@ -38,7 +40,7 @@ function formatDuration(sec: number): string {
 export function formatVerifyReport(report: AudioLibraryVerifyReport): string {
   const lines: string[] = [];
   lines.push(`Audio library verification: ${report.ok ? "PASS" : "FAIL"}`);
-  lines.push(`Cache location: ${path.relative(process.cwd(), report.cacheDir) || report.cacheDir}`);
+  lines.push(`Cache location: ${path.relative(callerWorkingDirectory(), report.cacheDir) || report.cacheDir}`);
   lines.push("");
 
   for (const item of report.results) {

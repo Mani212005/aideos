@@ -5,6 +5,9 @@
  * Used by: backend/allCheck/cli.ts.
  */
 
+import { environment } from "../env";
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import { buildAgentCommand } from "./agent";
@@ -13,7 +16,7 @@ import { attachCommand, createWorkspace, herdrSocket, paneInfo, realHerdr, renam
 
 export { shellQuote } from "./herdr";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 /** Variables the agent must see exactly as the caller does (accounts, videos folder, review model). */
 const FORWARDED_ENV = [
@@ -29,7 +32,7 @@ const FORWARDED_ENV = [
 ];
 
 // Writes the agent environment and command, followed by the measured-record finish fallback.
-export function writeLaunchScript(slug: string, agent: AgentName, briefPath: string, model: string | null, env: NodeJS.ProcessEnv = process.env): string {
+export function writeLaunchScript(slug: string, agent: AgentName, briefPath: string, model: string | null, env: NodeJS.ProcessEnv = environment): string {
   const cmd = buildAgentCommand(agent, briefPath, slug, model);
   const scriptPath = path.join(allCheckDir(slug), "launch.sh");
   const script = [

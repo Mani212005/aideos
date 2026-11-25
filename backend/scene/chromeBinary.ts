@@ -5,6 +5,8 @@
  * Used by: backend/scene/renderStill.ts (re-exported as findChromeBinary), scripts/ci.ts, scripts/warmChrome.ts.
  */
 
+import { environment } from "../env";
+
 import fs from "node:fs";
 
 const CHROME_CANDIDATES = [
@@ -17,7 +19,7 @@ const CHROME_CANDIDATES = [
 
 /** Locates an installed Chrome or Chromium binary, or returns null when none is present. */
 export function findChromeBinary(): string | null {
-  const fromEnv = process.env.AIDEOS_CHROME_PATH;
+  const fromEnv = environment.AIDEOS_CHROME_PATH;
   if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
   return CHROME_CANDIDATES.find((candidate) => fs.existsSync(candidate)) ?? null;
 }

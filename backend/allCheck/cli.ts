@@ -8,8 +8,9 @@
  * Used by: backend/cli.ts, bin/aideos.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import { formatScore } from "../geminiReview/verdictPolicy";
-import path from "node:path";
 import type { Command } from "commander";
 import { deliverFeedbackToOrigin } from "./feedback";
 import {
@@ -33,7 +34,7 @@ import {
   type FormatRoundRecord,
 } from "./index";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 /** Minutes of agent silence, with no round running, after which `wait` closes the run itself. */
 const DEFAULT_IDLE_MIN = 10;
 

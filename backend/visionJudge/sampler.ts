@@ -9,6 +9,9 @@
  * Used by: backend/visionJudge/judge.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../paths";
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import fs from "node:fs";
 import path from "node:path";
 import type { Film } from "../../src/dl/schema";
@@ -16,7 +19,7 @@ import { compileScene, type CompiledFrame } from "../../src/dl/scene/compile";
 import { loadSceneAssets } from "../scene/loadSceneAssets";
 import { renderFrameStill, type RenderStillOptions } from "../scene/renderStill";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 /** Fewest frames between two samples. */
 export const MIN_SAMPLE_STRIDE = 5;
@@ -83,7 +86,7 @@ function blockStrings(value: unknown, out: string[]): void {
 
 // Finds the shot a frame plays in (cumulative rounding, as the camera does) with its narration and on-screen copy.
 export function describeFrame(film: Film, frame: number): Pick<SampleStill, "shotId" | "narration" | "onscreen"> {
-  const fps = film.fps ?? 30;
+  const fps = film.fps ?? DEFAULT_FPS;
   let cursor = 0;
   let found = film.shots[film.shots.length - 1];
   for (const shot of film.shots) {
@@ -115,7 +118,7 @@ export function renderSamples(filmId: string, film: Film, options: SampleOptions
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
   const render = options.renderStill ?? renderFrameStill;
-  const fps = film.fps ?? scene.fps ?? 30;
+  const fps = film.fps ?? scene.fps ?? DEFAULT_FPS;
   return sampleFrameNumbers(compiled.frames.length, options).map((frame) => {
     const png = render(compiled.frames[frame], path.join(outDir, `frame-${String(frame).padStart(6, "0")}.png`), {
       width: 1920,

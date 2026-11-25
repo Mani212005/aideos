@@ -4,6 +4,8 @@
  * Used by: npm run render-ir:schema, backend/renderIr/renderIr.test.ts.
  */
 
+import { callerWorkingDirectory } from "../backend/paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import { RENDER_IR_SCHEMA_PATH, RENDER_IR_SCHEMA_V2_PATH, RENDER_IR_SCHEMA_V3_PATH, renderIrJsonSchemaText, renderIrJsonSchemaV2Text, renderIrJsonSchemaV3Text } from "../backend/renderIr/jsonSchema";
@@ -22,7 +24,7 @@ function main(): void {
   for (const [file, wanted] of files) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, wanted);
-    console.log(`wrote ${path.relative(process.cwd(), file)}`);
+    console.log(`wrote ${path.relative(callerWorkingDirectory(), file)}`);
   }
 }
 

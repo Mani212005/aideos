@@ -14,6 +14,8 @@
  * row "Voiceover & Narration"; docs/GOOD_VIDEO.md "House pace".
  */
 
+import { environment } from "../../backend/env";
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -113,7 +115,7 @@ function readOptions(argv: string[]) {
     voice: values.voice,
     speed,
     rate,
-    python: values.python ?? process.env.AIDEOS_STT_PYTHON ?? "python3",
+    python: values.python ?? environment.AIDEOS_STT_PYTHON ?? "python3",
     json: values.json ? path.resolve(values.json) : undefined,
     keep: values.keep,
   };

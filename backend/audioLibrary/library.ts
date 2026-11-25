@@ -4,6 +4,8 @@
  * Used by: backend/audioLibrary/cli.ts, backend/cli.ts.
  */
 
+import { environment } from "../env";
+
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -69,13 +71,13 @@ export interface AudioLibraryFetchReport {
 
 // Resolves the default path to the committed audio/library.json file; AIDEOS_AUDIO_LIBRARY points tests at a synthetic manifest instead.
 export function getDefaultLibraryPath(): string {
-  const override = process.env.AIDEOS_AUDIO_LIBRARY?.trim();
+  const override = environment.AIDEOS_AUDIO_LIBRARY?.trim();
   return override ? path.resolve(override) : path.resolve(getProjectRoot(), "audio/library.json");
 }
 
 // A test-only AIDEOS_AUDIO_LIBRARY manifest also replaces the one the browser-safe mixer resolves items from, in every Node process that loads this module.
-if (process.env.AIDEOS_AUDIO_LIBRARY?.trim()) {
-  overrideSoundtrackLibrary(JSON.parse(fs.readFileSync(path.resolve(process.env.AIDEOS_AUDIO_LIBRARY), "utf8")));
+if (environment.AIDEOS_AUDIO_LIBRARY?.trim()) {
+  overrideSoundtrackLibrary(JSON.parse(fs.readFileSync(path.resolve(environment.AIDEOS_AUDIO_LIBRARY), "utf8")));
 }
 
 // Loads and validates audio/library.json from disk.

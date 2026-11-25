@@ -3,6 +3,8 @@
  * Inputs and outputs: character id (and optional package dir) or a spec file -> parsed, hash-verified spec and its file, or errors naming file and field.
  * Used by: design build (before compile), pipeline resume fingerprints, the character CLI and character tests.
  */
+
+import { callerWorkingDirectory } from "../paths";
 import fs from "node:fs";
 import path from "node:path";
 import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
@@ -40,7 +42,7 @@ export function loadCharacterFile(file: string): LoadedCharacter {
 export function loadCharacter(id: string, packageDir?: string): LoadedCharacter {
   const candidates = characterCandidates(id, packageDir);
   const file = candidates.find((candidate) => fs.existsSync(candidate));
-  if (!file) return { file: candidates[candidates.length - 1], errors: [{ path: "(file)", message: `no character "${id}"; looked for ${candidates.map((c) => path.relative(process.cwd(), c) || c).join(" and ")}` }] };
+  if (!file) return { file: candidates[candidates.length - 1], errors: [{ path: "(file)", message: `no character "${id}"; looked for ${candidates.map((c) => path.relative(callerWorkingDirectory(), c) || c).join(" and ")}` }] };
   const loaded = loadCharacterFile(file);
   if (loaded.spec && loaded.spec.id !== id) loaded.errors.push({ path: "id", message: `the spec in ${file} is "${loaded.spec.id}" but the design asks for character "${id}"; rename the file or fix the id` });
   return loaded;

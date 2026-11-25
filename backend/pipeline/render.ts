@@ -7,6 +7,8 @@
  * Used by: backend/pipeline/run.ts.
  */
 
+import { environment } from "../env";
+
 import { execFileSync, spawnSync } from "child_process";
 import fs from "fs";
 import os from "os";
@@ -51,7 +53,7 @@ export const ENCODE_FLAGS: readonly string[] = Object.freeze([...FINAL_ENCODE_FL
  * has no GPU, so `AIDEOS_GL=swangle` selects the software rasterizer, which draws the same pixels
  * on every machine and is what makes a rendered 3D frame comparable between runs.
  */
-export function glFlag(env: NodeJS.ProcessEnv = process.env): string {
+export function glFlag(env: NodeJS.ProcessEnv = environment): string {
   const gl = env.AIDEOS_GL?.trim() || "angle";
   if (!/^[a-z-]+$/.test(gl)) throw new Error(`AIDEOS_GL must be a Remotion --gl value such as angle or swangle, got "${gl}"`);
   return `--gl=${gl}`;

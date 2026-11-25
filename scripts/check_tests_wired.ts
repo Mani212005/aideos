@@ -4,11 +4,13 @@
  * Used by: npm run ci (static job), scripts/check_tests_wired.test.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 
 /** Scripts whose quoted globs select the test files they run. */
 export const TEST_SCRIPTS = ["test", "test:journeys", "test:legacy", "test:live", "test:visual"];
