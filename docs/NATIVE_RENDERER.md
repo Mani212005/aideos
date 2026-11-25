@@ -361,7 +361,7 @@ music and audio clips, panels other than `frame`, more than one block per shot a
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
-carry, and asset IDs that cannot form IR IDs. A rejected invalid timeline may also fail in Remotion's scene
+carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid timeline may also fail in Remotion's scene
 compiler. The check does not read SVG source, evaluate Three-stage data, validate the generated IR, or call the
 native measurer. Rejections that need those inputs still surface during native preparation.
 
