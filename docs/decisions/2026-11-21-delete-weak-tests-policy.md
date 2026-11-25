@@ -9,7 +9,7 @@
 
 ## Context
 
-`AGENTS.md` says never to delete an existing assertion and not to add tests on your own. A sweep on 2026-11-21 found weak tests that give false confidence: 12 `assert.ok(true)` placeholders in `backend/scene/scene.test.ts` (all 12 are still on main), real `setTimeout` sleeps in unit tests and tests of code that no longer exists.
+`AGENTS.md` says never to delete an existing assertion and not to add tests on your own. A sweep on 2026-11-21 found weak tests that give false confidence: 12 `assert.ok(true)` placeholders in `backend/scene/scene.test.ts` (removed by slice 14, see below), real `setTimeout` sleeps in unit tests and tests of code that no longer exists.
 
 ## Decision
 
@@ -28,4 +28,4 @@ Weak tests create false confidence and slow every change, and a test that restat
 
 - `AGENTS.md` is intentionally not edited. The precedence is written into `.agents/skills/verify/SKILL.md` and `.agents/skills/verify/references/test-policy.md`, and the weak-test smells are listed there.
 - Each removal goes under "Test changes" in the pull request. Examples: https://github.com/Mani212005/aideos/pull/253 removed two tests whose subjects were deleted by owner decision (`alignSceneToAudio` and the `validateFilmNode` duration-sum validator), and https://github.com/Mani212005/aideos/pull/258 removed guarded-route rows that asserted nothing once their routes were gone.
-- The 12 `assert.ok(true)` placeholders are slice 14 of the habits purge (see [2026-11-21-habits-purge-slicing.md](2026-11-21-habits-purge-slicing.md)); they have not been removed yet.
+- The 12 `assert.ok(true)` placeholders are slice 14 of the habits purge (see [2026-11-21-habits-purge-slicing.md](2026-11-21-habits-purge-slicing.md)); the owner answered on 2026-11-22 to delete all 12 without adding new tests, and slice 14 removed them.
