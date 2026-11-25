@@ -27,12 +27,16 @@
 | Command | Result | Notes / artifacts |
 | --- | --- | --- |
 | `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/geminiReview/agyProcess.test.ts` | PASS (exit 0) | 11 tests passed, 0 failed, 0 skipped. |
+| `node --import tsx --test --test-name-pattern='agy idle watchdog allows continuing CPU progress' backend/geminiReview/agyProcess.test.ts` on pre-fix `origin/main` | PASS (1/1) | The flake did not reproduce in one local baseline run. |
+| `node --import tsx --test backend/geminiReview/agyProcess.test.ts`; `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/geminiReview/agyProcess.test.ts` | PASS (2/2) | CPU case passed in both full-file runs after the ready-marker synchronization. No synthetic load was added. |
 | `npm run ci -- static` | PASS (exit 0) | Generated files, headers, test wiring, ESLint, root typecheck, editor oxlint/build, Ruff check and format check passed. Existing lint/build warnings remain in unrelated editor files. |
 | `git diff --check` | PASS (exit 0) | No whitespace errors. |
 
 ## Fix attempts
 
 - Attempts used: 1 / 3. An initial draft waited for PID files before starting the runner and failed to converge. The runner now starts before the test waits for leader and child PIDs plus the worker's ready marker; the focused and full file runs passed.
+
+- Baseline note: the original CPU test passed once locally, so this session did not capture a failing pre-fix run. The intermittent whole-second CPU sampling race was identified in the task handoff; the fix makes the process-tree readiness condition explicit and passed two final full-file repetitions.
 
 ## Weak-test removals
 
