@@ -190,8 +190,11 @@ const { spawn } = require('node:child_process');
 const dir = __dirname;
 fs.writeFileSync(path.join(dir, 'leader.pid'), String(process.pid));
 const child = spawn(process.execPath, ['-e', ${JSON.stringify(cpuWorker)}, dir], { stdio: 'inherit' });
-const timer = setInterval(() => process.stdout.write(' '), 50);
-child.once('exit', () => clearInterval(timer));
+// Keeps stdout busy only until the burn phase starts, so only CPU growth can satisfy the idle watchdog afterwards.
+const timer = setInterval(() => {
+  if (fs.existsSync(path.join(dir, 'start'))) clearInterval(timer);
+  else process.stdout.write(' ');
+}, 50);
 `);
     } else {
       fakeAgy(t, `const timer = setInterval(() => process.stdout.write(' '), 50); setTimeout(() => {clearInterval(timer); console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));}, 2000);`);

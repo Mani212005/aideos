@@ -17,7 +17,7 @@
 | Expect / golden test for complex output | N/A | No structured output or rendered artifact changed. |
 | No sleeps | PASS | CPU worker waits on a filesystem watcher and explicit `start` marker; no fixed-delay wait was added. |
 | No mocks of thing under test | PASS | The runner and process tree execute for real; only the agy executable is a local fixture. |
-| Protected suites unloosened | PASS | No assertion, timeout, tolerance, or golden was weakened. |
+| Protected suites unloosened | PASS | No assertion, timeout, tolerance, or golden was weakened. The leader's stdout keep-alive stops when the `start` marker appears, so the burn phase emits no stdout and only CPU growth can satisfy the watchdog. |
 | Weak-test audit | PASS | No tests removed. |
 | Independent review | PENDING | Deferred to the instructed no-mistakes pipeline after firstmate handoff. |
 | Evidence log written | PASS | This file. |
