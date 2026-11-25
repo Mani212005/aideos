@@ -15,6 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { expectFile, formatForReview } from "../testSupport/expectFile";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { evaluateCriteria, type ReviewInputs } from "./criteria";
 import { parseEbur128, parseSilences } from "./media";
@@ -727,6 +728,14 @@ test("review: a stable stage passes persistence, a stage replaced every beat fai
   assert.ok(frame && fs.existsSync(path.join(TMP, "out-cleared", frame)), `evidence frame ${frame}`);
   assert.ok(written.recommendations[0].startsWith("[gate] One persistent stage"));
   assert.ok(byKey(stable.criteria, "loudness").metrics.integratedLufs !== undefined);
+  const captured = {
+    ...written,
+    subject: "synthetic-cleared.mp4",
+    createdAt: "<captured timestamp>",
+    video: { ...written.video, path: "synthetic-cleared.mp4" },
+    outDir: "<review output directory>",
+  };
+  expectFile(formatForReview(captured), "review/review-report.json");
 });
 
 test("review: the CLI exits 0 when the gates pass, 1 when one fails, 2 when it cannot run", { skip: !HAVE_FFMPEG }, () => {

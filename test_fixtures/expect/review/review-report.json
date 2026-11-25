@@ -1,0 +1,193 @@
+{
+  "schema": "aideos.review/1",
+  "format": "long",
+  "subject": "synthetic-cleared.mp4",
+  "createdAt": "<captured timestamp>",
+  "video": {
+    "path": "synthetic-cleared.mp4",
+    "durationSec": 24,
+    "containerDurationSec": 24,
+    "width": 1920,
+    "height": 1080,
+    "fps": 10,
+    "hasAudio": true,
+    "audioDurationSec": 24
+  },
+  "sources": {"film":null,"words":null,"narrationTextOnly":false},
+  "criteria": [
+    {
+      "id": 1,
+      "key": "persistent-stage",
+      "name": "One persistent stage",
+      "gate": true,
+      "status": "fail",
+      "score": 0,
+      "summary": "layout correlates -0.09 with two seconds earlier (needs 0.65); 4 stage clears (5 per 30 s, max 2.2)",
+      "metrics": {
+        "layoutCorrelationMedian": -0.093,
+        "layoutCorrelationP10": -0.093,
+        "stageClearEvents": 4,
+        "stageClearsPer30s": 5,
+        "boundaryKeptShare": null
+      },
+      "threshold": {"layoutCorrelationMedianMin":0.65,"stageClearsPer30sMax":2.2,"boundaryKeptShareMin":0.6},
+      "evidence": [
+        {"t":4,"note":"stage cleared around 3 s: ink coverage collapsed","frame":"review/persistent-stage-4.0s.jpg"},
+        {"t":9.1,"note":"stage cleared around 8.1 s: ink coverage collapsed","frame":"review/persistent-stage-9.1s.jpg"},
+        {"t":21.1,"note":"stage cleared around 20.1 s: ink coverage collapsed","frame":"review/persistent-stage-21.1s.jpg"},
+        {"t":3.5,"note":"layout least like two seconds earlier (correlation -0.09)","frame":"review/persistent-stage-3.5s.jpg"}
+      ],
+      "fix": "Keep one stage up for the whole film: each beat should transform what is already on screen (move, scale, retag, shrink into a card) instead of clearing it and drawing a new panel."
+    },
+    {
+      "id": 2,
+      "key": "carry-over",
+      "name": "Carry-over with transformation",
+      "gate": false,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: needs aideos film data; pixel overlap in place measures stillness, not continuity",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 13,
+      "key": "plan-adherence",
+      "name": "Look plan adherence",
+      "gate": false,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: needs film data with a valid design/look.json",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 3,
+      "key": "cue-timing",
+      "name": "Cues aimed at spoken words",
+      "gate": false,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: needs a scene film with animation clips or evaluated performances",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 4,
+      "key": "camera",
+      "name": "Camera that does something",
+      "gate": true,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: camera is read from film data, not pixels; pass --film or review an aideos film",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 5,
+      "key": "captions",
+      "name": "Captions at placed position (default bottom)",
+      "gate": true,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: OCR was not run",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 6,
+      "key": "readability",
+      "name": "Readability",
+      "gate": true,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: OCR was not run",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 7,
+      "key": "overlap",
+      "name": "No overlap or clipping",
+      "gate": true,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: OCR was not run and there is no film data",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 8,
+      "key": "audio-sync",
+      "name": "Audio sync",
+      "gate": true,
+      "status": "pass",
+      "score": 4,
+      "summary": "picture and narration are locked (shot boundaries not checked: needs film data and word timings)",
+      "metrics": {"audioVideoLengthDiffSec":0,"filmVideoLengthDiffSec":null,"shotBoundariesChecked":0,"boundariesThroughWords":null},
+      "threshold": {"lengthToleranceSec":0.1,"boundaryToleranceSec":0.12},
+      "evidence": []
+    },
+    {
+      "id": 9,
+      "key": "pacing",
+      "name": "Pacing",
+      "gate": false,
+      "status": "fail",
+      "score": 1,
+      "summary": "the picture holds unchanged for 3 s (max 2.5 s); 11 hard cuts (27.5 per minute, max 2.4): the film plays as separate panels",
+      "metrics": {"longestStaticSec":3,"hardCuts":11,"hardCutsPerMin":27.5,"deadAirStretches":0,"wordsPerMinute":null,"meanBeatSec":null},
+      "threshold": {"staticRunMaxSec":2.5,"hardCutsPerMinMax":2.4,"deadAirMaxSec":0.6,"wpmMin":145,"wpmMax":215,"meanBeatMaxSec":10},
+      "evidence": [
+        {"t":1.5,"note":"picture unchanged here","frame":"review/pacing-1.5s.jpg"},
+        {"t":4.7,"note":"picture unchanged here","frame":"review/pacing-4.7s.jpg"},
+        {"t":3,"note":"hard cut","frame":"review/pacing-3.0s.jpg"},
+        {"t":12,"note":"hard cut","frame":"review/pacing-12.0s.jpg"},
+        {"t":21.4,"note":"hard cut"}
+      ],
+      "fix": "Replace cuts with continuous transforms of the same stage, give every beat something that moves, trim pauses over 0.6 s, and split or merge narration lines so beats average at most 10 s."
+    },
+    {
+      "id": 11,
+      "key": "grounding",
+      "name": "Numbers grounded in narration",
+      "gate": false,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: needs the narration (word timings or text)",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 12,
+      "key": "loudness",
+      "name": "Loudness and mix",
+      "gate": false,
+      "status": "fail",
+      "score": 1,
+      "summary": "integrated loudness -22 LUFS (window -18 to -14)",
+      "metrics": {"integratedLufs":-22,"truePeakDb":-18,"musicMeasurement":"no film data"},
+      "threshold": {"lufsMin":-18,"lufsMax":-14,"truePeakMaxDb":-1,"musicUnderVoiceMinDb":12,"musicUnderVoiceTargetDb":18},
+      "evidence": [],
+      "fix": "Keep music at least 12 dB under speech (design target 18 dB). Normalise the mix to between -18 and -14 LUFS integrated with true peak at or below -1 dBFS."
+    }
+  ],
+  "gateFailures": ["persistent-stage"],
+  "softFailures": ["pacing","loudness"],
+  "passed": false,
+  "meanScore": 1.5,
+  "recommendations": [
+    "[gate] One persistent stage: Keep one stage up for the whole film: each beat should transform what is already on screen (move, scale, retag, shrink into a card) instead of clearing it and drawing a new panel.",
+    "Pacing: Replace cuts with continuous transforms of the same stage, give every beat something that moves, trim pauses over 0.6 s, and split or merge narration lines so beats average at most 10 s.",
+    "Loudness and mix: Keep music at least 12 dB under speech (design target 18 dB). Normalise the mix to between -18 and -14 LUFS integrated with true peak at or below -1 dBFS."
+  ],
+  "outDir": "<review output directory>"
+}
