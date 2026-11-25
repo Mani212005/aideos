@@ -28,4 +28,4 @@ Weak tests create false confidence and slow every change, and a test that restat
 
 - `AGENTS.md` is intentionally not edited. The precedence is written into `.agents/skills/verify/SKILL.md` and `.agents/skills/verify/references/test-policy.md`, and the weak-test smells are listed there.
 - Each removal goes under "Test changes" in the pull request. Examples: https://github.com/Mani212005/aideos/pull/253 removed two tests whose subjects were deleted by owner decision (`alignSceneToAudio` and the `validateFilmNode` duration-sum validator), and https://github.com/Mani212005/aideos/pull/258 removed guarded-route rows that asserted nothing once their routes were gone.
-- The 12 `assert.ok(true)` placeholders are slice 14 of the habits purge (see [2026-11-21-habits-purge-slicing.md](2026-11-21-habits-purge-slicing.md)); they have not been removed yet.
+- The 12 `assert.ok(true)` placeholders are slice 14 of the habits purge (see [2026-11-21-habits-purge-slicing.md](2026-11-21-habits-purge-slicing.md)); the owner answered on 2026-11-22 to delete all 12 without adding new tests, and slice 14 removed them.
