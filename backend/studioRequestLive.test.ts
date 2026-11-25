@@ -58,6 +58,24 @@ test("Live Studio server refuses unsafe ids and oversized bodies before touching
     assert.equal(await postAnnouncing(server.url, "/api/scripts/a-film", DEFAULT_BODY_LIMIT_BYTES + 1), 413);
     assert.equal(await postAnnouncing(server.url, "/api/media/upload", UPLOAD_BODY_LIMIT_BYTES + 1), 413);
 
+    // A file outside the videos folder is never served, whether the path climbs with a plain, an encoded or a broken escape.
+    fs.writeFileSync(path.join(outside, "secret.txt"), "OUTSIDE-SECRET");
+    const sibling = path.basename(outside);
+    for (const route of [`/videos/../${sibling}/secret.txt`, `/videos/%2e%2e/${sibling}/secret.txt`, `/videos/..%2F${sibling}%2Fsecret.txt`, "/videos/%E0%A4%A", "/api/downloads/%E0%A4%A"]) {
+      const res = await fetch(new URL(route, server.url));
+      assert.equal((await res.text()).includes("OUTSIDE-SECRET"), false, route);
+      assert.notEqual(res.status, 500, route);
+    }
+    fs.mkdirSync(path.join(videosDir, "a-film"));
+    fs.writeFileSync(path.join(videosDir, "a-film", "note.txt"), "INSIDE-OK");
+    const inside = await fetch(new URL("/videos/a-film/note.txt", server.url));
+    assert.equal(inside.status, 200);
+    assert.equal(await inside.text(), "INSIDE-OK");
+    const ranged = await fetch(new URL("/videos/a-film/note.txt", server.url), { headers: { range: "bytes=0-5" } });
+    assert.equal(ranged.status, 206);
+    assert.equal(await ranged.text(), "INSIDE");
+    fs.rmSync(path.join(videosDir, "a-film"), { recursive: true, force: true });
+
     assert.deepEqual(fs.readdirSync(videosDir), [], "no refused request may create anything in the videos folder");
   } finally {
     server.stop();

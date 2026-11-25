@@ -6,8 +6,9 @@
  * Used by: backend/review/media.ts (aideos review, all-check, study), backend/journeys/harness.ts, backend/geminiReview/facts.ts.
  */
 
-import { spawnSync } from "node:child_process";
+
 import fs from "node:fs";
+import { spawnSyncBounded } from "../proc";
 
 /** Facts about a rendered file. */
 export interface VideoFacts {
@@ -57,7 +58,7 @@ export function probeVideo(file: string, options: ProbeOptions = {}): VideoFacts
   if (!fs.existsSync(file)) throw new Error(`no video at ${file}`);
   const entries = `stream=codec_type,width,height,avg_frame_rate,r_frame_rate,duration${options.countFrames ? ",nb_read_frames" : ""}:format=duration`;
   const args = ["-v", "error", ...(options.countFrames ? ["-count_frames"] : []), "-show_entries", entries, "-of", "json", file];
-  const r = spawnSync("ffprobe", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSyncBounded("ffprobe", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (r.error) throw new Error(`could not run ffprobe: ${r.error.message}. Install ffmpeg to probe videos.`);
   if (r.status !== 0) throw new Error(`ffprobe could not read ${file}: ${String(r.stderr).trim().slice(0, 300)}`);
   const info = JSON.parse(r.stdout) as { streams?: ProbeStream[]; format?: { duration?: string } };

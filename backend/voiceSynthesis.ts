@@ -25,7 +25,7 @@ import { environment } from "./env";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSyncBounded } from "./proc";
 import { resolveVoiceCloneSettings } from "./aideosConfig";
 import { fetchWithin, HTTP_DEADLINES, readWithin, startDeadline, type NowFn } from "./httpDeadline";
 import { KOKORO_MAX_CHARS, PCM_SAMPLE_RATE, startKokoroWorker, type KokoroWorker } from "./tts";
@@ -335,9 +335,9 @@ export async function sayToWav(text: string, voice: string): Promise<Buffer | nu
   const wav = path.join(os.tmpdir(), `aideos_voice_${stamp}.wav`);
   try {
     fs.writeFileSync(txt, text, "utf8");
-    const say = spawnSync("say", ["-v", voice, "-f", txt, "-o", aiff]);
+    const say = spawnSyncBounded("say", ["-v", voice, "-f", txt, "-o", aiff]);
     if (say.status !== 0 || !fs.existsSync(aiff)) return null;
-    spawnSync("ffmpeg", ["-y", "-i", aiff, "-ar", "48000", "-ac", "1", wav]);
+    spawnSyncBounded("ffmpeg", ["-y", "-i", aiff, "-ar", "48000", "-ac", "1", wav]);
     return fs.existsSync(wav) ? fs.readFileSync(wav) : null;
   } finally {
     for (const f of [txt, aiff, wav]) fs.rmSync(f, { force: true });

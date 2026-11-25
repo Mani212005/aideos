@@ -6,7 +6,7 @@
  * Used by: backend/study/study.ts.
  */
 
-import { spawnSync } from "node:child_process";
+import { spawnSyncBounded } from "../proc";
 import { resolveMetric } from "./agreement";
 import { analysisSize, streamRawFrames } from "./decode";
 import { STUDY, type MethodReading, type Metric } from "./types";
@@ -46,7 +46,7 @@ export function parseSignalstats(text: string): ToneStats | null {
 
 // Method A: ffmpeg signalstats on frames sampled at STUDY.tone.sampleFps, at full resolution.
 export function toneWithSignalstats(file: string): ToneStats | null {
-  const r = spawnSync("ffmpeg", ["-v", "error", "-i", file, "-an", "-vf", `fps=${STUDY.tone.sampleFps},signalstats,metadata=print:file=-`, "-f", "null", "-"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSyncBounded("ffmpeg", ["-v", "error", "-i", file, "-an", "-vf", `fps=${STUDY.tone.sampleFps},signalstats,metadata=print:file=-`, "-f", "null", "-"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (r.error) throw new Error(`could not run ffmpeg: ${r.error.message}. Install ffmpeg to use aideos study.`);
   return r.status === 0 ? parseSignalstats(r.stdout) : null;
 }

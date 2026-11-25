@@ -10,7 +10,7 @@
 
 import { environment } from "./env";
 
-import { execFileSync } from "child_process";
+import { execFileSyncBounded } from "./proc";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
@@ -72,7 +72,7 @@ export type TtsBackendName = "vcd" | "kokoro" | "google" | "say" | "tone";
  * Centralizing the conversion is what guarantees every backend's output is layout-identical.
  */
 export function decodeToPcm(filePath: string): Float32Array {
-  const raw = execFileSync(
+  const raw = execFileSyncBounded(
     "ffmpeg",
     ["-v", "error", "-i", filePath, "-f", "f32le", "-ac", "1", "-ar", String(PCM_SAMPLE_RATE), "-"],
     { maxBuffer: 1024 * 1024 * 512 },
@@ -294,7 +294,7 @@ function createSayBackend(voice: string): TtsBackend {
     maxChars: 800,
     async synthesize(text: string): Promise<Float32Array> {
       return synthesizeViaFile((out) => {
-        execFileSync("say", ["-v", voice, "-o", out, "--data-format=LEF32@24000", text], {
+        execFileSyncBounded("say", ["-v", voice, "-o", out, "--data-format=LEF32@24000", text], {
           stdio: "ignore",
         });
       });

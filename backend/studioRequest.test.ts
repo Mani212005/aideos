@@ -5,6 +5,7 @@
  */
 
 import assert from "node:assert/strict";
+import path from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
 import {
@@ -14,6 +15,8 @@ import {
   DEFAULT_BODY_LIMIT_BYTES,
   isSafeId,
   readJsonBody,
+  resolveInside,
+  safeDecodeURIComponent,
   UPLOAD_BODY_LIMIT_BYTES,
 } from "./studioRequest";
 
@@ -22,6 +25,20 @@ test("isSafeId accepts film ids and refuses anything that could leave the videos
   for (const id of ["", "..", "../etc", "a/b", "a\\b", "Upper", "with space", "a.b", "a\0b", "x\n", undefined, null, 7, ["a"], {}]) {
     assert.equal(isSafeId(id), false, JSON.stringify(id));
   }
+});
+
+test("resolveInside keeps a served file path inside its folder and refuses every way out", () => {
+  const root = path.resolve("/srv/videos");
+  assert.equal(resolveInside(root, "kv-cache/voiceover.wav"), path.join(root, "kv-cache", "voiceover.wav"));
+  assert.equal(resolveInside(root, "kv-cache/../beat-01/film.json"), path.join(root, "beat-01", "film.json"), "a step back that stays inside is fine");
+  for (const escape of ["../secret", "kv-cache/../../secret", "/etc/passwd", "../videos-evil/x", "a\0b"]) {
+    assert.equal(resolveInside(root, escape), null, escape);
+  }
+});
+
+test("safeDecodeURIComponent decodes valid percent-encoding and returns null instead of throwing on a broken one", () => {
+  assert.equal(safeDecodeURIComponent("a%20b%2Fc"), "a b/c");
+  assert.equal(safeDecodeURIComponent("%E0%A4%A"), null);
 });
 
 test("only the media upload route gets the large body cap", () => {

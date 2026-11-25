@@ -27,7 +27,8 @@ import react from '@vitejs/plugin-react'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { pipeline } from 'node:stream'
+import { spawnSyncBounded } from '../backend/proc.ts'
 import { applyCaptionPlacementDraft } from '../backend/designCheck/captionPlacement.ts';
 import { checkCaptionPlacementDraftAsync } from '../backend/designCheck/captionPlacementDraft.ts';
 import { filmSchema } from '../src/dl/schema.ts'
@@ -87,7 +88,7 @@ import {
 } from '../backend/scriptIntake.ts'
 import { narrationLines } from '../backend/storyScript.ts'
 import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
-import { bodyLimitFor, declaredBodyTooLarge, isSafeId, readJsonBody, SAFE_ID } from '../backend/studioRequest.ts'
+import { bodyLimitFor, declaredBodyTooLarge, isSafeId, readJsonBody, resolveInside, safeDecodeURIComponent, SAFE_ID } from '../backend/studioRequest.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
 import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, pacedVoiceKey, unpacedVoiceKey, narratingVoiceKey, type SpokenLine } from '../backend/voiceLines.ts'
 import { NARRATION_RATE } from '../backend/pacingProfile.ts'
@@ -280,6 +281,13 @@ const ASSET_MIME_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
 };
 
+// Streams a file to the response and closes both ends when either fails or the browser goes away mid-download (a bare .pipe() leaves the file handle open when a client aborts a range request, as video scrubbing does constantly).
+function streamFileTo(res: ServerResponse, file: fs.ReadStream): void {
+  pipeline(file, res, () => {
+    /* pipeline has already destroyed both streams; a dropped client is not an error worth logging */
+  });
+}
+
 // Serves a file from disk with byte-range support, so video/audio scrubbing works for
 // per-video package assets that live outside Vite's publicDir (which won't follow the
 // public/videos -> ../videos symlink due to its realpath containment check).
@@ -333,7 +341,7 @@ function serveFileWithRange(req: IncomingMessage, res: ServerResponse, filePath:
       'Content-Length': end - start + 1,
       'Content-Type': contentType,
     });
-    fs.createReadStream(filePath, { start, end }).pipe(res);
+    streamFileTo(res, fs.createReadStream(filePath, { start, end }));
     return;
   }
 
@@ -342,7 +350,7 @@ function serveFileWithRange(req: IncomingMessage, res: ServerResponse, filePath:
     'Content-Type': contentType,
     'Accept-Ranges': 'bytes',
   });
-  fs.createReadStream(filePath).pipe(res);
+  streamFileTo(res, fs.createReadStream(filePath));
 }
 
 interface BrollJobRecord {
@@ -359,6 +367,9 @@ interface BrollJobRecord {
 }
 
 const brollJobs = new Map<string, BrollJobRecord>();
+
+// The longest a GPU B-roll job may run before the poller gives up and marks it failed (ms), so a job the GPU host lost cannot be polled forever.
+const BROLL_JOB_MAX_MS = 60 * 60_000;
 
 async function startBrollJob(filmId: string, shotId: string, promptText: string, seconds: number): Promise<BrollJobRecord> {
   const engine = createEngine('ssh-wangp');
@@ -388,9 +399,16 @@ async function startBrollJob(filmId: string, shotId: string, promptText: string,
     try {
       while (true) {
         await new Promise((r) => setTimeout(r, 6000));
-        const st = await engine.status(handle.jobId);
         const current = brollJobs.get(handle.jobId);
         if (!current) break;
+        if (Date.now() - record.startedAt > BROLL_JOB_MAX_MS) {
+          current.state = 'failed';
+          current.error = `GPU render did not finish within ${BROLL_JOB_MAX_MS / 60_000} minutes`;
+          current.finishedAt = Date.now();
+          console.error(`[broll] Job ${handle.jobId} gave up:`, current.error);
+          break;
+        }
+        const st = await engine.status(handle.jobId);
 
         current.state = st.state;
         if (typeof st.progress === 'number') {
@@ -805,19 +823,19 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
         // same URL path under Vite's publicDir, but Vite's own static middleware won't
         // follow the public/videos symlink, so it's served explicitly here instead.
         if (url.startsWith('/videos/') && req.method === 'GET') {
-          const rel = decodeURIComponent(url.slice('/videos/'.length));
-          const filePath = path.join(videosDir, rel);
-          if (!rel.includes('..') && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          const rel = safeDecodeURIComponent(url.slice('/videos/'.length));
+          const filePath = rel === null ? null : resolveInside(videosDir, rel);
+          if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             serveFileWithRange(req, res, filePath);
             return;
           }
-          const exampleFile = path.join(examplesDir, rel);
-          if (!rel.includes('..') && fs.existsSync(exampleFile) && fs.statSync(exampleFile).isFile()) {
+          const exampleFile = rel === null ? null : resolveInside(examplesDir, rel);
+          if (exampleFile && fs.existsSync(exampleFile) && fs.statSync(exampleFile).isFile()) {
             serveFileWithRange(req, res, exampleFile);
             return;
           }
-          const m = rel.match(/^([^/]+)\/footage\/([^/]+)$/);
-          if (m && !rel.includes('..')) {
+          const m = rel === null ? null : rel.match(/^([^/]+)\/footage\/([^/]+)$/);
+          if (m && rel && !rel.includes('..')) {
             const legacyPath = path.resolve(__dirname, '../public/footage', `${m[1]}_${m[2]}`);
             if (fs.existsSync(legacyPath) && fs.statSync(legacyPath).isFile()) {
               serveFileWithRange(req, res, legacyPath);
@@ -828,9 +846,9 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
         // Serve cached pitch-corrected retimed audio directly from .tmp_audio/
         if (url.startsWith('/.tmp_audio/') && req.method === 'GET') {
-          const rel = decodeURIComponent(url.slice('/.tmp_audio/'.length));
-          const filePath = path.join(path.resolve(__dirname, '../.tmp_audio'), rel);
-          if (!rel.includes('..') && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          const rel = safeDecodeURIComponent(url.slice('/.tmp_audio/'.length));
+          const filePath = rel === null ? null : resolveInside(path.resolve(__dirname, '../.tmp_audio'), rel);
+          if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             serveFileWithRange(req, res, filePath);
             return;
           }
@@ -977,8 +995,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
         // Handle /api/downloads/:filename (Serve rendered video exports from package renders/ with fallback to out/)
         if (url.startsWith('/api/downloads/') && (req.method === 'GET' || req.method === 'HEAD')) {
-          const filename = decodeURIComponent(url.slice('/api/downloads/'.length));
-          if (!filename || filename.includes('..')) {
+          const filename = safeDecodeURIComponent(url.slice('/api/downloads/'.length));
+          if (!filename || filename.includes('..') || filename.includes('\0')) {
             sendJson(res, 400, { error: 'Invalid filename' });
             return;
           }
@@ -1476,7 +1494,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
             if (isVideo || isAudio) {
               try {
-                const out = spawnSync('ffprobe', [
+                const out = spawnSyncBounded('ffprobe', [
                   '-v', 'error',
                   '-show_entries', 'format=duration',
                   '-of', 'default=noprint_wrappers=1:nokey=1',
@@ -1491,7 +1509,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
 
             if (isVideo) {
               try {
-                const out = spawnSync('ffprobe', [
+                const out = spawnSyncBounded('ffprobe', [
                   '-v', 'error',
                   '-select_streams', 'v:0',
                   '-show_entries', 'stream=width,height,r_frame_rate',
@@ -1933,7 +1951,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               // Measure exact audio duration via ffprobe
               let measuredDuration = 5.0;
               try {
-                const out = spawnSync('ffprobe', [
+                const out = spawnSyncBounded('ffprobe', [
                   '-v', 'error',
                   '-show_entries', 'format=duration',
                   '-of', 'default=noprint_wrappers=1:nokey=1',

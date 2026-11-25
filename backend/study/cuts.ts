@@ -6,7 +6,7 @@
  * Used by: backend/study/study.ts.
  */
 
-import { spawnSync } from "node:child_process";
+import { spawnSyncBounded } from "../proc";
 import { matchTimes } from "./agreement";
 import { round, STUDY, type CutRecord, type MethodReading, type Metric } from "./types";
 
@@ -32,7 +32,7 @@ export function parseSceneCuts(text: string): SceneCut[] {
 // Method A: runs ffmpeg's scene detection (frames scaled to 640 px on the long side, score above the stated threshold).
 export function sceneCutsFfmpeg(file: string, threshold: number = STUDY.cuts.sceneThreshold): SceneCut[] {
   const filter = `scale='if(gt(iw,ih),min(640,iw),-2)':'if(gt(iw,ih),-2,min(640,ih))':flags=area,select='gt(scene,${threshold})',metadata=print:file=-`;
-  const r = spawnSync("ffmpeg", ["-v", "error", "-i", file, "-an", "-vf", filter, "-f", "null", "-"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSyncBounded("ffmpeg", ["-v", "error", "-i", file, "-an", "-vf", filter, "-f", "null", "-"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (r.error) throw new Error(`could not run ffmpeg: ${r.error.message}. Install ffmpeg to use aideos study.`);
   if (r.status !== 0) throw new Error(`ffmpeg scene detection failed on ${file}: ${r.stderr.trim().slice(0, 300)}`);
   return parseSceneCuts(r.stdout);
