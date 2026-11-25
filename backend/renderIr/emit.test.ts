@@ -1,5 +1,6 @@
 /**
  * File Description: Behavioural tests of the Render IR emitter through its public interface: the emitted document validates and spans the delivered video; every element track reproduces the scene compiler's state at every frame, holding the story's last frame through the end card; the end card's slow push scales the stage and the text cards together; text cards appear with their shots and keep the last one under the end card; headline words enter in order, wrap inside the stage and the accent word's underline draws from the left; a counter shows each value once and lands on its target; the narration follows the soundtrack's head and tail ramps; a music section that starts after frame 0 keys its envelope in film frames; a library effect's envelope ducks under the measured speech; and a film the native renderer cannot draw is refused with every reason.
+ * Film-only native support checks are compared with IR validation for picture properties and asset IDs, and reject malformed animation timelines.
  * Inputs and outputs: the synthetic scene film in backend/testSupport/nativeSceneFilm.ts and a fake measurer -> asserted IR values.
  * Used by: npm test (Node test runner).
  */
@@ -14,13 +15,14 @@ import { voiceLevel } from "../../src/dl/Soundtrack";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, effectDuckGain, effectGain, mixSections, sectionEnvelope, speechGain } from "../../src/dl/audio/sectionMixer";
 import { normalizeFilmSoundtrack } from "../../src/dl/schema";
-import { quantize } from "../../src/dl/scene/svgAnimation";
+import { quantize, SVG_ANIMATABLE_PROPERTIES } from "../../src/dl/scene/svgAnimation";
 import { emitRenderIr, nativeSupport, sampleTrack, NativeUnsupportedError, type NativeFormat } from "./emit";
 import type { Keyframe, Node, RenderIr } from "./schema";
 import { fakeMeasurer, nativeSceneFilm, NATIVE_SVG_SOURCES, PROBE_SVG_SOURCE } from "../testSupport/nativeSceneFilm";
 import type { Film } from "../../src/dl/schema";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { deliveryTimeline } from "../../src/dl/delivery";
+import { validateRenderIr } from "./validate";
 
 /** Emits one format of a film with the fake measurer and identity path resolution. */
 function emit(film: Film, format: NativeFormat = "long"): RenderIr {
@@ -294,6 +296,62 @@ test("a film the native renderer cannot draw is refused with every reason", () =
   (three.scene as { renderer?: string }).renderer = "three";
   assert.ok(nativeSupport(three, "long").some((r) => r.includes("Three stage with no performances")));
   assert.equal(PROBE_SVG_SOURCE.startsWith("videos/"), true);
+});
+
+test("picture animation support agrees with the emitted IR validator for every scene property", () => {
+  const film = nativeSceneFilm();
+  const asset = film.scene!.props[0];
+  delete asset.svgSource;
+  asset.raster = { src: "test_fixtures/picture.png", width: 100, height: 100, sha256: "a".repeat(64) };
+  asset.animation = { timelineId: "picture-motion", clips: [{ clipId: "motion", targets: [asset.assetId], property: "translateX", from: 1, to: 1, startFrame: 0, durationFrames: 20 }] };
+  for (const format of ["long", "reel"] as const) {
+    const baseline = emit(film, format);
+    for (const property of SVG_ANIMATABLE_PROPERTIES) {
+      const candidate = structuredClone(baseline);
+      const picture = nodes(candidate.stage).find((node) => node.kind === "image");
+      assert.ok(picture && picture.kind === "image");
+      picture.elementTracks[0].property = property;
+      const expected = validateRenderIr(candidate).ok;
+      asset.animation.clips[0].property = property;
+      assert.equal(nativeSupport(film, format).length === 0, expected, `${format}: ${property}`);
+      asset.animation.clips[0].property = "translateX";
+    }
+  }
+});
+
+test("asset id support agrees with validation of generated asset and node ids", () => {
+  const film = nativeSceneFilm();
+  const baseline = emit(film);
+  for (const id of ["plain", "a-b_1.2", "space here", "slash/here", "accent-é"]) {
+    const candidate = structuredClone(baseline);
+    const svg = candidate.assets.find((asset) => asset.id === "svg-probe");
+    const node = nodes(candidate.stage).find((item) => item.id === "asset-probe");
+    assert.ok(svg && node && node.kind === "svg");
+    svg.id = `svg-${id}`;
+    node.id = `asset-${id}`;
+    node.asset = svg.id;
+    film.scene!.props[0].assetId = id;
+    assert.equal(nativeSupport(film, "long").length === 0, validateRenderIr(candidate).ok, id);
+  }
+});
+
+test("film-only timeline validation reports malformed clips before emission", () => {
+  const film = nativeSceneFilm();
+  const asset = film.scene!.props[0];
+  asset.animation!.clips[0].durationFrames = film.scene!.durationFrames + 1;
+  const reasons = nativeSupport(film, "long");
+  assert.ok(reasons.some((reason) => reason.includes("dot-in") && reason.includes("past the scene length")), reasons.join("; "));
+  assert.throws(() => emit(film), (error: unknown) => error instanceof NativeUnsupportedError && error.reasons.includes(reasons[0]));
+});
+
+test("a picture clip targeting a different element is refused before emission", () => {
+  const film = nativeSceneFilm();
+  const asset = film.scene!.props[0];
+  delete asset.svgSource;
+  asset.raster = { src: "test_fixtures/picture.png", width: 100, height: 100, sha256: "a".repeat(64) };
+  asset.animation = { timelineId: "picture-motion", clips: [{ clipId: "bad-target", targets: ["missing"], property: "opacity", from: 0, to: 1, startFrame: 0, durationFrames: 20 }] };
+  const reasons = nativeSupport(film, "reel");
+  assert.ok(reasons.some((reason) => reason.includes("bad-target") && reason.includes('Target element id "missing"')), reasons.join("; "));
 });
 
 test("burned-in captions are emitted as the film's words with its per-shot placement, so a captioned film is no longer refused", () => {
