@@ -29,6 +29,7 @@ import { measureLoudness } from "./review/media";
 import { getRetimedAudioFilename, getRetimedAudioRelPath } from "../src/dl/audio/retime";
 import { decodeWav, encodeWav } from "./pcm";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
+import { forAll, randInt } from "./testSupport/propertyTest";
 
 const fixtureDir = path.resolve(process.cwd(), "test_fixtures");
 const testAudioPath = path.join(fixtureDir, "test_audio.wav");
@@ -278,17 +279,23 @@ test("retimeAudioSync retimes audio across 0.8x, 1.2x, 1.5x, 2.0x speeds with WS
   }
 });
 
-test("retimeAudioSync caches results so subsequent calls return immediately from disk", () => {
-  const sourcePath = testAudioPath;
-  const first = retimeAudioSync(sourcePath, 1.5);
-  const start = Date.now();
-  const second = retimeAudioSync(sourcePath, 1.5);
-  const elapsed = Date.now() - start;
+test("retimeAudioSync reuses its disk cache for generated speeds", () => {
+  const cacheDir = fsSync.mkdtempSync(path.join(os.tmpdir(), "aideos-retime-cache-property-"));
+  try {
+    forAll("retime cache key reuses the same file", (rand) => randInt(rand, 1100, 2400) / 1000, (speed) => {
+      const first = retimeAudioSync(testAudioPath, speed, { cacheDir });
+      const before = fsSync.statSync(first.filePath, { bigint: true });
+      const second = retimeAudioSync(testAudioPath, speed, { cacheDir });
+      const after = fsSync.statSync(second.filePath, { bigint: true });
 
-  assert.equal(first.filePath, second.filePath);
-  assert.equal(first.durationSec, second.durationSec);
-  // Cache lookup should take less than 100ms
-  assert.ok(elapsed < 100, `Expected cached lookup under 100ms, took ${elapsed}ms`);
+      assert.equal(second.filePath, first.filePath);
+      assert.equal(second.durationSec, first.durationSec);
+      assert.equal(after.mtimeNs, before.mtimeNs, "a cache hit must not rewrite the retimed file");
+      assert.equal(after.size, before.size);
+    }, { cases: 8 });
+  } finally {
+    fsSync.rmSync(cacheDir, { recursive: true, force: true });
+  }
 });
 
 test("getRetimedAudioFilename and getRetimedAudioRelPath produce deterministic public paths", () => {
