@@ -78,6 +78,12 @@ export interface ProductionRequest {
   resume?: boolean;
   /** Stages to re-run even when resuming. */
   force?: ProductionStage[];
+  /**
+   * Keep the narration a package already carries for this script when a resume finds a finished narrate
+   * stage stamped by a different synthesizer, instead of narrating it again. Release acceptance sets it.
+   * Defaults to false: a changed synthesizer setting re-synthesizes.
+   */
+  keepRecordedNarration?: boolean;
   /** Stop cleanly after this stage instead of running to the end. */
   stopAfter?: ProductionStage;
   /** Skip the final frame-and-audio inspection pass. */
