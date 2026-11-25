@@ -249,6 +249,12 @@ recorded narration (`backend/pipeline/recordedNarration.ts`). Synthesizing again
 voice and move every cue a hand-built design was timed to. Edit the script or `force: ["narrate"]`
 to re-narrate deliberately.
 
+By default a narrate record that carries a fingerprint is trusted: a changed `--tts`, `--voice`,
+`--speed` or `--language` re-synthesizes. The request option `keepRecordedNarration` (default false)
+widens the keep to a finished (`done`) narrate record stamped by another synthesizer, so the package's
+own voice stays whatever synthesizer settings the run passes. An interrupted or failed narrate stage
+always runs again. Only release acceptance (`scripts/release.ts`) sets it.
+
 The look fingerprint includes script and measured durations. The design fingerprint includes the
 look hash (look.json plus the content of every character it names, `lookPlanFingerprint`) plus the
 design spec, its artwork, the narration word timings of a stage design and each character spec it
