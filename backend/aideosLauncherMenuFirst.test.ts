@@ -65,7 +65,9 @@ function makeSandbox(tmp: string, channel: Channel): Sandbox {
   writeShim(shims, "npm", `touch "${started}"\necho "SERVER_START $*" >> "${events}"\nif [ -f "${project}/.aideos_session.json" ]; then echo "SESSION_FILE_AT_SERVER_START present" >> "${events}"; else echo "SESSION_FILE_AT_SERVER_START absent" >> "${events}"; fi`);
   writeShim(shims, "lsof", `if [ -n "\${AIDEOS_TEST_FOREIGN:-}" ]; then echo "node 1 u IPv4 TCP *:${port} (LISTEN)"; exit 0; fi\nexit 1`);
   writeShim(shims, "curl", `if [ -n "\${AIDEOS_TEST_FOREIGN:-}" ]; then echo '{"root":"/somewhere/else"}'; exit 0; fi\nif [ -f "${started}" ]; then echo '{"root":"${project}"}'; exit 0; fi\nexit 22`);
+  // The launcher opens the browser with `open` on macOS and `xdg-open` elsewhere, so both record the same event.
   writeShim(shims, "open", `echo "BROWSER_OPEN $*" >> "${events}"`);
+  writeShim(shims, "xdg-open", `echo "BROWSER_OPEN $*" >> "${events}"`);
   writeShim(shims, "claude", `echo "AGENT_EXEC claude" >> "${events}"`);
   writeShim(shims, "agy", `echo "AGENT_EXEC agy" >> "${events}"`);
   writeShim(shims, "pi", `echo "AGENT_EXEC pi" >> "${events}"`);
