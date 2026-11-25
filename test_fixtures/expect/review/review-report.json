@@ -5,13 +5,13 @@
   "createdAt": "<captured timestamp>",
   "video": {
     "path": "synthetic-cleared.mp4",
-    "durationSec": 24,
-    "containerDurationSec": 24,
+    "durationSec": "<measured>",
+    "containerDurationSec": "<measured>",
     "width": 1920,
     "height": 1080,
     "fps": 10,
     "hasAudio": true,
-    "audioDurationSec": 24
+    "audioDurationSec": "<measured>"
   },
   "sources": {"film":null,"words":null,"narrationTextOnly":false},
   "criteria": [
@@ -21,22 +21,17 @@
       "name": "One persistent stage",
       "gate": true,
       "status": "fail",
-      "score": 0,
-      "summary": "layout correlates -0.09 with two seconds earlier (needs 0.65); 4 stage clears (5 per 30 s, max 2.2)",
+      "score": "<measured>",
+      "summary": "<measured summary>",
       "metrics": {
-        "layoutCorrelationMedian": -0.093,
-        "layoutCorrelationP10": -0.093,
-        "stageClearEvents": 4,
-        "stageClearsPer30s": 5,
+        "layoutCorrelationMedian": "<measured>",
+        "layoutCorrelationP10": "<measured>",
+        "stageClearEvents": "<measured>",
+        "stageClearsPer30s": "<measured>",
         "boundaryKeptShare": null
       },
       "threshold": {"layoutCorrelationMedianMin":0.65,"stageClearsPer30sMax":2.2,"boundaryKeptShareMin":0.6},
-      "evidence": [
-        {"t":4,"note":"stage cleared around 3 s: ink coverage collapsed","frame":"review/persistent-stage-4.0s.jpg"},
-        {"t":9.1,"note":"stage cleared around 8.1 s: ink coverage collapsed","frame":"review/persistent-stage-9.1s.jpg"},
-        {"t":21.1,"note":"stage cleared around 20.1 s: ink coverage collapsed","frame":"review/persistent-stage-21.1s.jpg"},
-        {"t":3.5,"note":"layout least like two seconds earlier (correlation -0.09)","frame":"review/persistent-stage-3.5s.jpg"}
-      ],
+      "evidence": ["<measured evidence>"],
       "fix": "Keep one stage up for the whole film: each beat should transform what is already on screen (move, scale, retag, shrink into a card) instead of clearing it and drawing a new panel."
     },
     {
@@ -129,9 +124,14 @@
       "name": "Audio sync",
       "gate": true,
       "status": "pass",
-      "score": 4,
-      "summary": "picture and narration are locked (shot boundaries not checked: needs film data and word timings)",
-      "metrics": {"audioVideoLengthDiffSec":0,"filmVideoLengthDiffSec":null,"shotBoundariesChecked":0,"boundariesThroughWords":null},
+      "score": "<measured>",
+      "summary": "<measured summary>",
+      "metrics": {
+        "audioVideoLengthDiffSec": "<measured>",
+        "filmVideoLengthDiffSec": null,
+        "shotBoundariesChecked": 0,
+        "boundariesThroughWords": null
+      },
       "threshold": {"lengthToleranceSec":0.1,"boundaryToleranceSec":0.12},
       "evidence": []
     },
@@ -141,17 +141,18 @@
       "name": "Pacing",
       "gate": false,
       "status": "fail",
-      "score": 1,
-      "summary": "the picture holds unchanged for 3 s (max 2.5 s); 11 hard cuts (27.5 per minute, max 2.4): the film plays as separate panels",
-      "metrics": {"longestStaticSec":3,"hardCuts":11,"hardCutsPerMin":27.5,"deadAirStretches":0,"wordsPerMinute":null,"meanBeatSec":null},
+      "score": "<measured>",
+      "summary": "<measured summary>",
+      "metrics": {
+        "longestStaticSec": "<measured>",
+        "hardCuts": "<measured>",
+        "hardCutsPerMin": "<measured>",
+        "deadAirStretches": 0,
+        "wordsPerMinute": null,
+        "meanBeatSec": null
+      },
       "threshold": {"staticRunMaxSec":2.5,"hardCutsPerMinMax":2.4,"deadAirMaxSec":0.6,"wpmMin":145,"wpmMax":215,"meanBeatMaxSec":10},
-      "evidence": [
-        {"t":1.5,"note":"picture unchanged here","frame":"review/pacing-1.5s.jpg"},
-        {"t":4.7,"note":"picture unchanged here","frame":"review/pacing-4.7s.jpg"},
-        {"t":3,"note":"hard cut","frame":"review/pacing-3.0s.jpg"},
-        {"t":12,"note":"hard cut","frame":"review/pacing-12.0s.jpg"},
-        {"t":21.4,"note":"hard cut"}
-      ],
+      "evidence": ["<measured evidence>"],
       "fix": "Replace cuts with continuous transforms of the same stage, give every beat something that moves, trim pauses over 0.6 s, and split or merge narration lines so beats average at most 10 s."
     },
     {
@@ -172,9 +173,9 @@
       "name": "Loudness and mix",
       "gate": false,
       "status": "fail",
-      "score": 1,
-      "summary": "integrated loudness -22 LUFS (window -18 to -14)",
-      "metrics": {"integratedLufs":-22,"truePeakDb":-18,"musicMeasurement":"no film data"},
+      "score": "<measured>",
+      "summary": "<measured summary>",
+      "metrics": {"integratedLufs":"<measured>","truePeakDb":"<measured>","musicMeasurement":"no film data"},
       "threshold": {"lufsMin":-18,"lufsMax":-14,"truePeakMaxDb":-1,"musicUnderVoiceMinDb":12,"musicUnderVoiceTargetDb":18},
       "evidence": [],
       "fix": "Keep music at least 12 dB under speech (design target 18 dB). Normalise the mix to between -18 and -14 LUFS integrated with true peak at or below -1 dBFS."
@@ -183,7 +184,7 @@
   "gateFailures": ["persistent-stage"],
   "softFailures": ["pacing","loudness"],
   "passed": false,
-  "meanScore": 1.5,
+  "meanScore": "<measured>",
   "recommendations": [
     "[gate] One persistent stage: Keep one stage up for the whole film: each beat should transform what is already on screen (move, scale, retag, shrink into a card) instead of clearing it and drawing a new panel.",
     "Pacing: Replace cuts with continuous transforms of the same stage, give every beat something that moves, trim pauses over 0.6 s, and split or merge narration lines so beats average at most 10 s.",
