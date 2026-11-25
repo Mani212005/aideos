@@ -164,7 +164,7 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
   The rating is computed from rules and operates in shadow mode alongside no-mistakes: it does not
   gate, skip, or fail any jobs.
   * **High risk triggers**:
-    * Touches render code: `backend/pipeline/render*`, `src/dl/render*`
+    * Touches render code: `backend/pipeline/render*`, `src/dl/render*`, `native/**`
     * Touches stage or scene code: `src/dl/scene/**`, `src/dl/Stage*`, `src/dl/Scene*`, `backend/stage/**`, `backend/stillTalking/**`
     * Touches golden regression code or baselines: `backend/journeys/goldens/**`, `backend/journeys/legacy.golden.ts`, `backend/journeys/goldenResult.ts`
     * Touches CI workflows: `.github/**`
@@ -181,9 +181,9 @@ script) to inspect pull request changes using `git diff --name-only --no-renames
 
 ## Runner hardening and red-main alert
 
-* **APT caching and retry with timeouts**: Every `apt-get` step in `ci.yml` and `nightly.yml` restores
-  and saves `/home/runner/.apt-cache` via `actions/cache@v4` with `-o Dir::Cache::Archives=/home/runner/.apt-cache`.
-  All apt steps use three attempts, 80-second per-command timeouts, 20-second HTTP and HTTPS request
+* **APT caching and retry with timeouts**: Every apt install in `ci.yml`, `nightly.yml` and `update-goldens.yml` goes through the one `.github/actions/setup-apt` composite action (input: `packages`). The workflow restores
+  and saves `/home/runner/.apt-cache` via `actions/cache@v4`; the action installs with `-o Dir::Cache::Archives=/home/runner/.apt-cache`.
+  The action uses three attempts, 80-second per-command timeouts, 20-second HTTP and HTTPS request
   timeouts, increasing 20/40-second backoff, and `-o Acquire::Retries=3`. When the runner's mirror list
   uses Azure's Ubuntu archive, the step adds `archive.ubuntu.com` as a lower-priority fallback. Each
   apt step has its own `timeout-minutes: 10`, which fits the 540-second worst-case retry budget.
