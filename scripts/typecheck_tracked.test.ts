@@ -36,6 +36,30 @@ test("untracked scratch with a type error does not break the check", () => {
   assert.equal(result.checked, 1);
 });
 
+// Reproduces the release failure with the real compiler before proving the CI check excludes those roots.
+test("reported public/videos scratch breaks stock tsc but not the tracked source check", () => {
+  const root = makeRepo({
+    "src/good.ts": GOOD,
+    "public/videos/diagram-parts/all-check/scratch/stray.ts": 'import { broken } from "./missing-scratch";\nexport const value = broken;\n',
+    "public/videos/diagram-parts/author/build_design.ts": 'import { broken } from "./missing-design";\nexport const value = broken;\n',
+  }, ["src/good.ts"]);
+  let stockTscOutput = "";
+  let stockTscFailed = false;
+  try {
+    execFileSync(process.execPath, [path.join(path.dirname(require.resolve("typescript")), "tsc.js"), "--noEmit", "--pretty", "false"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    stockTscFailed = true;
+    const processError = error as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
+    stockTscOutput = `${processError.stdout ?? ""}${processError.stderr ?? ""}`;
+  }
+  assert.equal(stockTscFailed, true, "stock tsc must include the untracked public/videos scratch files");
+  assert.match(stockTscOutput, /public\/videos\/diagram-parts\/all-check\/scratch\/stray\.ts/);
+  assert.match(stockTscOutput, /public\/videos\/diagram-parts\/author\/build_design\.ts/);
+  const result = typecheckTracked(root);
+  assert.equal(result.errors, 0, result.output);
+  assert.equal(result.checked, 1);
+});
+
 test("gitignored film scratch with a type error does not break the check", () => {
   const root = makeRepo({ "src/good.ts": GOOD, "videos/scratch-film/design/stray.ts": BAD }, ["src/good.ts"], "/videos/*\n");
   const result = typecheckTracked(root);
