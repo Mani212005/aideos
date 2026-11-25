@@ -7,7 +7,6 @@
 import { environment } from "./env";
 import { REPO_ROOT as repositoryRoot } from "./paths";
 
-import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -17,6 +16,7 @@ import type { Film } from "../src/dl/schema";
 import { emitRenderIr, type EmitResult, type MeasureReport, type MeasureRequest, type NativeFormat } from "./renderIr/emit";
 import { runRenderCommand, RENDER_RESERVE_BYTES, type RenderProcessDeps } from "./renderProcess";
 import type { Renderer, RenderProfileSetting, RenderRequest } from "./renderJob";
+import { execFileSyncBounded, spawnSyncBounded } from "./proc";
 
 /** The repository root (this file lives in backend/). */
 export const REPO_ROOT = repositoryRoot;
@@ -50,7 +50,7 @@ export class NativeLoadRefusal extends Error {
 
 /** Asks `aideos-render check` whether the native loader accepts a staged package; null when it does, else its reason. */
 export function checkRenderPackage(irPath: string, packageDir: string, binary = nativeRendererBinary()): string | null {
-  const result = spawnSync(binary, ["check", irPath, "--package", packageDir], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+  const result = spawnSyncBounded(binary, ["check", irPath, "--package", packageDir], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
   if (result.error) return `the native renderer could not be started: ${result.error.message}`;
   if (result.status === 0) return null;
   const said = `${result.stderr ?? ""}`.trim().split("\n")[0]?.replace(/^aideos-render:\s*/, "") ?? "";
@@ -66,7 +66,7 @@ export function binaryMeasurer(binary = nativeRendererBinary()) {
     try {
       const file = path.join(dir, "request.json");
       fs.writeFileSync(file, JSON.stringify(request));
-      const out = execFileSync(binary, ["measure", file], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+      const out = execFileSyncBounded(binary, ["measure", file], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
       return JSON.parse(out) as MeasureReport;
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

@@ -3,13 +3,14 @@
  * Inputs and outputs: Rendered MP4 and film soundtracks -> mastered MP4, measured report and description-credits.txt.
  * Used by: production render stage, CLI render, studio export and all-check render.
  */
-import { spawnSync } from "node:child_process";
+
 import fs from "node:fs";
 import path from "node:path";
 import { normalizeFilmSoundtrack, type Film } from "../src/dl/schema";
 import { isLibrarySource } from "../src/dl/audio/sectionMixer";
 import { loadAudioLibrary } from "./audioLibrary/library";
 import { parseEbur128, type Loudness } from "./review/media";
+import { spawnSyncBounded } from "./proc";
 
 export type MasterResult =
   | { status: "skipped"; reason: string }
@@ -17,7 +18,7 @@ export type MasterResult =
 
 // Measures the delivered audio, rejecting partial statistics from failed ffmpeg runs.
 function measure(file: string): Loudness | null {
-  const result = spawnSync("ffmpeg", ["-hide_banner", "-nostats", "-i", file, "-map", "0:a:0", "-vn",
+  const result = spawnSyncBounded("ffmpeg", ["-hide_banner", "-nostats", "-i", file, "-map", "0:a:0", "-vn",
     "-af", "ebur128=peak=true", "-f", "null", "-"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   return result.status === 0 ? parseEbur128(result.stderr) : null;
 }
@@ -42,7 +43,7 @@ export function masterAudio(file: string, onLog: (message: string) => void = con
       let limitDb = -2;
       for (let attempt = 0; attempt < 5; attempt += 1) {
         const filter = `volume=${correctedGain}dB${limited ? `,aresample=192000,alimiter=limit=${10 ** (limitDb / 20)}:release=5:level=false:latency=true,aresample=48000` : ""}`;
-        const encoded = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-map", "0:v:0", "-map", "0:a:0",
+        const encoded = spawnSyncBounded("ffmpeg", ["-v", "error", "-y", "-i", file, "-map", "0:v:0", "-map", "0:a:0",
           "-map_metadata", "0", "-c:v", "copy", "-af", filter, "-c:a", "aac", "-b:a", "320k", "-movflags", "+faststart", temporary],
         { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
         if (encoded.status !== 0) throw new Error(`Master audio encode failed: ${encoded.error?.message ?? encoded.stderr}`);

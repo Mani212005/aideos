@@ -1,9 +1,10 @@
 /**
  * File Description: Request hygiene for the Studio HTTP API: the one id pattern that may become a folder or file name, and JSON request bodies that are read with a byte cap so a huge or endless upload cannot exhaust the server's memory.
- * Inputs and outputs: ids, request headers and request body streams -> an id check, a declared-size check, and a parsed JSON body or a rejection.
+ * Inputs and outputs: ids, URL path pieces, request headers and request body streams -> an id check, a decoded and folder-contained path, a declared-size check, and a parsed JSON body or a rejection.
  * Used by: editor/vite.config.ts, backend/studioRequest.test.ts, backend/studioRequestLive.test.ts.
  */
 
+import path from "node:path";
 import type { IncomingHttpHeaders } from "node:http";
 
 /** The pattern every film id, shot id and project id follows (the same one `src/dl/schema.ts` enforces on films and shots). */
@@ -12,6 +13,23 @@ export const SAFE_ID = /^[a-z0-9-]+$/;
 /** True when `value` is a string that is safe to join onto a folder path: lowercase letters, digits and dashes only. */
 export function isSafeId(value: unknown): value is string {
   return typeof value === "string" && SAFE_ID.test(value);
+}
+
+/** Decodes one URL path piece, or returns null when it is not valid percent-encoding (decodeURIComponent would throw). */
+export function safeDecodeURIComponent(piece: string): string | null {
+  try {
+    return decodeURIComponent(piece);
+  } catch {
+    return null;
+  }
+}
+
+/** The absolute path of `relative` under `root`, or null when it would leave `root` (a `..` step, an absolute path, a NUL byte). */
+export function resolveInside(root: string, relative: string): string | null {
+  if (relative.includes("\0")) return null;
+  const base = path.resolve(root);
+  const target = path.resolve(base, relative);
+  return target === base || target.startsWith(base + path.sep) ? target : null;
 }
 
 /** The largest JSON body most routes accept: a film manifest or script with room to spare. */

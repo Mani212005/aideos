@@ -19,7 +19,7 @@ import { environment } from "../../backend/env";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSyncBounded } from "../../backend/proc";
 import { parseArgs } from "node:util";
 import { produceAudioPipeline, type ProduceAudioResult } from "../../backend/audio";
 import { createTtsBackend, type TtsBackend, type TtsBackendName } from "../../backend/tts";
@@ -160,7 +160,7 @@ async function narrate(lines: string[], dir: string, backend: TtsBackend, rate: 
 
 // Runs the Python scorer over the takes and returns its report.
 function score(python: string, scriptPath: string, wavs: string[], outPath: string): ScorerReport {
-  const run = spawnSync(python, [SCORER, scriptPath, outPath, ...wavs], { stdio: ["ignore", "inherit", "inherit"] });
+  const run = spawnSyncBounded(python, [SCORER, scriptPath, outPath, ...wavs], { stdio: ["ignore", "inherit", "inherit"] });
   if (run.error) throw new Error(`cannot start ${python}: ${run.error.message}`);
   if (run.status === 2) throw new Error("no speech-to-text engine (see the message above)");
   if (run.status !== 0) throw new Error(`speech-to-text scorer exited ${run.status ?? run.signal}`);
