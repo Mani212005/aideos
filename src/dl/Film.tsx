@@ -8,7 +8,7 @@ import { CaptionRegionContext } from "./captionRegionContext";
 import { captionCardRect, resolveCaptionPlacement } from "./captionPlacement";
 import React from "react";
 import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Sequence } from "remotion";
-import { accentAt, PALETTE, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO, SANS } from "./tokens";
+import { accentAt, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO, SANS } from "./tokens";
 import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, getStageCardRect, heroScrimGradient } from "./fullScreenHeroLayout";
 import { DRIFT, easeExpo, frames, MS } from "./motion";
 import { AccentContext, useAccent } from "./accent";
@@ -369,12 +369,13 @@ const Stage: React.FC<{ film: Film; timeline: TimedShot[] }> = ({ film, timeline
 /** The 8px grid, as a render-time overlay. Off by default; a proofing aid. */
 const Grid: React.FC = () => {
   const layout = useLayout();
+  const accent = useAccent();
   return (
     <AbsoluteFill
       style={{
         pointerEvents: "none",
         opacity: 0.5,
-        backgroundImage: `linear-gradient(to right, ${accentAt(PALETTE.accent, 0.1)} 1px, transparent 1px), linear-gradient(to bottom, ${accentAt(PALETTE.accent, 0.1)} 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(to right, ${accentAt(accent, 0.1)} 1px, transparent 1px), linear-gradient(to bottom, ${accentAt(accent, 0.1)} 1px, transparent 1px)`,
         backgroundSize: `${layout.grid}px ${layout.grid}px`,
       }}
     />
