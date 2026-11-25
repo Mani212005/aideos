@@ -1,5 +1,5 @@
 /**
- * File Description: Runtime access to validated process environment values.
+ * File Description: Runtime access to process environment values and the Studio port resolver.
  * Inputs and outputs: Process environment entries -> live string or undefined values.
  * Used by: Node-side configuration, CLI and Studio server modules.
  */
@@ -7,11 +7,7 @@
 import { z } from "zod";
 
 const environmentValue = z.string().optional();
-const knownEnvironment = z.object({
-  PORT: z.string().regex(/^(?:|[0-9]+)$/, "PORT must be a decimal port number")
-    .refine((value) => value === "" || Number(value) <= 65535, "PORT must be at most 65535")
-    .optional(),
-});
+const studioPortValue = z.string().regex(/^[0-9]+$/).refine((value) => Number(value) <= 65535);
 
 // Browser-bundled screenplay code has no Node process; its environment is intentionally empty.
 const runtimeEnvironment: NodeJS.ProcessEnv = typeof process !== "undefined" && process.env ? process.env : {};
@@ -26,7 +22,17 @@ export const environment: NodeJS.ProcessEnv = new Proxy(runtimeEnvironment, {
   get(target, property, receiver) {
     const value: unknown = Reflect.get(target, property, receiver);
     return typeof property === "string" && (value === undefined || Object.prototype.hasOwnProperty.call(target, property))
-      ? (property === "PORT" ? knownEnvironment.shape.PORT : environmentValue).parse(value)
+      ? environmentValue.parse(value)
       : value;
   },
 });
+
+/** Resolves the Studio port from PORT, using the fallback when unset, empty or 0 and failing on malformed values. */
+export function resolveStudioPort(fallback: number): number {
+  const raw = environment.PORT;
+  if (raw === undefined || raw === "") return fallback;
+  if (!studioPortValue.safeParse(raw).success) {
+    throw new Error(`Invalid PORT ${JSON.stringify(raw)}: expected a whole number from 0 to 65535.`);
+  }
+  return Number(raw) || fallback;
+}

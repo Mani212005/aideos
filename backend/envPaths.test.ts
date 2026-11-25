@@ -12,7 +12,7 @@ import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 import { build } from "esbuild";
-import { environment } from "./env";
+import { environment, resolveStudioPort } from "./env";
 import { callerWorkingDirectory, REPO_ROOT } from "./paths";
 import { forAll, randInt } from "./testSupport/propertyTest";
 
@@ -45,17 +45,34 @@ test("environment reflects live writes and forwards generated values to a child 
   }
 });
 
-test("Studio port accepts valid values and rejects malformed configuration", () => {
+test("Studio port resolves valid and unset values and rejects malformed ones", () => {
   const previous = process.env.PORT;
   try {
-    for (const value of ["", "0", "3001", "65535"]) {
+    delete process.env.PORT;
+    assert.equal(resolveStudioPort(3001), 3001);
+    for (const [value, expected] of [["", 3001], ["0", 3001], ["4000", 4000], ["65535", 65535]] as const) {
       process.env.PORT = value;
-      assert.equal(environment.PORT, value);
+      assert.equal(resolveStudioPort(3001), expected);
     }
-    for (const value of ["not-a-port", "-1", "65536"]) {
+    for (const value of ["3001abc", "not-a-port", "-1", "65536", "1.5"]) {
       process.env.PORT = value;
-      assert.throws(() => environment.PORT, /PORT must be/);
+      assert.throws(() => resolveStudioPort(3001), (error: Error) => error.message.includes("PORT") && error.message.includes(JSON.stringify(value)));
     }
+  } finally {
+    if (previous === undefined) delete process.env.PORT;
+    else process.env.PORT = previous;
+  }
+});
+
+test("a malformed PORT does not break reading, spreading or forwarding environment", () => {
+  const previous = process.env.PORT;
+  try {
+    process.env.PORT = "3001abc";
+    assert.equal(environment.PORT, "3001abc");
+    assert.equal({ ...environment }.PORT, "3001abc");
+    const child = spawnSync(process.execPath, ["-e", "process.stdout.write(process.env.PORT || '')"], { env: environment, encoding: "utf8" });
+    assert.equal(child.status, 0, child.stderr);
+    assert.equal(child.stdout, "3001abc");
   } finally {
     if (previous === undefined) delete process.env.PORT;
     else process.env.PORT = previous;

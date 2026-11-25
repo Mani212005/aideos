@@ -4,7 +4,7 @@
  * Used by: npm run editor, Vite build, and Render container.
  */
 
-import { environment } from "../backend/env.ts";
+import { environment, resolveStudioPort } from "../backend/env.ts";
 import { DEFAULT_FPS, DEFAULT_STUDIO_PORT } from "../src/dl/defaults.ts";
 
 import { z } from 'zod';
@@ -2370,7 +2370,7 @@ export default defineConfig({
   plugins: [react(), filmApiPlugin(), audioLibraryOverridePlugin()],
   publicDir: path.resolve(__dirname, '../public'),
   server: {
-    port: Number(environment.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
+    port: resolveStudioPort(releaseChannel(path.resolve(__dirname, '..')).port),
     // Bind loopback (127.0.0.1) by default so LAN peers cannot reach the local Studio API.
     // Opt in to binding other interfaces explicitly with HOST=0.0.0.0 (or `vite --host 0.0.0.0`, as Dockerfile does).
     host: resolveStudioHost(),
@@ -2397,7 +2397,7 @@ export default defineConfig({
     }
   },
   preview: {
-    port: Number(environment.PORT) || releaseChannel(path.resolve(__dirname, '..')).port,
+    port: resolveStudioPort(releaseChannel(path.resolve(__dirname, '..')).port),
     host: resolveStudioHost(),
     cors: false,
   },
