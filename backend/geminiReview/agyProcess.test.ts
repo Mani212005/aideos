@@ -32,7 +32,7 @@ function fakeAgy(t: TestContext, body: string): string {
   process.env.PATH = `${dir}${path.delimiter}${savedPath ?? ""}`;
   t.after(() => {
     process.env.PATH = savedPath;
-    for (const name of fs.readdirSync(dir).filter((entry) => /^(?:leader|child(?:-\d+)?)\.pid$/.test(entry))) {
+    for (const name of ["child.pid", "leader.pid"]) {
       const file = path.join(dir, name);
       if (fs.existsSync(file)) {
         try {
