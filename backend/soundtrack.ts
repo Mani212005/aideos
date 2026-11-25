@@ -6,7 +6,7 @@
 
 import fs from "node:fs";
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSyncBounded } from "./proc";
 import { z } from "zod";
 import type { Film, SpeechInterval } from "../src/dl/schema";
 import { isActiveLevel, mergeVoicePhrases } from "../src/dl/audio/voiceActivity";
@@ -22,7 +22,7 @@ function sourceChannels(src: string): number {
   const { size, mtimeMs } = fs.statSync(file);
   const cached = formats.get(file);
   if (cached && cached.size === size && cached.mtimeMs === mtimeMs) return cached.channels;
-  const output = execFileSync("ffprobe", [
+  const output = execFileSyncBounded("ffprobe", [
     "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=channels", "-of", "json", file,
   ], { encoding: "utf8" });
   const stream = probeSchema.parse(JSON.parse(output)).streams[0];
@@ -35,7 +35,7 @@ function sourceChannels(src: string): number {
 function measureSpeech(file: string, start: number, end: number): { speech: SpeechInterval[]; peakDb: number } {
   const trim = `atrim=start=${start}${Number.isFinite(end) ? `:end=${end}` : ""},asetpts=PTS-STARTPTS,`;
   // One metadata writer keeps long-file timestamps intact; separate stdout writers interleave bytes.
-  const output = execFileSync("ffmpeg", [
+  const output = execFileSyncBounded("ffmpeg", [
     "-v", "error", "-i", file, "-vn", "-ac", "1", "-ar", "48000",
     "-af", `${trim}aresample=48000,asetnsamples=n=480:p=0,astats=metadata=1:reset=1:measure_perchannel=none:measure_overall=RMS_level+Peak_level,ametadata=mode=print:file=-`,
     "-f", "null", "-",

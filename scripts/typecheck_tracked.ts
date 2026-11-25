@@ -4,11 +4,13 @@
  * Used by: npm run lint, npm run typecheck, the "tsc root" step of scripts/ci.ts (so the static CI job and the release), scripts/typecheck_tracked.test.ts.
  */
 
-import { execFileSync } from "node:child_process";
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
+import { execFileSyncBounded } from "../backend/proc";
 import path from "node:path";
 import ts from "typescript";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 
 /** Normalizes a path to the absolute forward-slash form the TypeScript API reports file names in. */
 function normalize(file: string): string {
@@ -18,7 +20,7 @@ function normalize(file: string): string {
 /** Lists the absolute paths of every file in the git index of `root`, or null when `root` is not a git checkout. */
 export function listTrackedFiles(root: string): Set<string> | null {
   try {
-    const out = execFileSync("git", ["-C", root, "ls-files", "-z"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
+    const out = execFileSyncBounded("git", ["-C", root, "ls-files", "-z"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
     return new Set(out.split("\0").filter(Boolean).map((rel) => normalize(path.join(root, rel))));
   } catch {
     return null;

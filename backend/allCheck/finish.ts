@@ -8,10 +8,13 @@
  * Used by: backend/allCheck/index.ts.
  */
 
+import { DEFAULT_STUDIO_PORT } from "../../src/dl/defaults";
+
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import { formatScore } from "../geminiReview/verdictPolicy";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 import { formatInputs, reelForRender } from "../reelCut/store";
 import { backupPath, rankRecord, rollbackFilm, strayFiles } from "./best";
@@ -26,6 +29,7 @@ import {
   type CheckFormat,
   type FormatRoundRecord,
 } from "./types";
+import { execFileSyncBounded, spawnSyncBounded } from "../proc";
 
 /** The side effects of finishing. */
 export interface FinishDeps {
@@ -40,17 +44,17 @@ export interface FinishDeps {
   strays?: (slug: string) => string[];
 }
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 // Whether something listens on the studio port.
 function realStudioRunning(): boolean {
-  const r = spawnSync("lsof", ["-tiTCP:3001", "-sTCP:LISTEN"], { encoding: "utf8" });
+  const r = spawnSyncBounded("lsof", [`-tiTCP:${DEFAULT_STUDIO_PORT}`, "-sTCP:LISTEN"], { encoding: "utf8" });
   return r.status === 0 && r.stdout.trim().length > 0;
 }
 
 // Stops the studio the way `aideos exit` does.
 function realStopStudio(): void {
-  const r = spawnSync("lsof", ["-tiTCP:3001", "-sTCP:LISTEN"], { encoding: "utf8" });
+  const r = spawnSyncBounded("lsof", [`-tiTCP:${DEFAULT_STUDIO_PORT}`, "-sTCP:LISTEN"], { encoding: "utf8" });
   for (const pid of r.stdout.split(/\s+/).filter(Boolean)) {
     try {
       process.kill(Number(pid));
@@ -65,7 +69,7 @@ export const REAL_FINISH_DEPS: FinishDeps = {
   notify: (title, message) => {
     if (process.platform !== "darwin") return;
     try {
-      execFileSync("osascript", ["-e", `display notification ${JSON.stringify(message)} with title ${JSON.stringify(title)}`], { stdio: "ignore" });
+      execFileSyncBounded("osascript", ["-e", `display notification ${JSON.stringify(message)} with title ${JSON.stringify(title)}`], { stdio: "ignore" });
     } catch {
       // A notification is a courtesy.
     }
@@ -74,7 +78,7 @@ export const REAL_FINISH_DEPS: FinishDeps = {
     const opener = process.platform === "darwin" ? "open" : process.platform === "linux" ? "xdg-open" : null;
     if (!opener) return;
     try {
-      execFileSync(opener, files, { stdio: "ignore" });
+      execFileSyncBounded(opener, files, { stdio: "ignore" });
     } catch {
       // Opening is a courtesy.
     }

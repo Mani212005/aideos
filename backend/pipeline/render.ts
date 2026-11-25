@@ -7,15 +7,16 @@
  * Used by: backend/pipeline/run.ts.
  */
 
-import { execFileSync, spawnSync } from "child_process";
+import { environment } from "../env";
+
 import fs from "fs";
 import os from "os";
 import path from "path";
 import type { ProductionFormat, RenderedOutput } from "./types";
 import { ROOT } from "./filmStore";
 import { getExamplesDir, getVideosDir } from "../../src/dl/videoPackageLoader";
-
 import { runRenderCommand, type RenderProcessDeps } from "../renderProcess";
+import { execFileSyncBounded, spawnSyncBounded } from "../proc";
 export { RENDER_RESERVE_BYTES } from "../renderProcess";
 
 /** Composition id and frame size for each deliverable format. */
@@ -51,7 +52,7 @@ export const ENCODE_FLAGS: readonly string[] = Object.freeze([...FINAL_ENCODE_FL
  * has no GPU, so `AIDEOS_GL=swangle` selects the software rasterizer, which draws the same pixels
  * on every machine and is what makes a rendered 3D frame comparable between runs.
  */
-export function glFlag(env: NodeJS.ProcessEnv = process.env): string {
+export function glFlag(env: NodeJS.ProcessEnv = environment): string {
   const gl = env.AIDEOS_GL?.trim() || "angle";
   if (!/^[a-z-]+$/.test(gl)) throw new Error(`AIDEOS_GL must be a Remotion --gl value such as angle or swangle, got "${gl}"`);
   return `--gl=${gl}`;
@@ -140,7 +141,7 @@ export async function renderFormat(
 
 /** Reads the real container and stream facts of a rendered file. */
 export function describeVideo(format: ProductionFormat, filePath: string): RenderedOutput {
-  const raw = execFileSync("ffprobe", [
+  const raw = execFileSyncBounded("ffprobe", [
     "-v", "error",
     "-select_streams", "v:0",
     "-show_entries", "stream=width,height,r_frame_rate,codec_name,pix_fmt,color_range",
@@ -198,7 +199,7 @@ export interface AudioReport {
  * look like it is clipping.
  */
 export function analyseAudio(filePath: string): AudioReport {
-  const probe = spawnSync(
+  const probe = spawnSyncBounded(
     "ffmpeg",
     [
       "-hide_banner", "-nostats",
@@ -235,7 +236,7 @@ export function analyseAudio(filePath: string): AudioReport {
   // Queried one field at a time: a multi-field csv comes back in the container's own field
   // order rather than the order asked for, which silently swaps channels and sample rate.
   const streamField = (field: string): number => {
-    const value = execFileSync("ffprobe", [
+    const value = execFileSyncBounded("ffprobe", [
       "-v", "error",
       "-select_streams", "a:0",
       "-show_entries", `stream=${field}`,
@@ -272,7 +273,7 @@ export function contactSheet(
   const tileWidth = options?.tileWidth ?? 480;
   const rows = Math.ceil(count / columns);
 
-  const info = execFileSync("ffprobe", [
+  const info = execFileSyncBounded("ffprobe", [
     "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", filePath,
   ]).toString().trim();
   const duration = Number(info);
@@ -287,7 +288,7 @@ export function contactSheet(
     // final black frame and mistakes either for a defect.
     const t = ((i + 0.5) / count) * duration;
     const framePath = path.join(dir, `${path.basename(outPath, path.extname(outPath))}-${String(i).padStart(2, "0")}.jpg`);
-    execFileSync("ffmpeg", [
+    execFileSyncBounded("ffmpeg", [
       "-v", "error", "-y",
       "-ss", t.toFixed(3),
       "-i", filePath,
@@ -301,7 +302,7 @@ export function contactSheet(
     framePaths.push(framePath);
   }
 
-  execFileSync("ffmpeg", [
+  execFileSyncBounded("ffmpeg", [
     "-v", "error", "-y",
     "-i", path.join(dir, `${path.basename(outPath, path.extname(outPath))}-%02d.jpg`),
     "-filter_complex", `scale=${tileWidth}:-1,tile=${columns}x${rows}:margin=8:padding=8:color=0x1A1A1F`,

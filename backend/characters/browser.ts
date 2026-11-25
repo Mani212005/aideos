@@ -14,11 +14,14 @@ import { freePort } from "../freePort";
 /** Software WebGL keeps pixels the same across GPUs and operating systems. */
 export const SOFTWARE_GL_FLAGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"];
 
+/** The longest one local DevTools HTTP request may take (ms); the endpoint is on this machine, so a stall means Chrome is wedged. */
+const DEVTOOLS_REQUEST_MS = 5000;
+
 // Polls the DevTools endpoint until Chrome answers.
 async function waitForChrome(port: number, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    try { if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) return; } catch { /* not up yet */ }
+    try { if ((await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(DEVTOOLS_REQUEST_MS) })).ok) return; } catch { /* not up yet */ }
     await new Promise((r) => setTimeout(r, 150));
   }
   throw new Error(`headless Chrome did not answer on port ${port} within ${timeoutMs} ms`);
@@ -39,7 +42,7 @@ export async function evaluatePage<T>(htmlFile: string, expression: string, opti
   let deadline: ReturnType<typeof setTimeout> | undefined;
   try {
     await waitForChrome(port, 30000);
-    const targets = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()) as Array<{ type: string; webSocketDebuggerUrl: string }>;
+    const targets = (await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(DEVTOOLS_REQUEST_MS) })).json()) as Array<{ type: string; webSocketDebuggerUrl: string }>;
     const page = targets.find((t) => t.type === "page");
     if (!page) throw new Error("headless Chrome exposed no page target");
     const ws = new WebSocket(page.webSocketDebuggerUrl);

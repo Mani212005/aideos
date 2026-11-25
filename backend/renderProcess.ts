@@ -4,7 +4,10 @@
  * Used by: the Remotion renderer adapter and pipeline render compatibility entry point.
  */
 
-import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import { environment } from "./env";
+
+import { spawn, type ChildProcess } from "node:child_process";
+import { execFileSyncBounded } from "./proc";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -31,7 +34,7 @@ export interface RenderProcessDeps {
 function signalTree(child: ChildProcess, signal: "SIGTERM" | "SIGKILL"): void {
   try {
     if (process.platform === "win32" && child.pid)
-      execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+      execFileSyncBounded("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
         stdio: "ignore",
         windowsHide: true,
       });
@@ -92,7 +95,7 @@ export async function runRenderCommand(
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
       env: {
-        ...process.env,
+        ...environment,
         ...command.env,
         TMPDIR: temp,
         TMP: temp,

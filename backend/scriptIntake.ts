@@ -9,6 +9,8 @@
  * Studio script-to-TTS route through assertScriptReadyForSynthesis, and editor/src/components/ScriptEditor.tsx.
  */
 
+import { DEFAULT_STUDIO_PORT } from "../src/dl/defaults";
+
 import { formatDurationSec } from "./formatDurationSec";
 import {
   type AnimatedPrimitive,
@@ -1064,6 +1066,6 @@ As the Creative Director, your mission is to transform this structure into a cap
   npm run validate:film videos/${opts.projectId}/film.json
   \`\`\`
 - **Live Studio Preview**:
-  Check hot-reloaded canvas and timeline on \`http://localhost:3001\`
+  Check hot-reloaded canvas and timeline on \`http://localhost:${DEFAULT_STUDIO_PORT}\`
 `;
 }

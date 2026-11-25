@@ -10,6 +10,8 @@
  * Used by: backend/tts.ts, backend/voiceSynthesis.ts, backend/aideosConfig.ts, editor/vite.config.ts.
  */
 
+import { environment } from "./env";
+
 import { fetchWithin, HttpDeadlineError, readWithin, startDeadline, type Deadline, type NowFn } from "./httpDeadline";
 
 /** Default loopback URL where the local vcd voice-clone service listens. */
@@ -114,7 +116,7 @@ const LINE_TIMEOUT_HINT = ` On a busy machine raise ${VCD_LINE_TIMEOUT_ENV} (sec
 const VCD_START_HINT = "Start the local voice service with `vcd serve` on 127.0.0.1:8740 (or open an SSH tunnel to the Linux voice service on that port). My voice is the voice of choice; do not switch to another voice without the captain's word.";
 
 // Resolves the per-line synthesis limit in ms from AIDEOS_VCD_LINE_TIMEOUT_SECONDS: unset or blank means the 5 minute default, a bad value throws.
-export function resolveVcdLineTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
+export function resolveVcdLineTimeoutMs(env: NodeJS.ProcessEnv = environment): number {
   const raw = env[VCD_LINE_TIMEOUT_ENV]?.trim();
   if (!raw) return DEFAULT_VCD_LINE_TIMEOUT_MS;
   const seconds = /^\d+(\.\d+)?$/.test(raw) ? Number(raw) : NaN;

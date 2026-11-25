@@ -6,6 +6,8 @@
  * Used by: backend/cli.ts.
  */
 
+import { callerWorkingDirectory, REPO_ROOT as repositoryRoot } from "../paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
@@ -14,7 +16,7 @@ import { buildSeed } from "./seed";
 import { isRemoteReference, studyReference, type StudyDeps } from "./study";
 import type { StudyBible } from "./types";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 /** Options of a study run. */
 export interface StudyRunOptions {
@@ -73,7 +75,7 @@ export function validateReferences(references: string[], cwd: string): string[] 
 
 // Runs the study of each reference and writes the study folder.
 export async function runStudy(options: StudyRunOptions): Promise<StudyRunResult> {
-  const cwd = options.cwd ?? process.cwd();
+  const cwd = options.cwd ?? callerWorkingDirectory();
   const files = validateReferences(options.references, cwd);
   if (options.into !== undefined && files.length !== 1) throw new Error("--into takes exactly one reference: a film's seed comes from one study");
   if (options.wordsFile !== undefined && files.length !== 1) throw new Error("--words applies to a single reference; for several, put <name>.words.json next to each video");

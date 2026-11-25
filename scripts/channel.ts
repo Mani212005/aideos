@@ -4,6 +4,8 @@
  * Used by: bin/aideos and bin/aideos-stable.
  */
 
+import { environment } from "../backend/env";
+
 import { releaseChannel } from "../backend/releaseChannel";
 
 const info = releaseChannel(process.argv[2]);
@@ -12,7 +14,7 @@ if (field === "port") process.stdout.write(String(info.port));
 else if (field === "version") console.log(info.description);
 else if (field === "which") console.log(`${info.label}: ${info.root}`);
 else {
-  const color = process.env.NO_COLOR !== undefined ? "" : info.channel === "stable" ? "\u001b[32m" : "\u001b[38;5;208m";
+  const color = environment.NO_COLOR !== undefined ? "" : info.channel === "stable" ? "\u001b[32m" : "\u001b[38;5;208m";
   console.error(`${color}${info.description}${color ? "\u001b[0m" : ""}`);
   process.stdout.write(String(info.port));
 }

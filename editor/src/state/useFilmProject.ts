@@ -10,6 +10,8 @@
  * Used by: editor/src/App.tsx.
  */
 
+import { DEFAULT_FPS } from "../../../src/dl/defaults";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseFilm, type Film } from "../../../src/dl/schema";
 import { buildTimeline, totalFrames } from "../../../src/dl/camera";
@@ -682,7 +684,7 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
     redoLabel: canRedo ? history[historyIndex + 1].label : null,
     validation,
     durationFrames,
-    durationSec: durationFrames / (film.fps || 30),
+    durationSec: durationFrames / (film.fps || DEFAULT_FPS),
     audioDurationSec,
     timeline,
     toasts,

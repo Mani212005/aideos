@@ -3,6 +3,8 @@
  * Inputs and outputs: Film and delivery format -> measured 400 ms speech-window level gaps or an explicit unavailable reason.
  * Used by: backend/review/review.ts and backend/review/music.test.ts (D6).
  */
+
+import { REPO_ROOT as repositoryRoot } from "../paths";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs";
@@ -16,7 +18,7 @@ import {
 } from "../../src/dl/audio/voiceActivity";
 
 const execute = promisify(execFile);
-const ROOT = path.resolve(__dirname, "../..");
+const ROOT = repositoryRoot;
 // Length of one music-under-voice comparison window in seconds, and its size in 48 kHz samples.
 const WINDOW_SEC = 0.4;
 const WINDOW_SAMPLES = 19200;

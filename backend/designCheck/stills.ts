@@ -7,6 +7,8 @@
  * Used by: backend/designCheck/designCheck.ts, backend/cli.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import path from "node:path";
 import fs from "node:fs";
 import { parseFilm } from "../../src/dl/schema";
@@ -15,7 +17,7 @@ import { FPS } from "../sceneKit";
 import { midShotPicks, renderReviewStills, type StillPick } from "../sceneKit/reviewStills";
 import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 // Renders a film's review stills into .frames/<id>/ and returns that directory.
 export async function renderFilmReviewStills(filmId: string, scale = 0.5): Promise<string> {

@@ -6,13 +6,14 @@
  * Used by: backend/compare/run.ts, backend/compare/compare.test.ts.
  */
 
-import { spawnSync } from "node:child_process";
+
 import fs from "node:fs";
 import path from "node:path";
 import { round, type StudyBible } from "../study/types";
 import { blit, drawText, fillRect, newCanvas, textWidth, type Canvas, type Rgb } from "./font";
 import { encodePng } from "./png";
 import { COMPARE, type SheetCell, type SheetManifest, type Side } from "./types";
+import { spawnSyncBounded } from "../proc";
 
 const BACKGROUND: Rgb = [24, 24, 28];
 const TEXT: Rgb = [235, 235, 240];
@@ -54,7 +55,7 @@ export function extractFrame(file: string, bible: StudyBible, frameId: number, w
   const { fps, durationSec } = bible.media;
   // Half a frame past the frame start, clamped inside the file, so the decode lands on this frame and never past the end.
   const t = Math.max(0, Math.min((frameId + 0.5) / fps, durationSec - 0.5 / fps));
-  const r = spawnSync("ffmpeg", ["-v", "error", "-ss", t.toFixed(4), "-i", file, "-frames:v", "1", "-vf", `scale=${w}:${h}:flags=area`, "-pix_fmt", "rgb24", "-f", "rawvideo", "-"], { maxBuffer: w * h * 3 * 4 + 1024 });
+  const r = spawnSyncBounded("ffmpeg", ["-v", "error", "-ss", t.toFixed(4), "-i", file, "-frames:v", "1", "-vf", `scale=${w}:${h}:flags=area`, "-pix_fmt", "rgb24", "-f", "rawvideo", "-"], { maxBuffer: w * h * 3 * 4 + 1024 });
   if (r.error) throw new Error(`could not run ffmpeg: ${r.error.message}. Install ffmpeg to use aideos compare.`);
   const bytes = r.stdout as Buffer;
   if (r.status !== 0 || bytes.length < w * h * 3) throw new Error(`ffmpeg could not decode frame ${frameId} (${t.toFixed(2)} s) of ${file}: ${String(r.stderr).trim().slice(0, 200)}`);

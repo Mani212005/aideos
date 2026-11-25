@@ -8,6 +8,8 @@
  * Used by: backend/editPlanner/index.ts, backend/mcp/server.ts.
  */
 
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import type { LayeredFilm, Clip, Layer } from "../../src/dl/layeredSchema";
 import type { EditContext } from "../editContext/buildEditContext";
 import type { EditOp } from "./schema";
@@ -307,8 +309,8 @@ function applySingleOp(
             kind: "subtitle",
             payload: {
               text: w.punctuated_word || w.word,
-              startFrame: Math.round(pos * (working.fps || 30)),
-              endFrame: Math.round((pos + cueDur) * (working.fps || 30)),
+              startFrame: Math.round(pos * (working.fps || DEFAULT_FPS)),
+              endFrame: Math.round((pos + cueDur) * (working.fps || DEFAULT_FPS)),
             },
             opacity: 1,
             volume: 1,

@@ -9,6 +9,8 @@
  * Used by: editor/src/App.tsx.
  */
 
+import { DEFAULT_FPS } from "../../../src/dl/defaults";
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
 import { EyeOff, FileText, GripHorizontal, Mic, RefreshCw, Clapperboard, Subtitles } from "lucide-react";
@@ -180,7 +182,7 @@ export function EditStage({
           width: asset.width,
           height: asset.height,
         },
-        currentFrame / (film.fps || 30),
+        currentFrame / (film.fps || DEFAULT_FPS),
         targetLaneId,
       );
     },
@@ -358,7 +360,7 @@ export function EditStage({
             <ClipInspector
               api={api}
               clipId={selectedClipIds[0]}
-              fps={film.fps || 30}
+              fps={film.fps || DEFAULT_FPS}
               onSeekFrame={onSeekFrame}
               onClose={() => onSelectionChange([])}
               onEditCaptionWord={editClipCaptionWord}

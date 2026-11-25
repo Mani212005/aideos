@@ -10,9 +10,11 @@
  * Used by: test_fixtures/stillTalking/produceVoiceover.ts.
  */
 
+import { environment } from "../env";
+
 import * as fs from "fs";
 import * as path from "path";
-import { spawnSync } from "child_process";
+import { isProcTimeout, spawnSyncBounded } from "../proc";
 import dotenv from "dotenv";
 import { produceAudioPipeline } from "../audio";
 import { HOUSE_PACE, NARRATION_RATE } from "../pacingProfile";
@@ -88,7 +90,7 @@ export function timingPath(slug: string, spineFile: string = DEFAULTS.spineFile,
 
 // Runs ffmpeg and hands back its stderr report.
 function ffmpegReport(args: string[]): string {
-  const run = spawnSync("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+  const run = spawnSyncBounded("ffmpeg", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
   if (run.error) throw run.error;
   return run.stderr ?? "";
 }
@@ -136,18 +138,25 @@ function appendTailHandle(wavPath: string, tailMs: number): void {
 
 
 
+/** The time limit (ms) for local whisper: a CPU transcription of every shot of a long film can run for hours, so it gets far more than the default heavy ceiling. */
+const WHISPER_TIMEOUT_MS = 4 * 60 * 60_000;
+
 // Transcribes each [start, end] range of a wav with local whisper, one word list per range.
 function whisperWords(wavPath: string, ranges: Array<[number, number]>): HeardWord[][] {
   const rangesFile = `${wavPath}.ranges.json`;
   const out = `${wavPath}.words.json`;
   fs.writeFileSync(rangesFile, JSON.stringify(ranges));
   const script = path.resolve(__dirname, "whisperWords.py");
-  const run = spawnSync("python3", [script, wavPath, rangesFile, out], {
+  const run = spawnSyncBounded("python3", [script, wavPath, rangesFile, out], {
     encoding: "utf8",
-    env: { ...process.env, KMP_DUPLICATE_LIB_OK: "TRUE" },
+    env: { ...environment, KMP_DUPLICATE_LIB_OK: "TRUE" },
     maxBuffer: 32 * 1024 * 1024,
+    timeout: WHISPER_TIMEOUT_MS,
   });
   try {
+    if (isProcTimeout(run)) {
+      throw new Error(`whisper timed out: python3 whisperWords.py on ${path.basename(wavPath)} ran past its ${WHISPER_TIMEOUT_MS / 60_000} minute limit and was killed.`);
+    }
     if (run.status !== 0) {
       const errorMsg = run.error ? ` Spawn error: ${run.error.message}` : "";
       throw new Error(`whisper failed: ${run.stderr || ""}${errorMsg}`);

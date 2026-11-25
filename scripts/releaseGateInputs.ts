@@ -6,6 +6,8 @@
  * Used by: scripts/release.ts and scripts/release_resume.test.ts.
  */
 
+import { environment } from "../backend/env";
+
 import fs from "node:fs";
 import path from "node:path";
 import { canonicalJson, hashFile, hashTree, sha256, type Evidence, type GateEntry } from "./releaseGates";
@@ -36,7 +38,7 @@ export interface GateEnvironment {
 }
 
 /** Reads the real thresholds, reviewer model, verdict policy and config file the gates run against. */
-export async function loadGateEnvironment(env: NodeJS.ProcessEnv = process.env): Promise<GateEnvironment> {
+export async function loadGateEnvironment(env: NodeJS.ProcessEnv = environment): Promise<GateEnvironment> {
   const { THRESHOLDS } = await import("../backend/review/thresholds");
   const policy = await import("../backend/geminiReview/verdictPolicy");
   const config = await import("../backend/aideosConfig");

@@ -4,13 +4,16 @@
  * Used by: scripts/release.ts, scripts/channel.ts and editor/vite.config.ts.
  */
 
-import { execFileSync } from "node:child_process";
+import { DEFAULT_STUDIO_PORT } from "../src/dl/defaults";
+import { environment } from "./env";
+
+import { execFileSyncBounded } from "./proc";
 
 /** Reads Git metadata without allowing inherited Git directory overrides. */
 export function git(root: string, args: string[]): string {
-  const env = { ...process.env };
+  const env = { ...environment };
   for (const key of Object.keys(env)) if (key.startsWith("GIT_")) delete env[key];
-  return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", env, stdio: ["ignore", "pipe", "pipe"] }).trim();
+  return execFileSyncBounded("git", ["-C", root, ...args], { encoding: "utf8", env, stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
 /** Reads optional Git metadata, returning an empty string when a ref does not exist. */
@@ -31,7 +34,7 @@ export function releaseChannel(root: string) {
   const label = stable ? `STABLE ${tag}` : "DEV";
   const description = stable ? `AIDEOS ${label} (commit ${commit})`
     : `AIDEOS DEV ${branch}@${commit}${dirty ? " + UNCOMMITTED CHANGES" : ""}${ahead ? ` (${ahead} commits ahead of stable)` : ""}`;
-  return { channel: stable ? "stable" : "dev", label, tag, commit, branch, dirty, ahead, description, root, port: stable ? 3002 : 3001 };
+  return { channel: stable ? "stable" : "dev", label, tag, commit, branch, dirty, ahead, description, root, port: stable ? 3002 : DEFAULT_STUDIO_PORT };
 }
 
 /** Describes why a version is not an eligible next release of the highest existing tag, or returns an empty string. */

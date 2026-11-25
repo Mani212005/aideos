@@ -8,6 +8,8 @@
  * Used by: backend/cli.ts, backend/mcp/server.ts.
  */
 
+import { environment } from "../env";
+
 import { stageSegments, storyRanges } from "../stageTimeline";
 import { designFilm, planFilmLook } from "../designSpec/designer";
 import { prepareDefaultSoundtrack } from "../defaultSoundtrack";
@@ -221,7 +223,7 @@ export async function runProduction(
   const mode = request.bespoke === false ? "templates" : request.design ?? "inline";
   if (!(DESIGN_MODES as readonly string[]).includes(mode)) throw new ProductionError("look", `invalid design mode "${mode}"; use ${DESIGN_MODES.join(", ")}`);
   const delivery = {
-    mode, skipAgent: request.skipAgent ?? Boolean(process.env.NODE_TEST_CONTEXT),
+    mode, skipAgent: request.skipAgent ?? Boolean(environment.NODE_TEST_CONTEXT),
     agentTimeoutMs: request.designAgentTimeoutMs, llmCaller: request.designLlmCaller,
     judgeRunner: request.designJudgeRunner,
     ...(request.ownerKey ? { ownerKey: request.ownerKey } : {}),
@@ -546,7 +548,7 @@ export async function runProduction(
         const compiled = await compileFilmFromScreenplayAsync(script, narration.segments, narration.shotDurations, {
           ...compileOptions,
           ...(look ? { lookPlan: look } : {}),
-          deviceCaller: request.deviceCaller !== undefined ? request.deviceCaller : process.env.NODE_TEST_CONTEXT ? null : await defaultDeviceCaller(),
+          deviceCaller: request.deviceCaller !== undefined ? request.deviceCaller : environment.NODE_TEST_CONTEXT ? null : await defaultDeviceCaller(),
         });
         const existing = readFilm(slug);
         carryExistingSound(existing, compiled.film);

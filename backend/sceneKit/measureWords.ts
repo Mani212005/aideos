@@ -13,7 +13,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { spawnSync } from "child_process";
+import { spawnSyncBounded } from "../proc";
 import { findChromeBinary } from "../scene/renderStill";
 
 /** Output file, read by typeMetrics at layout time. */
@@ -70,7 +70,7 @@ const words = ${JSON.stringify(missing)};
 })();
 </script></body></html>`,
   );
-  const run = spawnSync(chrome, ["--headless=new", "--disable-gpu", "--virtual-time-budget=15000", "--dump-dom", `file://${page}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const run = spawnSyncBounded(chrome, ["--headless=new", "--disable-gpu", "--virtual-time-budget=15000", "--dump-dom", `file://${page}`], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   fs.rmSync(dir, { recursive: true, force: true });
   const match = (run.stdout || "").match(/RESULT(\{.*?\})END/s);
   if (!match) {

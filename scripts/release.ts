@@ -4,6 +4,11 @@
  * Used by: npm run release, npm run release:setup and bin/aideos-stable.
  */
 
+import { DEFAULT_STUDIO_PORT } from "../src/dl/defaults";
+
+import { environment as runtimeEnvironment } from "../backend/env";
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -16,7 +21,7 @@ import { reviewOutputsWithGemini } from "./releaseReview";
 import { dirEvidence, fileEvidence, GateLedger, loadGateRecord, RECORD_FILE, runReleaseGates } from "./releaseGates";
 import { adoptProduction, ciInputs, geminiInputs, loadGateEnvironment, productionInputs, reviewInputs, SOURCE_EXCLUDED, type GateEnvironment, type ProducedOutput } from "./releaseGateInputs";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 /** Stops on a failed precondition before any promotion side effect. */
@@ -25,7 +30,7 @@ function requireThat(condition: unknown, message: string): asserts condition {
 }
 
 /** Runs an existing tool directly, preserving its output and failure status. */
-function run(command: string, args: string[], cwd = ROOT, env = process.env): void {
+function run(command: string, args: string[], cwd = ROOT, env = runtimeEnvironment): void {
   console.log(`> ${command} ${args.map(quote).join(" ")}`);
   execFileSync(command, args, { cwd, env, stdio: "inherit" });
 }
@@ -93,7 +98,7 @@ function checkCopyTree(dir: string): void {
 
 /** Builds an isolated environment for a channel's own videos and runtime data. */
 function isolatedEnv(root: string, videos: string): NodeJS.ProcessEnv {
-  return { ...process.env, AIDEOS_PROJECT_ROOT: root, AIDEOS_VIDEOS_DIR: videos };
+  return { ...runtimeEnvironment, AIDEOS_PROJECT_ROOT: root, AIDEOS_VIDEOS_DIR: videos };
 }
 
 /** Checks a configured stable clone before promotion can touch refs or its dependencies. */
@@ -145,9 +150,9 @@ function printWatchLines(outputs: ProducedOutput[]): void {
 async function acceptance(source: string, evidence: string, context: AcceptanceContext): Promise<void> {
   const videos = path.join(evidence, "videos");
   fs.mkdirSync(videos);
-  process.env.AIDEOS_PROJECT_ROOT = ROOT;
-  process.env.AIDEOS_VIDEOS_DIR = videos;
-  process.env.AIDEOS_CI_ARTIFACTS = path.join(evidence, "ci");
+  runtimeEnvironment.AIDEOS_PROJECT_ROOT = ROOT;
+  runtimeEnvironment.AIDEOS_VIDEOS_DIR = videos;
+  runtimeEnvironment.AIDEOS_CI_ARTIFACTS = path.join(evidence, "ci");
   const environment = (): GateEnvironment => { if (context.environment instanceof Error) throw context.environment; return context.environment; };
   const tsx = path.join(ROOT, "node_modules/.bin/tsx");
   let pkg = "";
@@ -156,7 +161,7 @@ async function acceptance(source: string, evidence: string, context: AcceptanceC
     ci: {
       inputs: () => ciInputs(environment()),
       run: () => run("npm", ["run", "ci"]),
-      evidence: () => (fs.existsSync(process.env.AIDEOS_CI_ARTIFACTS as string) ? [dirEvidence(process.env.AIDEOS_CI_ARTIFACTS as string)] : []),
+      evidence: () => (fs.existsSync(runtimeEnvironment.AIDEOS_CI_ARTIFACTS as string) ? [dirEvidence(runtimeEnvironment.AIDEOS_CI_ARTIFACTS as string)] : []),
     },
     production: {
       inputs: () => productionInputs(source, environment()),
@@ -179,7 +184,7 @@ async function acceptance(source: string, evidence: string, context: AcceptanceC
           resume: true, keepRecordedNarration: true, force: ["render", "verify"], broll: false, skipAgent: true,
           design: "inline", deviceCaller: null, renderConcurrency: 2,
           ttsBackend: "vcd",
-          ...(process.env.AIDEOS_BROWSER_EXECUTABLE ? { browserExecutable: process.env.AIDEOS_BROWSER_EXECUTABLE } : {}),
+          ...(runtimeEnvironment.AIDEOS_BROWSER_EXECUTABLE ? { browserExecutable: runtimeEnvironment.AIDEOS_BROWSER_EXECUTABLE } : {}),
         }, (event) => console.log(`[acceptance] ${event.stage}: ${event.message}`));
         fs.writeFileSync(path.join(evidence, "production.json"), JSON.stringify(result, null, 2));
         requireThat(result.status === "completed", `Acceptance stopped at ${result.status}: ${result.nextSteps?.join("\n") || "see production.json"}. Prepare the film before retrying.`);
@@ -193,7 +198,7 @@ async function acceptance(source: string, evidence: string, context: AcceptanceC
         printWatchLines(outputs);
       },
       evidence: () => [dirEvidence(pkg), fileEvidence(path.join(evidence, "production.json")), ...outputs.map((output) => fileEvidence(output.path))],
-      adopt: (entry) => { ({ pkg, outputs } = adoptProduction(entry)); process.env.AIDEOS_VIDEOS_DIR = path.dirname(pkg); printWatchLines(outputs); },
+      adopt: (entry) => { ({ pkg, outputs } = adoptProduction(entry)); runtimeEnvironment.AIDEOS_VIDEOS_DIR = path.dirname(pkg); printWatchLines(outputs); },
     },
     review: {
       inputs: () => reviewInputs(pkg, environment()),
@@ -261,7 +266,7 @@ async function setup(options: { path: string; binDir: string; apply?: boolean; d
   const links = [["aideos", path.join(dir, "bin/aideos-stable")], ["aideos-stable", path.join(dir, "bin/aideos-stable")], ["aideos-dev", path.join(ROOT, "bin/aideos-dev")]];
   console.log(`Setup plan:\ngit clone --no-hardlinks --branch stable ${quote(origin)} ${quote(dir)}\nnpm --prefix ${quote(dir)} ci\nmkdir -p ${quote(binDir)}`);
   for (const [name, target] of links) console.log(`ln -sfn ${quote(target)} ${quote(path.join(binDir, name))}`);
-  console.log(`Private videos: ${path.join(dir, "videos")}\nPrivate data: ${path.join(dir, "data")}\nAdd ${quote(binDir)} to PATH. Stable port 3002; dev port 3001.`);
+  console.log(`Private videos: ${path.join(dir, "videos")}\nPrivate data: ${path.join(dir, "data")}\nAdd ${quote(binDir)} to PATH. Stable port 3002; dev port ${DEFAULT_STUDIO_PORT}.`);
   if (!options.apply) return;
   for (const [name] of links) {
     const link = path.join(binDir, name);

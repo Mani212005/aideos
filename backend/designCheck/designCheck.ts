@@ -15,6 +15,8 @@
  * Used by: backend/cli.ts, backend/pipeline/run.ts, backend/designSpec/build.ts, backend/reelCut/build.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import { stageTimeline, STORY_HOLD_MAX_SEC } from "../stageTimeline";
 import { compileScene } from "../../src/dl/scene/compile";
 import { VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
@@ -126,7 +128,7 @@ const ALLOWED_FONTS = /^(geist|jetbrains mono)$/i;
 /** Elements that would make an asset animate itself or reach outside the package. */
 const FORBIDDEN_TAGS = new Set(["script", "animate", "animateTransform", "animateMotion", "foreignObject", "set"]);
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 // Converts a #rgb or #rrggbb literal to its channels.
 function hexChannels(hex: string): [number, number, number] {

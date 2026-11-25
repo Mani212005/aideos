@@ -4,6 +4,8 @@
  * Used by: editor/src/screens/CheckStage.tsx.
  */
 
+import { DEFAULT_FPS } from "../../../src/dl/defaults";
+
 import { Ban, Check, Download, Play } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import type { ExportJobSnapshot } from "../../../backend/exportJobTypes";
@@ -66,7 +68,7 @@ function ErrorNote({ message, summary }: { message: string; summary: string }) {
 /** The Export controls of the Check lens: Export, Start, progress, Cancel and Download. */
 export function CheckExport({ exportJob, film, format, durationInFrames, blockedReason }: CheckExportProps) {
   const { job, armed, error, starting } = exportJob;
-  const fps = job?.fps ?? (film.fps || 30);
+  const fps = job?.fps ?? (film.fps || DEFAULT_FPS);
   const frames = job?.durationInFrames ?? durationInFrames;
   const facts = `${format === "long" ? "1920 x 1080" : "1080 x 1920"} | ${fps} fps | ${frames.toLocaleString()} frames | ${formatTimecode(Math.round(frames / fps))}`;
 

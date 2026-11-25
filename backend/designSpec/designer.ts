@@ -6,6 +6,8 @@
  * Used by: backend/pipeline/run.ts, backend/designSpec/motionRequests.ts.
  */
 
+import { environment } from "../env";
+
 import { generationCallerOrNull } from "../aideosConfig";
 import fs from "node:fs";
 import path from "node:path";
@@ -73,7 +75,7 @@ export interface DesignFilmOptions {
 async function tryAgent<T>(
   filmId: string, opts: DesignFilmOptions, kind: "look" | "design", inspect: () => T | null, instruction?: string,
 ): Promise<T | null> {
-  if (opts.skipAgent || process.env.NODE_TEST_CONTEXT) {
+  if (opts.skipAgent || environment.NODE_TEST_CONTEXT) {
     if (opts.mode === "agent") throw new Error("agent mode requires a delivered coding agent; delivery is disabled");
     return null;
   }
@@ -283,7 +285,7 @@ async function judgeDesign(filmId: string, outcome: DesignOutcome, opts: DesignF
   const skipped = (reason: string): DesignOutcome => ({ ...outcome, judge: judgeBuiltDesign({ state: "built" }, { passed: null, skipped: reason }).judge,
     note: `${outcome.note}; visual judgment unavailable: ${reason}` });
   if (!opts.judgeRunner && readFilm(filmId)?.scene?.renderer === "three") return skipped("Three craft unmeasured by SVG-only vision judge. Review actual FilmView renders.");
-  if (!opts.judgeRunner && (opts.judge === false || (opts.judge === undefined && process.env.NODE_TEST_CONTEXT))) return skipped("vision judge disabled");
+  if (!opts.judgeRunner && (opts.judge === false || (opts.judge === undefined && environment.NODE_TEST_CONTEXT))) return skipped("vision judge disabled");
   const judgeOptions: JudgeOptions = { skipAgent: opts.skipAgent, ownerKey: opts.ownerKey, onProgress: opts.onProgress, ...(opts.judge ?? {}) };
   const repair = async (errors: string): Promise<boolean> => {
     if (outcome.source === "agent") return (await tryAgent(filmId, opts, "design", () => {
