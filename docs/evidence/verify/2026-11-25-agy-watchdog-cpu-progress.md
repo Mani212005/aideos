@@ -74,5 +74,14 @@
 - **Final fixture**: One silent CPU worker waits for the leader and child PID files plus its ready marker, starts on the `start` marker, burns two seconds of process CPU, records `burn-complete`, and burns until the test writes `stop`. The leader stops its stdout keep-alive as soon as `start` exists. Stdout and stderr stay silent during the burn.
 - **No timeout changes**: The watchdog remains at one second and the runner timeout remains at 60 seconds.
 - **Negative control**: Temporarily removed the `cpu > lastCpu` activity update; the final single-burner test failed with the watchdog rejection before `burn-complete`. Restored `agyProcess.ts`; it has no diff.
-- **Current candidate result**: Targeted CPU case passed once. The final 60-run test on the committed fixture is pending; the previous version passed 30/30 under the same eight load workers.
+- **Current candidate result**: The final committed single-burner fixture passed 60/60 under the same eight load workers; the previous single-burner version passed 30/30.
 - **PR wording**: The original CI flake was not reproduced locally. The change removes the stdout keep-alive masking and unsynchronized-start weaknesses, and reports repeat results. Local repeats do not prove the CI flake is gone.
+
+## Final single-burner repeat: 2026-11-26
+
+- **Committed fixture**: `e2ca22905fedcf06f8403edda8992170bf6376a8`.
+- **Repeat counts under eight concurrent `yes > /dev/null` CPU load workers**: prior single-burner fixture 30/30; final committed single-burner fixture 60/60.
+- **Command**: `node --import tsx --test --test-name-pattern='agy idle watchdog allows continuing CPU progress' backend/geminiReview/agyProcess.test.ts`, repeated 60 times sequentially.
+- **Negative control**: Temporarily disabled the `cpu > lastCpu` activity update in `agyProcess.ts`; the final single-burner test failed with the watchdog rejection before `burn-complete`. Restored the production file; it has no diff.
+- **PR statement**: The original CI flake was not reproduced locally. This change removes the stdout keep-alive masking and unsynchronized-start weaknesses and records the repeat counts. These local runs do not prove the CI flake is gone.
+- **Production changes**: None.
