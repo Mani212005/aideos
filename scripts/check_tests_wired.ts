@@ -4,11 +4,13 @@
  * Used by: npm run ci (static job), scripts/check_tests_wired.test.ts.
  */
 
-import { execSync } from "node:child_process";
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
+import { execFileSyncBounded } from "../backend/proc";
 import fs from "node:fs";
 import path from "node:path";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 
 /** Scripts whose quoted globs select the test files they run. */
 export const TEST_SCRIPTS = ["test", "test:journeys", "test:legacy", "test:live", "test:visual"];
@@ -59,7 +61,7 @@ export function findOrphans(files: string[], patterns: string[]): string[] {
 /** Entry point: list tracked files, compare, report. */
 function main(): void {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as { scripts: Record<string, string> };
-  const files = execSync("git ls-files --cached --others --exclude-standard", { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
+  const files = execFileSyncBounded("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
   const orphans = findOrphans(files, patternsFromScripts(pkg.scripts));
   if (orphans.length) {
     console.error(`[tests-wired] ${orphans.length} test file(s) are not run by any package.json test script:\n  ${orphans.join("\n  ")}`);

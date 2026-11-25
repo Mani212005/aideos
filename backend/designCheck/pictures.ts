@@ -6,7 +6,6 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { converter } from "culori";
 import type { Film } from "../../src/dl/schema";
 import type { EnvironmentAsset, RasterSource, Scene } from "../../src/dl/scene/types";
@@ -24,6 +23,7 @@ import { parseTsv, toPgm } from "../review/ocr";
 import { apply, IDENTITY, leafBounds, multiply, NON_DRAWING_TAGS, parseTransform, rotation, scaling, styleValue, translation, type Affine, type Box } from "./svgBounds";
 import type { DesignFinding } from "./designCheck";
 import { sceneToFrame, stateMatrix } from "./insetRegion";
+import { spawnSyncBounded } from "../proc";
 
 /** The measured limits of the picture rules. */
 export const PICTURE_THRESHOLDS = {
@@ -93,13 +93,18 @@ export function checkProvenance(asset: EnvironmentAsset & { raster: RasterSource
   return findings;
 }
 
+// Linearises one sRGB channel (0 to 255), as the WCAG luminance needs.
+function linearChannel(c: number): number {
+  const s = c / 255;
+  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+}
+
+/** The linearised value of every whole 8-bit channel level, so an opaque pixel (whole levels) skips the power function. */
+const LINEAR_LEVELS = Float64Array.from({ length: 256 }, (_, level) => linearChannel(level));
+
 /** Relative luminance (WCAG) of an sRGB colour with 0 to 255 channels. */
 export function relativeLuminance(r: number, g: number, b: number): number {
-  const lin = (c: number) => {
-    const s = c / 255;
-    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return 0.2126 * linearChannel(r) + 0.7152 * linearChannel(g) + 0.0722 * linearChannel(b);
 }
 
 /** The WCAG contrast ratio of two relative luminances. */
@@ -108,11 +113,10 @@ export function contrastRatio(l1: number, l2: number): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/** HSV of an sRGB colour: hue in degrees, saturation and value 0 to 1. */
-function hsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+/** Hue in degrees (0 to 360) of an sRGB colour with 0 to 255 channels; 0 for a grey. */
+function hueOf(r: number, g: number, b: number): number {
   const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const d = max - min;
+  const d = max - Math.min(r, g, b);
   let h = 0;
   if (d > 0) {
     if (max === r) h = ((g - b) / d) % 6;
@@ -121,7 +125,7 @@ function hsv(r: number, g: number, b: number): { h: number; s: number; v: number
     h *= 60;
     if (h < 0) h += 360;
   }
-  return { h, s: max === 0 ? 0 : d / max, v: max / 255 };
+  return h;
 }
 
 /** Reads a CSS colour as 0 to 255 channels, or null. */
@@ -144,26 +148,36 @@ export function canvasChannels(film: Film): [number, number, number] {
 export function checkPicturePalette(asset: EnvironmentAsset, image: RgbaImage, accent: string, canvas: [number, number, number], isPlate: boolean): DesignFinding[] {
   const t = PICTURE_THRESHOLDS;
   const accentRgb = channels(accent);
-  const accentHue = accentRgb ? hsv(...accentRgb).h : 0;
+  const accentHue = accentRgb ? hueOf(...accentRgb) : 0;
   let visible = 0;
   let offAccent = 0;
-  const lums: number[] = [];
   const step = Math.max(1, Math.floor(Math.sqrt((image.width * image.height) / 250_000)));
+  // One luminance per visible sample, in a typed array (sorted numerically in place for the median).
+  const lums = new Float64Array(Math.ceil(image.height / step) * Math.ceil(image.width / step));
   for (let y = 0; y < image.height; y += step) {
     for (let x = 0; x < image.width; x += step) {
       const i = (y * image.width + x) * 4;
       const a = image.rgba[i + 3];
       if (a <= t.alphaFloor) continue;
-      visible++;
-      const [r, g, b] = [image.rgba[i], image.rgba[i + 1], image.rgba[i + 2]];
-      const c = hsv(r, g, b);
-      if (c.s >= t.strongSaturation && c.v >= t.strongValue) {
-        const dh = Math.min(Math.abs(c.h - accentHue), 360 - Math.abs(c.h - accentHue));
+      const r = image.rgba[i];
+      const g = image.rgba[i + 1];
+      const b = image.rgba[i + 2];
+      // Saturation and value of the pixel; the hue is only needed for a strong colour.
+      const max = Math.max(r, g, b);
+      const d = max - Math.min(r, g, b);
+      if ((max === 0 ? 0 : d / max) >= t.strongSaturation && max / 255 >= t.strongValue) {
+        const h = hueOf(r, g, b);
+        const dh = Math.min(Math.abs(h - accentHue), 360 - Math.abs(h - accentHue));
         if (dh > t.accentHueToleranceDeg) offAccent++;
       }
       // The tone is read as the picture shows over the canvas.
+      if (a === 255) {
+        // Fully opaque: the canvas contributes nothing, so the channels are whole levels and read from the table (the same values the formula gives).
+        lums[visible++] = 0.2126 * LINEAR_LEVELS[r] + 0.7152 * LINEAR_LEVELS[g] + 0.0722 * LINEAR_LEVELS[b];
+        continue;
+      }
       const k = a / 255;
-      lums.push(relativeLuminance(r * k + canvas[0] * (1 - k), g * k + canvas[1] * (1 - k), b * k + canvas[2] * (1 - k)));
+      lums[visible++] = relativeLuminance(r * k + canvas[0] * (1 - k), g * k + canvas[1] * (1 - k), b * k + canvas[2] * (1 - k));
     }
   }
   const findings: DesignFinding[] = [];
@@ -173,8 +187,8 @@ export function checkPicturePalette(asset: EnvironmentAsset, image: RgbaImage, a
     findings.push({ rule: "palette", severity: "error", where: asset.assetId, message: `picture is ${(share * 100).toFixed(1)}% strong colour off the film accent ${accent} (at most ${(t.offAccentShareMax * 100).toFixed(0)}%): regenerate it with the accent in the style paragraph, or keep it neutral.` });
   }
   if (isPlate) {
-    lums.sort((p, q) => p - q);
-    const median = lums[Math.floor(lums.length / 2)];
+    const seen = lums.subarray(0, visible).sort();
+    const median = seen[Math.floor(seen.length / 2)];
     const ground = relativeLuminance(...canvas);
     if (Math.abs(median - ground) > t.plateToneDistanceMax) {
       findings.push({ rule: "palette", severity: "error", where: asset.assetId, message: `plate's median tone (luminance ${median.toFixed(2)}) is too far from the canvas (${ground.toFixed(2)}; at most ${t.plateToneDistanceMax} apart): the plate must keep the film's ground.` });
@@ -200,7 +214,7 @@ export function pictureGray(image: RgbaImage, canvas: [number, number, number]):
 /** OCR with tesseract (sparse text, the same reader `aideos review` uses), or why it cannot run. */
 export const tesseractOcr: PictureOcr = (gray, width, height) => {
   const input = toPgm(gray, width, height);
-  const result = spawnSync("tesseract", ["stdin", "stdout", "--psm", "11", "tsv"], { input, maxBuffer: 64 * 1024 * 1024, encoding: "buffer" });
+  const result = spawnSyncBounded("tesseract", ["stdin", "stdout", "--psm", "11", "tsv"], { input, maxBuffer: 64 * 1024 * 1024, encoding: "buffer" });
   if (result.error) return { unavailable: `tesseract could not run (${result.error.message}); install it to check pictures for text` };
   if (result.status !== 0) return { unavailable: `tesseract exited with code ${result.status}: ${result.stderr?.toString().trim().slice(0, 200)}` };
   return parseTsv(result.stdout.toString("utf8")).map((w) => ({ text: w.text, conf: w.conf }));

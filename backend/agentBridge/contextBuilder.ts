@@ -4,6 +4,8 @@
  * Used by: backend/agentBridge/dispatcher.ts, backend/agentBridge/index.ts.
  */
 
+import { DEFAULT_STUDIO_PORT } from "../../src/dl/defaults";
+
 import fs from "node:fs";
 import path from "node:path";
 import { FILM_ID, readFilm, ROOT } from "../pipeline/filmStore";
@@ -240,5 +242,5 @@ ${themeLine}${RUBRIC_SUMMARY}
 2. **Design task second:** read \`videos/${ctx.filmId}/design/LOOK.md\` and \`design/BRIEF.md\`, then write \`design/design.json\` and its SVG assets to follow the checked treatment and cast. Keep the scene stage visible.
 3. Run \`aideos design build ${ctx.filmId}\`, then \`npm run validate:film ${ctx.filmPath}\`, and repair findings until both pass.
 4. **The script:** ${STORY_SCRIPT_RULES}
-5. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done. The live studio at http://localhost:3001 hot-reloads automatically as you edit.`;
+5. If using MCP, call \`aideos_claim_task\` to acknowledge and \`aideos_complete_task\` when done. The live studio at http://localhost:${DEFAULT_STUDIO_PORT} hot-reloads automatically as you edit.`;
 }

@@ -8,6 +8,8 @@
  * Used by: backend/cli.ts, backend/allCheck/round.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import type { Film } from "../../src/dl/schema";
 import { measureMusicUnderVoice } from "./music";
 import fs from "node:fs";
@@ -25,7 +27,7 @@ import { stageTruth } from "./stageTruth";
 import type { CriterionResult, ReviewReport } from "./types";
 import { formatInputs } from "../reelCut/store";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 /** What to review and the optional extra inputs. */
 export interface ReviewRequest {

@@ -4,15 +4,18 @@
  * Used by: backend/audioLibrary/cli.ts, backend/cli.ts.
  */
 
+import { environment } from "../env";
+
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execFile, execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { getProjectRoot, getAudioLibraryCacheDir } from "../../src/dl/videoPackageLoader";
 import { overrideSoundtrackLibrary } from "../../src/dl/audio/sectionMixer";
 import { audioItemIdSchema, parseAudioLibrary, type AudioItem, type AudioLibrary } from "./schema";
 import { fetchWithin, HttpDeadlineError, HTTP_DEADLINES, readWithin, startDeadline, type NowFn } from "../httpDeadline";
+import { execFileSyncBounded } from "../proc";
 
 export type AudioItemStatus = "valid" | "missing" | "mismatch" | "unavailable";
 
@@ -69,13 +72,13 @@ export interface AudioLibraryFetchReport {
 
 // Resolves the default path to the committed audio/library.json file; AIDEOS_AUDIO_LIBRARY points tests at a synthetic manifest instead.
 export function getDefaultLibraryPath(): string {
-  const override = process.env.AIDEOS_AUDIO_LIBRARY?.trim();
+  const override = environment.AIDEOS_AUDIO_LIBRARY?.trim();
   return override ? path.resolve(override) : path.resolve(getProjectRoot(), "audio/library.json");
 }
 
 // A test-only AIDEOS_AUDIO_LIBRARY manifest also replaces the one the browser-safe mixer resolves items from, in every Node process that loads this module.
-if (process.env.AIDEOS_AUDIO_LIBRARY?.trim()) {
-  overrideSoundtrackLibrary(JSON.parse(fs.readFileSync(path.resolve(process.env.AIDEOS_AUDIO_LIBRARY), "utf8")));
+if (environment.AIDEOS_AUDIO_LIBRARY?.trim()) {
+  overrideSoundtrackLibrary(JSON.parse(fs.readFileSync(path.resolve(environment.AIDEOS_AUDIO_LIBRARY), "utf8")));
 }
 
 // Loads and validates audio/library.json from disk.
@@ -340,7 +343,7 @@ export async function fetchAudioItem(
         }
         options.archiveCache?.set(item.url, archiveZip);
       }
-      const extracted = execFileSync("unzip", ["-p", archiveZip, item.archivePath], {
+      const extracted = execFileSyncBounded("unzip", ["-p", archiveZip, item.archivePath], {
         maxBuffer: Math.max(item.bytes + 1, 1024),
       });
       fs.writeFileSync(tempPath, extracted);

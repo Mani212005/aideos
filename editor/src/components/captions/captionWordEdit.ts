@@ -4,6 +4,8 @@
  * Used by: editor/src/screens/EditStage.tsx, editor/src/components/ClipInspector.tsx.
  */
 
+import { DEFAULT_FPS } from "../../../../src/dl/defaults";
+
 import type { Film } from "../../../../src/dl/schema";
 import type { CaptionWord } from "../../../../src/dl/KineticSubtitles";
 import { captionWordsToVtt, generateWordsFromFilm } from "../../../../src/dl/captionsParser";
@@ -84,7 +86,7 @@ export function editCaptionWord(film: Film, index: number, edit: CaptionWordEdit
 
   if (text === word.text && startFrame === word.startFrame && endFrame === word.endFrame) return { ok: true, film };
   const edited = words.map((w, i) => (i === index ? { text, startFrame, endFrame } : w));
-  const vtt = writeCaptionTrack(edited, film.fps || 30);
+  const vtt = writeCaptionTrack(edited, film.fps || DEFAULT_FPS);
   if (vtt === null) return { ok: false, error: "This word cannot be saved. Use another word." };
   return { ok: true, film: { ...film, captions: vtt } };
 }

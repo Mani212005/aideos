@@ -4,7 +4,7 @@
  * Used by: npm run lint, .no-mistakes.yaml lint command, scripts/check_headers.test.ts.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSyncBounded } from "../backend/proc";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -17,7 +17,7 @@ export const REQUIRED_LABELS = [
 
 // Determines whether a git-tracked file is a code file that requires a three-field header.
 export function isCodeFile(file: string): boolean {
-  if (file.startsWith("test_fixtures/")) return false;
+  if (file.startsWith("test_fixtures/") && !file.startsWith("test_fixtures/stillTalking/")) return false;
   if (file === "Dockerfile") return true;
   if (file === "bin/aideos" || file.startsWith("bin/")) return true;
   return /\.(ts|tsx|js|mjs|cjs|mts|py|css|yaml|yml|html)$/.test(file);
@@ -136,7 +136,7 @@ export interface HeaderAuditSummary {
 // Scans all git-tracked code files in the repository and verifies their headers.
 export function checkAllHeaders(rootDir?: string): HeaderAuditSummary {
   const root = rootDir ?? path.resolve(__dirname, "..");
-  const rawList = execSync("git ls-files", {
+  const rawList = execFileSyncBounded("git", ["ls-files"], {
     cwd: root,
     encoding: "utf8",
   }).trim();

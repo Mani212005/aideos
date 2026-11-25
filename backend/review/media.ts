@@ -8,14 +8,15 @@
  * Used by: backend/review/renderFacts.ts, backend/review/review.ts.
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { spawnSyncBounded } from "../proc";
 import fs from "node:fs";
 import path from "node:path";
 import type { VideoFacts } from "../media/probe";
 
 // Runs a binary to completion and returns stdout and stderr; a missing binary throws a clear error.
 function run(bin: string, args: string[]): { stdout: string; stderr: string; status: number } {
-  const r = spawnSync(bin, args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSyncBounded(bin, args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (r.error) throw new Error(`could not run ${bin}: ${r.error.message}. Install ffmpeg to use aideos review.`);
   return { stdout: r.stdout, stderr: r.stderr, status: r.status ?? 1 };
 }

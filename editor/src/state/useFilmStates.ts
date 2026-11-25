@@ -10,16 +10,17 @@ import type { CheckState, CheckView } from "../../../backend/filmAcceptance/chec
 /** What the home knows about one film. */
 export type FilmStateLoad = { status: "loading" } | { status: "ready"; state: CheckState } | { status: "unavailable" };
 
-/** Reads the Check state of one film, or null when it cannot be read. */
-async function readState(id: string): Promise<CheckState | null> {
+/** Reads the Check state of one film, or null when it cannot be read (or the read was cancelled through `signal`). */
+async function readState(id: string, signal: AbortSignal): Promise<CheckState | null> {
   try {
-    const filmRes = await fetch(`/api/films/${encodeURIComponent(id)}`);
+    const filmRes = await fetch(`/api/films/${encodeURIComponent(id)}`, { signal });
     const body = (await filmRes.json()) as { film?: unknown };
     if (!filmRes.ok || !body.film) return null;
     const res = await fetch(`/api/acceptance/${encodeURIComponent(id)}?format=long`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ film: body.film }),
+      signal,
     });
     if (!res.ok) return null;
     return ((await res.json()) as { check?: CheckView }).check?.state ?? null;
@@ -35,17 +36,16 @@ export function useFilmStates(ids: readonly string[], active: boolean): Record<s
 
   useEffect(() => {
     if (!active) return;
-    let alive = true;
+    // Closing the home (or a changed film list) aborts the read in flight instead of letting it finish unseen.
+    const controller = new AbortController();
     void (async () => {
       for (const id of key.split("\n").filter(Boolean)) {
-        const state = await readState(id);
-        if (!alive) return;
+        const state = await readState(id, controller.signal);
+        if (controller.signal.aborted) return;
         setStates((prev) => ({ ...prev, [id]: state ? { status: "ready", state } : { status: "unavailable" } }));
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => controller.abort();
   }, [key, active]);
 
   return states;

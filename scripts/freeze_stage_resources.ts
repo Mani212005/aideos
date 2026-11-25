@@ -3,12 +3,14 @@
  * Inputs and outputs: the frozen file lists below -> rewritten src/dl/scene/rigs/registry.ts hashes and identity hash.
  * Used by: contributors after changing character, prop or receive engine code (see src/dl/scene/rigs/NOTICE.md).
  */
+
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { CEL_TREATMENT } from "../src/dl/scene/rigs/registry";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 const REGISTRY = path.join(ROOT, "src/dl/scene/rigs/registry.ts");
 /** Files that decide how any character spec renders and how the receive is fitted to it. */
 const ENGINE = [

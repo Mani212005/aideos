@@ -4,6 +4,8 @@
  * Used by: src/dl/Film.tsx, backend/captionsParser.test.ts.
  */
 
+import { DEFAULT_FPS } from "./defaults";
+
 import type { Film } from "./schema";
 import type { CaptionWord } from "./KineticSubtitles";
 
@@ -99,7 +101,7 @@ export interface CaptionSourceFilm {
 
 // Dynamically extracts and computes word-level frame timestamps across all shots in a film.
 export function generateWordsFromFilm(film: CaptionSourceFilm): CaptionWord[] {
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
 
   if (film.captions?.includes("-->")) {
     const cues = parseVtt(film.captions);

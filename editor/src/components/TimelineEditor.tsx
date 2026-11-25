@@ -11,6 +11,8 @@
  * Used by: editor/src/screens/EditStage.tsx.
  */
 
+import { DEFAULT_FPS } from "../../../src/dl/defaults";
+
 import library from "../../../audio/library.json";
 import React, {
   useCallback,
@@ -184,7 +186,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   onReject,
   onMusicSection,
 }) => {
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const scrollRef = useRef<HTMLDivElement>(null);
   const laneStackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState>(IDLE_DRAG);

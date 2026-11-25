@@ -26,6 +26,8 @@
  * picks up in time is reported as undelivered).
  */
 
+import { environment } from "../env";
+
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -162,7 +164,7 @@ function pairCode(): string {
  * with the process: AIDEOS_LINK_SECRET when set, else derived from a provider key the deployment
  * already holds (stable across restarts, never sent anywhere), else a generated file (local dev).
  */
-export function resolveLinkSecret(file: string, env: NodeJS.ProcessEnv = process.env): string {
+export function resolveLinkSecret(file: string, env: NodeJS.ProcessEnv = environment): string {
   if (env.AIDEOS_LINK_SECRET && env.AIDEOS_LINK_SECRET.length >= 16) return env.AIDEOS_LINK_SECRET;
   for (const name of ["GEMINI_API_KEY", "GOOGLE_API_KEY", "DEEPGRAM_API_KEY"]) {
     const value = env[name];

@@ -8,7 +8,8 @@
  * Used by: backend/allCheck/round.ts, backend/geminiReview/index.ts, backend/cli.ts (gemini-review, the release gate).
  */
 
-import { execFileSync } from "node:child_process";
+import { environment } from "../env";
+
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -55,6 +56,7 @@ import type {
   ReviewFeedbackItem,
   WatchReport,
 } from "./types";
+import { execFileSyncBounded } from "../proc";
 
 export interface SingleReviewOptions {
   runner?: AgyRunner;
@@ -110,9 +112,9 @@ export async function defaultAgyRunner(
     reviewerModel(options?.model);
   const timeoutSec =
     options?.timeoutSeconds ??
-    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
+    (Number(environment.AIDEOS_AGY_TIMEOUT) || 1800);
   const printTimeoutArg = `${timeoutSec}s`;
-  const configuredIdleTimeout = process.env.AIDEOS_AGY_IDLE_TIMEOUT;
+  const configuredIdleTimeout = environment.AIDEOS_AGY_IDLE_TIMEOUT;
   const idleTimeoutSec = configuredIdleTimeout === undefined ? undefined : Number(configuredIdleTimeout);
   if (!Number.isFinite(timeoutSec) || timeoutSec <= 0 || (idleTimeoutSec !== undefined && (!Number.isFinite(idleTimeoutSec) || idleTimeoutSec <= 0))) {
     throw new Error("agy review timeouts must be finite positive seconds.");
@@ -328,7 +330,7 @@ function makeReviewCopy(srcPath: string, destPath: string): string | null {
   try {
     const probe = probeVideo(srcPath);
     const kbps = reviewVideoBitrateKbps(probe.containerDurationSec ?? probe.durationSec);
-    execFileSync("ffmpeg", ["-y", "-v", "error", "-i", srcPath, "-c:v", "libx264", "-preset", "medium", "-threads", "2", "-b:v", `${kbps}k`, "-maxrate", `${Math.round(kbps * 1.5)}k`, "-bufsize", `${kbps * 2}k`, "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", destPath], { stdio: "ignore" });
+    execFileSyncBounded("ffmpeg", ["-y", "-v", "error", "-i", srcPath, "-c:v", "libx264", "-preset", "medium", "-threads", "2", "-b:v", `${kbps}k`, "-maxrate", `${Math.round(kbps * 1.5)}k`, "-bufsize", `${kbps * 2}k`, "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", destPath], { stdio: "ignore" });
     const size = fs.statSync(destPath).size;
     return size <= AGY_VIDEO_LIMIT_BYTES ? null : `the re-encoded copy is still ${size} bytes`;
   } catch (err) {

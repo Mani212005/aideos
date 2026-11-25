@@ -1,4 +1,4 @@
-//! File Description: The public renderer: loads a Render IR and its package's assets once (SVG artwork parsed into the retained model, vendored fonts, caption phrases per format), checks what the IR loader cannot (asset files exist inside the package, declared element ids exist in the artwork, every SVG text resolves to a vendored font), then renders any frame of either format on Skia's CPU rasterizer, the deterministic reference. A frame is a pure function of (IR, assets, format, frame number), so frames render in any order and a cold render is byte-identical to a warm one.
+//! File Description: The public renderer: loads a Render IR and its package's assets once (SVG artwork parsed into the retained model, vendored fonts, caption phrases per format), checks what the IR loader cannot (asset files exist inside the package, declared element ids exist in the artwork, every SVG text resolves to a vendored font), then renders any frame of either format on Skia's CPU rasterizer, the deterministic reference, with Chrome's text contrast and gamma. A frame is a pure function of (IR, assets, format, frame number), so frames render in any order and a cold render is byte-identical to a warm one.
 //! Inputs and outputs: an IR file or `RenderIr` plus the package directory -> `Renderer`; (format, frame) -> `RenderedFrame` (straight-alpha RGBA8) and its PNG bytes. A `stage3d` node (the Three stage, `aideos.render/2`) loads its mesh asset here and is drawn by the CPU rasterizer in `raster::stage3d`; an `image` node (a picture, `aideos.render/3`) has its image decoded here once, refused unless its bytes match the pinned sha256 and its size the declared one.
 //! Used by: the `aideos-render` CLI (src/main.rs), tests/*.rs, and later the encode stage (R3) and the RenderJob runner.
 
@@ -10,7 +10,9 @@ use std::sync::Arc;
 use aideos_render_ir::mesh::decode_mesh;
 use aideos_render_ir::types::{Asset, Node, RenderIr};
 use aideos_render_ir::{load_from_path, LoadError};
-use skia_safe::{surfaces, AlphaType, Canvas, ColorType, Data, Image, ImageInfo, Pixmap};
+use skia_safe::{
+    surfaces, AlphaType, Canvas, ColorType, Data, Image, ImageInfo, PixelGeometry, Pixmap, SurfaceProps, SurfacePropsFlags,
+};
 
 use crate::eval::captions::build_phrases;
 use crate::eval::Format;
@@ -439,11 +441,22 @@ impl Renderer {
     /// Renders a frame on Skia's CPU rasterizer, the deterministic reference.
     pub fn render_frame(&self, format: Format, frame: u32) -> Result<RenderedFrame, RenderError> {
         let (w, h) = self.check(format, frame)?;
-        let mut surface = surfaces::raster_n32_premul((w as i32, h as i32))
+        let info = ImageInfo::new_n32_premul((w as i32, h as i32), None);
+        let mut surface = surfaces::raster(&info, None, Some(&frame_surface_props()))
             .ok_or_else(|| RenderError::Skia(format!("cannot create a {w}x{h} raster surface")))?;
         raster::draw_frame(surface.canvas(), &self.loaded, format, frame, w, h)?;
         read_rgba(&mut surface, w, h)
     }
+}
+
+/// Chrome's text contrast and gamma: Chromium builds Skia for Linux with `SK_GAMMA_CONTRAST=0.2` and
+/// `SK_GAMMA_EXPONENT=1.2`, where Skia's own defaults (0.5 and sRGB) draw light text on a dark ground heavier than Chrome.
+const TEXT_CONTRAST: f32 = 0.2;
+const TEXT_GAMMA: f32 = 1.2;
+
+/// The surface properties every frame surface is drawn with, so glyph masks get Chrome's contrast and gamma.
+pub(crate) fn frame_surface_props() -> SurfaceProps {
+    SurfaceProps::new_with_text_properties(SurfacePropsFlags::default(), PixelGeometry::Unknown, TEXT_CONTRAST, TEXT_GAMMA)
 }
 
 /// Reads a surface's pixels as straight-alpha RGBA8.

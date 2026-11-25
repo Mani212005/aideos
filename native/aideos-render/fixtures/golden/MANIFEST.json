@@ -15,7 +15,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 11101
+      "bytes": 11061
     },
     {
       "name": "frames/hello-scene/long-150.png",
@@ -24,7 +24,7 @@
       "frame": 150,
       "width": 480,
       "height": 270,
-      "bytes": 17132
+      "bytes": 17017
     },
     {
       "name": "frames/hello-scene/long-270.png",
@@ -33,7 +33,7 @@
       "frame": 270,
       "width": 480,
       "height": 270,
-      "bytes": 14080
+      "bytes": 13986
     },
     {
       "name": "frames/hello-scene/reel-150.png",
@@ -42,7 +42,7 @@
       "frame": 150,
       "width": 270,
       "height": 480,
-      "bytes": 15663
+      "bytes": 15662
     },
     {
       "name": "frames/still-talking/long-924.png",
@@ -51,7 +51,7 @@
       "frame": 924,
       "width": 480,
       "height": 270,
-      "bytes": 46275
+      "bytes": 46218
     },
     {
       "name": "frames/still-talking/long-2773.png",
@@ -60,7 +60,7 @@
       "frame": 2773,
       "width": 480,
       "height": 270,
-      "bytes": 16332
+      "bytes": 16327
     },
     {
       "name": "frames/still-talking/reel-1848.png",
@@ -69,7 +69,7 @@
       "frame": 1848,
       "width": 270,
       "height": 480,
-      "bytes": 23626
+      "bytes": 23601
     },
     {
       "name": "frames/iona-receive/long-30.png",
@@ -78,7 +78,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 14040
+      "bytes": 14001
     },
     {
       "name": "frames/iona-receive/long-111.png",
@@ -87,7 +87,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 14974
+      "bytes": 14982
     },
     {
       "name": "frames/iona-receive/long-180.png",
@@ -96,7 +96,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 14657
+      "bytes": 14638
     },
     {
       "name": "frames/iona-receive/long-285.png",
@@ -105,7 +105,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 15830
+      "bytes": 15793
     },
     {
       "name": "frames/iona-receive/reel-111.png",
@@ -114,7 +114,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 15512
+      "bytes": 15404
     },
     {
       "name": "frames/iona-receive/reel-240.png",
@@ -123,7 +123,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 14886
+      "bytes": 14714
     },
     {
       "name": "frames/pixels-stage-pip/long-30.png",
@@ -132,7 +132,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 13327
+      "bytes": 13284
     },
     {
       "name": "frames/pixels-stage-pip/long-111.png",
@@ -141,7 +141,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 14145
+      "bytes": 14146
     },
     {
       "name": "frames/pixels-stage-pip/long-180.png",
@@ -150,7 +150,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 13546
+      "bytes": 13520
     },
     {
       "name": "frames/pixels-stage-pip/long-285.png",
@@ -159,7 +159,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 14672
+      "bytes": 14633
     },
     {
       "name": "frames/pixels-stage-pip/reel-111.png",
@@ -168,7 +168,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 14624
+      "bytes": 14502
     },
     {
       "name": "frames/pixels-stage-pip/reel-240.png",
@@ -177,7 +177,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 13794
+      "bytes": 13605
     },
     {
       "name": "frames/pixels-stage-marlo/long-30.png",
@@ -186,7 +186,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 12619
+      "bytes": 12582
     },
     {
       "name": "frames/pixels-stage-marlo/long-111.png",
@@ -195,7 +195,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 13505
+      "bytes": 13507
     },
     {
       "name": "frames/pixels-stage-marlo/long-180.png",
@@ -204,7 +204,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 13254
+      "bytes": 13227
     },
     {
       "name": "frames/pixels-stage-marlo/long-285.png",
@@ -213,7 +213,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 14411
+      "bytes": 14365
     },
     {
       "name": "frames/pixels-stage-marlo/reel-111.png",
@@ -222,7 +222,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 13944
+      "bytes": 13829
     },
     {
       "name": "frames/pixels-stage-marlo/reel-240.png",
@@ -231,7 +231,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 13548
+      "bytes": 13393
     },
     {
       "name": "frames/journey-three-characters/long-30.png",
@@ -240,7 +240,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 11699
+      "bytes": 11660
     },
     {
       "name": "frames/journey-three-characters/long-111.png",
@@ -249,7 +249,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 12305
+      "bytes": 12308
     },
     {
       "name": "frames/journey-three-characters/long-180.png",
@@ -258,7 +258,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 12256
+      "bytes": 12236
     },
     {
       "name": "frames/journey-three-characters/long-285.png",
@@ -267,7 +267,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 13352
+      "bytes": 13311
     },
     {
       "name": "frames/journey-three-characters/reel-111.png",
@@ -276,7 +276,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 12918
+      "bytes": 12798
     },
     {
       "name": "frames/journey-three-characters/reel-240.png",
@@ -285,7 +285,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 12548
+      "bytes": 12387
     },
     {
       "name": "frames/journey-j3-j4-dots/long-30.png",
@@ -294,7 +294,7 @@
       "frame": 30,
       "width": 480,
       "height": 270,
-      "bytes": 20970
+      "bytes": 20925
     },
     {
       "name": "frames/journey-j3-j4-dots/long-111.png",
@@ -303,7 +303,7 @@
       "frame": 111,
       "width": 480,
       "height": 270,
-      "bytes": 21699
+      "bytes": 21700
     },
     {
       "name": "frames/journey-j3-j4-dots/long-180.png",
@@ -312,7 +312,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 20524
+      "bytes": 20498
     },
     {
       "name": "frames/journey-j3-j4-dots/long-285.png",
@@ -321,7 +321,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 21867
+      "bytes": 21824
     },
     {
       "name": "frames/journey-j3-j4-dots/reel-111.png",
@@ -330,7 +330,7 @@
       "frame": 111,
       "width": 270,
       "height": 480,
-      "bytes": 21907
+      "bytes": 21736
     },
     {
       "name": "frames/journey-j3-j4-dots/reel-240.png",
@@ -339,7 +339,7 @@
       "frame": 240,
       "width": 270,
       "height": 480,
-      "bytes": 20600
+      "bytes": 20440
     },
     {
       "name": "frames/pictures-stage/long-45.png",
@@ -348,7 +348,7 @@
       "frame": 45,
       "width": 480,
       "height": 270,
-      "bytes": 25497
+      "bytes": 25448
     },
     {
       "name": "frames/pictures-stage/long-135.png",
@@ -357,7 +357,7 @@
       "frame": 135,
       "width": 480,
       "height": 270,
-      "bytes": 28271
+      "bytes": 28287
     },
     {
       "name": "frames/pictures-stage/long-225.png",
@@ -366,7 +366,7 @@
       "frame": 225,
       "width": 480,
       "height": 270,
-      "bytes": 29416
+      "bytes": 29462
     },
     {
       "name": "frames/pictures-stage/long-285.png",
@@ -375,7 +375,7 @@
       "frame": 285,
       "width": 480,
       "height": 270,
-      "bytes": 28462
+      "bytes": 28337
     },
     {
       "name": "frames/pictures-stage/reel-135.png",
@@ -384,7 +384,7 @@
       "frame": 135,
       "width": 270,
       "height": 480,
-      "bytes": 27897
+      "bytes": 27915
     },
     {
       "name": "frames/pictures-stage/reel-285.png",
@@ -393,7 +393,7 @@
       "frame": 285,
       "width": 270,
       "height": 480,
-      "bytes": 26325
+      "bytes": 26224
     }
   ]
 }

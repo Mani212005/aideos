@@ -1,4 +1,4 @@
-//! File Description: The renderer's fonts and text layout. Every typeface comes from a font asset of the Render IR (a vendored file in the package), loaded through Skia's FreeType manager with no system font scan; Skia textlayout (HarfBuzz shaping, ICU line breaking) lays text out against exactly those faces with font fallback disabled, so a render never depends on the fonts installed on the host. Each face is registered under its asset id, so a text node's `font` names one exact file.
+//! File Description: The renderer's fonts and text layout. Every typeface comes from a font asset of the Render IR (a vendored file in the package), loaded through Skia's FreeType manager with no system font scan; Skia textlayout (HarfBuzz shaping, ICU line breaking) lays text out against exactly those faces with font fallback disabled, so a render never depends on the fonts installed on the host. Each face is registered under its asset id, so a text node's `font` names one exact file. Text is shaped and placed as Blink does: optional ligatures off when letter spacing is not zero, all of the letter spacing after each glyph whatever the alignment, HTML baselines on whole pixels and SVG baselines exactly on `y`.
 //! Inputs and outputs: font asset ids, families, weights and file bytes -> `Fonts`; a `TextSpec` -> a laid-out `Text` (a Skia `Paragraph` plus the way its glyphs are painted) or its measured width.
 //! Used by: crate::renderer (loading), crate::raster (overlay text, captions, rail, end card) and crate::raster::svg (SVG text).
 
@@ -156,6 +156,12 @@ impl Fonts {
         style.set_font_size(spec.size as f32);
         style.set_color(to_color(spec.color));
         style.set_letter_spacing(spec.letter_spacing as f32);
+        if spec.letter_spacing != 0.0 {
+            // Blink turns the optional ligatures off when letter spacing is not zero (CSS Text 3, `letter-spacing`):
+            // Geist joins "tt" and "ti", so a spaced word set with them would be up to 2 px narrower than Chrome's.
+            style.add_font_feature("liga", 0);
+            style.add_font_feature("clig", 0);
+        }
         if let Some(lh) = spec.line_height {
             style.set_height(lh as f32);
             style.set_height_override(true);
@@ -177,6 +183,7 @@ impl Fonts {
             shadows: spec.shadows.clone(),
             line_height_px: spec.line_height.map(|lh| lh * spec.size),
             letter_spacing: spec.letter_spacing,
+            align: spec.align,
         }
     }
 
@@ -198,12 +205,26 @@ pub struct Text {
     line_height_px: Option<f64>,
     /// Extra advance after each glyph in pixels (CSS `letter-spacing`).
     letter_spacing: f64,
+    /// The alignment the paragraph was laid out with.
+    align: TextAlign,
+}
+
+/// Whether Skia still shifts a laid-out line right by half the letter spacing. Skia puts that half before the first glyph
+/// of every line, but `TextLine::format` replaces the line's shift with the alignment offset when a right-aligned or
+/// centred line is narrower than the layout width, which drops the half.
+fn keeps_half_letter_spacing(align: TextAlign, layout_width: f32, line_width: f64) -> bool {
+    match align {
+        TextAlign::Right | TextAlign::End | TextAlign::Center => f64::from(layout_width) - line_width <= 0.0,
+        _ => true,
+    }
 }
 
 /// One shaped run read back from the paragraph: its font, glyph ids and positions relative to the origin.
 struct GlyphRun {
     /// Where the browser puts the baseline of that line, relative to the paragraph's top.
     baseline: f64,
+    /// The horizontal shift that moves Skia's glyphs to CSS positions (all of the letter spacing after each glyph).
+    dx: f32,
     font: skia_safe::Font,
     glyphs: Vec<u16>,
     positions: Vec<Point>,
@@ -228,11 +249,6 @@ impl Text {
         self.paragraph.borrow().max_intrinsic_width()
     }
 
-    /// The distance from the top of the paragraph to its first alphabetic baseline.
-    pub fn alphabetic_baseline(&self) -> f32 {
-        self.paragraph.borrow().alphabetic_baseline()
-    }
-
     /// The first laid-out line's (baseline, height, ascent, descent), or None when nothing was laid out.
     pub fn first_line(&self) -> Option<(f64, f64, f64, f64)> {
         let paragraph = self.paragraph.borrow();
@@ -244,6 +260,11 @@ impl Text {
     fn runs(&self) -> Vec<GlyphRun> {
         let mut runs: Vec<GlyphRun> = Vec::new();
         let line_height = self.line_height_px;
+        let (layout_width, line_widths) = {
+            let paragraph = self.paragraph.borrow();
+            (paragraph.max_width(), paragraph.get_line_metrics().iter().map(|l| l.width).collect::<Vec<f64>>())
+        };
+        let (align, half) = (self.align, self.letter_spacing / 2.0);
         self.paragraph.borrow_mut().visit(|line, info| {
             let Some(info) = info else { return };
             let mut font = info.font().clone();
@@ -255,8 +276,12 @@ impl Text {
             let (ascent, descent) = (f64::from(-metrics.ascent).round(), f64::from(metrics.descent).round());
             let height = line_height.unwrap_or(ascent + descent + f64::from(metrics.leading).round());
             let baseline = ascent + ((height - (ascent + descent)) / 2.0).floor() + line as f64 * height;
+            // CSS puts all of the letter spacing after each glyph; take back the half Skia puts before the line.
+            let line_width = line_widths.get(line).copied().unwrap_or(0.0);
+            let dx = if keeps_half_letter_spacing(align, layout_width, line_width) { -half as f32 } else { 0.0 };
             runs.push(GlyphRun {
                 baseline,
+                dx,
                 font,
                 glyphs: info.glyphs()[..count].to_vec(),
                 positions: info.positions()[..count].to_vec(),
@@ -271,19 +296,25 @@ impl Text {
         self.paint_with(canvas, at.into(), true);
     }
 
-    /// Paints SVG text with its first paragraph top at `at`, keeping Skia's own unrounded baseline.
-    pub fn paint_unsnapped(&self, canvas: &Canvas, at: impl Into<Point>) {
+    /// Paints SVG text with its first line's baseline exactly at `at` (an SVG `y` is the baseline), unrounded.
+    pub fn paint_on_baseline(&self, canvas: &Canvas, at: impl Into<Point>) {
         self.paint_with(canvas, at.into(), false);
     }
 
-    /// Paints the text: the shadows from the last to the first, then the glyphs, the baseline snapped or as Skia lays it out.
+    /// Paints the text: the shadows from the last to the first, then the glyphs, with `at` the top-left corner and the
+    /// baseline snapped (HTML) or `at` the first baseline, unrounded (SVG).
     fn paint_with(&self, canvas: &Canvas, at: Point, snap_baseline: bool) {
         let runs = self.runs();
+        // Skia's run origin sits on its own rounded ascent, not on `alphabetic_baseline`, so SVG text is placed from the run.
+        let first_baseline = runs.first().map_or(0.0, |run| run.origin.y);
         let draw = |paint: &Paint, offset: Point| {
             for run in &runs {
-                let y = if snap_baseline { (f64::from(at.y) + run.baseline).round() as f32 } else { at.y + run.origin.y };
-                // Skia puts half of the letter spacing before each glyph and half after; CSS puts all of it after.
-                let origin = Point::new(run.origin.x + at.x + offset.x - (self.letter_spacing / 2.0) as f32, y + offset.y);
+                let y = if snap_baseline {
+                    (f64::from(at.y) + run.baseline).round() as f32
+                } else {
+                    at.y + run.origin.y - first_baseline
+                };
+                let origin = Point::new(run.origin.x + at.x + offset.x + run.dx, y + offset.y);
                 canvas.draw_glyphs_at(&run.glyphs, GlyphPositions::Points(&run.positions), origin, &run.font, paint);
             }
         };

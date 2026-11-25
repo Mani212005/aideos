@@ -81,3 +81,21 @@ test("a soundtrack library item that is not fetched yet is not a missing file", 
     assert.doesNotThrow(() => assertFilmWriteAssetsExist(film, null, { baseDir }));
   });
 });
+
+test("a project media file is found when a write runs from another directory", () => {
+  withPublicDir(["media/elsewhere.wav"], (publicDir) => {
+    const previousRoot = process.env.AIDEOS_PROJECT_ROOT;
+    const previousCwd = process.cwd();
+    const otherDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-asset-cwd-"));
+    try {
+      process.env.AIDEOS_PROJECT_ROOT = path.dirname(publicDir);
+      process.chdir(otherDir);
+      assert.doesNotThrow(() => assertFilmWriteAssetsExist(filmWithAudio("media/elsewhere.wav"), null));
+    } finally {
+      process.chdir(previousCwd);
+      if (previousRoot === undefined) delete process.env.AIDEOS_PROJECT_ROOT;
+      else process.env.AIDEOS_PROJECT_ROOT = previousRoot;
+      fs.rmSync(otherDir, { recursive: true, force: true });
+    }
+  });
+});

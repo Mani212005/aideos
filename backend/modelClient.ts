@@ -6,15 +6,17 @@
  * Used by: backend/pipeline/director.ts, backend/pipeline/deviceData.ts, backend/editPlanner/planner.ts, backend/ideation/visualSelector.ts.
  */
 
+import { environment } from "./env";
+
 import { GoogleGenAI } from "@google/genai";
 import { parseModelJson } from "./modelReply";
 
 // Google retires pinned versions (gemini-2.0-flash now 404s), so keep this current; override with AIDEOS_GEMINI_MODEL.
-const DEFAULT_GEMINI_MODEL = process.env.AIDEOS_GEMINI_MODEL || "gemini-3.5-flash";
+const DEFAULT_GEMINI_MODEL = environment.AIDEOS_GEMINI_MODEL || "gemini-3.5-flash";
 
 /** Builds and returns the authenticated Google Gen AI client. */
 export function getGoogleAiClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const apiKey = environment.GEMINI_API_KEY || environment.GOOGLE_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY is not set. Please set it in .env or the environment.");
   }
@@ -23,7 +25,7 @@ export function getGoogleAiClient(): GoogleGenAI {
 
 /** Check if Google AI credentials are configured in the active environment. */
 export function isGoogleAiConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+  return Boolean(environment.GEMINI_API_KEY || environment.GOOGLE_API_KEY);
 }
 
 /** Executes a structured JSON prompt against Gemini with clean JSON parsing, markdown stripping, and a 3-attempt retry loop. */

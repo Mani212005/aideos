@@ -10,6 +10,8 @@
  * Used by: scripts/ensure_generated.ts, backend/pipeline/run.ts, backend/pipeline/filmStore.ts, editor/vite.config.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import fs from "fs";
 import path from "path";
 import { dropLegacyFilmBlocks, type Film } from "../../src/dl/schema";
@@ -18,7 +20,7 @@ import { buildSvgSources } from "../scene/buildSvgSources";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
 
 /** Repo root, resolved from this module so the pipeline works from any cwd. */
-export const ROOT = path.resolve(__dirname, "../..");
+export const ROOT = repositoryRoot;
 export const FILMS_DIR = path.join(ROOT, "src/dl/films");
 /** The schema's own id rule, which also makes path traversal unrepresentable. */
 export const FILM_ID = /^[a-z0-9-]+$/;

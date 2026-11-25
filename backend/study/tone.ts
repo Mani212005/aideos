@@ -6,7 +6,7 @@
  * Used by: backend/study/study.ts.
  */
 
-import { spawnSync } from "node:child_process";
+import { spawnSyncBounded } from "../proc";
 import { resolveMetric } from "./agreement";
 import { analysisSize, streamRawFrames } from "./decode";
 import { STUDY, type MethodReading, type Metric } from "./types";
@@ -46,21 +46,34 @@ export function parseSignalstats(text: string): ToneStats | null {
 
 // Method A: ffmpeg signalstats on frames sampled at STUDY.tone.sampleFps, at full resolution.
 export function toneWithSignalstats(file: string): ToneStats | null {
-  const r = spawnSync("ffmpeg", ["-v", "error", "-i", file, "-an", "-vf", `fps=${STUDY.tone.sampleFps},signalstats,metadata=print:file=-`, "-f", "null", "-"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSyncBounded("ffmpeg", ["-v", "error", "-i", file, "-an", "-vf", `fps=${STUDY.tone.sampleFps},signalstats,metadata=print:file=-`, "-f", "null", "-"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (r.error) throw new Error(`could not run ffmpeg: ${r.error.message}. Install ffmpeg to use aideos study.`);
   return r.status === 0 ? parseSignalstats(r.stdout) : null;
+}
+
+/** Chroma magnitude of every (U, V) byte pair, indexed U * 256 + V, built on first use with the same Math.hypot the per-pixel sum would call (so sums are unchanged, only faster). */
+let chromaTable: Float64Array | null = null;
+
+// Returns the chroma magnitude table, building it on first use.
+function chromaMagnitudes(): Float64Array {
+  if (chromaTable) return chromaTable;
+  const table = new Float64Array(256 * 256);
+  for (let u = 0; u < 256; u++) for (let v = 0; v < 256; v++) table[u * 256 + v] = Math.hypot(u - 128, v - 128);
+  chromaTable = table;
+  return table;
 }
 
 // Statistics of one yuv444p frame: mean, 10th and 90th percentile of luma (0..1) and mean chroma magnitude (0..1).
 export function frameTone(frame: Uint8Array, pixels: number): ToneStats {
   const bins = new Uint32Array(256);
+  const magnitude = chromaMagnitudes();
   let ySum = 0;
   let chroma = 0;
   for (let i = 0; i < pixels; i++) {
     const y = frame[i];
     bins[y]++;
     ySum += y;
-    chroma += Math.hypot(frame[pixels + i] - 128, frame[2 * pixels + i] - 128);
+    chroma += magnitude[frame[pixels + i] * 256 + frame[2 * pixels + i]];
   }
   const at = (p: number) => {
     let seen = 0;

@@ -1,0 +1,46 @@
+{
+  "request": {
+    "model": "jev-latest",
+    "state": {
+      "visual": "A command appears in a terminal window",
+      "narration": "Run npm install to add the dependency to your project.",
+      "onscreen": ["npm install @typesafe-ai/sdk"],
+      "activeComponents": ["TextReveal"],
+      "sceneTitle": "Installation"
+    },
+    "questions": {
+      "primitive": {
+        "type": "choice",
+        "instructions": "Pick the one primitive whose communicative job fits the spoken phrase it must serve. Read each WHEN NOT rule before choosing. Prefer a different primitive from the previous beat's pick, and do not repeat what is already on screen.",
+        "criteria": {
+          "TextReveal": "JOB: state the claim. WHEN the spoken phrase is a thesis, quote, definition or headline the viewer should read. WHEN NOT: the phrase carries a figure with a unit (StatCounter), literal code (CodeBlock) or several parts to group (Card).",
+          "StatCounter": "JOB: prove a point with a number. WHEN the spoken phrase states a measured quantity with a unit, percentage or multiplier. WHEN NOT: the number is incidental (a date, an ordinal, 'one of') or only progress toward a target (ProgressBar).",
+          "CodeBlock": "JOB: show the literal thing that is typed or run. WHEN the spoken phrase names a command, function, snippet or terminal output. WHEN NOT: the phrase only talks about software in general terms (TextReveal or Card).",
+          "Card": "JOB: group related parts into one unit. WHEN two or more on-screen items belong together, or a concept is defined with properties. WHEN NOT: there is a single short line (TextReveal) or the previous beat already showed a Card.",
+          "Divider": "JOB: mark a change of chapter. WHEN the narration turns ('now', 'next', 'back to') and nothing new needs showing. WHEN NOT: a claim is being made or any content is on screen that the viewer still has to read.",
+          "IconLabel": "JOB: tag something in a few words. WHEN the spoken phrase names a tool, status, category or flag that a compact badge can carry. WHEN NOT: the phrase is a full sentence (TextReveal) or a group of items (Card).",
+          "ProgressBar": "JOB: show how far along something is. WHEN the spoken phrase describes stages, steps, completion or movement toward a target. WHEN NOT: the percentage is the finding itself (StatCounter) or nothing advances."
+        }
+      },
+      "servesPhrase": {
+        "type": "choice",
+        "instructions": "Name the spoken phrase your primitive pick serves: the one moment of the narration the viewer should see it for.",
+        "criteria": {"phrase1":"The pick serves the spoken phrase: \"Run npm install to add the dependency to your project\""}
+      }
+    }
+  },
+  "reply": {
+    "model": "typesafe/jev-1.13",
+    "answers": {
+      "primitive": {"type":"choice","choice":"CodeBlock","confidence":0.88,"probabilities":{"CodeBlock":0.88,"TextReveal":0.12}},
+      "servesPhrase": {"type":"choice","choice":"phrase1"}
+    },
+    "usage": {"input_tokens":120,"output_tokens":15}
+  },
+  "parsed": {
+    "choice": "CodeBlock",
+    "confidence": 0.88,
+    "probabilities": {"CodeBlock":0.88,"TextReveal":0.12},
+    "phrase": "Run npm install to add the dependency to your project"
+  }
+}

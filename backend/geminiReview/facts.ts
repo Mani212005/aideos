@@ -12,7 +12,7 @@
 import { hasCaptionPlacementForFormat, prepareCaptionReview } from "../review/captionRegion";
 import { migrateLegacyReelPlacement, type CaptionRect } from "../../src/dl/captionPlacement";
 import { REEL_CAPTION_SAFE_ZONE, SUBTITLE_BAND_TOP_RATIO } from "../../src/dl/fullScreenHeroLayout";
-import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -25,6 +25,7 @@ import { loadNarration } from "../review/speech";
 import { stageTruth, stageTruthText, type StageTruth } from "../review/stageTruth";
 import { DELIVERY_CONFIG } from "../../src/dl/delivery";
 import { probeVideo } from "../media/probe";
+import { execFileSyncBounded, spawnSyncBounded } from "../proc";
 
 export interface FactsOptions {
   sampleCount?: number;
@@ -66,7 +67,7 @@ export function measureAudioLoudness(videoPath: string): {
       "-"
     ];
     // Need to capture stderr for ffmpeg outputs
-    const spawnResult = spawnSync("ffmpeg", args, { encoding: "utf8" });
+    const spawnResult = spawnSyncBounded("ffmpeg", args, { encoding: "utf8" });
     const output = spawnResult.stderr;
 
     // Look specifically at the final Summary block to get total track loudness rather than early frame readings
@@ -114,7 +115,7 @@ export function measureAudioLoudness(videoPath: string): {
 // Checks if the tesseract OCR binary is installed and executable.
 export function isTesseractAvailable(): boolean {
   try {
-    execFileSync("tesseract", ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+    execFileSyncBounded("tesseract", ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
     return true;
   } catch {
     return false;
@@ -237,7 +238,7 @@ export async function measureBottomCaptions(
           "-vf", crop,
           framePath
         ];
-        execFileSync("ffmpeg", args, { stdio: ["ignore", "ignore", "ignore"] });
+        execFileSyncBounded("ffmpeg", args, { stdio: ["ignore", "ignore", "ignore"] });
 
         if (fs.existsSync(framePath)) {
           const text = await runTesseractOnImage(framePath);

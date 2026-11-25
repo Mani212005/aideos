@@ -13,6 +13,8 @@
  * Used by: backend/designSpec/designer.ts.
  */
 
+import { environment } from "../env";
+
 import fs from "node:fs";
 import path from "node:path";
 import { dispatchTask } from "../agentBridge/dispatcher";
@@ -111,7 +113,7 @@ async function agentRound(
   options: JudgeOptions,
   instruction?: string,
 ): Promise<{ round: JudgeResult["agentRound"]; reviews: SampleReview[] }> {
-  if (options.skipAgent ?? Boolean(process.env.NODE_TEST_CONTEXT)) return { round: "skipped", reviews: [] };
+  if (options.skipAgent ?? Boolean(environment.NODE_TEST_CONTEXT)) return { round: "skipped", reviews: [] };
   const requestedAt = new Date().toISOString();
   const dispatch = await (options.dispatch ?? dispatchTask)({
     eventType: "frame_review",

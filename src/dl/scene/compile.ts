@@ -6,6 +6,8 @@
  * Used by: src/dl/scene/SceneClip.tsx, backend/scene/compile.test.ts.
  */
 
+import { DEFAULT_FPS } from "../defaults";
+
 import type { Scene, EnvironmentAsset, RasterSource, SchemaVersion } from "./types";
 import type { SvgElementState } from "./svgAnimation";
 import { compileSvgTimeline } from "./svgAnimation";
@@ -92,7 +94,7 @@ export function compileScene(scene: Scene, options: CompileOptions = {}): Compil
 
   const warnings: string[] = validation.warnings.map((w) => w.message);
   const totalFrames = scene.durationFrames;
-  const fps = scene.fps || 30;
+  const fps = scene.fps || DEFAULT_FPS;
 
   const maxVelocityDiscontinuity = 0;
 

@@ -4,6 +4,8 @@
  * Used by: package.json (npm run render, npm run render:reel), bin/aideos.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
 import path from "node:path";
 import { ensureGenerated } from "../backend/pipeline/generatedFiles";
 import { resolvePackageDir } from "../src/dl/videoPackageLoader";
@@ -15,7 +17,7 @@ import { createRemotionRenderer } from "../backend/remotionRenderer";
 import { createNativeRenderer } from "../backend/nativeRenderer";
 import { createSelectedRenderer, requestedRenderer } from "../backend/rendererSelection";
 
-const REPO_ROOT = path.resolve(__dirname, "..");
+const REPO_ROOT = repositoryRoot;
 
 // Resolves the active package and executes the shared job with the legacy manual command options.
 async function main(): Promise<void> {

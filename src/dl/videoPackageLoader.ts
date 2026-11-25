@@ -7,6 +7,9 @@
  * Used by: backend/pipeline/filmStore.ts, editor/vite.config.ts, backend/pipeline/run.ts.
  */
 
+import { environment } from "../../backend/env";
+import { callerWorkingDirectory } from "../../backend/paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import type { Film } from "./schema";
@@ -23,10 +26,10 @@ export interface VideoPackage {
  * Resolves the absolute path to the project root directory.
  */
 export function getProjectRoot(): string {
-  if (process.env.AIDEOS_PROJECT_ROOT) {
-    return path.resolve(process.env.AIDEOS_PROJECT_ROOT);
+  if (environment.AIDEOS_PROJECT_ROOT) {
+    return path.resolve(environment.AIDEOS_PROJECT_ROOT);
   }
-  let cur = process.cwd();
+  let cur = callerWorkingDirectory();
   for (let i = 0; i < 6; i++) {
     if (fs.existsSync(path.join(cur, "src", "dl")) && fs.existsSync(path.join(cur, "package.json"))) {
       return cur;
@@ -41,7 +44,7 @@ export function getProjectRoot(): string {
       return candidate;
     }
   }
-  return process.cwd();
+  return callerWorkingDirectory();
 }
 
 /**
@@ -50,8 +53,8 @@ export function getProjectRoot(): string {
  * else <root>/videos. This is the only place new packages are written.
  */
 export function getVideosDir(): string {
-  if (process.env.AIDEOS_VIDEOS_DIR) {
-    return path.resolve(getProjectRoot(), process.env.AIDEOS_VIDEOS_DIR);
+  if (environment.AIDEOS_VIDEOS_DIR) {
+    return path.resolve(getProjectRoot(), environment.AIDEOS_VIDEOS_DIR);
   }
   return path.resolve(getProjectRoot(), "videos");
 }
@@ -123,7 +126,7 @@ export function resolveRepoAssetPath(rel: string): string {
   const candidates: string[] = [];
   const m = /^videos\/(.*)$/.exec(rel);
   if (m) candidates.push(path.join(getVideosDir(), m[1]));
-  candidates.push(path.resolve(process.cwd(), rel), path.resolve(getProjectRoot(), rel));
+  candidates.push(path.resolve(callerWorkingDirectory(), rel), path.resolve(getProjectRoot(), rel));
   return candidates.find((c) => fs.existsSync(c)) ?? candidates[candidates.length - 1];
 }
 

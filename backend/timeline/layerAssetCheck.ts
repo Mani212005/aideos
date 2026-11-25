@@ -6,16 +6,18 @@
  * Used by: editor/vite.config.ts (POST /api/films/:id and /api/ai-edit), backend/mcp/server.ts (edit tool), backend/timeline/imported_footage.test.ts, backend/timeline/layerAssetCheck.test.ts (never import from editor/src).
  */
 
+import { callerWorkingDirectory } from "../paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import { convertFilmToLayeredFilm } from "../../src/dl/convertFilm";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { getProjectRoot, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
 import type { Film } from "../../src/dl/schema";
 
 export interface LayeredAssetCheckOptions {
-  /** Directory media paths are resolved against; defaults to `<cwd>/public`. */
+  /** Directory media paths are resolved against; defaults to the project `public` directory. */
   baseDir?: string;
   /** Sources the film already carried before this write; they are not checked, so a film that already names a missing file stays editable. */
   knownSources?: ReadonlySet<string>;
@@ -39,7 +41,7 @@ export function layeredMediaSources(film: LayeredFilm): Set<string> {
 
 /** Throws a Rule 6 violation for the first media clip whose source file cannot be found under the base directory. */
 export function assertLayeredAssetsExist(film: LayeredFilm, options?: LayeredAssetCheckOptions): void {
-  const baseDir = options?.baseDir ?? path.resolve(process.cwd(), "public");
+  const baseDir = options?.baseDir ?? path.resolve(getProjectRoot(), "public");
   for (const clip of film.clips) {
     if (clip.kind !== "video" && clip.kind !== "audio" && clip.kind !== "image") continue;
     const payload = clip.payload as { src?: string; itemId?: string };
@@ -51,7 +53,7 @@ export function assertLayeredAssetsExist(film: LayeredFilm, options?: LayeredAss
       resolveRepoAssetPath(src),
       path.resolve(baseDir, src),
       path.resolve(baseDir, "..", src),
-      path.resolve(process.cwd(), "public", src),
+      path.resolve(callerWorkingDirectory(), "public", src),
     ];
     if (!candidates.some((c) => fs.existsSync(c))) {
       throw new Error(`Rule 6 violation: Source asset file missing: "${src}" for clip "${clip.id}"`);

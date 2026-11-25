@@ -2,6 +2,7 @@
  * File Description: Behavioural tests of the renderer choice, encoding the native renderer Phase 1 wiring decision (firstmate decision p1-wire-step0, option A: native does the real work for every film it supports, Remotion is the kill switch, refusals are logged, a native failure on a supported film is an error): `auto` is the default and draws a supported film natively; it renders a refused film on Remotion with every reason (including a missing binary, a chapter no shot belongs to and an asset with no SVG source); `remotion` keeps every film on Remotion; `native` refuses a film it cannot draw; the job-level renderer chooses on the film the job actually renders, records the renderer in the sidecar, and fails, without trying Remotion, when native fails.
  * Inputs and outputs: argument lists, environments, the synthetic scene film, fake renderers and a RenderJob with stub services -> asserted choices, reasons, sidecars and failures.
  * The illustrated stage (phase 1) adds: a film the native loader refuses while the job prepares (a picture or SVG content it cannot draw yet) renders on Remotion in `auto`, with the refusal as the logged reason, and still fails under `native`.
+ * Film-only picture animation refusals are logged before selection and fail in forced-native mode.
  * Used by: npm test (Node test runner).
  */
 
@@ -98,6 +99,26 @@ test("a chapter with no shots or an asset with no SVG source renders on Remotion
   assert.match(choice.fallbackReason ?? "", /chapters with no shots cannot be drawn on the native rail: Unreached/);
   assert.match(choice.fallbackReason ?? "", /asset probe has no SVG source/);
   assert.deepEqual(f.made, ["remotion"]);
+});
+
+test("a picture animation the native IR refuses selects Remotion and logs its reason", async (t) => {
+  const film = nativeSceneFilm();
+  const asset = film.scene!.props[0];
+  delete asset.svgSource;
+  asset.raster = { src: "test_fixtures/picture.png", width: 100, height: 100, sha256: "a".repeat(64) };
+  asset.animation = { timelineId: "picture-motion", clips: [{ clipId: "line", targets: [asset.assetId], property: "x1", from: 0, to: 1, startFrame: 0, durationFrames: 20 }] };
+  const f = factories();
+  const messages: string[] = [];
+  const out = outPath(t);
+  const renderer = createSelectedRenderer({ mode: "auto", ...f, binaryProblem: () => null, onChoice: (_choice, message) => messages.push(message) });
+  await createRenderJob({ film, format: "long", outPath: out, profile: "draft" }, renderer, { services }).run();
+  assert.equal(fs.readFileSync(out, "utf8"), "remotion mp4");
+  assert.deepEqual(f.made, ["remotion"]);
+  assert.match(messages[0], /picture's x1 cannot be animated/);
+  assert.equal(JSON.parse(fs.readFileSync(`${out}.render.json`, "utf8")).renderer, "remotion");
+  const strict = factories();
+  assert.throws(() => selectRenderer(film, "reel", "native", strict, { binaryProblem: () => null }), /picture's x1 cannot be animated/);
+  assert.deepEqual(strict.made, []);
 });
 
 test("remotion is the kill switch: a supported film stays on Remotion", () => {
