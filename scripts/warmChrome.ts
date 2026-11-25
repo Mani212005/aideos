@@ -9,6 +9,8 @@
  * Used by: scripts/ci.ts (first step of the unit and journeys jobs).
  */
 
+import { environment } from "../backend/env";
+
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -51,7 +53,7 @@ function launchOnce(chrome: string): Promise<void> {
         "--disable-gpu",
         "--no-first-run",
         "--no-default-browser-check",
-        ...(process.env.CI === "true" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
+        ...(environment.CI === "true" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
         `--user-data-dir=${profile}`,
         "--dump-dom",
         "about:blank",

@@ -12,6 +12,8 @@
  * Used by: editor/src/state/useLayeredTimeline.ts, editor/vite.config.ts, backend/timeline/timeline.ts.
  */
 
+import { DEFAULT_FPS } from "./defaults";
+
 import type { Film, Shot, AudioClip, VideoClip, OverlayClip, Soundtrack } from "./schema";
 import { soundtrackItem, soundtrackItemSrc } from "./audio/sectionMixer";
 import type {
@@ -114,7 +116,7 @@ export function defaultTimelineLayers(): Layer[] {
  * still needs appended, so user-created lanes survive a reload.
  */
 export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
   const startTimes = computeShotStartTimes(film.shots);
 
   const layers: Layer[] =

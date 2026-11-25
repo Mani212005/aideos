@@ -4,6 +4,8 @@
  * Used by: bin/aideos, npm run backend (entry point), backend/pipeline/pipeline.test.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "./paths";
+
 import { Command, Option } from "commander";
 import fs from "fs/promises";
 import path from "path";
@@ -30,7 +32,7 @@ import { registerPictureCommands } from "./pictures/cli";
 dotenv.config({ quiet: true });
 
 /** Resolved from the module, not the shell, so the CLI works from any cwd. */
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 const GENERATED_PATH = path.join(ROOT, "src/dl/films/generated.ts");
 const ACTIVE_FILM_PATH = path.join(ROOT, "src/dl/activeFilm.ts");
 

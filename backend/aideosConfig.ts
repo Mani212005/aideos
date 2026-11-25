@@ -11,6 +11,9 @@
  * Used by: backend/modelClient.ts, backend/jev.ts, backend/geminiReview/geminiReview.ts, backend/designSpec/designer.ts.
  */
 
+import { environment } from "./env";
+import { REPO_ROOT as repositoryRoot } from "./paths";
+
 import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -62,10 +65,10 @@ export class AideosConfigError extends Error {}
 /** Server-side generation is unavailable for this film: no session or override is known, the recorded harness cannot run headless, or its model is unusable. Callers fall back to the session instead of failing. */
 export class NoGenerationModelError extends AideosConfigError {}
 
-const REPO_ROOT = path.resolve(__dirname, "..");
+const REPO_ROOT = repositoryRoot;
 
 /** Where the committed config lives; AIDEOS_CONFIG points elsewhere. */
-export function configPath(env: NodeJS.ProcessEnv = process.env): string {
+export function configPath(env: NodeJS.ProcessEnv = environment): string {
   return env.AIDEOS_CONFIG ? path.resolve(env.AIDEOS_CONFIG) : path.join(REPO_ROOT, "aideos.config.json");
 }
 
@@ -137,7 +140,7 @@ function parseVoiceClone(raw: unknown): VoiceCloneConfig {
 // Resolves local voice-clone settings: explicit overrides, then environment variables, then aideos.config.json, then defaults.
 export function resolveVoiceCloneSettings(
   overrides: Partial<VoiceCloneConfig> = {},
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = environment,
   file?: string,
 ): VoiceCloneConfig {
   let fromFile: VoiceCloneConfig = { url: DEFAULT_VCD_URL, voiceId: "", language: "auto" };
@@ -172,7 +175,7 @@ export function forbiddenGenerationMatch(model: string, policy: VideoModelPolicy
 }
 
 // The reviewer model: an explicit value, else AIDEOS_GEMINI_REVIEW_MODEL / GEMINI_MODEL, else the config.
-export function reviewerModel(explicit?: string, env: NodeJS.ProcessEnv = process.env, file?: string): string {
+export function reviewerModel(explicit?: string, env: NodeJS.ProcessEnv = environment, file?: string): string {
   return explicit || env.AIDEOS_GEMINI_REVIEW_MODEL || env.GEMINI_MODEL || loadAideosConfig(file).videoModels.reviewer.model;
 }
 

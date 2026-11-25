@@ -8,6 +8,8 @@
  * Used by: backend/allCheck/round.ts, backend/geminiReview/index.ts, backend/cli.ts (gemini-review, the release gate).
  */
 
+import { environment } from "../env";
+
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -110,9 +112,9 @@ export async function defaultAgyRunner(
     reviewerModel(options?.model);
   const timeoutSec =
     options?.timeoutSeconds ??
-    (Number(process.env.AIDEOS_AGY_TIMEOUT) || 1800);
+    (Number(environment.AIDEOS_AGY_TIMEOUT) || 1800);
   const printTimeoutArg = `${timeoutSec}s`;
-  const configuredIdleTimeout = process.env.AIDEOS_AGY_IDLE_TIMEOUT;
+  const configuredIdleTimeout = environment.AIDEOS_AGY_IDLE_TIMEOUT;
   const idleTimeoutSec = configuredIdleTimeout === undefined ? undefined : Number(configuredIdleTimeout);
   if (!Number.isFinite(timeoutSec) || timeoutSec <= 0 || (idleTimeoutSec !== undefined && (!Number.isFinite(idleTimeoutSec) || idleTimeoutSec <= 0))) {
     throw new Error("agy review timeouts must be finite positive seconds.");

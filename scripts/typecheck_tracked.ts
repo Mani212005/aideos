@@ -4,11 +4,13 @@
  * Used by: npm run lint, npm run typecheck, the "tsc root" step of scripts/ci.ts (so the static CI job and the release), scripts/typecheck_tracked.test.ts.
  */
 
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import ts from "typescript";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 
 /** Normalizes a path to the absolute forward-slash form the TypeScript API reports file names in. */
 function normalize(file: string): string {

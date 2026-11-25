@@ -3,6 +3,8 @@
  * Inputs and outputs: words and font size -> measured widths, using one bounded Chrome batch when needed.
  * Used by: prepareCaptionReview for films with owner caption placement.
  */
+
+import { environment } from "../env";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -110,12 +112,12 @@ function collectMeasurements(
 function captionChromeEnvironment(): NodeJS.ProcessEnv {
   return process.platform === "linux"
     ? {
-        ...process.env,
+        ...environment,
         // An invalid address fails immediately instead of discovering or authenticating with a desktop service.
         DBUS_SESSION_BUS_ADDRESS: "disabled:",
         DBUS_SYSTEM_BUS_ADDRESS: "disabled:",
       }
-    : process.env;
+    : environment;
 }
 
 // Executes Chrome synchronously for blocking review and design-check callers.
@@ -125,7 +127,7 @@ function runChromeSync(chrome: string, file: string) {
     [
       "--headless=new",
       "--disable-gpu",
-      ...(process.env.CI === "true"
+      ...(environment.CI === "true"
         ? ["--no-sandbox", "--disable-dev-shm-usage"]
         : []),
       "--virtual-time-budget=15000",
@@ -142,7 +144,7 @@ function runChromeAsync(chrome: string, file: string): Promise<string> {
     const child = spawn(chrome, [
       "--headless=new",
       "--disable-gpu",
-      ...(process.env.CI === "true"
+      ...(environment.CI === "true"
         ? ["--no-sandbox", "--disable-dev-shm-usage"]
         : []),
       "--virtual-time-budget=15000",

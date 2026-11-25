@@ -5,6 +5,9 @@
  * Used by: backend/cli.ts, bin/aideos.
  */
 
+import { environment } from "../env";
+import { callerWorkingDirectory } from "../paths";
+
 import path from "node:path";
 import type { Command } from "commander";
 import { runCompare } from "./run";
@@ -34,7 +37,7 @@ export function registerCompareCommands(program: Command): void {
           refWords: options.refWords,
           noSheet: options.sheet === false,
           sendTo: options.sendTo,
-          cwd: process.env.AIDEOS_CALLER_CWD || process.cwd(),
+          cwd: environment.AIDEOS_CALLER_CWD || callerWorkingDirectory(),
           deps: { onProgress: (m) => console.error(`[compare] ${m}`) },
         });
         if (result.delivery) console.error(`[compare] summary: ${result.delivery.delivered ? result.delivery.reason : `not sent (${result.delivery.reason}). Read ${path.join(result.dir, "summary.md")} instead`}`);

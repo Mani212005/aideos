@@ -11,6 +11,8 @@
  * Used by: npm run calibrate:review.
  */
 
+import { environment } from "../backend/env";
+
 import { reviewVideo } from "../backend/review/review";
 import type { CriterionKey, ReviewReport } from "../backend/review/types";
 
@@ -22,9 +24,9 @@ interface Reference {
 }
 
 const refs: Reference[] = [
-  { name: "A", video: process.env.AIDEOS_CALIBRATION_A, words: process.env.AIDEOS_CALIBRATION_A_WORDS },
-  { name: "B", video: process.env.AIDEOS_CALIBRATION_B, film: process.env.AIDEOS_CALIBRATION_B_FILM, words: process.env.AIDEOS_CALIBRATION_B_WORDS },
-  { name: "RAG", video: process.env.AIDEOS_CALIBRATION_RAG },
+  { name: "A", video: environment.AIDEOS_CALIBRATION_A, words: environment.AIDEOS_CALIBRATION_A_WORDS },
+  { name: "B", video: environment.AIDEOS_CALIBRATION_B, film: environment.AIDEOS_CALIBRATION_B_FILM, words: environment.AIDEOS_CALIBRATION_B_WORDS },
+  { name: "RAG", video: environment.AIDEOS_CALIBRATION_RAG },
 ];
 
 // Reads one named metric of a criterion from a report.

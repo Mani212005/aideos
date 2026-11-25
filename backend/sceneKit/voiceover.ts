@@ -10,6 +10,8 @@
  * Used by: backend/stillTalking/produceVoiceover.ts.
  */
 
+import { environment } from "../env";
+
 import * as fs from "fs";
 import * as path from "path";
 import { spawnSync } from "child_process";
@@ -144,7 +146,7 @@ function whisperWords(wavPath: string, ranges: Array<[number, number]>): HeardWo
   const script = path.resolve(__dirname, "whisperWords.py");
   const run = spawnSync("python3", [script, wavPath, rangesFile, out], {
     encoding: "utf8",
-    env: { ...process.env, KMP_DUPLICATE_LIB_OK: "TRUE" },
+    env: { ...environment, KMP_DUPLICATE_LIB_OK: "TRUE" },
     maxBuffer: 32 * 1024 * 1024,
   });
   try {

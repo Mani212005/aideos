@@ -16,6 +16,8 @@
  * and a growing drift between the narration and the visuals describing it.
  */
 
+import { callerWorkingDirectory, REPO_ROOT as repositoryRoot } from "./paths";
+
 import { execFileSync } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -689,12 +691,12 @@ export function buildAtempoFilter(speed: number): string {
  * root the pipeline CLI and tests run from; a cwd-only lookup silently failed to find any footage
  * asset (audio peaks, transcription) whenever the source was resolved from inside the editor.
  */
-const REPO_ROOT = path.resolve(__dirname, "..");
+const REPO_ROOT = repositoryRoot;
 
 /** Resolve an audio source URL or file reference to an absolute path on disk. */
 export function resolveAudioSourcePath(src: string): string {
   const cleanSrc = src.split("?")[0].split("#")[0];
-  const bases = [process.cwd(), REPO_ROOT];
+  const bases = [callerWorkingDirectory(), REPO_ROOT];
   const candidates = [path.resolve(cleanSrc)];
   for (const base of bases) {
     candidates.push(
@@ -724,7 +726,7 @@ export function retimeAudioSync(
   }
 
   const resolved = resolveAudioSourcePath(src);
-  const cacheDir = options?.cacheDir || path.resolve(process.cwd(), ".tmp_audio");
+  const cacheDir = options?.cacheDir || path.resolve(callerWorkingDirectory(), ".tmp_audio");
   if (!fsSync.existsSync(cacheDir)) {
     fsSync.mkdirSync(cacheDir, { recursive: true });
   }

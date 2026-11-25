@@ -4,6 +4,8 @@
  * Used by: scripts/farm.ts and backend/farm/loadTest.ts.
  */
 
+import { environment } from "../env";
+
 import os from "node:os";
 import path from "node:path";
 
@@ -18,7 +20,7 @@ export interface FarmPaths {
 }
 
 /** The farm root from an explicit value, the environment, or the home directory. */
-export function farmRoot(explicit?: string, env: NodeJS.ProcessEnv = process.env): string {
+export function farmRoot(explicit?: string, env: NodeJS.ProcessEnv = environment): string {
   return path.resolve(explicit ?? env.AIDEOS_FARM_DIR ?? path.join(os.homedir(), ".aideos", "farm"));
 }
 

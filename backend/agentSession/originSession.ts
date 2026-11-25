@@ -9,6 +9,8 @@
  * Used by: backend/allCheck/index.ts, backend/allCheck/agent.ts, backend/allCheck/feedback.ts, backend/aideosConfig.ts.
  */
 
+import { environment } from "../env";
+
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -96,7 +98,7 @@ export function realAncestors(startPid: number = process.ppid): AncestorProcess[
 
 // The real dependencies of detection.
 export function realDetectDeps(): DetectDeps {
-  return { env: process.env, herdr: realHerdr, ancestors: () => realAncestors(), now: () => new Date() };
+  return { env: environment, herdr: realHerdr, ancestors: () => realAncestors(), now: () => new Date() };
 }
 
 // The harness the environment names, with the variable that said so.

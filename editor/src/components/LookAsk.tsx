@@ -4,6 +4,8 @@
  * Used by: editor/src/screens/LookStage.tsx.
  */
 
+import { DEFAULT_FPS } from "../../../src/dl/defaults";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Player } from "@remotion/player";
 import { Bot, RotateCcw } from "lucide-react";
@@ -52,7 +54,7 @@ export function LookAsk({ film, shotId, onShotChange, notify }: LookAskProps) {
   const [requests, setRequests] = useState<AskRequest[]>([]);
   const [sending, setSending] = useState(false);
   const [agent, setAgent] = useState<{ online: boolean; label?: string } | null>(null);
-  const fps = film.fps || 30;
+  const fps = film.fps || DEFAULT_FPS;
 
   const timeline = useMemo(() => {
     try {

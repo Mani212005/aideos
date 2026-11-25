@@ -8,6 +8,10 @@
  * Used by: backend/allCheck/index.ts.
  */
 
+import { DEFAULT_STUDIO_PORT } from "../../src/dl/defaults";
+
+import { REPO_ROOT as repositoryRoot } from "../paths";
+
 import { formatScore } from "../geminiReview/verdictPolicy";
 import fs from "node:fs";
 import path from "node:path";
@@ -40,17 +44,17 @@ export interface FinishDeps {
   strays?: (slug: string) => string[];
 }
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
+const REPO_ROOT = repositoryRoot;
 
 // Whether something listens on the studio port.
 function realStudioRunning(): boolean {
-  const r = spawnSync("lsof", ["-tiTCP:3001", "-sTCP:LISTEN"], { encoding: "utf8" });
+  const r = spawnSync("lsof", [`-tiTCP:${DEFAULT_STUDIO_PORT}`, "-sTCP:LISTEN"], { encoding: "utf8" });
   return r.status === 0 && r.stdout.trim().length > 0;
 }
 
 // Stops the studio the way `aideos exit` does.
 function realStopStudio(): void {
-  const r = spawnSync("lsof", ["-tiTCP:3001", "-sTCP:LISTEN"], { encoding: "utf8" });
+  const r = spawnSync("lsof", [`-tiTCP:${DEFAULT_STUDIO_PORT}`, "-sTCP:LISTEN"], { encoding: "utf8" });
   for (const pid of r.stdout.split(/\s+/).filter(Boolean)) {
     try {
       process.kill(Number(pid));

@@ -4,13 +4,16 @@
  * Used by: scripts/smoke_studio.ts and backend/journeys/j3_studio_edit.journey.ts (AI edit apply, new project, script save, reload, script input gating).
  */
 
+import { environment } from "../backend/env";
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { freePort } from "../backend/freePort";
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 const EDITOR_DIR = path.join(ROOT, "editor");
 
 /** Polls a URL until it answers or the deadline passes. */
@@ -65,7 +68,7 @@ export async function startEditor(videosDir?: string): Promise<DevServer> {
     cwd: EDITOR_DIR,
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,
-    env: { ...process.env, ...(videosDir ? { AIDEOS_VIDEOS_DIR: videosDir } : {}) },
+    env: { ...environment, ...(videosDir ? { AIDEOS_VIDEOS_DIR: videosDir } : {}) },
   });
   let log = "";
   child.stdout?.on("data", (d) => (log += d));
@@ -211,7 +214,7 @@ export class StudioPage {
           "--disable-extensions",
           "--window-size=1440,900",
           // A CI runner is a disposable container: Chrome's sandbox needs privileges it does not grant.
-          ...(process.env.CI === "true" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
+          ...(environment.CI === "true" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
           `--user-data-dir=${profile}`,
           `--remote-debugging-port=${debugPort}`,
           "about:blank",

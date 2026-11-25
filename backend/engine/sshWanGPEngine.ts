@@ -6,6 +6,8 @@
  * Inputs and outputs: job spec and SSH configuration -> remote GPU render job execution and downloaded video.
  * Used by: backend/engine/index.ts.
  */
+
+import { environment } from "../env";
 import { spawn } from "child_process";
 import fs from "fs/promises";
 import fsSync from "fs";
@@ -15,14 +17,14 @@ import type { VideoEngine, VideoJobHandle, VideoJobSpec, VideoJobStatus } from "
 import { loadProfile } from "./profiles";
 
 /** Remote layout, all user-space paths on the GPU box. */
-const REMOTE_WGP_DIR = process.env.WAN_GPU_WGP_DIR || "~/Wan2GP";
-const REMOTE_PYTHON = process.env.WAN_GPU_PYTHON || "~/wangp-env/bin/python";
-const REMOTE_JOBS_DIR = process.env.WAN_GPU_JOBS_DIR || "~/wangp-jobs";
-const REMOTE_OUT_ROOT = process.env.WAN_GPU_OUT_ROOT || "~/wangp-out";
+const REMOTE_WGP_DIR = environment.WAN_GPU_WGP_DIR || "~/Wan2GP";
+const REMOTE_PYTHON = environment.WAN_GPU_PYTHON || "~/wangp-env/bin/python";
+const REMOTE_JOBS_DIR = environment.WAN_GPU_JOBS_DIR || "~/wangp-jobs";
+const REMOTE_OUT_ROOT = environment.WAN_GPU_OUT_ROOT || "~/wangp-out";
 
 /** Connection facts for the GPU box; the password only ever travels via env. */
-const host = () => process.env.WAN_GPU_HOST || "100.98.174.122";
-const user = () => process.env.WAN_GPU_USER || "s03714802824";
+const host = () => environment.WAN_GPU_HOST || "100.98.174.122";
+const user = () => environment.WAN_GPU_USER || "s03714802824";
 
 /** Dedicated keyfile path; installed once by the runbook recipe. */
 const keyFile = () => path.join(os.homedir(), ".ssh", "wan_gpu_key");
@@ -46,7 +48,7 @@ const NATIVE_FPS = 16;
 /** Spawn a local process and collect its combined output. */
 function runProcess(cmd: string, args: string[], env?: NodeJS.ProcessEnv): Promise<{ code: number; out: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { env: env ?? process.env, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(cmd, args, { env: env ?? environment, stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     child.stdout.on("data", (d) => (out += d));
     child.stderr.on("data", (d) => (out += d));
@@ -62,7 +64,7 @@ function runProcess(cmd: string, args: string[], env?: NodeJS.ProcessEnv): Promi
  * Tcl quoting ever touches job data.
  */
 async function runExpect(cmd: string, args: string[], timeoutSec: number): Promise<{ code: number; out: string }> {
-  if (!process.env.WAN_GPU_PASSWORD) {
+  if (!environment.WAN_GPU_PASSWORD) {
     throw new Error("WAN_GPU_PASSWORD is not set and no SSH key exists; cannot reach the GPU box.");
   }
   // Tcl-list encode each element: bare when simple, brace-quoted otherwise.
@@ -81,7 +83,7 @@ async function runExpect(cmd: string, args: string[], timeoutSec: number): Promi
     `exit [lindex $result 3]`,
   ].join("\n");
   const res = await runProcess("/usr/bin/expect", ["-c", script], {
-    ...process.env,
+    ...environment,
     WAN_GPU_EXPECT_ARGV: argvList,
   });
   return { code: res.code, out: clean(res.out) };

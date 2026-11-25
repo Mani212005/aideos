@@ -11,6 +11,8 @@
  * Used by: backend/pipeline/design.ts, backend/eval/shotVisualEval.ts.
  */
 
+import { environment } from "./env";
+
 import { narrationSupportsVisual } from "./shotVisualCues";
 
 /** The 7 animated primitives in the design system closed set. */
@@ -176,8 +178,8 @@ export function clearMockJevHandler(): void {
 
 // Safely reads an environment variable in both Node and browser environments.
 function readEnv(key: string): string | undefined {
-  if (typeof process !== "undefined" && process?.env) {
-    return process.env[key];
+  if (typeof process !== "undefined" && environment) {
+    return environment[key];
   }
   return undefined;
 }

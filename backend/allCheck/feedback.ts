@@ -7,6 +7,8 @@
  * Used by: backend/allCheck/cli.ts, backend/compare/cli.ts.
  */
 
+import { environment } from "../env";
+
 import { readOriginSession } from "../agentSession/originSession";
 import { herdrSocket, herdrJson, paneInfo, realHerdr, type HerdrRun } from "./herdr";
 import type { FormatRoundRecord } from "./types";
@@ -40,7 +42,7 @@ export function formatFeedbackMessage(slug: string, records: FormatRoundRecord[]
 }
 
 // Sends a message to the originating session's pane when that session is alive and is not the caller. It starts no agent: it only types into the pane of the session that started the film.
-export function deliverMessageToOrigin(slug: string, message: string, deps: FeedbackDeps = { herdr: realHerdr, env: process.env }, subject = "round"): FeedbackOutcome {
+export function deliverMessageToOrigin(slug: string, message: string, deps: FeedbackDeps = { herdr: realHerdr, env: environment }, subject = "round"): FeedbackOutcome {
   const origin = readOriginSession(slug);
   if (!origin?.herdr) return { delivered: false, reason: "no originating session pane is recorded for this film" };
   const here = deps.env.HERDR_ENV === "1" ? deps.env.HERDR_PANE_ID : undefined;
@@ -66,7 +68,7 @@ export function deliverMessageToOrigin(slug: string, message: string, deps: Feed
 export function deliverFeedbackToOrigin(
   slug: string,
   records: FormatRoundRecord[],
-  deps: FeedbackDeps = { herdr: realHerdr, env: process.env },
+  deps: FeedbackDeps = { herdr: realHerdr, env: environment },
 ): FeedbackOutcome {
   if (records.every((r) => r.passed)) return { delivered: false, reason: "the round passed: nothing to revise" };
   return deliverMessageToOrigin(slug, formatFeedbackMessage(slug, records), deps, "round");

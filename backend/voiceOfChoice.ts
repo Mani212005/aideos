@@ -8,6 +8,8 @@
  * Used by: backend/designCheck/designCheck.ts, backend/voiceOfChoice.test.ts.
  */
 
+import { environment } from "./env";
+
 import { VCD_DEFAULT_VOICE_KEY, VCD_HINDI_VOICE_KEY } from "./vcdClient";
 
 /** The one speech backend that speaks with the owner's cloned voice. */
@@ -37,7 +39,7 @@ export function isVoiceOfChoiceNarrator(ttsBackend: unknown): boolean {
 }
 
 // True when the environment explicitly lets this run keep a narrator other than the voice of choice.
-export function otherVoiceOverrideActive(env: NodeJS.ProcessEnv = process.env): boolean {
+export function otherVoiceOverrideActive(env: NodeJS.ProcessEnv = environment): boolean {
   const value = env[OTHER_VOICE_OVERRIDE_ENV]?.trim().toLowerCase();
   return value === "1" || value === "true";
 }

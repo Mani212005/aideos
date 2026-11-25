@@ -20,6 +20,8 @@
  * another spoke is never stored or reported as the requested voice.
  */
 
+import { environment } from "./env";
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -127,7 +129,7 @@ export function readContainerMemoryLimit(): number | null {
 }
 
 /** True when this host can hold the Kokoro model (the worker process loads it); AIDEOS_KOKORO=1/0 overrides the guess. */
-export function kokoroFits(limit: number | null, env: NodeJS.ProcessEnv = process.env): boolean {
+export function kokoroFits(limit: number | null, env: NodeJS.ProcessEnv = environment): boolean {
   if (env.AIDEOS_KOKORO === "1") return true;
   if (env.AIDEOS_KOKORO === "0") return false;
   return (limit ?? os.totalmem()) >= KOKORO_MIN_MEMORY_BYTES;
@@ -363,7 +365,7 @@ export interface SpokenVoiceover {
 export async function synthesizeVoiceover(
   req: SynthesisRequest,
   deps: SynthesisDeps,
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = environment,
 ): Promise<SpokenVoiceover> {
   const attempts: ProviderAttempt[] = [];
   /** The result for audio `provider` spoke. */

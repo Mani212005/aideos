@@ -6,6 +6,9 @@
  * Used by: npm run smoke:studio, npm run ci (journeys job).
  */
 
+import { environment } from "../backend/env";
+import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -17,7 +20,7 @@ import { installVoiceOfChoiceForTests } from "../backend/testSupport/fakeVcd";
 // Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.
 installVoiceOfChoiceForTests();
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = repositoryRoot;
 const SLUG = "smoke-studio";
 // An element that only exists once the React app has rendered its shell.
 const RENDERED_SELECTOR = 'nav[aria-label="Production stages"]';
@@ -89,7 +92,7 @@ async function previewShot(page: StudioPage, name: string): Promise<string> {
     if (Date.now() > deadline) throw new Error(`the preview picture "${name}" kept changing for 10 s on a fixed frame`);
     png = next;
   }
-  const dir = path.join(process.env.AIDEOS_CI_ARTIFACTS ?? path.join(ROOT, ".ci-artifacts"), "studio");
+  const dir = path.join(environment.AIDEOS_CI_ARTIFACTS ?? path.join(ROOT, ".ci-artifacts"), "studio");
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${name}.png`);
   fs.writeFileSync(file, png);
@@ -195,7 +198,7 @@ async function scrubSaveReload(page: StudioPage, url: string, filmFile: string):
 async function main(): Promise<void> {
   const chrome = findChromeBinary();
   if (!chrome) {
-    if (process.env.AIDEOS_SMOKE_REQUIRED === "1") throw new Error("no Chrome or Chromium found; set AIDEOS_CHROME_PATH");
+    if (environment.AIDEOS_SMOKE_REQUIRED === "1") throw new Error("no Chrome or Chromium found; set AIDEOS_CHROME_PATH");
     console.warn("[smoke] skipped: no Chrome or Chromium found (set AIDEOS_CHROME_PATH to enable)");
     return;
   }
@@ -203,7 +206,7 @@ async function main(): Promise<void> {
   // The film is made by the real pipeline (owner voice through the fake voice service, template design) in a throwaway videos
   // folder, so the journey never touches anyone's own videos and needs no model or key.
   const videosDir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-smoke-videos-"));
-  process.env.AIDEOS_VIDEOS_DIR = videosDir;
+  environment.AIDEOS_VIDEOS_DIR = videosDir;
   const shadow = path.join(ROOT, "src/dl/films", `${SLUG}.ts`);
   // The studio server rewrites the generated active-film module when a project is opened; put it back afterwards.
   const activeFile = path.join(ROOT, "src/dl/activeFilm.ts");

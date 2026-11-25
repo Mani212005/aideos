@@ -67,6 +67,20 @@ export default [
     rules: Object.fromEntries(remotionRules.map((name) => [name, "off"])),
   },
   {
+    // Runtime environment and caller directory access belong to their shared Node modules.
+    // Standalone .mjs entry points run without a TypeScript loader; tests control process state directly.
+    files: ["backend/**/*.{ts,tsx}", "scripts/**/*.{ts,tsx}", "src/**/*.{ts,tsx}", "editor/**/*.{ts,tsx}"],
+    ignores: ["backend/env.ts", "backend/paths.ts", "**/*.test.ts", "**/*.journey.ts", "**/*.golden.ts", "**/*.live.ts", "backend/testSupport/**", "backend/journeys/**"],
+    rules: {
+      "no-restricted-syntax": ["error",
+        { selector: "MemberExpression[object.name='process'][property.name='env']", message: "Use environment from backend/env.ts." },
+        { selector: "MemberExpression[object.name='process'][property.value='env']", message: "Use environment from backend/env.ts." },
+        { selector: "CallExpression[callee.object.name='process'][callee.property.name='cwd']", message: "Use callerWorkingDirectory from backend/paths.ts." },
+        { selector: "CallExpression[callee.object.name='process'][callee.property.value='cwd']", message: "Use callerWorkingDirectory from backend/paths.ts." },
+      ],
+    },
+  },
+  {
     files: LEGACY_ANY,
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },

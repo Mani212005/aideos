@@ -7,6 +7,8 @@
  * Used by: backend/editPlanner/planner.ts, backend/editPlanner/interpreter.ts.
  */
 
+import { DEFAULT_FPS } from "../../src/dl/defaults";
+
 import type { EditContext, EditContextClipSummary } from "../editContext/buildEditContext";
 import {
   audioPayloadSchema,
@@ -81,7 +83,7 @@ function createLayeredFilmFromContext(context: EditContext): LayeredFilm {
   return {
     id: "context-film",
     title: "Context Film",
-    fps: (context.meta.fps as 24 | 30 | 60) || 30,
+    fps: (context.meta.fps as 24 | 30 | 60) || DEFAULT_FPS,
     accent: context.meta.accent || DEFAULT_PROJECT_ACCENT,
     theme: context.meta.theme,
     captionPlacement: context.meta.captionPlacement,
