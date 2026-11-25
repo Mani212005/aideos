@@ -12,9 +12,9 @@
 | Check | Status | Notes |
 | --- | --- | --- |
 | Real E2E run | N/A | The picture journey (`pictures_stage.journey.ts`) is left to the no-mistakes pipeline: this worker may not run full journeys on the shared machine. `pictures.test.ts` and `pictureComposition.test.ts` run the real design check on real PNG files and passed |
-| Property test for new invariants | PASS | `backend/pictures/png.test.ts`: independent spec encoder (all colour types, depths, Adam7, all five filters, tRNS) round-trips through the decoder; it also passes on the pre-change decoder |
-| Differential test on replacement | PASS | Old and new run on shared inputs: decoder 6933 random PNGs (1915 of them invalid, same error text), 3 real PNGs, 0 byte differences; palette check 2800 random pictures (612 with findings), identical findings JSON; frame tone 300 random frames, bit-identical doubles; `relativeLuminance` 2000 colours identical. Harness kept with the benchmark scripts outside the repo (see the handoff) |
-| Expect / golden test for complex output | N/A | No new structured output; `backend/study/tone.test.ts` adds hand-computed expected values for the tone statistics |
+| Property test for new invariants | N/A | No new tests per project rule; permanent tests can be added on the owner's request |
+| Differential test on replacement | PASS | Old and new run on shared inputs: decoder 6933 random PNGs (1915 of them invalid, same error text), 3 real PNGs, 0 byte differences; palette check 2800 random pictures (612 with findings), identical findings JSON; frame tone 300 random frames, bit-identical doubles; `relativeLuminance` 2000 colours identical. One-off old-versus-new comparison; harness kept with the benchmark scripts outside the repo (see the handoff) |
+| Expect / golden test for complex output | N/A | No new structured output |
 | No sleeps in tests | PASS | None added |
 | No mocks of thing under test | PASS | Decoder and tone code run for real |
 | Protected suites unloosened | PASS | No existing test, tolerance, timeout or golden touched |
@@ -26,10 +26,9 @@
 
 | Command | Result | Notes / artifacts |
 | --- | --- | --- |
-| `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/pictures/png.test.ts backend/study/tone.test.ts backend/designCheck/pictures.test.ts backend/designCheck/pictureComposition.test.ts backend/pictures/cache.test.ts backend/pictures/cli.test.ts backend/study/study.test.ts` | PASS (exit 0) | 34 tests, 0 fail |
+| `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/designCheck/pictures.test.ts backend/designCheck/pictureComposition.test.ts backend/pictures/cache.test.ts backend/pictures/cli.test.ts backend/study/study.test.ts` | PASS (exit 0) | 29 tests, 0 fail |
 | `npx tsc --noEmit -p tsconfig.json` | PASS (exit 0) | clean |
-| `npx eslint` on the five touched code files and the two new tests | PASS (exit 0) | clean |
-| mutation checks of the property test (filter 3 shift, tRNS key index) | detected | both made `png.test.ts` fail |
+| `npx eslint` on the touched code files | PASS (exit 0) | clean |
 
 ## Fix attempts
 
