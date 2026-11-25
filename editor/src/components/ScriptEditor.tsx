@@ -819,9 +819,9 @@ export function ScriptEditor({
       {/* Top Header & Project Metadata */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <FileEdit size={18} className="text-select-text" />
-            <h2 className="text-lg font-semibold">
+            <h2 className="whitespace-nowrap text-lg font-semibold">
               Script & Voiceover Studio
             </h2>
             <span className="text-xs bg-paper-3 text-ink-soft border border-line px-2.5 py-0.5 font-mono">
@@ -1025,16 +1025,16 @@ export function ScriptEditor({
         <div className="lg:col-span-3 flex flex-col gap-3 min-h-[420px]">
           {/* Story header bar */}
           <div className="flex items-center justify-between bg-paper-3 border border-line px-4 py-2 flex-wrap gap-2">
-            <div className="flex items-center gap-4 text-xs text-ink-soft">
-              <span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-soft">
+              <span className="whitespace-nowrap">
                 <strong>Paragraphs:</strong>{" "}
                 <span className="text-ink font-mono font-semibold">{paragraphCount}</span>
               </span>
-              <span>
+              <span className="whitespace-nowrap">
                 <strong>Spoken:</strong>{" "}
                 <span className="text-ink font-mono font-semibold">{spokenWords.length} words</span>
               </span>
-              <span>
+              <span className="whitespace-nowrap">
                 <strong>Duration:</strong>{" "}
                 {duration > 0 ? (
                   <span className="text-ink font-mono font-semibold">{formatTimecode(duration)}</span>

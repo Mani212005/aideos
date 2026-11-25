@@ -267,7 +267,7 @@ export default function App() {
           >
             Films
           </Button>
-          <span className="min-w-0 truncate font-mono text-xs text-ink-soft" title={film.title}>
+          <span className="hidden min-w-0 truncate font-mono text-xs text-ink-soft sm:inline" title={film.title}>
             {film.id}
           </span>
         </div>
