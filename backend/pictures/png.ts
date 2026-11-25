@@ -76,31 +76,41 @@ function paeth(a: number, b: number, c: number): number {
   return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
 }
 
-// Undoes the per-row filters of one (sub)image in place, returning the raw scanlines without filter bytes.
+// Undoes the per-row filters of one (sub)image, returning the raw scanlines without filter bytes. The filter is chosen once per row, outside the byte loop.
 function unfilter(data: Uint8Array, offset: number, width: number, height: number, bpp: number, bitsPerPixel: number): { rows: Uint8Array; next: number } {
   const stride = Math.ceil((width * bitsPerPixel) / 8);
   const rows = new Uint8Array(stride * height);
+  // The row above the first row reads as zeros, so every filter treats row 0 like any other row.
+  const zeros = new Uint8Array(stride);
+  const lead = Math.min(bpp, stride);
   let at = offset;
   for (let y = 0; y < height; y++) {
     if (at + 1 + stride > data.length) throw new Error("PNG image data is shorter than its size needs");
     const filter = data[at++];
     const row = y * stride;
-    const prev = row - stride;
-    for (let x = 0; x < stride; x++) {
-      const raw = data[at + x];
-      const a = x >= bpp ? rows[row + x - bpp] : 0;
-      const b = y > 0 ? rows[prev + x] : 0;
-      const c = x >= bpp && y > 0 ? rows[prev + x - bpp] : 0;
-      let v: number;
-      switch (filter) {
-        case 0: v = raw; break;
-        case 1: v = raw + a; break;
-        case 2: v = raw + b; break;
-        case 3: v = raw + ((a + b) >> 1); break;
-        case 4: v = raw + paeth(a, b, c); break;
-        default: throw new Error(`PNG row ${y} uses unknown filter ${filter}`);
-      }
-      rows[row + x] = v & 255;
+    const up = y > 0 ? rows : zeros;
+    const upAt = y > 0 ? row - stride : 0;
+    switch (filter) {
+      case 0:
+        rows.set(data.subarray(at, at + stride), row);
+        break;
+      case 1:
+        for (let x = 0; x < lead; x++) rows[row + x] = data[at + x];
+        for (let x = bpp; x < stride; x++) rows[row + x] = data[at + x] + rows[row + x - bpp];
+        break;
+      case 2:
+        for (let x = 0; x < stride; x++) rows[row + x] = data[at + x] + up[upAt + x];
+        break;
+      case 3:
+        for (let x = 0; x < lead; x++) rows[row + x] = data[at + x] + (up[upAt + x] >> 1);
+        for (let x = bpp; x < stride; x++) rows[row + x] = data[at + x] + ((rows[row + x - bpp] + up[upAt + x]) >> 1);
+        break;
+      case 4:
+        for (let x = 0; x < lead; x++) rows[row + x] = data[at + x] + paeth(0, up[upAt + x], 0);
+        for (let x = bpp; x < stride; x++) rows[row + x] = data[at + x] + paeth(rows[row + x - bpp], up[upAt + x], up[upAt + x - bpp]);
+        break;
+      default:
+        throw new Error(`PNG row ${y} uses unknown filter ${filter}`);
     }
     at += stride;
   }
@@ -114,6 +124,11 @@ function sample(row: Uint8Array, start: number, i: number, depth: number, scale:
   const bit = i * depth;
   const v = (row[start + (bit >> 3)] >> (8 - depth - (bit & 7))) & ((1 << depth) - 1);
   return scale ? Math.round((v * 255) / ((1 << depth) - 1)) : v;
+}
+
+// Reads the full-precision value of sample `i` of a scanline (16-bit channels keep both bytes), as the tRNS colour key compares it.
+function rawSample(row: Uint8Array, start: number, i: number, depth: number): number {
+  return depth === 16 ? (row[start + i * 2] << 8) | row[start + i * 2 + 1] : sample(row, start, i, depth, false);
 }
 
 /** Decodes a PNG into straight-alpha RGBA8 (16-bit channels keep their high byte; tRNS transparency is applied). */
@@ -131,36 +146,62 @@ export function decodePng(png: Uint8Array): RgbaImage {
   const trns = all.find((c) => c.type === "tRNS")?.data;
   if (colorType === 3 && !plte) throw new Error("palette PNG has no PLTE chunk");
   const rgba = new Uint8Array(width * height * 4);
-  // Writes one decoded scanline of a (sub)image into the output at the given pixel positions.
-  const put = (rows: Uint8Array, w: number, y: number, xAt: (x: number) => number, yOut: number) => {
-    const stride = Math.ceil((w * bitsPerPixel) / 8);
-    const start = y * stride;
-    for (let x = 0; x < w; x++) {
-      const o = (yOut * width + xAt(x)) * 4;
-      if (colorType === 3) {
-        const index = sample(rows, start, x, bitDepth, false);
-        if (index * 3 + 2 >= plte!.length) throw new Error(`palette index ${index} is outside the PLTE chunk`);
-        rgba[o] = plte![index * 3];
-        rgba[o + 1] = plte![index * 3 + 1];
-        rgba[o + 2] = plte![index * 3 + 2];
-        rgba[o + 3] = trns && index < trns.length ? trns[index] : 255;
-        continue;
+  // The tRNS colour key of a grey or RGB image as full-precision samples (null when the image has none).
+  const keyGray = colorType === 0 && trns && trns.length >= 2 ? trns.readUInt16BE(0) : null;
+  const keyRgb = colorType === 2 && trns && trns.length >= 6 ? [trns.readUInt16BE(0), trns.readUInt16BE(2), trns.readUInt16BE(4)] : null;
+  // The palette as RGBA entries (alpha from tRNS), so a palette pixel is one table lookup.
+  const entries = plte ? Math.floor(plte.length / 3) : 0;
+  const palette = new Uint8Array(entries * 4);
+  for (let i = 0; i < entries; i++) {
+    palette[i * 4] = plte![i * 3];
+    palette[i * 4 + 1] = plte![i * 3 + 1];
+    palette[i * 4 + 2] = plte![i * 3 + 2];
+    palette[i * 4 + 3] = trns && i < trns.length ? trns[i] : 255;
+  }
+  // Writes one decoded scanline of a (sub)image into the output: pixel x lands at column xStart + x * xStep of row yOut.
+  const put = (rows: Uint8Array, w: number, y: number, xStart: number, xStep: number, yOut: number): void => {
+    const start = y * Math.ceil((w * bitsPerPixel) / 8);
+    const oStep = xStep * 4;
+    let o = (yOut * width + xStart) * 4;
+    if (bitDepth === 8 && colorType === 6) {
+      // 8-bit RGBA is already the output layout.
+      if (xStep === 1) rgba.set(rows.subarray(start, start + w * 4), o);
+      else for (let x = 0; x < w; x++, o += oStep) for (let k = 0; k < 4; k++) rgba[o + k] = rows[start + x * 4 + k];
+      return;
+    }
+    if (bitDepth === 8 && colorType === 2) {
+      for (let x = 0, i = start; x < w; x++, i += 3, o += oStep) {
+        const r = rows[i], g = rows[i + 1], b = rows[i + 2];
+        rgba[o] = r; rgba[o + 1] = g; rgba[o + 2] = b;
+        rgba[o + 3] = keyRgb && r === keyRgb[0] && g === keyRgb[1] && b === keyRgb[2] ? 0 : 255;
       }
-      const s = (k: number) => sample(rows, start, x * channels + k, bitDepth, true);
-      const raw = (k: number) => (bitDepth === 16 ? (rows[start + (x * channels + k) * 2] << 8) | rows[start + (x * channels + k) * 2 + 1] : sample(rows, start, x * channels + k, bitDepth, false));
+      return;
+    }
+    if (colorType === 3) {
+      for (let x = 0; x < w; x++, o += oStep) {
+        const index = bitDepth === 8 ? rows[start + x] : sample(rows, start, x, bitDepth, false);
+        if (index >= entries) throw new Error(`palette index ${index} is outside the PLTE chunk`);
+        const p = index * 4;
+        rgba[o] = palette[p]; rgba[o + 1] = palette[p + 1]; rgba[o + 2] = palette[p + 2]; rgba[o + 3] = palette[p + 3];
+      }
+      return;
+    }
+    // Every other layout (grey, grey and alpha, 16-bit, sub-byte depths) reads samples one at a time.
+    for (let x = 0; x < w; x++, o += oStep) {
+      const at = x * channels;
       if (colorType === 0 || colorType === 4) {
-        const g = s(0);
+        const g = sample(rows, start, at, bitDepth, true);
         rgba[o] = g; rgba[o + 1] = g; rgba[o + 2] = g;
-        rgba[o + 3] = colorType === 4 ? s(1) : trns && trns.length >= 2 && raw(0) === trns.readUInt16BE(0) ? 0 : 255;
+        rgba[o + 3] = colorType === 4 ? sample(rows, start, at + 1, bitDepth, true) : keyGray !== null && rawSample(rows, start, at, bitDepth) === keyGray ? 0 : 255;
       } else {
-        rgba[o] = s(0); rgba[o + 1] = s(1); rgba[o + 2] = s(2);
-        rgba[o + 3] = colorType === 6 ? s(3) : trns && trns.length >= 6 && raw(0) === trns.readUInt16BE(0) && raw(1) === trns.readUInt16BE(2) && raw(2) === trns.readUInt16BE(4) ? 0 : 255;
+        rgba[o] = sample(rows, start, at, bitDepth, true); rgba[o + 1] = sample(rows, start, at + 1, bitDepth, true); rgba[o + 2] = sample(rows, start, at + 2, bitDepth, true);
+        rgba[o + 3] = colorType === 6 ? sample(rows, start, at + 3, bitDepth, true) : keyRgb && rawSample(rows, start, at, bitDepth) === keyRgb[0] && rawSample(rows, start, at + 1, bitDepth) === keyRgb[1] && rawSample(rows, start, at + 2, bitDepth) === keyRgb[2] ? 0 : 255;
       }
     }
   };
   if (!header.interlaced) {
     const { rows } = unfilter(data, 0, width, height, bpp, bitsPerPixel);
-    for (let y = 0; y < height; y++) put(rows, width, y, (x) => x, y);
+    for (let y = 0; y < height; y++) put(rows, width, y, 0, 1, y);
   } else {
     // Adam7: seven passes, each a small filtered image on its own grid.
     const passes = [[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4], [1, 0, 2, 2], [0, 1, 1, 2]];
@@ -171,7 +212,7 @@ export function decodePng(png: Uint8Array): RgbaImage {
       if (w <= 0 || h <= 0) continue;
       const { rows, next } = unfilter(data, offset, w, h, bpp, bitsPerPixel);
       offset = next;
-      for (let y = 0; y < h; y++) put(rows, w, y, (x) => x0 + x * dx, y0 + y * dy);
+      for (let y = 0; y < h; y++) put(rows, w, y, x0, dx, y0 + y * dy);
     }
   }
   return { width, height, rgba };
