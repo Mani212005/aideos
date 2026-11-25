@@ -12,7 +12,7 @@
 | Check | Status | Notes |
 | --- | --- | --- |
 | Real E2E run | N/A | The changed coverage exercises pure schema parsing and the real retime cache function; no user-facing workflow changed. |
-| Property test for new invariants | PASS | `backend/audio.test.ts` checks eight generated speeds against real cache files; `backend/schemaRoundTrip.property.test.ts` checks generated film JSON round trips. |
+| Property test for new invariants | PASS | `backend/audio.test.ts` checks eight generated speeds against real cache files, and a seeded property checks the retime cache key (same inputs give the same key, different sources differ, two speeds share a key exactly when they share an ffmpeg atempo filter); `backend/schemaRoundTrip.property.test.ts` checks generated film JSON round trips. |
 | Differential test on replacement | N/A | No production implementation was replaced. |
 | Expect / golden test for complex output | N/A | No complex output format or rendered output changed. |
 | No sleeps | PASS | No fixed-delay waits were added. |
@@ -44,3 +44,7 @@
 
 - `backend/schemaRoundTrip.property.test.ts`
 - `backend/audio.test.ts`
+
+## Stale-cache bug fix
+
+`getRetimedAudioFilename` rounded the speed to 3 decimals while `buildAtempoFilter` rounds to 4, so two speeds (for example 1.5001 and 1.5004) shared one cache file but ran different filters, and the second call returned the first call's stale render. The cache filename is now derived from the atempo filter string itself, which now lives in `src/dl/audio/retime.ts` (re-exported from `backend/audio.ts`). Effect: retimed cache filenames change (for example `..._1_250x.wav` becomes `..._atempo_1_2500.wav`), so old cached files are simply regenerated on next use.

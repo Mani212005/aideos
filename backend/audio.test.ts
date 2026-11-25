@@ -29,7 +29,7 @@ import { measureLoudness } from "./review/media";
 import { getRetimedAudioFilename, getRetimedAudioRelPath } from "../src/dl/audio/retime";
 import { decodeWav, encodeWav } from "./pcm";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
-import { forAll, randInt } from "./testSupport/propertyTest";
+import { forAll, pick, randInt } from "./testSupport/propertyTest";
 
 const fixtureDir = path.resolve(process.cwd(), "test_fixtures");
 const testAudioPath = path.join(fixtureDir, "test_audio.wav");
@@ -298,12 +298,44 @@ test("retimeAudioSync reuses its disk cache for generated speeds", () => {
   }
 });
 
+test("retime cache key is stable and distinguishes exactly what the ffmpeg filter distinguishes", () => {
+  const sources = ["videos/a/voiceover.wav", "videos/b/voiceover.wav", "videos/a/music.wav"];
+  forAll(
+    "retime cache key tracks the atempo filter",
+    (rand) => ({
+      src: pick(rand, sources),
+      other: pick(rand, sources),
+      a: randInt(rand, 3000, 40000) / 10000,
+      b: randInt(rand, 3000, 40000) / 10000,
+    }),
+    ({ src, other, a, b }) => {
+      assert.equal(getRetimedAudioFilename(src, a), getRetimedAudioFilename(src, a), "same inputs, same key");
+      assert.equal(
+        getRetimedAudioFilename(src, a) === getRetimedAudioFilename(src, b),
+        buildAtempoFilter(a) === buildAtempoFilter(b),
+        `speeds ${a} and ${b} must share a key exactly when they share a filter`
+      );
+      if (src !== other) {
+        assert.notEqual(getRetimedAudioFilename(src, a), getRetimedAudioFilename(other, a), "different sources, different keys");
+      }
+    }
+  );
+});
+
+test("retime cache key separates speeds that differ only at the 4th decimal or inside a chained filter", () => {
+  const src = "videos/test-film/voiceover.wav";
+  assert.notEqual(getRetimedAudioFilename(src, 1.5001), getRetimedAudioFilename(src, 1.5004));
+  assert.notEqual(buildAtempoFilter(1.5001), buildAtempoFilter(1.5004));
+  assert.notEqual(getRetimedAudioFilename(src, 3.00005), getRetimedAudioFilename(src, 3.00014));
+  assert.notEqual(buildAtempoFilter(3.00005), buildAtempoFilter(3.00014));
+});
+
 test("getRetimedAudioFilename and getRetimedAudioRelPath produce deterministic public paths", () => {
   const filename = getRetimedAudioFilename("videos/test-film/voiceover.wav", 1.25);
-  assert.equal(filename, "retimed_videos_test-film_voiceover_wav_1_250x.wav");
+  assert.equal(filename, "retimed_videos_test-film_voiceover_wav_atempo_1_2500.wav");
 
   const relPath = getRetimedAudioRelPath("videos/test-film/voiceover.wav", 1.25);
-  assert.equal(relPath, ".tmp_audio/retimed_videos_test-film_voiceover_wav_1_250x.wav");
+  assert.equal(relPath, ".tmp_audio/retimed_videos_test-film_voiceover_wav_atempo_1_2500.wav");
 });
 
 test("ensureRetimedAudio pre-renders retimed audio for static Remotion CLI resolution", () => {
