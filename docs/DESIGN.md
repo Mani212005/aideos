@@ -29,7 +29,7 @@ The editor UI runs locally on Vite (`http://localhost:3001` for dev, `http://loc
 
 The studio is one shell: a header, a lens bar with four lenses (Words, Look, Cut, Check) and one surface that is the Films home or the open lens, plus the Agent sheet. `editor/README.md`, section "One Shell: Films Home, 4 Lenses, Agent Sheet", is the single description of that shell, so there is no diagram here to drift from it.
 
-Every lens reads and writes the film through one state layer: `useFilmProject` (the open film, autosave, labelled undo and redo) and `useLayeredTimeline` (the lossless `Film` to `LayeredFilm` round trip over `backend/timeline/`). The preview is the Remotion player, and the exported mp4 comes from the same render tree.
+Every lens reads and writes the film through one state layer, described in `editor/README.md`, section "State Management & Timeline Layer Engine". The preview is the Remotion player, and the exported mp4 comes from the same render tree.
 
 ---
 
