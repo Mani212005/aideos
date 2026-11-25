@@ -5,7 +5,7 @@
 - **Date**: 2026-11-25
 - **Branch / PR**: fm/aideos-habits-s10-bound-io (PR URL added by the pipeline)
 - **Scope**: Feature Map rows "Studio Media Upload & Imported Footage" (`editor/vite.config.ts` file routes, `backend/studioRequest.ts`), "2D Scene Engine, SceneKit" (`backend/sceneKit/whisperWords.py`), "CI, Test Wiring & Static Enforcement" (`backend/proc.ts`, `scripts/*`), plus the child-process call sites in the Export, Voiceover, Soundtrack, Review and Study rows
-- **Risk tier**: Medium (34 files change, but each call-site edit only adds a time limit; a limit can only fire on a hung child)
+- **Risk tier**: Medium (47 source and test files change, but each call-site edit only adds a time limit; a limit can only fire on a hung child)
 
 ## Reliability checklist
 
