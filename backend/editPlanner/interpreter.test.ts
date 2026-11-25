@@ -236,9 +236,9 @@ test("interpreter: reorder_segments repositions linked audio and video in sync",
     ],
     clips: [
       { id: "v1", layerId: "layer-video", position: 0, start: 0, end: 4, kind: "video", payload: { src: "media/clip1.mp4" }, linkedClipId: "a1", opacity: 1, volume: 1 },
-      { id: "a1", layerId: "layer-audio-footage", position: 0, start: 0, end: 4, kind: "audio", payload: { src: "media/clip1.mp4" }, linkedClipId: "v1", opacity: 1, volume: 1 },
+      { id: "a1", layerId: "layer-audio-footage", position: 0, start: 0, end: 4, kind: "audio", payload: { src: "media/clip1.mp4", channel: "external" }, linkedClipId: "v1", opacity: 1, volume: 1 },
       { id: "v2", layerId: "layer-video", position: 4, start: 0, end: 6, kind: "video", payload: { src: "media/clip2.mp4" }, linkedClipId: "a2", opacity: 1, volume: 1 },
-      { id: "a2", layerId: "layer-audio-footage", position: 4, start: 0, end: 6, kind: "audio", payload: { src: "media/clip2.mp4" }, linkedClipId: "v2", opacity: 1, volume: 1 },
+      { id: "a2", layerId: "layer-audio-footage", position: 4, start: 0, end: 6, kind: "audio", payload: { src: "media/clip2.mp4", channel: "external" }, linkedClipId: "v2", opacity: 1, volume: 1 },
     ],
   };
 
@@ -277,9 +277,9 @@ test("interpreter: set_clip_speed retimes linked partner and cascades collisions
     ],
     clips: [
       { id: "v1", layerId: "layer-video", position: 0, start: 0, end: 4, kind: "video", payload: { src: "media/clip1.mp4" }, linkedClipId: "a1", opacity: 1, volume: 1 },
-      { id: "a1", layerId: "layer-audio-footage", position: 0, start: 0, end: 4, kind: "audio", payload: { src: "media/clip1.mp4" }, linkedClipId: "v1", opacity: 1, volume: 1 },
+      { id: "a1", layerId: "layer-audio-footage", position: 0, start: 0, end: 4, kind: "audio", payload: { src: "media/clip1.mp4", channel: "external" }, linkedClipId: "v1", opacity: 1, volume: 1 },
       { id: "v2", layerId: "layer-video", position: 4, start: 0, end: 8, kind: "video", payload: { src: "media/clip2.mp4" }, linkedClipId: "a2", opacity: 1, volume: 1 },
-      { id: "a2", layerId: "layer-audio-footage", position: 4, start: 0, end: 8, kind: "audio", payload: { src: "media/clip2.mp4" }, linkedClipId: "v2", opacity: 1, volume: 1 },
+      { id: "a2", layerId: "layer-audio-footage", position: 4, start: 0, end: 8, kind: "audio", payload: { src: "media/clip2.mp4", channel: "external" }, linkedClipId: "v2", opacity: 1, volume: 1 },
     ],
   };
 

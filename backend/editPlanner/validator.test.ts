@@ -46,7 +46,7 @@ function createTestLayeredFilm(): LayeredFilm {
         start: 0,
         end: 10,
         kind: "audio",
-        payload: { src: "media/audio.wav" },
+        payload: { src: "media/audio.wav", channel: "voiceover" },
         opacity: 1,
         volume: 1,
       },

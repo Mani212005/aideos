@@ -9,7 +9,6 @@
  */
 
 import type { CameraTrack } from "./types";
-import type { SvgEasing } from "./svgAnimation";
 import { applySvgEasing } from "./svgAnimation";
 import { evaluateMonotoneSpline, type KnotPoint } from "../motion/spline";
 import { HOLD_PUSH_HANDBACK_SECONDS, holdPushAt, holdPushPeak, type HoldRun } from "../holdPush";
@@ -106,7 +105,7 @@ function compileKeyframes(
 
       if (k0.easing) {
         const t = (f - k0.frame) / (k1.frame - k0.frame);
-        const easedT = applySvgEasing(k0.easing as SvgEasing, t);
+        const easedT = applySvgEasing(k0.easing, t);
         curves[f] = {
           center: {
             x: k0.center.x + (k1.center.x - k0.center.x) * easedT,

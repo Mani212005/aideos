@@ -34,6 +34,12 @@ export interface ValidationResult {
 export const SUPPORTED_SCHEMA_VERSION = "1.0.0";
 const UNSUPPORTED_ACTOR_RULE = 21;
 
+/** The instance id a legacy actor entry names, when it names one: the schema refuses actors, so their shape is unknown. */
+function actorInstanceId(actor: unknown): string | undefined {
+  if (typeof actor !== "object" || actor === null || !("instanceId" in actor)) return undefined;
+  return typeof actor.instanceId === "string" ? actor.instanceId : undefined;
+}
+
 /**
  * Validates a Scene data object against the supported schema and physical integrity rules.
  * @param scene Complete Scene data object.
@@ -55,10 +61,10 @@ export function validateScene(scene: Scene): ValidationResult {
   if (Array.isArray(scene.actors) && scene.actors.length > 0) {
     return {
       isValid: false,
-      errors: scene.actors.map((actor) => ({
+      errors: scene.actors.map(actorInstanceId).map((instanceId) => ({
         rule: UNSUPPORTED_ACTOR_RULE,
-        entityId: actor.instanceId,
-        message: `Actor "${actor.instanceId || "(missing instanceId)"}" cannot be rendered: character rigs are not supported; scene rendering currently supports SVG backgrounds and props only.`,
+        entityId: instanceId,
+        message: `Actor "${instanceId || "(missing instanceId)"}" cannot be rendered: character rigs are not supported; scene rendering currently supports SVG backgrounds and props only.`,
       })),
       warnings,
     };

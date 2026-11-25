@@ -616,7 +616,7 @@ test("spoken decimal phrases ground rendered decimals and keep negative signs", 
       start: 0,
       end: 1,
       opacity: 1,
-      payload: { text: "Reading -0.12" },
+      payload: { text: "Reading -0.12", size: "headline" },
     },
   ];
   const negativeContext = createReelContext({ film: negativeFilm });
@@ -718,7 +718,7 @@ test("overlay text is grounded only in shots where its timeline interval is visi
       start: 0,
       end: 1,
       opacity: 1,
-      payload: { text: "Value -7" },
+      payload: { text: "Value -7", size: "headline" },
     },
     {
       id: "marker-overlay",
@@ -787,7 +787,7 @@ test("spoken year phrases ground rendered year labels", () => {
       start: 0,
       end: 1,
       opacity: 1,
-      payload: { text: "1984" },
+      payload: { text: "1984", size: "headline" },
     },
   ];
   const context = createReelContext({ film: f });

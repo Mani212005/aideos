@@ -16,16 +16,6 @@ import { createReelContext, type ReelContext } from "./constraints";
 import { parseReelBudget, type ReelBudget, type ReelCut } from "./schema";
 import { visibleReelText } from "./visibleText";
 
-export class ReelCutSceneFilmError extends Error {
-  readonly code = "REEL_CUT_SCENE_FILMS_ONLY";
-
-  // Initializes the stable CLI error contract for unsupported film packages.
-  constructor() {
-    super("reel cut supports scene films only; this package uses legacy actors");
-    this.name = "ReelCutSceneFilmError";
-  }
-}
-
 // Resolves a validated package slug without accepting arbitrary filesystem traversal.
 export function reelPackageDir(slug: string): string {
   if (!/^[a-z0-9-]+$/.test(slug)) throw new Error(`invalid film id "${slug}"`);
@@ -47,7 +37,6 @@ export function loadReelContext(slug: string): ReelContext {
   );
   if (film.id !== slug)
     throw new Error(`package "${slug}" contains film "${film.id}"`);
-  if (film.scene?.actors.length) throw new ReelCutSceneFilmError();
   const design = optionalJson(path.join(pkg, "design/design.json"));
   const look = optionalJson(path.join(pkg, "design/look.json"));
   return createReelContext({

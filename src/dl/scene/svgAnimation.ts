@@ -5,7 +5,7 @@
  * state. Every value is a pure function of the frame index: no wall clock, no CSS transitions and
  * no unseeded randomness, so a scene renders identically on every pass.
  * Inputs and outputs: declarative SVG animation clips and frame index -> compiled per-element animated attributes.
- * Used by: src/dl/scene/compile.ts, backend/scene/svgAnimation.test.ts.
+ * Used by: src/dl/scene/compile.ts, src/dl/scene/schema.ts (the property and easing lists), backend/scene/svgAnimation.test.ts.
  */
 
 import type { Vec2 } from "./types";
@@ -19,22 +19,25 @@ import type { Vec2 } from "./types";
  * - drawOn reveals a stroked path from 0 (nothing drawn) to 1 (fully drawn) via stroke dashing.
  * - x1 / y1 / x2 / y2 animate line endpoint coordinates directly.
  */
-export type SvgAnimatableProperty =
-  | "translateX"
-  | "translateY"
-  | "scale"
-  | "scaleX"
-  | "scaleY"
-  | "rotate"
-  | "opacity"
-  | "drawOn"
-  | "x1"
-  | "y1"
-  | "x2"
-  | "y2";
+export const SVG_ANIMATABLE_PROPERTIES = [
+  "translateX",
+  "translateY",
+  "scale",
+  "scaleX",
+  "scaleY",
+  "rotate",
+  "opacity",
+  "drawOn",
+  "x1",
+  "y1",
+  "x2",
+  "y2",
+] as const;
+export type SvgAnimatableProperty = (typeof SVG_ANIMATABLE_PROPERTIES)[number];
 
 /** The easing curves available to a clip. expoOut is the project standard (see motion.ts EXPO). */
-export type SvgEasing = "linear" | "expoOut" | "expoIn" | "expoInOut" | "hold";
+export const SVG_EASINGS = ["linear", "expoOut", "expoIn", "expoInOut", "hold"] as const;
+export type SvgEasing = (typeof SVG_EASINGS)[number];
 
 /** One declarative animation: a property moving from one value to another over a frame span. */
 export interface SvgAnimationClip {
@@ -116,23 +119,6 @@ export interface SvgTimelineValidationContext {
   /** Ids actually declared in the asset's SVG document; omit to skip the target existence check. */
   availableElementIds?: string[];
 }
-
-export const SVG_ANIMATABLE_PROPERTIES: readonly SvgAnimatableProperty[] = [
-  "translateX",
-  "translateY",
-  "scale",
-  "scaleX",
-  "scaleY",
-  "rotate",
-  "opacity",
-  "drawOn",
-  "x1",
-  "y1",
-  "x2",
-  "y2",
-];
-
-const SVG_EASINGS: readonly SvgEasing[] = ["linear", "expoOut", "expoIn", "expoInOut", "hold"];
 
 /** The neutral state an element sits in before any clip touches it. */
 export function identitySvgElementState(origin?: Vec2): SvgElementState {

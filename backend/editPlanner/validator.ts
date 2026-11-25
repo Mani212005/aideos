@@ -7,8 +7,17 @@
  * Used by: backend/editPlanner/planner.ts, backend/editPlanner/interpreter.ts.
  */
 
-import type { EditContext } from "../editContext/buildEditContext";
-import type { LayeredFilm, Layer, Clip } from "../../src/dl/layeredSchema";
+import type { EditContext, EditContextClipSummary } from "../editContext/buildEditContext";
+import {
+  audioPayloadSchema,
+  imagePayloadSchema,
+  subtitlePayloadSchema,
+  textPayloadSchema,
+  videoPayloadSchema,
+  type LayeredFilm,
+  type Layer,
+  type Clip,
+} from "../../src/dl/layeredSchema";
 import { shotSchema } from "../../src/dl/schema";
 import { editProgramSchema, type EditOp } from "./schema";
 import { applyEditProgram } from "./interpreter";
@@ -20,6 +29,37 @@ export interface EditProgramValidationResult {
   errors: string[];
   warnings: string[];
   program?: EditOp[];
+}
+
+/** Source and text a stand-in clip carries: the context summarises clips without their payloads. */
+const STAND_IN_SRC = "media/source.mp4";
+const STAND_IN_TEXT = "stand-in";
+
+/**
+ * Rebuilds one context clip as a clip of its own kind, with a stand-in payload that kind's schema accepts,
+ * so the dry run checks the timeline the program edits rather than failing on the missing payload.
+ */
+function standInClip(c: EditContextClipSummary): Clip {
+  const base = { id: c.id, layerId: c.layerId, position: c.position, start: c.start, end: c.end, linkedClipId: c.linkedClipId ?? null, opacity: 1, volume: 1 };
+  switch (c.kind) {
+    case "animation": {
+      const shotId = c.captionShot?.id ?? c.id;
+      const shot = shotSchema.parse({ id: shotId, dur: Math.max(0.5, c.end - c.start), look: ["n1"], stage: "none" });
+      return { ...base, kind: "animation", payload: { ...shot, shotId, captionPlacement: c.captionShot?.captionPlacement } };
+    }
+    case "video":
+      return { ...base, kind: "video", payload: videoPayloadSchema.parse({ src: STAND_IN_SRC }) };
+    case "audio":
+      return { ...base, kind: "audio", payload: audioPayloadSchema.parse({ src: STAND_IN_SRC }) };
+    case "image":
+      return { ...base, kind: "image", payload: imagePayloadSchema.parse({ src: STAND_IN_SRC }) };
+    case "text":
+      return { ...base, kind: "text", payload: textPayloadSchema.parse({ text: STAND_IN_TEXT }) };
+    case "subtitle":
+      return { ...base, kind: "subtitle", payload: subtitlePayloadSchema.parse({ text: STAND_IN_TEXT }) };
+    default:
+      throw new Error(`clip "${c.id}" has unknown kind "${c.kind}"`);
+  }
 }
 
 /**
@@ -36,18 +76,7 @@ function createLayeredFilmFromContext(context: EditContext): LayeredFilm {
     height: 48,
   }));
 
-  const clips: Clip[] = context.clips.map((c) => ({
-    id: c.id,
-    layerId: c.layerId,
-    position: c.position,
-    start: c.start,
-    end: c.end,
-    linkedClipId: c.linkedClipId ?? null,
-    kind: c.kind as any,
-    payload: c.captionShot ? { ...shotSchema.parse({ id: c.captionShot.id, dur: Math.max(0.5, c.end - c.start), look: ["n1"], stage: "none" }), shotId: c.captionShot.id, captionPlacement: c.captionShot.captionPlacement } : { src: "media/source.mp4" },
-    opacity: 1,
-    volume: 1,
-  }));
+  const clips: Clip[] = context.clips.map(standInClip);
 
   return {
     id: "context-film",

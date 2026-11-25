@@ -123,7 +123,7 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   const scene = film.scene;
   if (!scene) reasons.push("node-graph films (no film.scene) are Phase 2 of the native renderer");
   else {
-    if (scene.renderer === "three") reasons.push(...stage3dCarryReasons(scene as unknown as Scene));
+    if (scene.renderer === "three") reasons.push(...stage3dCarryReasons(scene));
     if (scene.actors && scene.actors.length > 0) reasons.push("scene actors (character rigs) are not drawn natively");
     for (const asset of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
       if (asset.subGroups && asset.subGroups.length > 0) reasons.push(`asset ${asset.assetId}: sub-group rotation is not drawn natively`);
@@ -605,10 +605,16 @@ function hasPictures(scene: Scene): boolean {
   return [scene.background, ...scene.props].some((a) => a?.raster !== undefined);
 }
 
+/** The film's scene. The native renderer emits scene films only, and nativeSupport refuses the rest before any emit. */
+function sceneOf(film: Film): Scene {
+  if (!film.scene) throw new Error(`film "${film.id}" has no scene; the native renderer emits scene films only`);
+  return film.scene;
+}
+
 /** Emits the overlay and stage for one format, given a text measurer callback pair and, for a Three film, its emitted stage. */
 function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx["metrics"], stage3d?: EmittedStage3d): RenderIr {
   const { film, format } = input;
-  const scene = film.scene as unknown as Scene;
+  const scene = sceneOf(film);
   const { width, height } = FORMAT_SIZE[format];
   const theme = BACKGROUND_THEMES[film.theme?.background ?? "paper-white"] ?? BACKGROUND_THEMES["paper-white"];
   const tokens = tokensFor(theme);
@@ -896,7 +902,7 @@ function resolveAudio(film: Film, delivery: ReturnType<typeof deliveryTimeline>)
 
 /** The last frame the scene shows in a format: the story holds its last frame through the end card, and the scene its own. */
 function sceneLastFrame(film: Film, format: NativeFormat): number {
-  const scene = film.scene as unknown as Scene;
+  const scene = sceneOf(film);
   const storyLast = Math.max(0, deliveryTimeline(film, format).storyFrames - 1);
   return Math.min(storyLast, scene.durationFrames - 1);
 }
@@ -905,7 +911,7 @@ function sceneLastFrame(film: Film, format: NativeFormat): number {
 export function emitRenderIr(input: EmitInput): EmitResult {
   const reasons = nativeSupport(input.film, input.format);
   if (reasons.length) throw new NativeUnsupportedError(reasons);
-  const threeScene = input.film.scene?.renderer === "three" ? (input.film.scene as unknown as Scene) : undefined;
+  const threeScene = input.film.scene?.renderer === "three" ? input.film.scene : undefined;
   // The stage is evaluated once: both layout passes below share it.
   const stage3d = threeScene ? emitStage3d(threeScene, sceneLastFrame(input.film, input.format) + 1) : undefined;
   const fonts: MeasureFont[] = [
@@ -938,7 +944,7 @@ export function emitRenderIr(input: EmitInput): EmitResult {
   const checked = validateRenderIr(ir);
   if (!checked.ok) throw new Error(`the emitted Render IR is invalid: ${JSON.stringify(checked.error)}`);
 
-  const scene = input.film.scene as unknown as Scene;
+  const scene = sceneOf(input.film);
   const files: PackageFile[] = [
     { path: "fonts/Geist-latin.ttf", from: input.resolvePath(NATIVE_FONT_FILES.sans) },
     { path: "fonts/JetBrainsMono-latin.ttf", from: input.resolvePath(NATIVE_FONT_FILES.mono) },

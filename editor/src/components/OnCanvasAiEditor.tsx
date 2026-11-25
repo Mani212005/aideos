@@ -10,7 +10,6 @@
 import React, { useState, useMemo, useRef, useLayoutEffect } from "react";
 import { Sparkles, Check, X, Loader2, ArrowRight, Wand2 } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
-import type { TimedShot } from "../../../src/dl/camera";
 import { convertFilmToLayeredFilm, convertLayeredFilmToFilm } from "../../../src/dl/convertFilm";
 import { applyEditProgram } from "../../../backend/editPlanner/interpreter";
 import type { EditOp } from "../../../backend/editPlanner/schema";
@@ -19,8 +18,6 @@ import { useFilmSave } from "../state/FilmSaveContext";
 
 interface OnCanvasAiEditorProps {
   film: Film;
-  timeline: TimedShot[];
-  currentFrame: number;
   onUpdateFilm: (updatedFilm: Film) => void;
   accent?: string;
   folded?: boolean;
@@ -81,8 +78,11 @@ function describeEditOp(op: EditOp): string {
       return `Update Theme Configuration`;
     case "reorder_segments":
       return `Reorder Segments: ${op.order.length} clips`;
-    default:
-      return (op as any).op;
+    default: {
+      // Every EditOp kind has a case above, so this only runs for a kind added without one.
+      const unhandled: never = op;
+      return (unhandled as { op: string }).op;
+    }
   }
 }
 

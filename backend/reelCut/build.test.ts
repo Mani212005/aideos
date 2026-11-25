@@ -121,8 +121,8 @@ test("reel compile: standalone clips stay within shortened kept-shot narration",
     { id: "late-video", src: "media/late.mp4", position: 8, start: 0, end: 1, opacity: 1, volume: 1 },
   ];
   long.overlayClips = [
-    { id: "early-overlay", kind: "text", position: 1, start: 0, end: 1, opacity: 1, payload: { text: "Kept" } },
-    { id: "late-overlay", kind: "text", position: 8, start: 0, end: 1, opacity: 1, payload: { text: "Expired" } },
+    { id: "early-overlay", kind: "text", position: 1, start: 0, end: 1, opacity: 1, payload: { text: "Kept", size: "headline" } },
+    { id: "late-overlay", kind: "text", position: 8, start: 0, end: 1, opacity: 1, payload: { text: "Expired", size: "headline" } },
   ];
   const result = compileReel({
     long,
