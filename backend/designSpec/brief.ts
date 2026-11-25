@@ -108,7 +108,7 @@ Write \`videos/${film.id}/design/design.json\` and the SVG artwork it names in \
 then run \`aideos design build ${film.id}\` and fix whatever it reports until it prints PASS. A failing
 build never touches the film, so iterate freely. The smallest worked example of a scene film is
 \`examples/hello-scene/\`; a full-length one is \`test_fixtures/packages/still-talking/\` (built by
-\`backend/stillTalking/scene.ts\` on the same kit).
+\`test_fixtures/stillTalking/scene.ts\` on the same kit).
 
 ## Video Quality Expectations
 ${RUBRIC_SUMMARY}
