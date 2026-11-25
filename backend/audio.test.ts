@@ -302,12 +302,11 @@ test("retime cache key is stable and distinguishes exactly what the ffmpeg filte
   const sources = ["videos/a/voiceover.wav", "videos/b/voiceover.wav", "videos/a/music.wav"];
   forAll(
     "retime cache key tracks the atempo filter",
-    (rand) => ({
-      src: pick(rand, sources),
-      other: pick(rand, sources),
-      a: randInt(rand, 3000, 40000) / 10000,
-      b: randInt(rand, 3000, 40000) / 10000,
-    }),
+    (rand) => {
+      const a = randInt(rand, 300000, 4000000) / 1000000;
+      const offset = randInt(rand, -150, 150) / 100000;
+      return { src: pick(rand, sources), other: pick(rand, sources), a, b: a + offset };
+    },
     ({ src, other, a, b }) => {
       assert.equal(getRetimedAudioFilename(src, a), getRetimedAudioFilename(src, a), "same inputs, same key");
       assert.equal(
