@@ -32,39 +32,25 @@ import * as fsSync from "fs";
 import {
   assembleSegments,
   deriveShotDurations,
-  distributeWordTimings,
   encodeWav,
   decodeWav,
   shotDurationsOnMillisecondGrid,
   normalizePeak,
   timeStretch,
   DEFAULT_ASSEMBLE_OPTIONS,
+  narrationWordTimings,
   type PcmChunk,
+  type SegmentAudioInfo,
+  type TimedWord,
+  type UtteranceInfo,
 } from "./pcm";
 
 export { trimSilence, CHAPTER_BREATH_GAP_MS } from "./pcm";
 export { detectChapterStartsFromScript } from "./scriptIntake";
 
-export interface WordInfo {
-  word: string;
-  start: number;
-  end: number;
-  punctuated_word?: string;
-}
-
-export interface UtteranceInfo {
-  start: number;
-  end: number;
-  transcript: string;
-}
-
-export interface SegmentAudioInfo {
-  text: string;
-  duration: number;
-  startOffset: number;
-  words: WordInfo[];
-  utterances: UtteranceInfo[];
-}
+/** A narrated word with its offsets in seconds (the shared TimedWord). */
+export type WordInfo = TimedWord;
+export type { SegmentAudioInfo, UtteranceInfo };
 
 export interface ProduceAudioResult {
   segments: SegmentAudioInfo[];
@@ -528,29 +514,8 @@ export async function produceAudioPipeline(
 
   // Shot durations run boundary to boundary so every shot starts exactly where its narration
   // does, and the final shot absorbs the tail. Summing them reproduces the audio length exactly.
-  const segments: SegmentAudioInfo[] = [];
   const shotDurations = deriveShotDurations(assembled.segments, assembled.totalSec);
-  const absoluteWords: WordInfo[] = [];
-
-  assembled.segments.forEach((seg) => {
-    const relativeWords = distributeWordTimings(seg.text, seg.durationSec);
-    relativeWords.forEach((w) => {
-      absoluteWords.push({
-        word: w.word,
-        punctuated_word: w.punctuated_word,
-        start: Number((seg.startSec + w.start).toFixed(3)),
-        end: Number((seg.startSec + w.end).toFixed(3)),
-      });
-    });
-
-    segments.push({
-      text: seg.text,
-      duration: seg.durationSec,
-      startOffset: seg.startSec,
-      words: relativeWords,
-      utterances: [{ start: 0, end: seg.durationSec, transcript: seg.text }],
-    });
-  });
+  const { words: absoluteWords, segments } = narrationWordTimings(assembled.segments);
 
   const vttContent = buildCaptionsVtt(absoluteWords);
   const captionsPath = path.join(outDir, "captions.vtt");

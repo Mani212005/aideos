@@ -9,6 +9,7 @@ import type { Film } from "../../../src/dl/schema";
 import type { ExportJobSnapshot } from "../../../backend/exportJobTypes";
 import type { ExportJobApi } from "../state/useExportJob";
 import { Button, Note, ProgressBar, cn } from "./ui";
+import { formatTimecode } from "../utils/time";
 
 export interface CheckExportProps {
   exportJob: ExportJobApi;
@@ -33,13 +34,6 @@ export function stepStates(job: ExportJobSnapshot): Array<"done" | "active" | "w
           ? 2
           : 1;
   return STEPS.map((_, i) => (job.status === "done" || i < current ? "done" : i === current ? "active" : "waiting"));
-}
-
-/** Formats raw seconds as m:ss. */
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 }
 
 /** Hands the finished file to the browser. Called only from the click of the Download button. */
@@ -74,7 +68,7 @@ export function CheckExport({ exportJob, film, format, durationInFrames, blocked
   const { job, armed, error, starting } = exportJob;
   const fps = job?.fps ?? (film.fps || 30);
   const frames = job?.durationInFrames ?? durationInFrames;
-  const facts = `${format === "long" ? "1920 x 1080" : "1080 x 1920"} | ${fps} fps | ${frames.toLocaleString()} frames | ${formatTime(Math.round(frames / fps))}`;
+  const facts = `${format === "long" ? "1920 x 1080" : "1080 x 1920"} | ${fps} fps | ${frames.toLocaleString()} frames | ${formatTimecode(Math.round(frames / fps))}`;
 
   // The problem found while starting or following the export, when it is not a render failure.
   const problem = error ? <ErrorNote message={error} summary="Export did not start." /> : null;
@@ -96,7 +90,7 @@ export function CheckExport({ exportJob, film, format, durationInFrames, blocked
         <p className="font-mono text-xs tabular-nums text-ink-soft">
           {job.renderedFrames.toLocaleString()} / {job.totalFrames.toLocaleString()} frames
           {" | "}
-          {formatTime(Math.max(0, Math.round((Date.now() - job.startedAt) / 1000)))}
+          {formatTimecode(Math.max(0, Math.round((Date.now() - job.startedAt) / 1000)))}
         </p>
         <div>
           <Button tone="danger" onClick={() => void exportJob.cancel()}>

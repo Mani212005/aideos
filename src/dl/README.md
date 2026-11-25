@@ -21,7 +21,7 @@ behavior, identity deliveries, and delivered-length limits, see the
 | §07 Device library    | `devices.tsx`                                   |
 | Custom SVG animation  | `scene/` - see [scene/README.md](scene/README.md)  |
 | Sparse performances   | `performance/` - see [performance/README.md](performance/README.md) |
-| §08 Runsheet          | `schema.ts` `superRefine` + `scripts/validate.mjs` |
+| §08 Runsheet          | `schema.ts` `superRefine` + `scripts/validate_film.ts` |
 | §09 Schema contract   | `schema.ts`                                      |
 
 ## The three rules that hold it together

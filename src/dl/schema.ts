@@ -335,9 +335,6 @@ export const cameraTrackSchema = z.object({
   holdPush: z.number().min(MIN_HOLD_PUSH).max(MAX_HOLD_PUSH).optional(),
 });
 
-export type CameraKeyframe = z.infer<typeof cameraKeyframeSchema>;
-export type CameraTrack = z.infer<typeof cameraTrackSchema>;
-
 export const sceneSchema = z.object({
   treatmentResourceHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   treatment: stageTreatmentSchema.optional(),
@@ -433,6 +430,9 @@ export const captionPlacementByFormatSchema = z.object({
 export type CaptionPlacement = z.infer<typeof captionPlacementSchema>;
 export type CaptionPlacementByFormat = z.infer<typeof captionPlacementByFormatSchema>;
 
+/** The semantic metaphor cue a shot may carry, shared by the film shot and the layered shot payload. */
+export const metaphorSchema = z.enum(["spider-web", "liquid-bucket", "balance-scale", "clock-gears", "rocket-launch", "character-throw", "glowing-cluster", "typing-cursor-quote", "custom"]);
+
 export const shotSchema = z.preprocess(dropLegacyBlocks, z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   captionPlacement: captionPlacementByFormatSchema.optional(),
@@ -473,7 +473,7 @@ export const shotSchema = z.preprocess(dropLegacyBlocks, z.object({
   // eslint-disable-next-line @remotion/non-pure-animation
   transition: z.enum(["paper-rip", "zoom-morph", "matrix-glitch", "whip-pan", "film-burn"]).optional(),
   /** Optional semantic metaphor cue for script-driven visual depictions. */
-  metaphor: z.enum(["spider-web", "liquid-bucket", "balance-scale", "clock-gears", "rocket-launch", "character-throw", "glowing-cluster", "typing-cursor-quote", "custom"]).optional(),
+  metaphor: metaphorSchema.optional(),
   /** Flag for visual pipeline B-roll generation */
   needsFootage: z.boolean().optional(),
   /** Narration / speech playback speed multiplier (e.g. 1.0x, 1.25x, 1.5x) */

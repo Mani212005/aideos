@@ -1,6 +1,6 @@
 /**
- * File Description: ffmpeg and ffprobe access for `aideos review`.
- * Probes the rendered file, streams decoded gray frames (small ones for layout analysis, full
+ * File Description: ffmpeg access for `aideos review` (the probe itself lives in backend/media/probe.ts).
+ * Streams decoded gray frames (small ones for layout analysis, full
  * resolution ones for OCR and contrast), measures loudness and silence, and extracts evidence
  * stills. Frames are streamed and reduced one at a time, so a long film never sits in memory.
  * The parsers for ffmpeg's text output are pure and exported for tests.
@@ -11,35 +11,13 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { VideoFacts } from "./types";
+import type { VideoFacts } from "../media/probe";
 
 // Runs a binary to completion and returns stdout and stderr; a missing binary throws a clear error.
 function run(bin: string, args: string[]): { stdout: string; stderr: string; status: number } {
   const r = spawnSync(bin, args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (r.error) throw new Error(`could not run ${bin}: ${r.error.message}. Install ffmpeg to use aideos review.`);
   return { stdout: r.stdout, stderr: r.stderr, status: r.status ?? 1 };
-}
-
-// Reads width, height, fps, duration and audio presence of a media file.
-export function probeVideo(file: string): VideoFacts {
-  if (!fs.existsSync(file)) throw new Error(`no video at ${file}`);
-  const r = run("ffprobe", ["-v", "error", "-show_entries", "stream=codec_type,width,height,avg_frame_rate,duration:format=duration", "-of", "json", file]);
-  if (r.status !== 0) throw new Error(`ffprobe could not read ${file}: ${r.stderr.trim().slice(0, 300)}`);
-  const info = JSON.parse(r.stdout) as { streams?: Array<{ codec_type: string; width?: number; height?: number; avg_frame_rate?: string; duration?: string }>; format?: { duration?: string } };
-  const video = info.streams?.find((s) => s.codec_type === "video");
-  if (!video?.width || !video.height) throw new Error(`${file} has no video stream`);
-  const audio = info.streams?.find((s) => s.codec_type === "audio");
-  const [num, den] = (video.avg_frame_rate ?? "30/1").split("/").map(Number);
-  return {
-    path: file,
-    durationSec: Number(video.duration ?? info.format?.duration ?? 0),
-    containerDurationSec: Number(info.format?.duration ?? video.duration ?? 0),
-    width: video.width,
-    height: video.height,
-    fps: den ? Math.round((num / den) * 100) / 100 : 30,
-    hasAudio: Boolean(audio),
-    audioDurationSec: audio?.duration ? Number(audio.duration) : audio ? Number(info.format?.duration ?? 0) : null,
-  };
 }
 
 // Streams fixed-size raw gray frames out of an ffmpeg process, calling onFrame for each in order.

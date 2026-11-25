@@ -5,6 +5,7 @@
  */
 import { AlignHorizontalJustifyCenter, Copy, LockKeyhole, RotateCcw, Subtitles, UnlockKeyhole, Undo2 } from "lucide-react";
 import { Button } from "../ui";
+import { formatTimecode } from "../../utils/time";
 
 export interface CaptionStripProps {
   selected: boolean;
@@ -31,7 +32,7 @@ export function describeArtWarning(message: string, fps: number): { text: string
   if (!frame) return { text: "Covers part of the artwork in this shot", detail: message };
   const seconds = Math.floor(Number(frame[1]) / fps);
   return {
-    text: `Covers part of the artwork in this shot (${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")})`,
+    text: `Covers part of the artwork in this shot (${formatTimecode(seconds)})`,
     detail: message,
   };
 }

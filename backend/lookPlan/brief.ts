@@ -11,6 +11,7 @@ import { boundTheme, boundThemeName, DEFAULT_PROJECT_ACCENT, filmAccent } from "
 import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
 import { CHARACTER_LIBRARY, loadCharacterFile } from "../characters/library";
 import { HOUSE_PACE } from "../pacingProfile";
+import { formatDurationSec } from "../formatDurationSec";
 
 /** A character an author can name in a performance, as the brief lists it. */
 export interface AvailableCharacter {
@@ -105,12 +106,6 @@ ${rows}
 ${example}`;
 }
 
-// Formats seconds into m:ss clock format.
-function clock(sec: number): string {
-  const s = Math.max(0, Math.round(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
-
 /** Working example look plan structure shown in the brief. */
 export const EXAMPLE_LOOK_PLAN = {
   schema: "aideos.look/1",
@@ -195,7 +190,7 @@ export function renderLookBrief(film: Film, characters: AvailableCharacter[] = a
   let t = 0;
   const shotList = film.shots
     .map((s) => {
-      const line = `- \`${s.id}\` (${clock(t)}-${clock(t + s.dur)}, ${s.dur.toFixed(1)}s, chapter "${s.ch}")\n  - says: ${s.scriptText?.trim() || "(no narration)"}${s.visualDirection ? `\n  - direction: ${s.visualDirection}` : ""}`;
+      const line = `- \`${s.id}\` (${formatDurationSec(t)}-${formatDurationSec(t + s.dur)}, ${s.dur.toFixed(1)}s, chapter "${s.ch}")\n  - says: ${s.scriptText?.trim() || "(no narration)"}${s.visualDirection ? `\n  - direction: ${s.visualDirection}` : ""}`;
       t += s.dur;
       return line;
     })

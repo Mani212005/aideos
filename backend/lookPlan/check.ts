@@ -13,7 +13,8 @@ import { parseFilm, type Film } from "../../src/dl/schema";
 import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { loadCharacter } from "../characters/library";
 import { createCues, type Cues } from "../sceneKit";
-import { narrationTimingForFilm, type TimedWord } from "../designSpec/compile";
+import { narrationTimingForFilm } from "../designSpec/compile";
+import type { TimedWord } from "../pcm";
 import { performanceStartIssue } from "../designSpec/cues";
 
 export type LookCheckRule =

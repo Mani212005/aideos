@@ -26,14 +26,7 @@ import { captionWordsToVtt } from "../../src/dl/captionsParser";
 import { resolveSoundtrack } from "./soundtrack";
 import { planSpliceWindow, spacePosesAtCuts, SPLICE_EASING, type SpliceOptions } from "../reelCut/splice";
 import { planStretchedGlides, type GlideShot } from "../reelCut/glide";
-
-/** One narrated word with its offsets in seconds, as voiceover_words.json stores it. */
-export interface TimedWord {
-  word: string;
-  punctuated_word?: string;
-  start: number;
-  end: number;
-}
+import type { TimedWord } from "../pcm";
 
 /** File the build writes when a spec has no background: the plain canvas colour. */
 export const DEFAULT_BACKGROUND_FILE = "visuals/canvas.svg";

@@ -15,6 +15,7 @@ import fs from "fs";
 import path from "path";
 import { generateText } from "../modelClient";
 import { parseClaudeScript } from "../scriptIntake";
+import { stripCodeFence } from "../modelReply";
 import { ROOT } from "./filmStore";
 import { runProduction, type ProgressHandler } from "./run";
 import type { ProductionRequest, ProductionResult } from "./types";
@@ -83,17 +84,6 @@ export interface DraftedScreenplay {
   title: string;
   /** How many drafts it took to produce a usable screenplay. */
   attempts: number;
-}
-
-/** Strips surrounding markdown code block fences if present on model-generated text. */
-function stripCodeFence(text: string): string {
-  const cleaned = text.trim();
-  const fenced = cleaned.match(/^```(?:markdown|md)?\s*\n?([\s\S]*?)\n?```$/i);
-  if (fenced) return fenced[1].trim();
-  if (cleaned.startsWith("```")) {
-    return cleaned.replace(/^```[a-zA-Z]*\s*/, "").replace(/\s*```$/, "").trim();
-  }
-  return cleaned;
 }
 
 /**

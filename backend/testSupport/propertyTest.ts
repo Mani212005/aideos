@@ -1,22 +1,17 @@
 /**
- * File Description: A small zero-dependency property-test runner: a seeded random source (mulberry32), a few generators, and forAll, which runs a check over many generated inputs and, on a failure, reports the property name, the seed and the input so the exact case replays. AIDEOS_PROPERTY_SEED=<n> replays one seed and AIDEOS_PROPERTY_CASES=<n> changes the case count.
+ * File Description: A small property-test runner with no outside dependency: a seeded random source (the scene kit's mulberry32 `rng`), a few generators, and forAll, which runs a check over many generated inputs and, on a failure, reports the property name, the seed and the input so the exact case replays. AIDEOS_PROPERTY_SEED=<n> replays one seed and AIDEOS_PROPERTY_CASES=<n> changes the case count.
  * Inputs and outputs: a generator and a check function -> returns on success, throws an Error naming the failing seed and input on failure.
  * Used by: backend/testSupport/characters.ts (seeded), backend/timeFrameArithmetic.property.test.ts, backend/timeline/layerIds.property.test.ts.
  */
 
+import { rng } from "../sceneKit/svg";
+
 /** A uniform random source in [0, 1). */
 export type Rand = () => number;
 
-// Returns a deterministic uniform random source (mulberry32) so a failing property case is reproducible by seed.
+// Returns a deterministic uniform random source (the kit's mulberry32) so a failing property case is reproducible by seed.
 export function seeded(seed: number): Rand {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+  return rng(seed);
 }
 
 // Draws an integer in [lo, hi] inclusive.

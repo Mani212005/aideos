@@ -9,6 +9,7 @@
  * Studio script-to-TTS route through assertScriptReadyForSynthesis, and editor/src/components/ScriptEditor.tsx.
  */
 
+import { formatDurationSec } from "./formatDurationSec";
 import {
   type AnimatedPrimitive,
   type JevDecisionState,
@@ -220,12 +221,6 @@ export interface ScreenplayShotSource {
   visualDirection?: string;
 }
 
-// Formats seconds as a screenplay timestamp ("m:ss").
-function formatScriptTime(totalSec: number): string {
-  const sec = Math.max(0, Math.round(totalSec));
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
-}
-
 // Rebuilds a screenplay from a film's shots (one segment per chapter) for a package with no script.md.
 export function screenplayFromFilmShots(shots: ScreenplayShotSource[]): string {
   const segments: ScriptSegment[] = [];
@@ -237,10 +232,10 @@ export function screenplayFromFilmShots(shots: ScreenplayShotSource[]): string {
     const title = shot.ch?.trim() || "Untitled";
     let seg = segments[segments.length - 1];
     if (!seg || seg.title !== title) {
-      seg = { id: slugify(title) || `segment-${segments.length + 1}`, title, timeStart: formatScriptTime(start), beats: [] };
+      seg = { id: slugify(title) || `segment-${segments.length + 1}`, title, timeStart: formatDurationSec(start), beats: [] };
       segments.push(seg);
     }
-    seg.timeEnd = formatScriptTime(clock);
+    seg.timeEnd = formatDurationSec(clock);
     if (shot.visualDirection?.trim()) seg.beats.push({ type: "visual", text: shot.visualDirection.trim() });
     seg.beats.push({ type: "narration", text: shot.scriptText.trim() });
   }
@@ -459,7 +454,7 @@ export function plainTextToSegments(raw: string, options?: { speed?: number }): 
       clock += estimateNarrationSeconds(paragraph, speed);
       beats.push({ type: "visual", text: "" }, { type: "onscreen", text: "" }, { type: "narration", text: paragraph });
     }
-    segments.push({ id, title, timeStart: formatScriptTime(start), timeEnd: formatScriptTime(Math.max(clock, start + 1)), beats });
+    segments.push({ id, title, timeStart: formatDurationSec(start), timeEnd: formatDurationSec(Math.max(clock, start + 1)), beats });
   });
 
   return segments;

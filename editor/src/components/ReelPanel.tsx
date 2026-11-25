@@ -17,6 +17,7 @@ import type { DesignFinding } from "../../../backend/designCheck/designCheck";
 import { FilmView } from "../../../src/dl/Film";
 import { previewAccent } from "../../../src/projectTheme";
 import { Button, Badge, Stat } from "./ui";
+import { formatTimecode } from "../utils/time";
 
 interface ReelPanelData {
   filmId: string;
@@ -30,11 +31,6 @@ interface ReelPanelData {
   durationSec: number | null;
   previewFilm: Film | null;
   sourceShots: Array<{ id: string; narration: string }>;
-}
-
-// Formats a time in seconds as a compact measured reel duration.
-function timeLabel(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 }
 
 // Converts an API error response into a readable message.
@@ -116,7 +112,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
               <span className="text-xs font-semibold">{data.current ? "Reel ready" : data.status?.state === "failed" ? "Build failed" : "Reel needs a build"}</span>
               <Badge tone={data.current ? "success" : data.status?.state === "failed" ? "danger" : "warn"}>{data.current ? data.identity ? "Identity" : "Current" : data.status?.state ?? "Missing"}</Badge>
             </div>
-            <Stat label="Delivered length" value={`${data.durationSec === null ? "--" : `${timeLabel(data.durationSec)} / ${data.maxSec}s cap`}`} tone={data.durationSec !== null && data.durationSec > data.maxSec ? "danger" : "ink"} />
+            <Stat label="Delivered length" value={`${data.durationSec === null ? "--" : `${formatTimecode(data.durationSec)} / ${data.maxSec}s cap`}`} tone={data.durationSec !== null && data.durationSec > data.maxSec ? "danger" : "ink"} />
             <div className="flex flex-wrap gap-2">
               <Button size="sm" tone="primary" disabled={busy || !data.writable} title={!data.writable ? "Example films are read-only" : undefined} onClick={() => void rebuild()}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
@@ -132,7 +128,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
           </section>
 
           {previewing && preview && timeline ? <section aria-label="Reel format preview" className="space-y-2">
-            <div className="flex items-center justify-between"><h3 className="text-xs font-semibold">9:16 preview</h3><span className="font-mono text-xs text-ink-mute">{timeLabel(data.durationSec ?? 0)}</span></div>
+            <div className="flex items-center justify-between"><h3 className="text-xs font-semibold">9:16 preview</h3><span className="font-mono text-xs text-ink-mute">{formatTimecode(data.durationSec ?? 0)}</span></div>
             <div className="mx-auto aspect-[9/16] w-full max-w-[220px] overflow-hidden border border-line bg-matte">
               <Player
                 component={FilmView}

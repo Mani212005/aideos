@@ -24,6 +24,7 @@ import { readFilmFacts, type FilmFacts, type ReviewViewport } from "../review/so
 import { loadNarration } from "../review/speech";
 import { stageTruth, stageTruthText, type StageTruth } from "../review/stageTruth";
 import { DELIVERY_CONFIG } from "../../src/dl/delivery";
+import { probeVideo } from "../media/probe";
 
 export interface FactsOptions {
   sampleCount?: number;
@@ -31,7 +32,7 @@ export interface FactsOptions {
   filmPath?: string;
 }
 
-// Probes video duration, dimensions, and framerate using ffprobe.
+// Reads video duration, dimensions and whole-number frame rate through the shared probe; an unreadable file reports zero duration.
 export function probeVideoMetadata(videoPath: string): {
   durationSec: number;
   width?: number;
@@ -41,28 +42,8 @@ export function probeVideoMetadata(videoPath: string): {
   error?: string;
 } {
   try {
-    const args = [
-      "-v", "error",
-      "-select_streams", "v:0",
-      "-show_entries", "stream=width,height,r_frame_rate",
-      "-show_entries", "format=duration",
-      "-of", "json",
-      videoPath
-    ];
-    const output = execFileSync("ffprobe", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    const parsed = JSON.parse(output);
-    const durationSec = parseFloat(parsed.format?.duration || "0") || 0;
-    const stream = parsed.streams?.[0];
-    const width = stream?.width ? Number(stream.width) : undefined;
-    const height = stream?.height ? Number(stream.height) : undefined;
-    let fps: number | undefined;
-    if (stream?.r_frame_rate) {
-      const parts = stream.r_frame_rate.split("/");
-      if (parts.length === 2 && Number(parts[1]) > 0) {
-        fps = Math.round(Number(parts[0]) / Number(parts[1]));
-      }
-    }
-    return { durationSec, width, height, fps };
+    const facts = probeVideo(videoPath);
+    return { durationSec: facts.containerDurationSec ?? facts.durationSec, width: facts.width, height: facts.height, fps: Math.round(facts.fps) };
   } catch (err) {
     return { durationSec: 0, error: errorMessage(err) };
   }

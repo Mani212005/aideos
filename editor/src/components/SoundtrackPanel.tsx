@@ -11,6 +11,7 @@ import library from "../../../audio/library.json";
 import { filmSchema, type Film } from "../../../src/dl/schema";
 import type { SoundtrackEdit } from "../../../backend/designSpec/soundtrackStudio";
 import { Button, Range } from "./ui";
+import { formatTimecode } from "../utils/time";
 
 interface SoundtrackPanelProps {
   film: Film;
@@ -18,11 +19,6 @@ interface SoundtrackPanelProps {
   onCommit: (film: Film, label: string) => void;
   onClose: () => void;
   onPreview: () => void;
-}
-
-// Formats the section's timeline range without letting long track names squeeze it out.
-function timeLabel(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 }
 
 // Exposes the existing per-item volume controls as a single conservative bed or effects level.
@@ -153,7 +149,7 @@ export function SoundtrackPanel({ film, selectedSection, onCommit, onClose, onPr
             const title = library.items.find((item) => item.id === section.item)?.title ?? section.item;
             const choices = library.items.filter((item) => item.kind === "music" && item.roles.includes(section.role));
             return <div key={`${index}-${section.item}`} className="border border-line bg-paper-2 p-2">
-              <div className="flex justify-between gap-2 font-mono text-xs"><span>{section.role}</span><span className="shrink-0">{timeLabel(section.from)} - {timeLabel(section.to)}</span></div>
+              <div className="flex justify-between gap-2 font-mono text-xs"><span>{section.role}</span><span className="shrink-0">{formatTimecode(section.from)} - {formatTimecode(section.to)}</span></div>
               <p className="my-1 break-words text-xs font-semibold leading-relaxed" title={title}>{title}</p>
               <Button size="sm" disabled={busy} aria-expanded={swapping === index} onClick={() => setSwapping(swapping === index ? null : index)}>Swap track</Button>
               {swapping === index ? <div className="mt-2 space-y-2 border-t border-line pt-2">
@@ -163,7 +159,7 @@ export function SoundtrackPanel({ film, selectedSection, onCommit, onClose, onPr
                   </Button>
                   <button type="button" disabled={busy || item.id === section.item} onClick={() => void apply({ kind: "swap", section: index, item: item.id })}
                     className="min-w-0 flex-1 break-words border border-transparent px-1 py-1 text-left text-xs leading-relaxed hover:border-line hover:bg-paper disabled:opacity-50">
-                    {item.title}<span className="mt-0.5 block font-mono text-xs text-ink-mute">{previewLoading === item.id ? "Loading preview..." : item.id === section.item ? "Current track" : `${timeLabel(item.durationSec)} / ${item.artist}`}</span>
+                    {item.title}<span className="mt-0.5 block font-mono text-xs text-ink-mute">{previewLoading === item.id ? "Loading preview..." : item.id === section.item ? "Current track" : `${formatTimecode(item.durationSec)} / ${item.artist}`}</span>
                   </button>
                 </div>)}
               </div> : null}
@@ -173,7 +169,7 @@ export function SoundtrackPanel({ film, selectedSection, onCommit, onClose, onPr
         <section aria-label="Sound effect events" className="space-y-2">
           <h3 className="text-xs font-semibold">Sound effects</h3>
           {!effects.length ? <p className="text-xs text-ink-mute">No sound effects.</p> : effects.map((effect, index) => <div key={index} className="flex items-start justify-between gap-2 text-xs">
-            <span className="min-w-0 break-words" title={effect.item}>{effect.event ?? "Unbound event"}</span><span className="shrink-0 font-mono text-xs">{timeLabel(effect.timeSec)}</span>
+            <span className="min-w-0 break-words" title={effect.item}>{effect.event ?? "Unbound event"}</span><span className="shrink-0 font-mono text-xs">{formatTimecode(effect.timeSec)}</span>
           </div>)}
         </section>
         <label className="block space-y-2 text-xs font-semibold">Credits

@@ -31,6 +31,7 @@ import type { SvgAnimationClip } from "../../src/dl/scene/svgAnimation";
 import type { LookPlan } from "../lookPlan/schema";
 import { safeParseLookPlan } from "../lookPlan/schema";
 import { THRESHOLDS } from "./thresholds";
+import type { TimedWord } from "../pcm";
 
 /** One camera move found in the film data. */
 export interface CameraMove {
@@ -128,7 +129,7 @@ export interface FilmFacts {
    * The compulsory end card appended after the story (src/dl/delivery.ts), with its spoken
    * line's words in video seconds; null when the film has no card. `durationSec` above is the story.
    */
-  endCard?: { startSec: number; endSec: number; words: Array<{ word: string; start: number; end: number }> } | null;
+  endCard?: { startSec: number; endSec: number; words: TimedWord[] } | null;
   /** Optional plan loaded beside film.json for the non-gating plan-adherence criterion. */
   lookPlan?: LookPlan | null;
   /** Per-shot stage and scene motion facts used to compare the rendered design with its plan. */

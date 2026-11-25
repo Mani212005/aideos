@@ -19,6 +19,7 @@ import { HOUSE_PACE, NARRATION_RATE } from "../pacingProfile";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
 import type { NarrationTiming } from "./timing";
 import { norm } from "./text";
+import type { TimedWord } from "../pcm";
 
 dotenv.config();
 
@@ -64,12 +65,8 @@ export interface VoiceoverConfig {
   rootDir?: string;
 }
 
-/** A word as whisper heard it. */
-export interface HeardWord {
-  word: string;
-  start: number;
-  end: number;
-}
+/** A word as whisper heard it (the shared TimedWord). */
+export type HeardWord = TimedWord;
 
 /**
  * Scene-film narration defaults. Pace and line gap are the house pace (backend/pacingProfile.ts): Kokoro spoke

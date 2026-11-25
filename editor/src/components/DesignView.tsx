@@ -9,12 +9,7 @@ import { Bot, Check, FileText } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
 import { Badge, Button, EmptyState, Note, Panel, PanelBody, PanelHeader, Spinner, cn } from "./ui";
 import { postDesignAction, useDesignOverview } from "../state/useDesignOverview";
-
-// Formats seconds as m:ss.
-function clock(sec: number): string {
-  const s = Math.max(0, Math.floor(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
+import { formatTimecode } from "../utils/time";
 
 // A small picture of one piece of the film's artwork.
 function Thumb({ src, label, className }: { src: string; label: string; className?: string }) {
@@ -206,7 +201,7 @@ export function DesignView({ film, onSelectShot, selectedShotId, topPanel, choic
                     <div className="font-mono text-xs leading-tight text-ink-soft">
                       <div className="font-semibold text-ink">{shot.id}</div>
                       <div>
-                        {clock(shot.startSec)}-{clock(shot.endSec)}
+                        {formatTimecode(shot.startSec)}-{formatTimecode(shot.endSec)}
                       </div>
                       {shot.treatment ? <Badge tone={shot.treatment === "device" ? "warn" : "info"}>{shot.treatment}</Badge> : null}
                       {shot.needsFootage ? <Badge tone="warn">Footage</Badge> : null}

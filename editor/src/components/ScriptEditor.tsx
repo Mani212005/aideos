@@ -40,6 +40,7 @@ import { generateAgentPrompt } from "../../../backend/scriptIntake";
 import { useFilmSave } from "../state/FilmSaveContext";
 import { narrationLines, scriptToStory, storyToScript } from "../../../backend/storyScript";
 import type { StoryParagraph, StorySection } from "../../../backend/storyScript";
+import { formatTimecode } from "../utils/time";
 
 interface ScriptEditorProps {
   film: Film;
@@ -799,16 +800,6 @@ export function ScriptEditor({
     }
   };
 
-  /**
-   * Formats seconds into mm:ss timestamp format.
-   */
-  const formatTime = (seconds: number): string => {
-    if (isNaN(seconds) || seconds === 0) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
   return (
     <div className="w-full h-full bg-paper text-ink flex flex-col p-6 overflow-y-auto font-sans">
       {/* Top Header & Project Metadata */}
@@ -1032,7 +1023,7 @@ export function ScriptEditor({
               <span>
                 <strong>Duration:</strong>{" "}
                 {duration > 0 ? (
-                  <span className="text-ink font-mono font-semibold">{formatTime(duration)}</span>
+                  <span className="text-ink font-mono font-semibold">{formatTimecode(duration)}</span>
                 ) : (
                   <span className="text-ink-soft font-mono italic">--:-- (Pending VO)</span>
                 )}
@@ -1132,7 +1123,7 @@ export function ScriptEditor({
                       Generated Voiceover Audio
                     </h4>
                     <p className="text-xs text-ink-soft font-mono break-all">
-                      videos/{film.id}/voiceover.wav ({formatTime(duration)}) ·{" "}
+                      videos/{film.id}/voiceover.wav ({formatTimecode(duration)}) ·{" "}
                       {spokenWords.length} spoken words
                     </p>
                   </div>
@@ -1197,7 +1188,7 @@ export function ScriptEditor({
                 </button>
 
                 <span className="text-xs font-mono text-ink-soft w-12 text-right">
-                  {formatTime(currentTime)}
+                  {formatTimecode(currentTime)}
                 </span>
 
                 <input
@@ -1217,7 +1208,7 @@ export function ScriptEditor({
                 />
 
                 <span className="text-xs font-mono text-ink w-12">
-                  {formatTime(duration)}
+                  {formatTimecode(duration)}
                 </span>
 
                 <div className="flex items-center gap-1 bg-paper-3 p-0.5 border border-line">
