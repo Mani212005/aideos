@@ -219,17 +219,21 @@ export function kokoroWorkerSynthesizer(start: () => Promise<KokoroWorker> = sta
 
   /** Returns a live worker, starting one when there is none or the last one died. */
   const live = async (): Promise<KokoroWorker> => {
-    if (worker) {
-      const current = await worker.catch(() => null);
-      if (current && !current.dead) return current;
-    }
-    const starting = start();
-    worker = starting;
-    try {
-      return await starting;
-    } catch (err) {
-      if (worker === starting) worker = null;
-      throw err;
+    for (;;) {
+      const previous = worker;
+      if (previous) {
+        const current = await previous.catch(() => null);
+        if (current && !current.dead) return current;
+        if (worker !== previous) continue;
+      }
+      const starting = start();
+      worker = starting;
+      try {
+        return await starting;
+      } catch (err) {
+        if (worker === starting) worker = null;
+        throw err;
+      }
     }
   };
 
