@@ -181,7 +181,7 @@ program
 
       console.log(`Validating...`);
       try {
-        execFileSyncBounded(NPM, ["run", "validate"], { stdio: "inherit", cwd: ROOT });
+        execFileSyncBounded(NPM, ["run", "validate"], { stdio: "inherit", cwd: ROOT, shell: process.platform === "win32" });
         console.log(`Validation successful.`);
       } catch {
         if (previousActive !== null) {
@@ -196,7 +196,7 @@ program
         for (const key of formats) {
           console.log(`Rendering ${FORMATS[key].label}...`);
           try {
-            execFileSyncBounded(NPM, ["run", FORMATS[key].script], { stdio: "inherit", cwd: ROOT, timeout: RENDER_TIMEOUT_MS });
+            execFileSyncBounded(NPM, ["run", FORMATS[key].script], { stdio: "inherit", cwd: ROOT, timeout: RENDER_TIMEOUT_MS, shell: process.platform === "win32" });
           } catch {
             throw new Error(`Render failed for the ${key} format.`);
           }

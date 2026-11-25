@@ -23,6 +23,7 @@ export function useDesignOverview(filmId: string, revision: unknown) {
     fetch(`/api/design/${filmId}`, { signal: controller.signal })
       .then(async (res) => {
         const body = await res.json();
+        if (controller.signal.aborted) return;
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
         setOverview(body.overview);
         setError(null);
