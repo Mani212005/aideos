@@ -1,12 +1,11 @@
 /**
- * File Description: Reads and writes video packages from the backend. A film lives in two places -
+ * File Description: Reads and writes video packages for the backend and the studio server. A film lives in two places -
  * videos/<slug>/film.json (authoritative, what the editor's Player and the package loader read)
  * and src/dl/films/<slug>.ts (the generated shadow Remotion's CLI render bundles). AGENTS.md
- * requires the two never be written independently, so every write in the production pipeline goes
- * through writeFilm here (editor/vite.config.ts currently maintains a sibling helper emitting the
- * same module format).
- * Inputs and outputs: slug and Film manifest -> writes film.json and src/dl/films shadow.
- * Used by: backend/pipeline/run.ts, backend/designSpec/build.ts, backend/designSpec/designer.ts, backend/cli.ts.
+ * requires the two never be written independently, so every film write goes through writeFilm here.
+ * A film.json that exists but does not parse is an error (CorruptFilmError), never a silent read of the older shadow.
+ * Inputs and outputs: slug and Film manifest -> writes film.json and src/dl/films shadow; slug -> Film and its revision.
+ * Used by: backend/pipeline/run.ts, backend/designSpec/build.ts, backend/designSpec/designer.ts, backend/cli.ts, editor/vite.config.ts.
  *
  * Neither location is committed: videos/ (or AIDEOS_VIDEOS_DIR) holds the owner's personal videos
  * and src/dl/films/ plus src/dl/activeFilm.ts are generated, so a fresh clone starts with only
@@ -17,13 +16,15 @@ import { carryCaptionPlacement } from "../../src/dl/captionPlacement";
 import { prepareSoundtrack } from "../soundtrack";
 import fs from "fs";
 import path from "path";
-import type { Block, Film } from "../../src/dl/schema";
+import type { Film } from "../../src/dl/schema";
 import { dropLegacyFilmBlocks, parseFilm } from "../../src/dl/schema";
+import { withFootage } from "../../src/dl/footageWiring";
+import { filmRevision, revisionOfFilm } from "../filmRevision";
 import { traceBus } from "../agentBridge/traceBus";
 import { filmEditState, noteFilmWrite } from "../filmAcceptance/store";
 import { filmDifferences } from "../filmAcceptance/machine";
 import { getVideosDir, resolvePackageDir } from "../../src/dl/videoPackageLoader";
-import { ROOT, FILMS_DIR, FILM_ID, filmModule, ensureGenerated, setActiveFilm } from "./generatedFiles";
+import { ROOT, FILMS_DIR, FILM_ID, filmFromModule, filmModule, ensureGenerated, setActiveFilm } from "./generatedFiles";
 
 export { ROOT, FILMS_DIR, FILM_ID, ensureGenerated, setActiveFilm };
 
@@ -47,23 +48,76 @@ export function packageDir(slug: string): string {
   return path.join(getVideosDir(), slug);
 }
 
-/** Loads a film, preferring the authoritative film.json and falling back to the shadow module. */
-export function readFilm(slug: string): Film | null {
+/** A package's film.json exists but is not valid JSON. Readers refuse it rather than serve the older generated shadow. */
+export class CorruptFilmError extends Error {
+  readonly slug: string;
+  readonly file: string;
+
+  // Names the package and the file so the message tells the owner exactly what to repair.
+  constructor(slug: string, file: string, cause: unknown) {
+    super(`film.json for "${slug}" is not valid JSON (${file}): ${cause instanceof Error ? cause.message : String(cause)}. Fix or restore the file; Aideos will not fall back to the older generated shadow.`);
+    this.name = "CorruptFilmError";
+    this.slug = slug;
+    this.file = file;
+  }
+}
+
+/** A film as read from disk, with the revision of the bytes it came from (what a studio save must name). */
+export interface StoredFilm {
+  film: Film;
+  rev: string;
+  source: "package" | "shadow";
+}
+
+/**
+ * Loads a film and its revision: the authoritative film.json when the package has one, else the generated shadow module.
+ * Returns null when neither exists, and throws CorruptFilmError when film.json exists but does not parse.
+ */
+export function readStoredFilm(slug: string): StoredFilm | null {
   if (!FILM_ID.test(slug)) throw new Error(`invalid film id "${slug}": lowercase letters, digits and dashes only`);
   const pkgFilmPath = path.join(resolvePackageDir(slug), "film.json");
-  if (fs.existsSync(pkgFilmPath)) {
+  let raw: string | null = null;
+  try {
+    raw = fs.readFileSync(pkgFilmPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (raw !== null) {
+    let parsed: unknown;
     try {
-      return dropLegacyFilmBlocks(JSON.parse(fs.readFileSync(pkgFilmPath, "utf8")) as Film);
-    } catch {
-      // Fall through to the generated module.
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      throw new CorruptFilmError(slug, pkgFilmPath, error);
     }
+    return { film: dropLegacyFilmBlocks(parsed as Film), rev: filmRevision(raw), source: "package" };
   }
-  const filmPath = path.join(FILMS_DIR, `${slug}.ts`);
-  if (fs.existsSync(filmPath)) {
-    const jsonMatch = fs.readFileSync(filmPath, "utf8").match(/=\s*(\{[\s\S]*\})\s*;/);
-    if (jsonMatch) return dropLegacyFilmBlocks(JSON.parse(jsonMatch[1]) as Film);
+  const shadowPath = path.join(FILMS_DIR, `${slug}.ts`);
+  let shadow: string;
+  try {
+    shadow = fs.readFileSync(shadowPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
   }
-  return null;
+  const film = filmFromModule(shadow);
+  return { film, rev: revisionOfFilm(film), source: "shadow" };
+}
+
+/** Loads a film (see readStoredFilm): null when the package has none, CorruptFilmError when its film.json is broken. */
+export function readFilm(slug: string): Film | null {
+  return readStoredFilm(slug)?.film ?? null;
+}
+
+/** How a film write is attributed and guarded. */
+export interface WriteFilmOptions {
+  /** The owner's own save: caption placement locks are the owner's to change. */
+  owner: boolean;
+  /** An agent edit that may move a caption placement. */
+  agentEdit?: boolean;
+  /** Refuse to change a film.json the owner hand-edited since the last build. */
+  protectHandEdits?: boolean;
+  /** Runs on the validated film before either file is written (for side data such as the studio soundtrack); a throw refuses the write. */
+  beforeWrite?: (validated: Film) => void;
 }
 
 /**
@@ -73,7 +127,7 @@ export function readFilm(slug: string): Film | null {
  * than the editor previews. The film is validated before either write, so a malformed film
  * never lands on disk half-applied.
  */
-export function writeFilm(slug: string, film: Film, options: { owner: boolean; agentEdit?: boolean; protectHandEdits?: boolean } = { owner: false }): Film {
+export function writeFilm(slug: string, film: Film, options: WriteFilmOptions = { owner: false }): Film {
   const validated = parseFilm(prepareSoundtrack(parseFilm(carryCaptionPlacement(readFilm(slug), film, options))));
   if (options.protectHandEdits && filmEditState(resolvePackageDir(slug)) === "hand-edited") {
     const current = readFilm(slug);
@@ -81,6 +135,7 @@ export function writeFilm(slug: string, film: Film, options: { owner: boolean; a
       throw new Error(`refusing to overwrite hand-edited film.json for ${slug}; move the fix into design/design.json or restore design/base-film.json before rebuilding`);
     }
   }
+  options.beforeWrite?.(validated);
   const dir = packageDir(slug);
   fs.mkdirSync(dir, { recursive: true });
   const contents = JSON.stringify(validated, null, 2);
@@ -109,7 +164,7 @@ export function restoreActiveFilmSource(contents: string): void {
  *
  * The clip path is relative to public/, because that is what Remotion's staticFile() resolves
  * against in both the CLI render and the editor's Player. An existing inset on the shot is
- * updated in place rather than duplicated, so re-running the stage is idempotent.
+ * updated in place rather than duplicated, so re-running the stage is idempotent (src/dl/footageWiring.ts).
  */
 export function wireFootageIntoFilm(
   slug: string,
@@ -120,34 +175,4 @@ export function wireFootageIntoFilm(
   const film = readFilm(slug);
   if (!film) throw new Error(`no film found for "${slug}"`);
   return writeFilm(slug, withFootage(film, shotId, staticPath, caption));
-}
-
-// Shares one footage wiring operation between long and reel without touching either owner record.
-export function withFootage(film: Film, shotId: string, staticPath: string, caption: string): Film {
-  film = structuredClone(film);
-  const shot = film.shots.find((s) => s.id === shotId);
-  if (!shot) throw new Error(`film "${film.id}" has no shot "${shotId}"`);
-
-  shot.needsFootage = true;
-  const inset = shot.blocks.find((b) => b.c === "AnalogyInset") as
-    | Extract<Block, { c: "AnalogyInset" }>
-    | undefined;
-
-  if (inset) {
-    inset.src = staticPath;
-    inset.fullScreenHero = true;
-    inset.caption = caption.slice(0, 80) || inset.caption;
-  } else {
-    shot.blocks = [
-      {
-        c: "AnalogyInset",
-        caption: (caption || "B-roll").slice(0, 80),
-        src: staticPath,
-        fullScreenHero: true,
-      },
-      ...shot.blocks.filter((b) => b.c !== "AnalogyInset"),
-    ];
-  }
-
-  return film;
 }

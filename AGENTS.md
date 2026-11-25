@@ -134,7 +134,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Add fixtures to `test_fixtures/`. Never copy a real video in.
 - Never hand-edit the generated shadows: `src/dl/films/<slug>.ts`, `src/dl/activeFilm.ts` and `src/dl/scene/assets/svgSources.generated.ts`.
 - `ensureGenerated` (`npm run ensure:generated`) rebuilds them.
-- Write films with `readFilm`, `writeFilm` and `wireFootageIntoFilm` from `backend/pipeline/filmStore.ts`. The same-named helpers in `editor/vite.config.ts` also work.
+- Write films with `readFilm`, `writeFilm` and `wireFootageIntoFilm` from `backend/pipeline/filmStore.ts`. `editor/vite.config.ts` calls the same store.
 - `public/videos` is a tracked symlink to `../videos`.
 - Vite serves `/videos/*` through its own range-aware middleware. Use `staticFile('videos/<slug>/...')`.
 - Write voiceover audio and captions into the video package. `produceAudioPipeline` does this. Never copy them into `public/`.

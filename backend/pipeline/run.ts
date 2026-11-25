@@ -47,8 +47,8 @@ import {
   restoreActiveFilmSource,
   slugify,
   writeFilm,
-  withFootage,
 } from "./filmStore";
+import { withFootage } from "../../src/dl/footageWiring";
 import { analyseAudio, contactSheet, describeVideo, FORMAT_SPECS } from "./render";
 import { writeDescriptionCredits } from "../masterAudio";
 import { assertDeliverable } from "../deliveryGate";
