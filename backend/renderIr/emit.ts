@@ -143,9 +143,6 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
         });
         if (errors.length) reasons.push(`asset ${asset.assetId}: ${errors.map((e) => `[${e.clipId}] ${e.message}`).join("; ")}`);
         for (const clip of asset.animation.clips) {
-          if (clip.property !== "scale" && !(ELEMENT_PROPERTIES as readonly string[]).includes(clip.property)) {
-            reasons.push(`asset ${asset.assetId}: clip property ${clip.property} has no Render IR element property`);
-          }
           if (asset.raster && !(IMAGE_ELEMENT_PROPERTIES as readonly string[]).includes(clip.property)) {
             reasons.push(`asset ${asset.assetId}: a picture's ${clip.property} cannot be animated; move, scale, rotate or fade it`);
           }
