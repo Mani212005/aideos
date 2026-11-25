@@ -29,6 +29,13 @@ function makeRepo(files: Record<string, string>, track: string[], gitignore = ""
   return root;
 }
 
+test("untracked scratch with a type error does not break the check", () => {
+  const root = makeRepo({ "src/good.ts": GOOD, "videos/scratch-film/design/stray.ts": BAD, "examples/wip/stray.ts": BAD }, ["src/good.ts"]);
+  const result = typecheckTracked(root);
+  assert.equal(result.errors, 0, result.output);
+  assert.equal(result.checked, 1);
+});
+
 // Reproduces the release failure with the real compiler before proving the CI check excludes those roots.
 test("reported public/videos scratch breaks stock tsc but not the tracked source check", () => {
   const root = makeRepo({
