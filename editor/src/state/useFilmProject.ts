@@ -638,8 +638,9 @@ export function useFilmProject(initialFilm: Film, knownFilmIds: string[]): FilmP
 
   const validation = useMemo<ProjectValidation>(() => {
     try {
-      validateFilmAudioAndAssets(film, { toleranceSec: 1000 });
-      return { ok: true, message: "Schema rules and audio invariants healthy" };
+      // No measured voiceover length is passed, so the validator runs the schema and camera geometry checks only.
+      validateFilmAudioAndAssets(film);
+      return { ok: true, message: "Schema rules and camera geometry healthy" };
     } catch (err) {
       return { ok: false, message: err instanceof Error ? err.message : "Validation error" };
     }
