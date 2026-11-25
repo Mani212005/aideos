@@ -28,7 +28,7 @@ CompiledFrame.camera              dense per-frame camera state
 | Parsed tree to React elements, id namespacing | `svgReact.tsx` |
 | Scene compiler (threads timelines onto frames) | `compile.ts` |
 | Camera track compiler and motion stats | `cameraTrack.ts` |
-| Scene data types (hierarchy, tracks, camera track) | `types.ts` |
+| Scene contract: the one Zod schema (hierarchy, tracks, camera track) and the types derived from it | `schema.ts`, `types.ts` |
 | Renderer (with camera transform) | `SceneView.tsx` |
 | Remotion entry point | `SceneClip.tsx` |
 | Whole-film stage | `../SceneStage.tsx` |
@@ -111,7 +111,8 @@ an id the document does not declare. Pass `loadSceneAssets(scene).elementIdsByAs
 `compileScene` as `assetElementIds` to get the same check at compile time.
 
 `validateScene` also rejects any scene containing actors (Rule 21): character rigs are not
-supported by the renderer, which currently supports SVG backgrounds and props only.
+supported by the renderer, which currently supports SVG backgrounds and props only. The film schema
+(`schema.ts`) refuses them first, so a parsed film never carries one.
 
 ## Scene camera
 
@@ -136,7 +137,7 @@ scene.camera = {
 (`cameraTrack.ts`) then runs a monotone cubic spline through the keyframes: it never overshoots a
 keyframe, a move flows straight through the keyframes it passes, and it comes to rest only where a
 value holds or turns (the exact coordinates are kept during a hold, so there is no drift). When
-`easing` is specified, the named curve (`expoOut`, `expoInOut`, `linear`, etc.) governs the segment
+`easing` is specified (one of the clip easings; the film schema refuses any other name), the named curve (`expoOut`, `expoInOut`, `linear`, etc.) governs the segment
 after that keyframe and the camera stops at both of its ends. Easing every keyframe of a camera track
 with `expoInOut` makes each move a short burst between stops, which reads as jitter even when the
 peak speed is under the cap; the design check rejects it.

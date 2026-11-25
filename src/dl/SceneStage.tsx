@@ -13,7 +13,6 @@ import React from "react";
 import { AbsoluteFill, staticFile } from "remotion";
 import { SceneClip } from "./scene/SceneClip";
 import { SVG_SOURCES } from "./scene/assets/svgSources.generated";
-import type { Scene } from "./scene/types";
 import type { FilmScene } from "./schema";
 import { ThreeStage } from "./scene/ThreeStage";
 import { stageViewport } from "./scene/projection";
@@ -66,7 +65,7 @@ export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, ac
 
   // SVG has explicit ground and foreground planes; cast shares one WebGL depth buffer between them.
   const three = scene.renderer === "three";
-  const missing = validateStageSvgResources(scene as unknown as Scene, SVG_SOURCES);
+  const missing = validateStageSvgResources(scene, SVG_SOURCES);
   const rasterUrls = React.useMemo(() => sceneRasterUrls(scene), [scene]);
   if (missing.length) throw new Error(missing.join("\n"));
   const ground = three ? { ...scene, props: scene.props.filter((p) => p.plane === "background") } : scene;
@@ -74,12 +73,12 @@ export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, ac
   // Draws one SVG plane using the established square-stage cover transform.
   const plane = (data: FilmScene, transparentBackground = false) => (
     <div style={{ position: "absolute", left: (width - drawnWidth) / 2, top: (height - drawnHeight) / 2, width: drawnWidth, height: drawnHeight }}>
-      <SceneClip scene={data as unknown as Scene} svgSources={SVG_SOURCES} rasterUrls={rasterUrls} width={drawnWidth} height={drawnHeight} viewport={{ width, height }} accent={accent} compileOptions={PINNED_COMPILE_OPTIONS} transparentBackground={transparentBackground} />
+      <SceneClip scene={data} svgSources={SVG_SOURCES} rasterUrls={rasterUrls} width={drawnWidth} height={drawnHeight} viewport={{ width, height }} accent={accent} compileOptions={PINNED_COMPILE_OPTIONS} transparentBackground={transparentBackground} />
     </div>
   );
   if (three) return <AbsoluteFill style={{ overflow: "hidden" }}>
     {plane(ground)}
-    <ThreeStage scene={scene as unknown as Scene} width={width} height={height} testVisibility={testVisibility} />
+    <ThreeStage scene={scene} width={width} height={height} testVisibility={testVisibility} />
     {foreground?.props.length ? plane(foreground, true) : null}
   </AbsoluteFill>;
   return (
@@ -94,7 +93,7 @@ export const SceneStage: React.FC<SceneStageProps> = ({ scene, width, height, ac
         }}
       >
         <SceneClip
-          scene={scene as unknown as Scene}
+          scene={scene}
           svgSources={SVG_SOURCES}
           rasterUrls={rasterUrls}
           width={drawnWidth}

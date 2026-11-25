@@ -156,8 +156,8 @@ test("Finding 3: trimLayerClipEdge resolves layer collisions when expanding clip
     canvas: { nodes: [{ id: "n1", label: "N1", x: 0, y: 0, w: 100, h: 50 }, { id: "n2", label: "N2", x: 200, y: 0, w: 100, h: 50 }], edges: [{ from: "n1", to: "n2" }] },
     layers: [{ id: "layer-1", number: 1, label: "L1", locked: false, hidden: false, muted: false, height: 50 }],
     clips: [
-      { id: "c1", layerId: "layer-1", position: 0, start: 0, end: 3, kind: "audio", payload: { src: "a.wav" }, opacity: 1, volume: 1 },
-      { id: "c2", layerId: "layer-1", position: 3, start: 0, end: 4, kind: "audio", payload: { src: "b.wav" }, opacity: 1, volume: 1 },
+      { id: "c1", layerId: "layer-1", position: 0, start: 0, end: 3, kind: "audio", payload: { src: "a.wav", channel: "voiceover" }, opacity: 1, volume: 1 },
+      { id: "c2", layerId: "layer-1", position: 3, start: 0, end: 4, kind: "audio", payload: { src: "b.wav", channel: "voiceover" }, opacity: 1, volume: 1 },
     ],
   };
 
@@ -193,9 +193,9 @@ test("Finding 4: resolveTrackCollisions cascades through 3 or more sequential sh
 // Finding 4: Cascading ripple collision resolution across 3 or more layer clips.
 test("Finding 4: resolveLayerCollisions cascades downstream clips without overlaps", () => {
   const clips = [
-    { id: "c1", layerId: "layer-1", position: 0, start: 0, end: 5, kind: "audio" as const, payload: { src: "1.wav" }, opacity: 1, volume: 1 },
-    { id: "c2", layerId: "layer-1", position: 4, start: 0, end: 5, kind: "audio" as const, payload: { src: "2.wav" }, opacity: 1, volume: 1 },
-    { id: "c3", layerId: "layer-1", position: 8, start: 0, end: 4, kind: "audio" as const, payload: { src: "3.wav" }, opacity: 1, volume: 1 },
+    { id: "c1", layerId: "layer-1", position: 0, start: 0, end: 5, kind: "audio" as const, payload: { src: "1.wav", channel: "voiceover" as const }, opacity: 1, volume: 1 },
+    { id: "c2", layerId: "layer-1", position: 4, start: 0, end: 5, kind: "audio" as const, payload: { src: "2.wav", channel: "voiceover" as const }, opacity: 1, volume: 1 },
+    { id: "c3", layerId: "layer-1", position: 8, start: 0, end: 4, kind: "audio" as const, payload: { src: "3.wav", channel: "voiceover" as const }, opacity: 1, volume: 1 },
   ];
 
   // c1 at 0..5. c2 at 4..9 (collides with c1, pushed to 5..10).
@@ -364,9 +364,9 @@ test("Finding 11: closeAudioGapWithDependencies avoids stacking overlapping clip
     canvas: { nodes: [{ id: "n1", label: "N1", x: 0, y: 0, w: 100, h: 50 }, { id: "n2", label: "N2", x: 200, y: 0, w: 100, h: 50 }], edges: [{ from: "n1", to: "n2" }] },
     layers: [{ id: "audio-layer", number: 0, label: "Audio", locked: false, hidden: false, muted: false, height: 48 }],
     clips: [
-      { id: "clip-1", layerId: "audio-layer", position: 0, start: 0, end: 2.0, kind: "audio", payload: { src: "1.wav" }, opacity: 1, volume: 1 },
-      { id: "clip-2", layerId: "audio-layer", position: 3.0, start: 0, end: 2.0, kind: "audio", payload: { src: "2.wav" }, opacity: 1, volume: 1 },
-      { id: "clip-3", layerId: "audio-layer", position: 4.0, start: 0, end: 2.0, kind: "audio", payload: { src: "3.wav" }, opacity: 1, volume: 1 },
+      { id: "clip-1", layerId: "audio-layer", position: 0, start: 0, end: 2.0, kind: "audio", payload: { src: "1.wav", channel: "voiceover" }, opacity: 1, volume: 1 },
+      { id: "clip-2", layerId: "audio-layer", position: 3.0, start: 0, end: 2.0, kind: "audio", payload: { src: "2.wav", channel: "voiceover" }, opacity: 1, volume: 1 },
+      { id: "clip-3", layerId: "audio-layer", position: 4.0, start: 0, end: 2.0, kind: "audio", payload: { src: "3.wav", channel: "voiceover" }, opacity: 1, volume: 1 },
     ],
   };
 

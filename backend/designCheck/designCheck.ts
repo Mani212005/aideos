@@ -337,7 +337,7 @@ function checkContinuity(asset: EnvironmentAsset, findings: DesignFinding[], vis
 function checkAudioLock(film: Film, findings: DesignFinding[]): void {
   const fps = film.fps ?? FPS;
   const shotFrames = Math.round(film.shots.reduce((sum, s) => sum + s.dur, 0) * fps);
-  const scene = film.scene as Scene | undefined;
+  const scene = film.scene;
   if (scene && Math.abs(scene.durationFrames - shotFrames) > 2) {
     findings.push({ rule: "audio-lock", severity: "error", where: "scene", message: `scene runs ${scene.durationFrames} frames but the shots add up to ${shotFrames}; derive both from the measured narration.` });
   }
@@ -603,7 +603,7 @@ export function checkFilmDesign(raw: unknown, context: DesignCheckContext = {}):
   const chosenAccent = boundTheme(film)?.accent;
 
   let clips = 0;
-  const scene = film.scene as Scene | undefined;
+  const scene = film.scene;
   const formats = context.formats ?? ["long", "reel"];
   findings.push(...checkCaptionPlacements(film, scene, undefined, film, formats));
   const assets: EnvironmentAsset[] = scene ? [...(scene.background ? [scene.background] : []), ...(scene.props ?? [])] : [];

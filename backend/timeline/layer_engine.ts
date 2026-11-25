@@ -734,12 +734,11 @@ export function splitLayerClipAtTime(
     const sourceLeftDur = round3(playheadSec - source.position);
 
     /** Build one half, re-keying the animation payload so shot ids stay unique. */
-    const half = (half: "a" | "b", overrides: Partial<Clip>): Clip => {
+    const half = (half: "a" | "b", overrides: Pick<Clip, "position" | "start" | "end">): Clip => {
       const clone = JSON.parse(JSON.stringify(source)) as Clip;
       const id = `${source.id}-${half}${suffix}`;
       if (clone.kind === "animation") {
-        const payload = clone.payload as { shotId?: string };
-        payload.shotId = `${payload.shotId ?? source.id}-${half}${suffix}`;
+        clone.payload.shotId = `${clone.payload.shotId ?? source.id}-${half}${suffix}`;
       }
       return { ...clone, ...overrides, id, linkedClipId: null };
     };

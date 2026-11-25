@@ -21,9 +21,6 @@ import type {
   AnimationPayload,
   AudioPayload,
   VideoPayload,
-  TextPayload,
-  ImagePayload,
-  SubtitlePayload,
 } from "./layeredSchema";
 import { computeShotStartTimes } from "../../backend/timeline/timeline";
 import { generateWordsFromFilm } from "./captionsParser";
@@ -75,6 +72,29 @@ function layerIdForOverlayKind(kind: OverlayClip["kind"]): string {
 /** A subtitle clip whose id matches the pattern forward-conversion synthesizes from voiceover words. */
 function isDerivedSubtitleId(id: string): boolean {
   return /^clip-sub-\d+-/.test(id);
+}
+
+/** A layered clip that round-trips through `overlayClips`: text, image and standalone subtitle clips. */
+type OverlaySourceClip = Extract<Clip, { kind: OverlayClip["kind"] }>;
+
+/** Writes one layered text, image or subtitle clip back as an overlay clip, keeping its kind and payload paired. */
+function toOverlayClip(c: OverlaySourceClip): OverlayClip {
+  const base = {
+    id: c.id,
+    position: c.position,
+    start: c.start,
+    end: c.end,
+    opacity: c.opacity ?? 1,
+    layerId: c.layerId === layerIdForOverlayKind(c.kind) ? undefined : c.layerId,
+  };
+  switch (c.kind) {
+    case "text":
+      return { ...base, kind: "text", payload: c.payload };
+    case "image":
+      return { ...base, kind: "image", payload: c.payload };
+    case "subtitle":
+      return { ...base, kind: "subtitle", payload: c.payload };
+  }
 }
 
 /** The lane set a film starts with before the user adds, renames or reorders any lane. */
@@ -186,7 +206,7 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
           retimedSrc: ac.retimedSrc,
         },
         linkedClipId: ac.linkedClipId ?? null,
-        volume: Math.min(1, ac.volume ?? 1),
+        volume: Math.min(2, Math.max(0, ac.volume ?? 1)),
         opacity: 1,
       });
     }
@@ -334,17 +354,8 @@ export function convertFilmToLayeredFilm(film: Film): LayeredFilm {
   if (film.overlayClips && film.overlayClips.length > 0) {
     for (const oc of film.overlayClips) {
       const layerId = ensureLayer(oc.layerId ?? layerIdForOverlayKind(oc.kind));
-      clips.push({
-        id: oc.id,
-        layerId,
-        position: oc.position,
-        start: oc.start ?? 0,
-        end: oc.end,
-        kind: oc.kind,
-        payload: oc.payload,
-        opacity: oc.opacity ?? 1,
-        volume: 1,
-      });
+      // Spreading the clip keeps its kind and payload paired, so the layered clip is the same kind.
+      clips.push({ ...oc, layerId, start: oc.start ?? 0, opacity: oc.opacity ?? 1, volume: 1 });
     }
   }
 
@@ -591,22 +602,11 @@ export function convertLayeredFilmToFilm(layeredFilm: LayeredFilm, base?: Film):
   // Only text/image clips and *non-derived* subtitle clips need an explicit overlayClips entry;
   // a subtitle clip generated from the voiceover words stays derived and is never written out.
   const overlaySourceClips = layeredFilm.clips.filter(
-    (c) => c.kind === "text" || c.kind === "image" || (c.kind === "subtitle" && !isDerivedSubtitleId(c.id)),
+    (c): c is OverlaySourceClip => c.kind === "text" || c.kind === "image" || (c.kind === "subtitle" && !isDerivedSubtitleId(c.id)),
   );
   const overlayClips: OverlayClip[] | undefined =
     overlaySourceClips.length > 0
-      ? overlaySourceClips
-          .sort((a, b) => a.position - b.position)
-          .map((c) => ({
-            id: c.id,
-            kind: c.kind as OverlayClip["kind"],
-            position: c.position,
-            start: c.start,
-            end: c.end,
-            opacity: c.opacity ?? 1,
-            layerId: c.layerId === layerIdForOverlayKind(c.kind as OverlayClip["kind"]) ? undefined : c.layerId,
-            payload: c.payload as TextPayload | ImagePayload | SubtitlePayload,
-          }))
+      ? overlaySourceClips.sort((a, b) => a.position - b.position).map(toOverlayClip)
       : undefined;
 
   const voiceover = voClips.length > 0

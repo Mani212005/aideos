@@ -46,7 +46,7 @@ function createPlannerFilmFixture(): LayeredFilm {
         start: 0,
         end: 15,
         kind: "audio",
-        payload: { src: "media/video.mp4" },
+        payload: { src: "media/video.mp4", channel: "external" },
         opacity: 1,
         volume: 1,
       },

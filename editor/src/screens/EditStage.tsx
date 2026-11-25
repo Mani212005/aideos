@@ -308,7 +308,7 @@ export function EditStage({
                   clickToPlay={!captionsSelected}
                   acknowledgeRemotionLicense
                 />
-                <OnCanvasAiEditor film={film} timeline={previewTimeline} currentFrame={currentFrame} onUpdateFilm={(next) => project.commit(next, "On-canvas AI edit")} accent={accent} folded={captionsSelected} avoidRect={captionRect} yieldToCaption={captionHot} />
+                <OnCanvasAiEditor film={film} onUpdateFilm={(next) => project.commit(next, "On-canvas AI edit")} accent={accent} folded={captionsSelected} avoidRect={captionRect} yieldToCaption={captionHot} />
               </>
             ) : (
               <p className="p-6 text-center font-mono text-xs text-matte-text">

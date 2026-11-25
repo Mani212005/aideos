@@ -10,7 +10,6 @@ import os from "node:os";
 import path from "node:path";
 import { loadSceneAssets } from "./scene/loadSceneAssets";
 import { resolveRepoAssetPath } from "../src/dl/videoPackageLoader";
-import type { Scene } from "../src/dl/scene/types";
 import type { Film } from "../src/dl/schema";
 import { emitRenderIr, type EmitResult, type MeasureReport, type MeasureRequest, type NativeFormat } from "./renderIr/emit";
 import { runRenderCommand, RENDER_RESERVE_BYTES, type RenderProcessDeps } from "./renderProcess";
@@ -81,7 +80,7 @@ export function resolveRepoPath(repoRelative: string): string {
 
 /** Emits the Render IR of one format of a film, reading its scene artwork from disk. */
 export function emitFilmIr(film: Film, format: NativeFormat, binary = nativeRendererBinary()): EmitResult {
-  const svgSources = film.scene ? loadSceneAssets(film.scene as unknown as Scene).svgSources : {};
+  const svgSources = film.scene ? loadSceneAssets(film.scene).svgSources : {};
   return emitRenderIr({ film, format, svgSources, measure: binaryMeasurer(binary), resolvePath: resolveRepoPath });
 }
 

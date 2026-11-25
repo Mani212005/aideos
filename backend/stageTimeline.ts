@@ -66,7 +66,7 @@ function overlayMotion(film: Film, shots: TimedShot[]): Array<{ from: number; to
 // Builds visible stage state from compiled curves, never from captions, pixels or a renderer's capture path.
 export function stageTimeline(film: Film, format: DeliveryFormat, options: { compiled?: CompiledScene } = {}) {
   const delivery = stageSegments(film, format);
-  const scene = film.scene as Scene | undefined;
+  const scene = film.scene;
   const compiled = scene ? options.compiled ?? compileStageLayer(scene) : undefined;
   const width = format === "long" ? 1920 : 1080, height = format === "long" ? 1080 : 1920;
   const performanceGeometry = scene?.performances?.length ? prepareStageFacts(scene, width, height) : undefined;

@@ -88,8 +88,8 @@ export const clipKindSchema = z.enum([
 
 export type ClipKind = z.infer<typeof clipKindSchema>;
 
-/** Generic Universal Clip Schema */
-export const clipSchema = z.object({
+/** The timeline fields every clip shares, whatever its kind. */
+const clipBaseSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   layerId: z.string().min(1),
 
@@ -106,16 +106,6 @@ export const clipSchema = z.object({
    */
   sourceDuration: z.number().positive().optional(),
 
-  kind: clipKindSchema,
-  payload: z.union([
-    animationPayloadSchema,
-    videoPayloadSchema,
-    audioPayloadSchema,
-    textPayloadSchema,
-    subtitlePayloadSchema,
-    imagePayloadSchema,
-  ]),
-
   /** Cross-reference for split video/audio clip pairs */
   linkedClipId: z.string().nullable().optional(),
 
@@ -123,6 +113,20 @@ export const clipSchema = z.object({
   opacity: z.number().min(0).max(1).default(1),
   volume: z.number().min(0).max(2).default(1),
 });
+
+/**
+ * Generic Universal Clip Schema. `kind` picks the one payload schema the clip is checked against:
+ * a plain union tried each payload in turn, so an audio payload passed as video (stripping its
+ * channel) and an image payload as video (stripping its placement), and a payload of the wrong kind passed.
+ */
+export const clipSchema = z.discriminatedUnion("kind", [
+  clipBaseSchema.extend({ kind: z.literal("animation"), payload: animationPayloadSchema }),
+  clipBaseSchema.extend({ kind: z.literal("video"), payload: videoPayloadSchema }),
+  clipBaseSchema.extend({ kind: z.literal("audio"), payload: audioPayloadSchema }),
+  clipBaseSchema.extend({ kind: z.literal("text"), payload: textPayloadSchema }),
+  clipBaseSchema.extend({ kind: z.literal("subtitle"), payload: subtitlePayloadSchema }),
+  clipBaseSchema.extend({ kind: z.literal("image"), payload: imagePayloadSchema }),
+]);
 
 export type Clip = z.infer<typeof clipSchema>;
 

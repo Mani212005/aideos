@@ -12,7 +12,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Film } from "../../src/dl/schema";
-import type { Scene } from "../../src/dl/scene/types";
 import { compileScene, type CompiledFrame } from "../../src/dl/scene/compile";
 import { loadSceneAssets } from "../scene/loadSceneAssets";
 import { renderFrameStill, type RenderStillOptions } from "../scene/renderStill";
@@ -107,7 +106,7 @@ export function judgeFramesDir(filmId: string): string {
 
 // Samples a scene film and renders each sampled frame once to a verified 1920x1080 PNG.
 export function renderSamples(filmId: string, film: Film, options: SampleOptions = {}): SampleStill[] {
-  const scene = film.scene as Scene | undefined;
+  const scene = film.scene;
   if (!scene) throw new Error(`film "${filmId}" has no scene, so there is nothing to sample stills from`);
   if (scene.renderer === "three") throw new Error("Three stage craft is unmeasured by the SVG sampler; review actual FilmView renders instead.");
   const { svgSources, elementIdsByAssetId, rasterUrls } = loadSceneAssets(scene);

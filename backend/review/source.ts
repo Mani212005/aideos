@@ -27,7 +27,6 @@ import { projectStagePoint, SAFE_SQUARE } from "../../src/dl/scene/projection";
 import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { resolveStageCharacter } from "../../src/dl/characters/resolve";
-import type { SvgAnimationClip } from "../../src/dl/scene/svgAnimation";
 import type { LookPlan } from "../lookPlan/schema";
 import { safeParseLookPlan } from "../lookPlan/schema";
 import { THRESHOLDS } from "./thresholds";
@@ -312,7 +311,7 @@ function sceneBoundaries(scene: Scene, boundaryFrames: number[], fps: number, vi
   const transforms = new Map<string, Array<{ start: number; end: number }>>();
   const clipStarts = new Set<number>();
   for (const asset of assets) {
-    for (const clip of (asset.animation?.clips ?? []) as SvgAnimationClip[]) {
+    for (const clip of asset.animation?.clips ?? []) {
       clip.targets.forEach((target, k) => {
         const start = clip.startFrame + (clip.staggerFrames ?? 0) * k;
         const key = `${asset.assetId}::${target}`;
@@ -374,7 +373,7 @@ function readStoryFacts(film: Film, viewport: ReviewViewport): FilmFacts {
   const voiceoverSec = film.voiceover?.durationSec ?? null;
   const durations = film.shots.map((s) => s.dur);
   const total = durations.reduce((a, b) => a + b, 0);
-  const scene = film.scene as Scene | undefined;
+  const scene = film.scene;
   const shotBoundaries: number[] = [];
   let acc = 0;
   durations.slice(0, -1).forEach((d) => {

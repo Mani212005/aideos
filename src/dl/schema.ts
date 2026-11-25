@@ -5,8 +5,7 @@
  */
 
 import { z } from "zod";
-import { stageTreatmentSchema, treatmentSpanSchema } from "./scene/materials/treatment";
-import { castSchema, performanceSchema } from "./scene/stageContract";
+import { sceneSchema } from "./scene/schema";
 import { MAX_HOLD_PUSH, MIN_HOLD_PUSH } from "./holdPush";
 import { NARRATION_RATE, minFilmSecAt } from "../../backend/pacingProfile";
 
@@ -264,97 +263,10 @@ const accentCost = (b: Block): number => {
  * THE SCENE LAYER
  * ---------------------------------------------------------------------------
  * A film's spatial canvas is either a node graph or a scene graph, never both.
- * `canvas` is the node graph; `scene` is the vector stage from `scene/types.ts`,
+ * `canvas` is the node graph; `scene` is the vector stage defined once in
+ * `scene/schema.ts` (its types derive from that schema in `scene/types.ts`),
  * drawn from committed SVG assets and driven by declarative animation clips.
- *
- * Mirroring the scene contract in Zod is what lets a hand-authored timeline of
- * several hundred clips fail at bundle time with a field path, instead of
- * rendering a film with one prop silently missing.
  */
-export const svgAnimationClipSchema = z.object({
-  clipId: z.string().min(1),
-  targets: z.array(z.string().min(1)).min(1),
-  property: z.enum([
-    "translateX",
-    "translateY",
-    "scale",
-    "scaleX",
-    "scaleY",
-    "rotate",
-    "opacity",
-    "drawOn",
-  ]),
-  from: z.number(),
-  to: z.number(),
-  startFrame: z.number().int().min(0),
-  durationFrames: z.number().int().min(1),
-  easing: z.enum(["linear", "expoOut", "expoIn", "expoInOut", "hold"]).optional(),
-  staggerFrames: z.number().int().min(0).optional(),
-  origin: z.object({ x: z.number(), y: z.number() }).optional(),
-});
-
-export const svgAnimationTimelineSchema = z.object({
-  timelineId: z.string().min(1),
-  clips: z.array(svgAnimationClipSchema),
-});
-
-/** A picture (the illustrated stage's plate or one generated object): a pinned PNG, see src/dl/scene/raster.ts. */
-export const rasterSourceSchema = z.object({
-  src: z.string().min(1).regex(/\.png$/i, "a picture is a .png file"),
-  width: z.number().int().min(1).max(16_384),
-  height: z.number().int().min(1).max(16_384),
-  sha256: z.string().regex(/^[0-9a-f]{64}$/, "a picture is pinned by its sha256 (64 lowercase hex digits)"),
-});
-
-export const environmentAssetSchema = z.object({
-  plane: z.enum(["background", "foreground"]).optional(),
-  assetId: z.string().min(1),
-  /** SVG artwork; exactly one of `svgSource` and `raster` is set. */
-  svgSource: z.string().min(1).endsWith(".svg").optional(),
-  /** A picture instead of SVG artwork. */
-  raster: rasterSourceSchema.optional(),
-  layer: z.number().int().optional(),
-  position: z.object({ x: z.number(), y: z.number() }),
-  scale: z.number().positive(),
-  rotation: z.number(),
-  opacity: z.number().min(0).max(1),
-  animation: svgAnimationTimelineSchema.optional(),
-}).refine((a) => (a.svgSource === undefined) !== (a.raster === undefined), { message: "an asset draws exactly one of svgSource (SVG artwork) and raster (a picture)" });
-
-export const cameraKeyframeSchema = z.object({
-  frame: z.number().int().min(0),
-  center: z.object({ x: z.number(), y: z.number() }),
-  zoom: z.number().positive(),
-  rotation: z.number().optional(),
-  easing: z.string().optional(),
-});
-
-export const cameraTrackSchema = z.object({
-  keyframes: z.array(cameraKeyframeSchema),
-  /** Opt-in slow push-in over every camera hold, as a fraction of zoom (0.01 to 0.03). Absent means off. */
-  holdPush: z.number().min(MIN_HOLD_PUSH).max(MAX_HOLD_PUSH).optional(),
-});
-
-export const sceneSchema = z.object({
-  treatmentResourceHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
-  treatment: stageTreatmentSchema.optional(),
-  treatments: z.array(treatmentSpanSchema).optional(),
-  renderer: z.enum(["svg", "three"]).optional(),
-  cast: z.array(castSchema).optional(),
-  performances: z.array(performanceSchema).optional(),
-  schemaVersion: z.string().min(1),
-  sceneId: z.string().min(1),
-  fps: z.number().int().positive(),
-  durationFrames: z.number().int().positive(),
-  audioSource: z.string().min(1),
-  audioDurationMs: z.number().min(0),
-  sceneSize: z.object({ w: z.number().positive(), h: z.number().positive() }),
-  camera: cameraTrackSchema.optional(),
-  background: environmentAssetSchema,
-  props: z.array(environmentAssetSchema),
-  actors: z.array(z.unknown()).default([]),
-}).strict();
-
 export type FilmScene = z.infer<typeof sceneSchema>;
 
 /**
@@ -364,7 +276,8 @@ export type FilmScene = z.infer<typeof sceneSchema>;
  * strength around it.
  */
 export const stageSchema = z.enum(["anchor", "frame", "none", "inset"]).default("anchor");
-export const lookSchema = z.union([z.string(), z.array(z.string()).min(1), z.literal("all")]);
+/** What a shot looks at: "all" (the whole canvas), one node id, or several. The film check resolves each id to a node. */
+export const lookSchema = z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]);
 export const moveSchema = z.enum(["pan", "zoom-in", "zoom-out", "hold", "cut"]).default("pan");
 
 export const backgroundPresetSchema = z.enum([
@@ -800,17 +713,22 @@ export type OverlayClipKind = z.infer<typeof overlayClipKindSchema>;
  * round trip back into the manifest. A subtitle *derived* from the voiceover words stays derived
  * (regenerated by `generateWordsFromFilm`); only a standalone caption cue lands here.
  */
-export const overlayClipSchema = z.object({
+const overlayClipBaseSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
-  kind: overlayClipKindSchema,
   position: z.number().min(0).default(0),
   start: z.number().min(0).default(0),
   end: z.number().min(0),
   opacity: z.number().min(0).max(1).default(1),
   /** Timeline lane this clip sits on. See timelineLayerSchema. */
   layerId: z.string().optional(),
-  payload: z.union([textPayloadSchema, imagePayloadSchema, subtitlePayloadSchema]),
 });
+
+/** `kind` picks the payload schema, so a subtitle cue keeps its frames and a payload of the wrong kind is refused. */
+export const overlayClipSchema = z.discriminatedUnion("kind", [
+  overlayClipBaseSchema.extend({ kind: z.literal("text"), payload: textPayloadSchema }),
+  overlayClipBaseSchema.extend({ kind: z.literal("image"), payload: imagePayloadSchema }),
+  overlayClipBaseSchema.extend({ kind: z.literal("subtitle"), payload: subtitlePayloadSchema }),
+]);
 
 export type OverlayClip = z.infer<typeof overlayClipSchema>;
 
@@ -897,8 +815,15 @@ export const filmBaseSchema = z.object({
   /** Editor timeline lanes. Absent means the editor derives its default lane set. */
   layers: z.array(timelineLayerSchema).optional(),
   captionPlacement: captionPlacementByFormatSchema.optional(),
-  /** Burned-in captions rendering. default is "bottom" */
-  captions: z.union([z.enum(["bottom", "off"]), z.string()]).default("bottom").optional(),
+  /** Burned-in captions rendering. default is "bottom". A named mode, "" (no words), or inline WebVTT text (it has a "-->" cue timing line). */
+  captions: z
+    .union([
+      z.enum(["bottom", "off", "kinetic", "auto"]),
+      z.literal(""),
+      z.string().refine((value) => value.includes("-->"), { message: 'captions must be "bottom", "off", "kinetic", "auto" or inline WebVTT text with a "-->" cue' }),
+    ])
+    .default("bottom")
+    .optional(),
   /**
    * Burn kinetic subtitles into the picture. Omit to keep the long-standing default of on.
    * Set false for a film that puts its own words on screen: §04 leaves subtitles to the platform,

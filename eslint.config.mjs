@@ -25,13 +25,13 @@ const LEGACY_ANY = [
   "backend/live/audio.live.ts",
   "backend/agentBridge/{contextBuilder,dispatcher,taskQueue,traceBus,types}.ts",
   "backend/cli.ts",
-  "backend/editPlanner/{interpreter,validator}.ts",
+  "backend/editPlanner/interpreter.ts",
   "backend/geminiReview/{geminiReview,types}.ts",
   "backend/ideation/{segmentSync,visualSelector}.ts",
   "backend/mcp/server.ts",
   "backend/timeline/{layer_manager,snap,updates}.ts",
   "scripts/smoke_studio.ts",
-  "editor/src/components/{OnCanvasAiEditor,ScriptEditor}.tsx",
+  "editor/src/components/ScriptEditor.tsx",
   "editor/src/state/useFilmProject.ts",
 ];
 
