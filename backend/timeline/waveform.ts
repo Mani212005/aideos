@@ -9,7 +9,7 @@
  */
 
 import fs from "fs";
-import { execFileSync } from "child_process";
+import { execFileSyncBounded } from "../proc";
 
 export interface WaveformData {
   /** Normalised amplitude peaks in the range 0 to 1. */
@@ -39,7 +39,7 @@ export function extractAudioPeaks(audioFilePath: string, numPeaks = 100): Wavefo
 
   try {
     // Measure duration via ffprobe without shell interpolation
-    const durOutput = execFileSync(
+    const durOutput = execFileSyncBounded(
       "ffprobe",
       ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audioFilePath],
       { encoding: "utf8" }
@@ -47,7 +47,7 @@ export function extractAudioPeaks(audioFilePath: string, numPeaks = 100): Wavefo
     const durationSec = parseFloat(durOutput) || 10.0;
 
     // Extract raw 8-bit mono PCM stream without truncated head limit
-    const rawPcm = execFileSync(
+    const rawPcm = execFileSyncBounded(
       "ffmpeg",
       ["-i", audioFilePath, "-ac", "1", "-ar", "8000", "-f", "u8", "-"],
       { maxBuffer: 50 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] }

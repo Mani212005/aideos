@@ -12,7 +12,7 @@ import { REPO_ROOT as repositoryRoot } from "../backend/paths";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSyncBounded } from "../backend/proc";
 import { findChromeBinary } from "../backend/scene/renderStill";
 import { startEditor, StudioPage } from "./studioDriver";
 import { installVoiceOfChoiceForTests } from "../backend/testSupport/fakeVcd";
@@ -104,7 +104,7 @@ async function previewShot(page: StudioPage, name: string): Promise<string> {
  * picture and rounds the played portion by a pixel or two, so equality is "no more than 0.05%".
  */
 function changedShare(a: string, b: string): number {
-  const decode = (file: string) => spawnSync("ffmpeg", ["-v", "error", "-i", file, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], { maxBuffer: 256 * 1024 * 1024 }).stdout;
+  const decode = (file: string) => spawnSyncBounded("ffmpeg", ["-v", "error", "-i", file, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], { maxBuffer: 256 * 1024 * 1024 }).stdout;
   const [x, y] = [decode(a), decode(b)];
   if (x.length === 0 || x.length !== y.length) return 1;
   let changed = 0;

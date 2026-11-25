@@ -5,7 +5,8 @@
  * Used by: backend/study/study.ts, backend/study/tone.ts, backend/study/audio.ts.
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { spawnSyncBounded } from "../proc";
 import { STUDY } from "./types";
 
 /** Size of the frames the pixel analysis decodes. */
@@ -55,7 +56,7 @@ export function streamRawFrames(file: string, filter: string, pixFmt: string, fr
 
 // Decodes the audio track to mono 16 kHz float samples in -1..1; null when the file has no audio.
 export function decodeAudioMono16k(file: string): Float32Array | null {
-  const r = spawnSync("ffmpeg", ["-v", "error", "-i", file, "-vn", "-ac", "1", "-ar", "16000", "-f", "s16le", "-"], { maxBuffer: 1024 * 1024 * 1024 });
+  const r = spawnSyncBounded("ffmpeg", ["-v", "error", "-i", file, "-vn", "-ac", "1", "-ar", "16000", "-f", "s16le", "-"], { maxBuffer: 1024 * 1024 * 1024 });
   if (r.error) throw new Error(`could not run ffmpeg: ${r.error.message}. Install ffmpeg to use aideos study.`);
   const bytes = r.stdout as Buffer;
   if (r.status !== 0 || bytes.length < 2) return null;
