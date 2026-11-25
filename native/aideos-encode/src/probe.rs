@@ -110,8 +110,8 @@ pub(crate) fn command_output(command: &mut Command, cancel: Option<&AtomicBool>)
             }
         }
     };
-    let (stdout_result, stdout) = stdout_reader.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "reading subprocess output panicked"))?;
-    let (stderr_result, stderr) = stderr_reader.join().map_err(|_| io::Error::new(io::ErrorKind::Other, "reading subprocess errors panicked"))?;
+    let (stdout_result, stdout) = stdout_reader.join().map_err(|_| io::Error::other("reading subprocess output panicked"))?;
+    let (stderr_result, stderr) = stderr_reader.join().map_err(|_| io::Error::other("reading subprocess errors panicked"))?;
     stdout_result?;
     stderr_result?;
     Ok(Some(Output { status, stdout, stderr }))

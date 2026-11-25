@@ -569,7 +569,7 @@ fn audio_plan_rejects_out_of_timeline_ducking_times() {
         mix: MixSettings { story_end_sec: Some(5.0), ..MixSettings::default() },
         ..AudioPlan::default()
     };
-    assert!(matches!(mix_plan(&tools(), &valid, 5.0, dir.0.as_path()), Ok(_)));
+    assert!(mix_plan(&tools(), &valid, 5.0, dir.0.as_path()).is_ok());
 }
 
 /// The speech detector and gain curve behave as the TypeScript originals document, checked on small known inputs.

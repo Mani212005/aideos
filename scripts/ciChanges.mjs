@@ -64,6 +64,8 @@ export function isRenderFile(file) {
   if (normalized === "scripts/render_active.ts") return true;
   if (normalized === "render.yaml") return true;
   if (normalized.startsWith("src/dl/render/")) return true;
+  // The native renderer and encoder draw and encode every render journey, so a change there is render code.
+  if (normalized.startsWith("native/")) return true;
   return false;
 }
 

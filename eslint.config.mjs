@@ -1,7 +1,7 @@
 /**
- * File Description: ESLint flat configuration. Remotion's preset applies to the video code in src; backend, scripts, bin, root *.mjs/*.config.* and editor/src get the same base rules with Node or browser globals and without the Remotion-only rules. Note: `npm run lint` runs ESLint on `src` only, while `npm run ci` (static job) runs it on `src`, `backend`, `scripts` and `editor/src`.
+ * File Description: ESLint flat configuration. Remotion's preset applies to the video code in src; backend, scripts, bin, root *.mjs/*.config.*, editor/src and editor/vite.config.ts get the same base rules with Node or browser globals and without the Remotion-only rules. `npm run lint` runs the CI static job, so it checks exactly what CI checks.
  * Inputs and outputs: Remotion flat ESLint config -> exported ESLint configuration array for passed repository paths.
- * Used by: npm run lint (src), npm run ci (static job: src, backend, scripts, editor/src).
+ * Used by: npm run lint and npm run ci (static job: src, backend, scripts, editor/src, editor/vite.config.ts).
  */
 
 import { config as remotionConfig } from "@remotion/eslint-config-flat";
@@ -26,13 +26,13 @@ const LEGACY_ANY = [
   "backend/agentBridge/{contextBuilder,dispatcher,taskQueue,traceBus,types}.ts",
   "backend/cli.ts",
   "backend/editPlanner/interpreter.ts",
-  "backend/geminiReview/{geminiReview,types}.ts",
+  "backend/geminiReview/types.ts",
   "backend/ideation/{segmentSync,visualSelector}.ts",
   "backend/mcp/server.ts",
   "backend/timeline/{layer_manager,snap,updates}.ts",
-  "scripts/smoke_studio.ts",
   "editor/src/components/ScriptEditor.tsx",
-  "editor/src/state/useFilmProject.ts",
+  // The Studio dev server predates the rule (26 `any` in 2400 lines); type them as its routes move to backend/server/routes.
+  "editor/vite.config.ts",
 ];
 
 export default [
@@ -54,7 +54,7 @@ export default [
     },
   },
   {
-    files: ["backend/**", "scripts/**", "bin/**", "*.mjs", "*.config.*"],
+    files: ["backend/**", "scripts/**", "bin/**", "*.mjs", "*.config.*", "editor/vite.config.ts"],
     languageOptions: { globals: { ...globals.node } },
   },
   {

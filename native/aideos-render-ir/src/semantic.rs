@@ -367,7 +367,7 @@ impl<'a> Checker<'a> {
                     self.add("sample_count_mismatch", at(&tp, &[&name]), format!("{name} has {} numbers, {samples} samples need {want}", values.len()));
                 }
                 if name == "scale" {
-                    if let Some(bad) = values.iter().position(|v| !(*v > 0.0)) {
+                    if let Some(bad) = values.iter().position(|v| v.is_nan() || *v <= 0.0) {
                         self.add("value_out_of_range", at(&tp, &[&name, &bad]), format!("scale {} is not above 0", values[bad]));
                     }
                 }

@@ -299,7 +299,8 @@ pub enum Node {
     Text(TextNode),
     Rail(RailNode),
     Captions(CaptionsNode),
-    EndCard(EndCardNode),
+    /// Boxed: the end card is by far the largest node, and an unboxed variant would size every `Node` to it.
+    EndCard(Box<EndCardNode>),
     Stage3d(Stage3dNode),
     Group(GroupNode),
 }

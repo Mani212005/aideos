@@ -41,13 +41,6 @@ enum Part {
 }
 
 impl Part {
-    /// The part's id.
-    fn id(&self) -> &str {
-        match self {
-            Part::Triangle { id, .. } | Part::Points { id, .. } | Part::Lines { id, .. } => id,
-        }
-    }
-
     /// The part's IR declaration.
     fn declare(&self) -> Value {
         match self {

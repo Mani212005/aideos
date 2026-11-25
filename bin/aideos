@@ -3,7 +3,7 @@
 # Inputs and outputs: command-line arguments -> runs the studio, a render, a review or a CLI command.
 # Used by: the `bin` field of package.json (entry point on the user's PATH).
 
-set -e
+set -euo pipefail
 
 # Project resolution precedence (the one place this is documented):
 #   1. Pinned checkout when invoked through a channel launcher (AIDEOS_PINNED_ROOT),
@@ -535,8 +535,12 @@ if [ "$STUDIO_RUNNING" -ne 1 ]; then
 fi
 echo "Aideos Studio: http://localhost:$PORT/"
 
-# Open in default browser
-open "http://localhost:$PORT/" 2>/dev/null || true
+# Open in the default browser: `open` on macOS, `xdg-open` on Linux. No opener (a headless host) is not an error.
+if command -v open >/dev/null 2>&1; then
+  open "http://localhost:$PORT/" 2>/dev/null || true
+elif command -v xdg-open >/dev/null 2>&1; then
+  xdg-open "http://localhost:$PORT/" >/dev/null 2>&1 || true
+fi
 
 # Last, hand the terminal to the chosen agent (Web Studio only has none).
 if [ "$TARGET_AGENT" = "none" ]; then

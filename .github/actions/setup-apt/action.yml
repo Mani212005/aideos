@@ -1,0 +1,42 @@
+# File Description: Composite action that installs apt packages on a GitHub runner with the retry-hardened recipe every job shares: apt cache directory, mirror priority fix, a bounded `apt-get update` and `install`, and three attempts with a growing delay.
+# Inputs and outputs: a space separated `packages` list -> those packages installed through the runner apt cache at /home/runner/.apt-cache.
+# Used by: .github/workflows/ci.yml (unit, journeys and legacy jobs), nightly.yml and update-goldens.yml. Documented in docs/CI.md.
+name: Install apt packages
+description: Install apt packages with the retry-hardened recipe shared by every job (mirror priority, bounded apt calls, three attempts).
+
+inputs:
+  packages:
+    description: Space separated apt package names.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install apt packages
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.packages }}
+      run: |
+        mkdir -p /home/runner/.apt-cache/partial
+        sudo rm -f /etc/apt/apt.conf.d/docker-clean
+        if [ -f /etc/apt/apt-mirrors.txt ] && grep -q '^http://azure.archive.ubuntu.com/ubuntu/' /etc/apt/apt-mirrors.txt; then
+          if ! grep -qE '^http://azure\.archive\.ubuntu\.com/ubuntu/?[[:space:]]+priority:' /etc/apt/apt-mirrors.txt; then
+            sudo sed -i -E '/^http:\/\/azure\.archive\.ubuntu\.com\/ubuntu\/?([[:space:]]|$)/ s/[[:space:]]*$/\tpriority:1/' /etc/apt/apt-mirrors.txt
+          fi
+          if ! grep -qE '^http://archive\.ubuntu\.com/ubuntu/?([[:space:]]|$)' /etc/apt/apt-mirrors.txt; then
+            printf 'http://archive.ubuntu.com/ubuntu/\tpriority:2\n' | sudo tee -a /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+        fi
+        for attempt in 1 2 3; do
+          if timeout 80 sudo apt-get -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o Acquire::Retries=3 update && \
+             timeout 80 sudo apt-get -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o Acquire::Retries=3 -o Dir::Cache::Archives=/home/runner/.apt-cache install -y --no-install-recommends $APT_PACKAGES; then
+            break
+          fi
+          if [ "$attempt" -eq 3 ]; then
+            echo "apt install failed after 3 attempts" >&2
+            exit 1
+          fi
+          delay=$((attempt * 20))
+          echo "apt attempt $attempt failed; sleeping ${delay}s before retry"
+          sleep "$delay"
+        done
