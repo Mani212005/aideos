@@ -164,17 +164,50 @@ test("agy runner lets a quiet model request continue by default", async (t) => {
 
 for (const activity of ["stdout", "CPU"]) {
   test(`agy idle watchdog allows continuing ${activity} progress`, { skip: process.platform === "win32" }, async (t) => {
-    const script = activity === "stdout"
-      ? `const timer = setInterval(() => process.stdout.write(' '), 50); setTimeout(() => {clearInterval(timer); console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));}, 2000);`
-      : `const end = Date.now() + 2000; while (Date.now() < end) {} console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));`;
-    fakeAgy(t, script);
+    let dir: string | undefined;
+    if (activity === "CPU") {
+      const cpuWorker = `
+const fs = require('node:fs');
+const path = require('node:path');
+const dir = process.argv[1];
+fs.writeFileSync(path.join(dir, 'child.pid'), String(process.pid));
+fs.writeFileSync(path.join(dir, 'ready'), 'ready');
+// Starts CPU work only after the parent test confirms the process tree is ready.
+const startCpu = () => {
+  const end = Date.now() + 2000;
+  while (Date.now() < end) {}
+  console.log(JSON.stringify({ status: 'SUCCESS', response: '{"rating":8}' }));
+};
+const watcher = fs.watch(dir, (_event, filename) => {
+  if (filename === 'start') { watcher.close(); startCpu(); }
+});
+if (fs.existsSync(path.join(dir, 'start'))) { watcher.close(); startCpu(); }
+`;
+      dir = fakeAgy(t, `
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+const dir = __dirname;
+fs.writeFileSync(path.join(dir, 'leader.pid'), String(process.pid));
+const child = spawn(process.execPath, ['-e', ${JSON.stringify(cpuWorker)}, dir], { stdio: 'inherit' });
+const timer = setInterval(() => process.stdout.write(' '), 50);
+child.once('exit', () => clearInterval(timer));
+`);
+    } else {
+      fakeAgy(t, `const timer = setInterval(() => process.stdout.write(' '), 50); setTimeout(() => {clearInterval(timer); console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));}, 2000);`);
+    }
     const savedIdle = process.env.AIDEOS_AGY_IDLE_TIMEOUT;
     process.env.AIDEOS_AGY_IDLE_TIMEOUT = "1";
     t.after(() => {
       if (savedIdle === undefined) delete process.env.AIDEOS_AGY_IDLE_TIMEOUT;
       else process.env.AIDEOS_AGY_IDLE_TIMEOUT = savedIdle;
     });
-    assert.equal(JSON.parse(await defaultAgyRunner("Review", { timeoutSeconds: 60 })).rating, 8);
+    const result = defaultAgyRunner("Review", { timeoutSeconds: 60 });
+    if (dir !== undefined) {
+      await until(() => ["leader.pid", "child.pid", "ready"].every((name) => fs.existsSync(path.join(dir, name))));
+      fs.writeFileSync(path.join(dir, "start"), "start");
+    }
+    assert.equal(JSON.parse(await result).rating, 8);
   });
 }
 
