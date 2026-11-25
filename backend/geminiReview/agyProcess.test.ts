@@ -164,14 +164,12 @@ test("agy runner lets a quiet model request continue by default", async (t) => {
 
 for (const activity of ["stdout", "CPU"]) {
   test(`agy idle watchdog allows continuing ${activity} progress`, { skip: process.platform === "win32" }, async (t) => {
-    // The watchdog reads CPU from ps, whose time column counts whole seconds, so the CPU case needs an idle window of several ticks: at 1s a loaded runner can leave the counter flat for a full window while the loop still runs.
-    const idleSeconds = activity === "stdout" ? "1" : "4";
     const script = activity === "stdout"
       ? `const timer = setInterval(() => process.stdout.write(' '), 50); setTimeout(() => {clearInterval(timer); console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));}, 2000);`
-      : `const end = Date.now() + 6000; while (Date.now() < end) {} console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));`;
+      : `const end = Date.now() + 2000; while (Date.now() < end) {} console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));`;
     fakeAgy(t, script);
     const savedIdle = process.env.AIDEOS_AGY_IDLE_TIMEOUT;
-    process.env.AIDEOS_AGY_IDLE_TIMEOUT = idleSeconds;
+    process.env.AIDEOS_AGY_IDLE_TIMEOUT = "1";
     t.after(() => {
       if (savedIdle === undefined) delete process.env.AIDEOS_AGY_IDLE_TIMEOUT;
       else process.env.AIDEOS_AGY_IDLE_TIMEOUT = savedIdle;
