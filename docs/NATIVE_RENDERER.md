@@ -571,6 +571,39 @@ those fixes. A half-float frame surface closed most of the artwork gap (still-ta
 50 frames under the bar, reel 0) but cost a quarter more CPU time, so it was not kept. Cost of the float-shader dim:
 about 5 ms a frame on end card frames only (end card frames about 10% slower, story frames unchanged).
 
+### Text parity follow-up (aideos-native-text-parity)
+
+Measured again on main after the reel caption safe zone (#251), which had moved the reel captions and stage and taken
+the reel story minimum of the character films from 0.9987 to 0.9971. Same method: every frame of both formats (still-talking:
+story frames 0-299 and the end card), ffmpeg `ssim` on the whole frame against a fresh Remotion PNG sequence, the IR
+emitted by each binary's own `measure`. Five text causes were measured and fixed (see [Fonts and text](#fonts-and-text)):
+
+| Cause (measured) | What Chrome does |
+| --- | --- |
+| right-aligned and centred letter-spaced text ls/2 left (the rail timestamp, 1.1 px) | all of the letter spacing after each glyph; Skia drops its half shift on those lines, so the correction is per line |
+| letter-spaced words up to 2 px narrow ("transmitting"), moving a whole text card row 1 px | Blink turns `liga` and `clig` off when the letter spacing is not zero |
+| light text 3% to 7% heavier, accent text 2% lighter | text contrast 0.2 and gamma 1.2 (Chromium's Linux Skia build) |
+| SVG text 1 px high at a 2.2 camera zoom | the baseline exactly on `y` |
+| a caption card's second row 1 px high | the row keeps its fractional offset; only the baseline is rounded |
+
+Whole-frame SSIM against Remotion, before > after (bar 0.995). No threshold, tolerance or Chrome golden changed; the
+native goldens were remade from the renderer at the same strict tolerance because their text moved toward Chrome.
+Evidence: `/home/mani/aideos-linux-home/data/aideos-native-text-parity/` (`before/`, `after/`, `handoff.md`).
+
+| Film, format | Story SSIM min | End card SSIM min | Frames under 0.995 |
+| --- | --- | --- | --- |
+| hello-scene, long / reel | 0.99725 > 0.99894 / 0.99612 > 0.99917 | 0.99856 > 0.99911 / 0.99859 > 0.99918 | 0 > 0 / 0 > 0 |
+| pixels-stage-pip, long / reel | 0.99820 > 0.99873 / 0.99707 > 0.99880 | 0.99887 > 0.99919 / 0.99850 > 0.99921 | 0 > 0 / 0 > 0 |
+| journey-j3-j4-dots, long / reel | 0.99836 > 0.99888 / 0.99721 > 0.99896 | 0.99779 > 0.99826 / 0.99577 > 0.99577 | 0 > 0 / 0 > 0 |
+| still-talking, long / reel | 0.99325 > 0.99383 / 0.99485 > 0.99515 | 0.99267 > 0.99617 / 0.99506 > 0.99660 | 69 > 49 / 2 > 0 |
+
+Means rose on every row (hello-scene story 0.99795 > 0.99939 long, 0.99737 > 0.99947 reel). What is left is not text:
+the 49 still-talking long frames (0 to 25 and 262 to 299) lose to the film's soft gradients and star discs (on its
+worst end card frame 94% of the loss lies outside the text, and with gradient dithering off the native frame moves
+further from Chrome, 0.99499 > 0.99362), and the dots reel end card minimum (frame 306) is the dots performer under the
+end card's fading dim. Two tries were measured and dropped: whole-pixel glyph positioning (hello-scene 0.998 > 0.992)
+and turning the gradient dither off.
+
 ### P4.5 journeys and goldens
 
 The journeys that compared one engine with another were decided one by one, following the captain's answers (the strict
