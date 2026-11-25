@@ -32,7 +32,7 @@ function fakeAgy(t: TestContext, body: string): string {
   process.env.PATH = `${dir}${path.delimiter}${savedPath ?? ""}`;
   t.after(() => {
     process.env.PATH = savedPath;
-    for (const name of ["child.pid", "leader.pid"]) {
+    for (const name of fs.readdirSync(dir).filter((entry) => /^(?:leader|child(?:-\d+)?)\.pid$/.test(entry))) {
       const file = path.join(dir, name);
       if (fs.existsSync(file)) {
         try {
@@ -55,6 +55,36 @@ async function until(check: () => boolean): Promise<void> {
     await delay(30);
   }
   assert.fail("fixture process state did not converge within three seconds");
+}
+
+// Waits for a set of fixture markers without fixed-delay polling.
+function watchForFiles(dir: string, names: string[]): { promise: Promise<void>; close: () => void } {
+  let watcher: fs.FSWatcher | undefined;
+  let resolveFiles: () => void = () => {};
+  let rejectFiles: (error: Error) => void = () => {};
+  const promise = new Promise<void>((resolve, reject) => {
+    resolveFiles = resolve;
+    rejectFiles = reject;
+  });
+  // Resolves once all fixture files exist.
+  const check = () => {
+    try {
+      if (names.every((name) => fs.existsSync(path.join(dir, name)))) {
+        watcher?.close();
+        resolveFiles();
+      }
+    } catch (error) {
+      watcher?.close();
+      rejectFiles(error as Error);
+    }
+  };
+  watcher = fs.watch(dir, check);
+  watcher.once("error", (error) => {
+    watcher?.close();
+    rejectFiles(error);
+  });
+  check();
+  return { promise, close: () => watcher?.close() };
 }
 
 const stubbornTree = `
@@ -170,18 +200,25 @@ for (const activity of ["stdout", "CPU"]) {
 const fs = require('node:fs');
 const path = require('node:path');
 const dir = process.argv[1];
+const stopFile = path.join(dir, 'stop');
 fs.writeFileSync(path.join(dir, 'child.pid'), String(process.pid));
 fs.writeFileSync(path.join(dir, 'ready'), 'ready');
-// Starts CPU work only after the parent test confirms the process tree is ready.
-const startCpu = () => {
-  const end = Date.now() + 2000;
-  while (Date.now() < end) {}
+// Burns two seconds of CPU, then keeps burning until the test releases the worker.
+const burnUntilReleased = () => {
+  const started = process.cpuUsage();
+  let used = 0;
+  while (used < 2000000 && !fs.existsSync(stopFile)) {
+    const current = process.cpuUsage(started);
+    used = current.user + current.system;
+  }
+  fs.writeFileSync(path.join(dir, 'burn-complete'), 'done');
+  while (!fs.existsSync(stopFile)) process.cpuUsage();
   console.log(JSON.stringify({ status: 'SUCCESS', response: '{"rating":8}' }));
 };
 const watcher = fs.watch(dir, (_event, filename) => {
-  if (filename === 'start') { watcher.close(); startCpu(); }
+  if (filename === 'start') { watcher.close(); burnUntilReleased(); }
 });
-if (fs.existsSync(path.join(dir, 'start'))) { watcher.close(); startCpu(); }
+if (fs.existsSync(path.join(dir, 'start'))) { watcher.close(); burnUntilReleased(); }
 `;
       dir = fakeAgy(t, `
 const fs = require('node:fs');
@@ -189,7 +226,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const dir = __dirname;
 fs.writeFileSync(path.join(dir, 'leader.pid'), String(process.pid));
-const child = spawn(process.execPath, ['-e', ${JSON.stringify(cpuWorker)}, dir], { stdio: 'inherit' });
+spawn(process.execPath, ['-e', ${JSON.stringify(cpuWorker)}, dir], { stdio: 'inherit' });
 // Keeps stdout busy only until the burn phase starts, so only CPU growth can satisfy the idle watchdog afterwards.
 const timer = setInterval(() => {
   if (fs.existsSync(path.join(dir, 'start'))) clearInterval(timer);
@@ -207,10 +244,38 @@ const timer = setInterval(() => {
     });
     const result = defaultAgyRunner("Review", { timeoutSeconds: 60 });
     if (dir !== undefined) {
-      await until(() => ["leader.pid", "child.pid", "ready"].every((name) => fs.existsSync(path.join(dir, name))));
+      const runnerOutcome = result.then(
+        (stdout) => ({ kind: "resolved" as const, stdout }),
+        (error: unknown) => {
+          fs.writeFileSync(path.join(dir, "stop"), "watchdog-verdict");
+          return { kind: "rejected" as const, error };
+        },
+      );
+      const readyFiles = ["leader.pid", "child.pid", "ready"];
+      const readyWatcher = watchForFiles(dir, readyFiles);
+      const readyOutcome = await Promise.race([
+        readyWatcher.promise.then(() => ({ kind: "ready" as const })),
+        runnerOutcome,
+      ]);
+      readyWatcher.close();
+      assert.equal(readyOutcome.kind, "ready", readyOutcome.kind === "rejected" ? String(readyOutcome.error) : "runner returned before the process tree was ready");
       fs.writeFileSync(path.join(dir, "start"), "start");
+      const burnFiles = ["burn-complete"];
+      const burnWatcher = watchForFiles(dir, burnFiles);
+      const burnOutcome = await Promise.race([
+        burnWatcher.promise
+          .then(() => ({ kind: "burn-complete" as const })),
+        runnerOutcome,
+      ]);
+      burnWatcher.close();
+      assert.equal(burnOutcome.kind, "burn-complete", burnOutcome.kind === "rejected" ? String(burnOutcome.error) : "runner returned before the CPU worker reached its milestone");
+      fs.writeFileSync(path.join(dir, "stop"), "stop");
+      const finalOutcome = await runnerOutcome;
+      assert.equal(finalOutcome.kind, "resolved", finalOutcome.kind === "rejected" ? String(finalOutcome.error) : "runner did not return");
+      if (finalOutcome.kind === "resolved") assert.equal(JSON.parse(finalOutcome.stdout).rating, 8);
+    } else {
+      assert.equal(JSON.parse(await result).rating, 8);
     }
-    assert.equal(JSON.parse(await result).rating, 8);
   });
 }
 
