@@ -21,6 +21,8 @@ import {
   slugify,
   writeFilm,
   readFilm,
+  readStoredFilm,
+  CorruptFilmError,
   wireFootageIntoFilm,
   readActiveFilmSource,
   restoreActiveFilmSource,
@@ -252,6 +254,32 @@ test("writeFilm keeps the package manifest and its generated shadow in sync", as
     const again = wireFootageIntoFilm(slug, film.shots[0].id, `videos/${slug}/footage/y.mp4`, "a caption");
     assert.equal(again.shots[0].blocks.filter((b) => b.c === "AnalogyInset").length, 1);
     assert.deepEqual(readFilm(slug), again);
+  } finally {
+    fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
+    fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });
+  }
+});
+
+// Captain's habits slice 5 (2026-11-22): a corrupt film.json is an error, never a silent read of the older shadow.
+test("readFilm refuses a corrupt film.json instead of serving the stale generated shadow", async () => {
+  const slug = `probe-${Date.now().toString(36)}`;
+  const { segments, shotDurations } = spine([6, 8, 9, 7, 8, 10]);
+  const { film } = await compileFilmFromScreenplayAsync(SCRIPT, segments, shotDurations, { title: "Probe Film", slug });
+
+  try {
+    writeFilm(slug, film);
+    const jsonPath = path.join(VIDEOS_DIR, slug, "film.json");
+    const written = fs.readFileSync(jsonPath, "utf8");
+    assert.equal(readStoredFilm(slug)?.source, "package");
+
+    fs.writeFileSync(jsonPath, written.slice(0, 200), "utf8");
+    assert.throws(() => readFilm(slug), (error: unknown) => error instanceof CorruptFilmError && error.slug === slug && error.file === jsonPath);
+    assert.throws(() => writeFilm(slug, film), CorruptFilmError, "a write must not carry placement from a film it cannot read");
+
+    fs.rmSync(jsonPath);
+    const shadow = readStoredFilm(slug);
+    assert.equal(shadow?.source, "shadow", "with no film.json the generated shadow is still read");
+    assert.deepEqual(shadow?.film, JSON.parse(written));
   } finally {
     fs.rmSync(path.join(VIDEOS_DIR, slug), { recursive: true, force: true });
     fs.rmSync(path.join(FILMS_DIR, `${slug}.ts`), { force: true });

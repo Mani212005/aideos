@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Film as FilmIcon } from "lucide-react";
 import type { Block, Film, Shot } from "../../../src/dl/schema";
+import { withShotFootage } from "../../../src/dl/footageWiring";
 import { Badge, Button, Note, Spinner } from "./ui";
 
 interface BrollJob {
@@ -45,15 +46,9 @@ function awaitsClip(shots: Shot[], index: number): boolean {
   return index === 0 || !holdsAnyClip(shots[index - 1].blocks);
 }
 
-// Puts the clip block first in the shot and drops any older one.
+// Wires the clip into the shot by the shared footage rule, captioned from the shot's own direction or words.
 function withClip(shot: Shot, src: string): Shot {
-  const inset = {
-    c: "AnalogyInset",
-    caption: (shot.visualDirection || shot.scriptText || "Footage").slice(0, 60),
-    src,
-    fullScreenHero: true,
-  } as Block;
-  return { ...shot, blocks: [inset, ...shot.blocks.filter((b) => b.c !== "AnalogyInset")] };
+  return withShotFootage(shot, src, shot.visualDirection || shot.scriptText || "Footage");
 }
 
 /** The footage state of the chosen shot, with one button to make the clip. A new film starts with fresh state. */
