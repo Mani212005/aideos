@@ -34,7 +34,7 @@ test("isJourneysSkippable and isLegacySkippable check specific file types", () =
   assert.equal(isLegacySkippable("backend/journeys/legacy.golden.ts"), false);
 
   assert.equal(isStageFile("src/dl/scene/compile.ts"), true);
-  assert.equal(isStageFile("backend/stillTalking/scene.ts"), true);
+  assert.equal(isStageFile("test_fixtures/stillTalking/scene.ts"), true);
   assert.equal(isStageFile("src/dl/Film.tsx"), false);
 
   assert.equal(isWorkflowFile(".github/dependabot.yml"), true);
@@ -267,7 +267,7 @@ test("computeRisk rates High for render, stage, golden, workflows, dependencies,
   assert.equal(computeRisk({ event: "pull_request", files: ["native/aideos-render/src/main.rs"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["src/dl/scene/ThreeStage.tsx"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["src/dl/scene/compile.ts"] }).risk, "High");
-  assert.equal(computeRisk({ event: "pull_request", files: ["backend/stillTalking/scene.ts"] }).risk, "High");
+  assert.equal(computeRisk({ event: "pull_request", files: ["test_fixtures/stillTalking/scene.ts"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: ["backend/journeys/legacy.golden.ts"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: [".github/workflows/ci.yml"] }).risk, "High");
   assert.equal(computeRisk({ event: "pull_request", files: [".github/dependabot.yml"] }).risk, "High");

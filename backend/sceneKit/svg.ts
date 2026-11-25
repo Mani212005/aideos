@@ -5,7 +5,7 @@
  * produce the markup the scene engine animates. Pure and free of Node imports, so it is safe in
  * any bundle that reaches the kit.
  * Inputs and outputs: SVG element tags, attributes, and children -> formatted SVG XML markup strings.
- * Used by: backend/sceneKit/canvas.ts, backend/stillTalking/artwork.ts, backend/testSupport/propertyTest.ts (rng).
+ * Used by: backend/sceneKit/canvas.ts, test_fixtures/stillTalking/artwork.ts, backend/testSupport/propertyTest.ts (rng).
  */
 
 import { escapeXmlText } from "../../src/dl/scene/svgDocument";
