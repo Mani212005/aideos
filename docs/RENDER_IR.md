@@ -43,7 +43,7 @@ particles may appear in one document. No emitter writes `/6` either. See
 
 P2.4a of Phase 2 added `aideos.render/7`: a strict superset of `/6` that adds the `underlay`, frame-space nodes drawn
 between the background and the stage. The emitter writes `/7` only for a node-graph film whose theme has a texture it lowers there
-(the `blueprint-grid` and `subtle-dots` patterns; a scene film on those themes is refused until it is measured); every other film is written as before. See [The underlay](#the-underlay-aideosrender7).
+(the `blueprint-grid` and `subtle-dots` patterns, and since P2.4b the `paper-fibers` grain, which Chrome draws as a flat darkening; a scene film on a textured theme is refused until it is measured); every other film is written as before. See [The underlay](#the-underlay-aideosrender7).
 
 ## Where things live
 
@@ -462,7 +462,7 @@ the same as drawing the children in place. Under the end card's 1% push, redrawi
 scale measured SSIM 0.960 against Chrome, resampling it 0.996.
 
 The emitter puts a node-graph film's theme texture there (`backend/renderIr/emitThemeTexture.ts`): `Film.tsx` draws the `blueprint-grid`
-and `subtle-dots` patterns under the canvas, pushed by the end card with the canvas but not drifted with it, so the
+and `subtle-dots` patterns and the `paper-fibers` grain (a flat darkening in Chrome, see NATIVE_RENDERER.md) under the canvas, pushed by the end card with the canvas but not drifted with it, so the
 texture is a frame-sized SVG asset (`visuals/theme-texture.svg`) inside a group whose `scale`, `x` and `y` tracks are the
 end card's push about the frame centre, at the texture layer's opacity. Fixtures: `valid/underlay.json`,
 `invalid/v6-underlay.json` (the field in `/6`), `invalid/underlay-space.json` (a `rect` in the underlay).

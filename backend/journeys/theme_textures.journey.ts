@@ -1,6 +1,6 @@
 /**
- * File Description: Journey for Phase 2 step P2.4a of the native renderer: a film on the `blueprint` or `dot-grid` theme (the `blueprint-grid` and `subtle-dots` textures `Film.tsx` draws under the canvas) is drawn natively instead of falling back to Remotion, with its texture in the `aideos.render/7` underlay, and looks the same. For each theme fixture the renderer choice in `auto` must pick native in both formats, and the native frames must match the Remotion frames on the stage at the SSIM bar of the native parity reports on every measured frame, none left out: a spread over the story, every shot's midpoint, and frames through the end card, whose slow push scales the texture (Chrome resamples the texture layer there rather than redrawing it).
- * Inputs and outputs: test_fixtures/packages/node-graph-blueprint and node-graph-dots, the release binary and Remotion -> pass, or a failure naming every film, format and frame under the bar with both frames saved under .ci-artifacts/.
+ * File Description: Journey for Phase 2 steps P2.4a and P2.4b of the native renderer: a node-graph film on a textured theme (the `blueprint-grid` and `subtle-dots` patterns, and the `paper-fibers` grain of the `paper-white` and `charcoal` themes, which `Film.tsx` draws under the canvas) is drawn natively instead of falling back to Remotion, with its texture in the `aideos.render/7` underlay, and looks the same. For each theme fixture the renderer choice in `auto` must pick native in both formats, and the native frames must match the Remotion frames on the stage at the SSIM bar of the native parity reports on every measured frame, none left out: a spread over the story, every shot's midpoint, and frames through the end card, whose slow push scales the texture (Chrome resamples the texture layer there rather than redrawing it).
+ * Inputs and outputs: test_fixtures/packages/node-graph-blueprint, node-graph-dots, node-graph-paper and node-graph-charcoal, the release binary and Remotion -> pass, or a failure naming every film, format and frame under the bar with both frames saved under .ci-artifacts/.
  * Used by: npm run test:journeys and the CI journeys job (which builds the binary first). Skips when the binary is not built unless CI or AIDEOS_NATIVE_TESTS_REQUIRED=1.
  */
 
@@ -21,20 +21,20 @@ const FRAMES: Record<NativeFormat, number[]> = {
   reel: [20, 45, 150, 255, 345, 435, 525, 570, 600, 645],
 };
 
-/** The theme fixtures: node-graph-flat on each lowered texture. */
-const FIXTURES = ["node-graph-blueprint", "node-graph-dots"];
+/** The theme fixtures: node-graph-flat on each lowered texture (the paper grain on a light and on a dark theme). */
+const FIXTURES = ["node-graph-blueprint", "node-graph-dots", "node-graph-paper", "node-graph-charcoal"];
 
 const problem = nativeJourneyProblem();
 const skip = problem && !nativeJourneysRequired() ? problem : false;
 
-journey("theme textures: blueprint and dot-grid films are drawn natively and match Remotion on the stage at every measured frame", async (ctx) => {
+journey("theme textures: node-graph films on the blueprint, dot-grid, paper-white and charcoal themes are drawn natively and match Remotion on the stage at every measured frame", async (ctx) => {
   if (skip) return;
   const below: string[] = [];
   for (const slug of FIXTURES) {
     const film = readFilm(slug);
     assert.ok(film, `the ${slug} fixture package is missing`);
 
-    // The renderer choice: before P2.4a a textured theme sent the film to Remotion.
+    // The renderer choice: before P2.4a and P2.4b a textured theme sent the film to Remotion.
     const messages: string[] = [];
     const remotion: Renderer = { name: "remotion", prepare: () => assert.fail("Remotion must not render a film the native renderer can draw"), checkDiskBudget: async () => {}, render: async () => {} };
     const never = new AbortController().signal;

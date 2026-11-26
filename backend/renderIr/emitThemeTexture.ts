@@ -1,5 +1,5 @@
 /**
- * File Description: The theme texture of the Render IR emitter (native renderer Phase 2, P2.4a): lowers the `blueprint-grid` and `subtle-dots` patterns `Film.tsx` draws under the canvas into one frame-sized SVG asset of explicit shapes, placed in the `aideos.render/7` underlay (frame space, under the stage) with the texture layer's opacity and the end card's slow push. A pattern tile in Chrome draws only what lies inside the tile, so a stroke centred on the tile's top and left edges keeps its inner half: the blueprint grid's 0.5 px minor lines are 0.25 px wide and its 1 px major lines 0.5 px wide, starting on the tile edge (measured against Chrome: SSIM 0.99997 over a whole frame, no pixel more than one level apart). The paper-fibers texture (turbulence and lighting) is not lowered here.
+ * File Description: The theme texture of the Render IR emitter (native renderer Phase 2, P2.4a): lowers the `blueprint-grid` and `subtle-dots` patterns `Film.tsx` draws under the canvas into one frame-sized SVG asset of explicit shapes, placed in the `aideos.render/7` underlay (frame space, under the stage) with the texture layer's opacity and the end card's slow push. A pattern tile in Chrome draws only what lies inside the tile, so a stroke centred on the tile's top and left edges keeps its inner half: the blueprint grid's 0.5 px minor lines are 0.25 px wide and its 1 px major lines 0.5 px wide, starting on the tile edge (measured against Chrome: SSIM 0.99997 over a whole frame, no pixel more than one level apart). The `paper-fibers` texture (P2.4b) is a turbulence lit by a distant light and then blended `multiply` with `SourceGraphic`, which is the rect's default black fill: black multiplied by anything is black, so Chrome draws no grain at all, only a black rect at the rect's 0.8 opacity in the 0.28 layer (measured: one flat colour over the whole frame on all three paper themes, 248,246,240 becoming 193,191,187); it is lowered to exactly that.
  * Inputs and outputs: a background theme, the frame size, the end card's push per frame and the last frame -> the texture's svg asset, its package file and its underlay node, or null for a theme without a lowered texture.
  * Used by: backend/renderIr/emit.ts (build), backend/journeys/theme_textures.journey.ts (through the emitter).
  */
@@ -13,6 +13,22 @@ export interface ThemeTexture {
   asset: Asset;
   file: { path: string; text: string };
   node: Node;
+}
+
+/** The paper grain's rect opacity (`Film.tsx`). */
+const PAPER_GRAIN_FILL = 0.8;
+/** The paper grain's layer opacity, 0.28 as Chrome composites it: in 8 bits (71 / 255), which is what puts 248 at 193, not 192. */
+const PAPER_GRAIN_LAYER = Math.round(0.28 * 255) / 255;
+
+/**
+ * The colour behind a node-graph canvas: the theme's canvas colour under its texture where the texture is uniform (the paper
+ * grain darkens it evenly, 248, 246, 240 to 193, 191, 187), else the canvas colour itself. A card's backdrop blurs this.
+ */
+export function canvasBehindGraph(theme: BackgroundTheme, canvasHex: string): string {
+  if (theme.gridType !== "paper-fibers") return canvasHex;
+  const keep = 1 - PAPER_GRAIN_FILL * PAPER_GRAIN_LAYER;
+  const channel = (i: number) => Math.round(parseInt(canvasHex.slice(1 + 2 * i, 3 + 2 * i), 16) * keep).toString(16).padStart(2, "0").toUpperCase();
+  return `#${channel(0)}${channel(1)}${channel(2)}`;
 }
 
 /** The package path of the generated texture artwork. */
@@ -44,8 +60,7 @@ function subtleDots(width: number, height: number, ink: string): string {
 }
 
 /**
- * The lowered texture of a theme, or null when the theme has none (`none`) or one this step does not lower (`paper-fibers`,
- * which `nativeSupport` refuses). `holdScale` is the end card's push (`Film.tsx` scales the texture with the canvas by it,
+ * The lowered texture of a theme, or null when the theme has none (`none`). `holdScale` is the end card's push (`Film.tsx` scales the texture with the canvas by it,
  * about the frame centre; the drift does not reach the texture).
  */
 export function themeTexture(theme: BackgroundTheme, width: number, height: number, holdScale: (f: number) => number, last: number): ThemeTexture | null {
@@ -57,6 +72,10 @@ export function themeTexture(theme: BackgroundTheme, width: number, height: numb
   } else if (theme.gridType === "subtle-dots") {
     body = subtleDots(width, height, theme.ink);
     opacity = 0.35;
+  } else if (theme.gridType === "paper-fibers") {
+    // `feBlend mode="multiply" in="SourceGraphic"` over the lit noise: the black fill wins, so the filter draws the black rect.
+    body = `<rect x="0" y="0" width="${width}" height="${height}" fill="#000000" fill-opacity="${PAPER_GRAIN_FILL}"/>`;
+    opacity = PAPER_GRAIN_LAYER;
   } else {
     return null;
   }
