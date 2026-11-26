@@ -1,0 +1,242 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "scale-bars",
+  "title": "Scale bars",
+  "fps": 30,
+  "accent": "#635BFF",
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "accent": "#635BFF"
+  },
+  "chapters": [
+    "Rack"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "rack",
+        "label": "Rack",
+        "x": 160,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "work",
+        "label": "Work",
+        "x": 590,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      }
+    ],
+    "edges": [
+      {
+        "from": "rack",
+        "to": "work"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "rack",
+      "ch": "Rack",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "all",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "One rack holds the work.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "strip-inset",
+      "ch": "Rack",
+      "dur": 5.0,
+      "stage": "inset",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "The model grows from one million to one trillion parameters, and this one sits at a hundred billion.",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "1M",
+            "1B",
+            "100B",
+            "1T"
+          ],
+          "value": 0.66,
+          "label": "100B"
+        }
+      ]
+    },
+    {
+      "id": "shelf",
+      "ch": "Rack",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "The rack moves a tile to its shelf.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "strip-frame",
+      "ch": "Rack",
+      "dur": 5.0,
+      "stage": "frame",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Requests climb from a thousand a second to a million.",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Requests climb",
+          "size": "headline",
+          "accentWord": "climb"
+        },
+        {
+          "c": "ScaleBar",
+          "ticks": [
+            "1K",
+            "10K",
+            "100K",
+            "1M"
+          ],
+          "value": 0.9,
+          "label": "700K"
+        }
+      ]
+    },
+    {
+      "id": "after",
+      "ch": "Rack",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "all",
+      "move": "zoom-out",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Each tile moves to a shelf.",
+      "speed": 1,
+      "blocks": []
+    }
+  ],
+  "scene": {
+    "schemaVersion": "1.0.0",
+    "sceneId": "scale-bars",
+    "fps": 30,
+    "durationFrames": 570,
+    "sceneSize": {
+      "w": 1920,
+      "h": 1920
+    },
+    "background": {
+      "assetId": "background",
+      "svgSource": "videos/scale-bars/visuals/canvas.svg",
+      "layer": 0,
+      "position": {
+        "x": 960,
+        "y": 960
+      },
+      "scale": 4.8,
+      "rotation": 0,
+      "opacity": 1
+    },
+    "props": [
+      {
+        "assetId": "rack",
+        "svgSource": "videos/scale-bars/visuals/rack.svg",
+        "layer": 1,
+        "position": {
+          "x": 760,
+          "y": 700
+        },
+        "scale": 1.1,
+        "rotation": 0,
+        "opacity": 1,
+        "animation": {
+          "timelineId": "rack-motion",
+          "clips": [
+            {
+              "clipId": "rack-in",
+              "targets": [
+                "rack"
+              ],
+              "property": "opacity",
+              "from": 0,
+              "to": 1,
+              "startFrame": 0,
+              "durationFrames": 24,
+              "easing": "expoOut"
+            },
+            {
+              "clipId": "tile-a-move",
+              "targets": [
+                "tile-a"
+              ],
+              "property": "translateX",
+              "from": 0,
+              "to": 300,
+              "startFrame": 20,
+              "durationFrames": 60,
+              "easing": "expoInOut"
+            },
+            {
+              "clipId": "tile-b-move",
+              "targets": [
+                "tile-b"
+              ],
+              "property": "translateX",
+              "from": 0,
+              "to": 200,
+              "startFrame": 120,
+              "durationFrames": 80,
+              "easing": "expoInOut"
+            },
+            {
+              "clipId": "tile-c-move",
+              "targets": [
+                "tile-c"
+              ],
+              "property": "translateX",
+              "from": 0,
+              "to": 240,
+              "startFrame": 250,
+              "durationFrames": 80,
+              "easing": "expoInOut"
+            },
+            {
+              "clipId": "tile-a-back",
+              "targets": [
+                "tile-a"
+              ],
+              "property": "translateX",
+              "from": 300,
+              "to": 100,
+              "startFrame": 480,
+              "durationFrames": 80,
+              "easing": "expoInOut"
+            }
+          ]
+        }
+      }
+    ],
+    "actors": [],
+    "audioSource": "none",
+    "audioDurationMs": 19000
+  }
+}

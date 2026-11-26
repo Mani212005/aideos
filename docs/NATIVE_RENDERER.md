@@ -385,8 +385,8 @@ differ per format.
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a Three stage (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films, and over vector scene films since P2.4c), legacy (non-library)
-music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter, TokenStrip, LayerStack or Plot in a film with a scene, P2.6a, P2.6b, P2.5b, P2.5c and P2.8a), more than one block per shot (except a `TextReveal` followed by a `Body`, a `TokenStrip` or a `LayerStack`, P2.5a to P2.5c) and blocks other than
-`TextReveal`, `StatCounter`, `Body`, `TokenStrip`, `LayerStack` and `Plot` (a `Plot` only under a headline or alone in an inset; a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Blocks on a `none` stage are not drawn by `Film.tsx` and do not count (P2.5e), except an `AnalogyInset`. Those stay on Remotion until their phase.
+music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter, TokenStrip, LayerStack, Plot or ScaleBar in a film with a scene, P2.6a, P2.6b, P2.5b, P2.5c, P2.8a and P2.8b), more than one block per shot (except a `TextReveal` followed by a `Body`, a `TokenStrip` or a `LayerStack`, P2.5a to P2.5c) and blocks other than
+`TextReveal`, `StatCounter`, `Body`, `TokenStrip`, `LayerStack`, `Plot` and `ScaleBar` (a `Plot` or `ScaleBar` only under a headline or alone in an inset; a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Blocks on a `none` stage are not drawn by `Film.tsx` and do not count (P2.5e), except an `AnalogyInset`. Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
 carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid
@@ -687,6 +687,7 @@ the fallback for everything not yet native:
 | P2.6b | the `inset` panel on the first shot, and one that opens on a camera move (its open and close fade, its content's delayed fade and entrance), behind the same journey ([P2.6b](#p26b-the-inset-panel-on-a-camera-move)) | done |
 | P2.6 | devices in the inset, an inset with no block, an inset in a node-graph film | planned |
 | P2.8a | Render IR `/8` (svg nodes in the overlay, a strict superset of `/7`) and the `Plot` device, alone in an inset and under a headline, behind a parity journey ([P2.8a](#p28a-render-ir-8-and-the-plot-device)) | done |
+| P2.8b | the `ScaleBar` device, alone in an inset and under a headline, its svg at its pixel-snapped box, behind a parity journey ([P2.8b](#p28b-the-scalebar-device)) | done |
 | P2.8 | the other svg devices without the serif font (ScaleBar, AttentionArcs, VectorSpace, Distribution where it sets no serif), one PR per family; MatrixGrid, Math and the serif Distribution stay refused (the italic serif is the owner's design-language decision) | planned |
 | P2.7 | imported footage and overlay clips (ffmpeg decode with accurate seek) | planned |
 
@@ -921,8 +922,24 @@ plot's y label (drawn left of the axis, at x < 0 in plot units) was cut to "tenc
 asset clips its content to the element's box in plot units (a `clipPath`). The fixture `test_fixtures/packages/plots` (a scene
 film) has a Plot alone in an inset that opens on a pan and a headline over a Plot on the frame stage. Measured against Remotion
 (swangle), every 4th frame through both draw-ons plus the shots around them and the end card: all at or above 0.995, lowest
-0.99834. The journey `backend/journeys/plots.journey.ts` pins native selection and 39 frames. A Plot alone on the frame stage
+0.99831 (re-measured on 120 frames after P2.8b put the svg's box on a whole pixel, see [P2.8b](#p28b-the-scalebar-device); 0.99834
+before). The journey `backend/journeys/plots.journey.ts` pins native selection and 39 frames. A Plot alone on the frame stage
 or with another block stays refused.
+
+### P2.8b the ScaleBar device
+
+`ScaleBar` (devices.tsx) is a 520 x 150 SVG: an axis with ticks and mono tick labels, and a bar 5 tall with rounded ends (a
+rect with `rx` 2.5) that grows with the shot's sweep (`useSweep`, linear) times its value, its label riding the bar's end. It
+grows (`flex: 1`) up to a 260 px `max-height`, so the column centres it (with its headline, as a text card's column does), and
+the SVG fits the box as `preserveAspectRatio` meet does. The emitter (`backend/renderIr/emitScaleBar.ts`) draws the bar's pill
+as a 5-unit stroke with round caps along its centre line, revealed by its dash offset (exactly the grown pill; hidden while the
+bar has no width), and moves the label by an x translation. Measured on the way: Blink paints a replaced element (the svg) at its
+pixel-snapped box, so the viewBox mapping starts on a whole pixel; drawn from the fractional column position, the long device
+card measured 0.99408, snapped 0.99866. The snap is shared with Plot (its frame-card frames rose, its lowest is 0.99831). The
+fixture `test_fixtures/packages/scale-bars` (a scene film) has a ScaleBar alone in an inset that opens on a pan and a headline
+over a ScaleBar. Measured against Remotion (swangle), every 4th frame through both shots plus the shots around them and the end
+card (162 frames): all at or above 0.995, lowest 0.99848. The journey `backend/journeys/scale_bars.journey.ts` pins native
+selection and 39 frames.
 
 ### P2.6a the inset panel
 
