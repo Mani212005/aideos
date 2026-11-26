@@ -114,7 +114,7 @@ git clone https://github.com/Mani212005/aideos.git
 cd aideos
 bun install
 ```
-`bun install` reads `package-lock.json` and `editor/package-lock.json` (the only lockfiles) and installs editor/ too. Run scripts with `bun run <script>`; the tests are `bun run test` (plain `bun test` is Bun's own runner and skips the aideos test setup). The npm path still works: `npm ci`, then `AIDEOS_TOOLCHAIN=npm npx tsx scripts/ci.ts <job>`.
+`bun install` reads `package-lock.json` and `editor/package-lock.json` (the only lockfiles) and installs editor/ too. Run scripts with `bun run <script>`; the tests are `bun run test` (plain `bun test` is Bun's own runner and skips the aideos test setup). The runner picks the toolchain: `bun run` takes the Bun path and `npm run` the npm path, and `AIDEOS_TOOLCHAIN` overrides. The npm path still works: `npm ci`, then `npm run ci -- <job>`.
 
 Aideos runs Kokoro on the CPU, so no CUDA runtime is downloaded: bun does not run onnxruntime-node's install script, and npm skips its Linux CUDA download (`.npmrc`). To opt in on the npm path, set `npm_config_onnxruntime_node_install_cuda=true`.
 

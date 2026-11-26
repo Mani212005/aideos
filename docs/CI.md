@@ -156,21 +156,24 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
 ## Toolchain switch (bun or npm)
 
 `AIDEOS_TOOLCHAIN` (read only by `scripts/toolchain.ts`) picks the JavaScript toolchain of every CI step.
-Unset or `bun` is the default, the full Bun path. `npm` is the path that ran before the flip (npm installs,
-`tsx` on Node, `node --test`), kept so the flip is reversible. Any other value fails the run.
+Unset, the runner picks the default: `bun run <script>` takes the full Bun path, `npm run <script>` takes the npm path,
+and a plain shell or CI step takes Bun. `bun` and `npm` force one path. The npm path is the one that ran before the flip
+(npm installs, `tsx` on Node, `node --test`), kept so the flip is reversible. Any other value fails the run.
 
 | Where | Back to npm | Return to bun |
 | --- | --- | --- |
 | GitHub CI, every run | repository variable `AIDEOS_TOOLCHAIN=npm` (Settings, Secrets and variables, Actions, Variables) | delete the variable or set it to `bun` |
 | GitHub CI, one run | Actions, CI (or Nightly render budget, or Update goldens), Run workflow, `toolchain: npm` | the input defaults to `bun` |
-| A laptop | `npm ci`, then `AIDEOS_TOOLCHAIN=npm npx tsx scripts/ci.ts <job>` | `bun install`, then `bun run ci <job>` |
+| A laptop | `npm ci`, then `npm run ci -- <job>` (or `AIDEOS_TOOLCHAIN=npm npx tsx scripts/ci.ts <job>`) | `bun install`, then `bun run ci <job>` |
 | The local validation tool | `.no-mistakes.yaml` runs the bun form, and the npm form (with a message) on a machine without bun | |
 
-The package.json scripts are the bun default: `bun run test` runs `scripts/bunTest.ts` (never plain `bun test`,
-which is Bun's own runner without the aideos test setup), and the toolchain scripts (`ci`, `lint`, `test*`,
-`goldens:*`, `eval:*`, `performance:*`, `typecheck`, `smoke:studio`, `ensure:generated` and their pre-hooks) run
-on the Bun runtime. So the npm forms in `scripts/ci.ts` and the workflows never call a script that starts bun:
-they spell the program out (`npx tsx <file>`, the `node --test` command of `scripts/toolchain.ts`). The scripts
+The package.json toolchain scripts (`ci`, `lint`, `test*`, `goldens:*`, `eval:*`, `performance:*`, `typecheck`,
+`smoke:studio`, `ensure:generated` and their pre-hooks) start `node scripts/run.mjs <file.ts>`, which runs the file on
+Bun under `bun run` and on `tsx` under `npm run`, so neither runner needs the other installed. The test scripts go
+through `scripts/runTests.ts`, which runs the test command of the active toolchain (`bun run test` runs
+`scripts/bunTest.ts`, never plain `bun test`, which is Bun's own runner without the aideos test setup; `npm test` runs
+`node --test`). The npm forms in `scripts/ci.ts` and the workflows spell the program out (`npx tsx <file>`, the
+`node --test` command of `scripts/toolchain.ts`) and keep working as before. The scripts
 of the product runtime (`backend`, `validate`, `review`, `design:check`, `render`, `render:reel`, `studio`,
 `bundle`, `farm`, `release`) run on Node through `tsx` or the Remotion CLI under either runner, and so do the
 editor's `dev` and `build` pre-hooks.
