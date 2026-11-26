@@ -22,6 +22,7 @@ import { resolveCaptionPlacement } from "../../src/dl/captionPlacement";
 import {
   SUBTITLE_FONT_RATIO,
   adjustStageCameraForFormat,
+  getInsetRegion,
   getStageCardRect,
 } from "../../src/dl/fullScreenHeroLayout";
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
@@ -171,7 +172,14 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   const soundtrack = normalizeFilmSoundtrack(film);
   if ((soundtrack.sections.length || soundtrack.sfx.length) && !usesSectionMixer(soundtrack)) reasons.push("path-only legacy soundtrack sections are not mixed natively (library soundtracks are)");
   for (const shot of film.shots) {
-    if (shot.stage !== "frame" && shot.stage !== "none") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
+    if (shot.stage === "inset") {
+      // P2.6a: only the measured inset form is drawn: a scene film, a later shot on a cut, holding exactly one StatCounter.
+      if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
+      if (film.shots[0] === shot) reasons.push(`shot ${shot.id}: a stage "inset" panel on the first shot is not measured against Remotion yet`);
+      if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
+      if (shot.blocks.some((b) => b.c !== "StatCounter")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter natively`);
+      if (shot.move !== "cut") reasons.push(`shot ${shot.id}: stage "inset" panels that open on a "${shot.move}" move are not drawn natively yet (their open and close animation is not measured)`);
+    } else if (shot.stage !== "frame" && shot.stage !== "none") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
     if (shot.blocks.length > 1) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively`);
     for (const block of shot.blocks) {
       if (!SUPPORTED_BLOCKS.has(block.c)) reasons.push(`shot ${shot.id}: ${block.c} blocks are Phase 2`);
@@ -322,6 +330,33 @@ function blinkPixelSnap(v: number): number {
   return Math.sign(v) * Math.round(Math.abs(v));
 }
 
+/**
+ * The inset panel (Film.tsx `Stage` for an `inset` stage, P2.6a): the format's inset region as a CSS box with a 1 px hairline
+ * border, filled with the theme's surface colour (CSS paints the background under the border), the border on its own band,
+ * rounded by the card radius, no shadow. The render sizes it border-box (measured: its border box is exactly the region,
+ * 1152 to 1823 on the long frame). Drawn on a cut shot.
+ */
+function insetPanel(ctx: LayoutCtx, id: string): Node[] {
+  const theme = BACKGROUND_THEMES[ctx.film.theme?.background ?? "paper-white"] ?? BACKGROUND_THEMES["paper-white"];
+  const r = getInsetRegion(ctx.format, ctx.width, ctx.height);
+  const radius = ctx.layout.radius.card;
+  return [
+    { kind: "rect", id: `${id}-panel`, fill: rgbHex(theme.surface), radius, tracks: [], placement: { [ctx.format]: { x: r.x, y: r.y, w: r.w, h: r.h } } },
+    { kind: "rect", id: `${id}-panel-border`, radius: radius - 0.5, tracks: [], stroke: { color: cssColor(theme.hairline), width: 1 }, placement: { [ctx.format]: { x: r.x + 0.5, y: r.y + 0.5, w: r.w - 1, h: r.h - 1 } } },
+  ];
+}
+
+/**
+ * Where an inset panel's content is centred: Film.tsx's inner column fills the panel inside its 1 px border, border-box, so its
+ * content box is the region less the border and its padding (3 grid) on every side (measured: the counter is centred in the
+ * region, as this gives).
+ */
+function insetContentRect(ctx: LayoutCtx): { x: number; y: number; w: number; h: number } {
+  const r = getInsetRegion(ctx.format, ctx.width, ctx.height);
+  const pad = ctx.layout.grid * 3;
+  return { x: r.x + 1 + pad, y: r.y + 1 + pad, w: r.w - 2 - 2 * pad, h: r.h - 2 - 2 * pad };
+}
+
 /** A shot's text-card box: the frame inside its margins (Film.tsx `Stage` for a `frame` stage). */
 function stageRect(ctx: LayoutCtx) {
   const captions = ctx.film.subtitles !== false && ctx.film.captions !== "off";
@@ -426,7 +461,7 @@ function counterText(value: number, to: number, format: "plain" | "compact"): st
 }
 
 /** Lays out a StatCounter block: one group per displayed value (number, suffix, label) inside the block's entrance. */
-function statCounterNodes(ctx: LayoutCtx, id: string, block: { to: number; label: string; format: "plain" | "compact"; suffix?: string }, start: number, index: number, span: { from: number; to: number }): Node {
+function statCounterNodes(ctx: LayoutCtx, id: string, block: { to: number; label: string; format: "plain" | "compact"; suffix?: string }, start: number, index: number, span: { from: number; to: number }, rect: { x: number; y: number; w: number; h: number }): Node {
   const numSize = ctx.layout.type("headline").fontSize * 0.9;
   const numFont = monoId(700);
   const numLs = -0.03 * numSize;
@@ -438,7 +473,6 @@ function statCounterNodes(ctx: LayoutCtx, id: string, block: { to: number; label
   const sufM = ctx.metrics(numFont, suffixSize);
   const labM = ctx.metrics(labelFont, labelSize);
   const gap = ctx.layout.grid;
-  const rect = stageRect(ctx);
   const label = block.label.toUpperCase();
   const labelW = ctx.width_({ text: label, font: labelFont, size: labelSize, letterSpacing: labelLs });
   const suffix = block.suffix ?? "";
@@ -502,13 +536,14 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
   const canvas = ctx.tokens.canvas;
   for (const t of timeline) {
     const shot: Shot = t.shot;
-    if (shot.stage !== "frame" || shot.blocks.length === 0) continue;
+    const inset = shot.stage === "inset";
+    if ((shot.stage !== "frame" && !inset) || (!inset && shot.blocks.length === 0)) continue;
     // The last shot stays on screen under the end card (Film.tsx freezes the story's last frame).
     const span = { from: t.from, to: t.to >= storyFrames ? total : Math.min(t.to, total) };
     if (span.to <= span.from) continue;
     const id = `card-${t.index}`;
     // A card printed onto a scene has a scrim band behind its type; a node-graph film's frame panel has none (Film.tsx).
-    const children: Node[] = ctx.film.scene ? [
+    const children: Node[] = inset ? insetPanel(ctx, id) : ctx.film.scene ? [
       {
         kind: "rect", id: `${id}-scrim`, radius: 0, tracks: [],
         gradient: { stops: [
@@ -520,7 +555,7 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
     ] : [];
     shot.blocks.forEach((block, i) => {
       if (block.c === "TextReveal") children.push(...textRevealNodes(ctx, `${id}-b${i}`, block, t.from, i));
-      else if (block.c === "StatCounter") children.push(statCounterNodes(ctx, `${id}-b${i}`, block, t.from, i, span));
+      else if (block.c === "StatCounter") children.push(statCounterNodes(ctx, `${id}-b${i}`, block, t.from, i, span, inset ? insetContentRect(ctx) : stageRect(ctx)));
     });
     cards.push({ kind: "group", id, visible: { fromFrame: span.from, toFrame: span.to }, x: 0, y: 0, scale: 1, rotation: 0, tracks: [], children });
   }
