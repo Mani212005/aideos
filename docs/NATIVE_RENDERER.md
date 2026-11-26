@@ -4,7 +4,7 @@ File Description: Reference for the native renderer `native/aideos-render` (R2 a
 
 # Native renderer (`native/aideos-render`)
 
-`aideos-render` evaluates a Render IR [`aideos.render/1` through `/5`](RENDER_IR.md) as a pure function of the frame
+`aideos-render` evaluates a Render IR [`aideos.render/1` through `/6`](RENDER_IR.md) as a pure function of the frame
 number and draws the frame with Skia. Skia's **CPU rasterizer is the deterministic reference**; an
 optional GPU path draws the same frame through OpenGL. There is no browser, no DOM and no HTML.
 
@@ -23,7 +23,7 @@ The native renderer accepts per-glyph tracks and a 2D shutter (2 to 16 samples) 
 indices, sample placement, sharp chrome, and the explicit 3D and overlay-order restrictions are documented
 in [Render IR effects](RENDER_IR.md#effects-aideosrender4). The film emitter and editor do not yet write or
 preview those fields. Existing versions use the old integer frame path and keep their output unchanged.
-SkSL transitions and closed-form particles remain future work.
+Version `/6` adds native-only SkSL fade and wipe transitions and seeded scene-space particles. See [Render IR effects](RENDER_IR.md#native-transitions-and-particles-aideosrender6).
 
 ## Where things live
 

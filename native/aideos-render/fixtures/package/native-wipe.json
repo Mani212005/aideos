@@ -1,0 +1,30 @@
+{
+  "schema": "aideos.render/6",
+  "film": {
+    "id": "native-effects",
+    "fps": 30,
+    "durationFrames": 90
+  },
+  "scene": {
+    "width": 320,
+    "height": 180
+  },
+  "formats": {
+    "long": {
+      "width": 320,
+      "height": 180
+    }
+  },
+  "background": "#143454",
+  "assets": [],
+  "stage": [],
+  "overlay": [],
+  "audio": [],
+  "transition": {
+    "kind": "wipe",
+    "direction": "in",
+    "startFrame": 0,
+    "durationFrames": 60,
+    "color": "#ECA142"
+  }
+}

@@ -1,12 +1,12 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/5` (Three stage, pictures, 2D effects, colour and dash offset tracks): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
+File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/6` (Three stage, pictures, 2D effects, colour and dash offset tracks, native transitions and particles): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, the `/6` transition and particles, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
-# Render IR (`aideos.render/1` through `aideos.render/5`)
+# Render IR (`aideos.render/1` through `aideos.render/6`)
 
 The Render IR is the document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
-on and nothing else: no scripts, no clocks, no random seeds. A frame is a pure function of `(IR, frame
+on and nothing else: no scripts or clocks; particle seeds are explicit data. A frame is a pure function of `(IR, frame
 number, format)`, so any frame can be rendered in any order. R1 of Phase 1 of the native renderer plan
 provides its schema and loaders; R2 the evaluator and raster; R3 the encoder and audio mux; R4 the
 emitter (`backend/renderIr/emit.ts`, which writes one document per film and format) and the renderer
@@ -36,6 +36,10 @@ P2.2a of Phase 2 added `aideos.render/5`: a strict superset of `/4` that adds co
 element track on svg nodes, what the node-graph canvas animates (see [Colour and dash offset](#colour-and-dash-offset-aideosrender5)).
 No emitter writes `/5` yet: every film is written as before.
 
+`aideos.render/6` is a strict superset of `/5` that adds a native-only transition and seeded particles; colour tracks and
+particles may appear in one document. No emitter writes `/6` either. See
+[Native transitions and particles](#native-transitions-and-particles-aideosrender6).
+
 ## Where things live
 
 | Piece | Path |
@@ -43,7 +47,7 @@ No emitter writes `/5` yet: every film is written as before.
 | Structural contract (zod, the single source, every version) | `backend/renderIr/schema.ts` |
 | TypeScript load, version gate and cross-reference rules | `backend/renderIr/validate.ts` |
 | JSON Schema generator | `backend/renderIr/jsonSchema.ts`, `scripts/render_ir_schema.ts` |
-| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json`, `aideos.render.3.schema.json`, `aideos.render.4.schema.json`, `aideos.render.5.schema.json` |
+| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json`, `aideos.render.3.schema.json`, `aideos.render.4.schema.json`, `aideos.render.5.schema.json`, `aideos.render.6.schema.json` |
 | Rust workspace and loader crate | `native/Cargo.toml`, `native/aideos-render-ir/` |
 | Mesh file codec (triangle, points and lines parts) | `backend/renderIr/mesh.ts` (write and read), `native/aideos-render-ir/src/mesh.rs` (read) |
 | Stage3d emitter and reference pose | `backend/renderIr/emitStage3d.ts`, `backend/renderIr/stage3d.ts` |
@@ -56,14 +60,14 @@ No emitter writes `/5` yet: every film is written as before.
 
 ## Versioning and rejection
 
-A document starts with a supported `schema` from `aideos.render/1` through `aideos.render/5`.
+A document starts with a supported `schema` from `aideos.render/1` through `aideos.render/6`.
 The loader reads that field first:
 
 1. Not JSON: refused as `not_json`.
 2. Not an object, or no string `schema` field: refused as `invalid_document` with a `schema` issue.
-3. A string other than exactly `aideos.render/1`, `aideos.render/2`, `aideos.render/3`, `aideos.render/4` or `aideos.render/5`
-   (including `aideos.render/6`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the
-   string found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5`),
+3. A string other than exactly `aideos.render/1`, `aideos.render/2`, `aideos.render/3`, `aideos.render/4`, `aideos.render/5` or `aideos.render/6`
+   (including `aideos.render/7`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the
+   string found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6`),
    **before** the rest of the document is read, because a later version may have a different shape.
 4. Right version, wrong shape (a missing or unknown field, a wrong type, a bad colour, a frame that is
    not a whole number): refused as `invalid_document`, every issue listed. Each version is checked against
@@ -419,3 +423,19 @@ The loader uses `serde`, `serde_json` (with `float_roundtrip`) and `jsonschema` 
 (`skia-safe`) is a dependency of the renderer crate only, not of this loader; see
 [NATIVE_RENDERER.md](NATIVE_RENDERER.md). CI runs the workspace tests in the existing `unit` job and
 caches the Cargo registry and `native/target`.
+
+## Native transitions and particles (`aideos.render/6`)
+
+The optional `transition` paints a solid colour over the background and stage, below the overlay.
+`kind` is `fade` or a left-to-right `wipe`; `direction` is `in` (reveals the stage) or `out`
+(covers it). Progress runs from `startFrame` over positive `durationFrames` and clamps at the
+endpoints. Colour alpha is respected. The fixed SkSL programs accept no user shader source.
+
+The optional `particles` array contains at most 16 emitters. Each has a 32-bit `seed`, `count`
+(1 to 1000), `startFrame`, positive `lifetimeFrames`, scene-space `x` and `y`, per-frame
+`velocityX` and `velocityY`, velocity `spread`, per-frame-squared `gravity`, `radius` and `color`.
+Particles are circles drawn above the stage and below the transition and overlays. Their first births
+are uniformly staggered across a lifetime; each repeats after its lifetime. Seed and particle index
+determine velocity, while closed-form position uses age, velocity and gravity. Evaluating a frame never
+depends on previous frames. Fractional shutter samples evaluate the same formulas. Existing emitters
+and editor previews do not write or preview these fields.

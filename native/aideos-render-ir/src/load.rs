@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 use serde_json::Value;
 
 use crate::types::RenderIr;
-use crate::{semantic, SUPPORTED, VERSION, VERSION_2, VERSION_3, VERSION_4, VERSION_5};
+use crate::{semantic, SUPPORTED, VERSION, VERSION_2, VERSION_3, VERSION_4, VERSION_5, VERSION_EFFECTS};
 
 /// The committed `/1` JSON Schema, embedded so a built binary needs no file next to it.
 pub const SCHEMA_JSON: &str = include_str!("../schema/aideos.render.1.schema.json");
@@ -21,6 +21,9 @@ pub const SCHEMA_V3_JSON: &str = include_str!("../schema/aideos.render.3.schema.
 pub const SCHEMA_V4_JSON: &str = include_str!("../schema/aideos.render.4.schema.json");
 /// The committed `/5` JSON Schema.
 pub const SCHEMA_V5_JSON: &str = include_str!("../schema/aideos.render.5.schema.json");
+
+/// The committed native effects JSON Schema.
+pub const SCHEMA_EFFECTS_JSON: &str = include_str!("../schema/aideos.render.6.schema.json");
 
 /// One problem in a document: a stable machine code, a JSON Pointer to the offending value and a sentence.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,6 +92,7 @@ fn validator(version: &str) -> &'static jsonschema::Validator {
     static V3: OnceLock<jsonschema::Validator> = OnceLock::new();
     static V4: OnceLock<jsonschema::Validator> = OnceLock::new();
     static V5: OnceLock<jsonschema::Validator> = OnceLock::new();
+    static EFFECTS: OnceLock<jsonschema::Validator> = OnceLock::new();
     if version == VERSION {
         V1.get_or_init(|| compile(SCHEMA_JSON))
     } else if version == VERSION_2 {
@@ -97,8 +101,10 @@ fn validator(version: &str) -> &'static jsonschema::Validator {
         V3.get_or_init(|| compile(SCHEMA_V3_JSON))
     } else if version == VERSION_4 {
         V4.get_or_init(|| compile(SCHEMA_V4_JSON))
-    } else {
+    } else if version == VERSION_5 {
         V5.get_or_init(|| compile(SCHEMA_V5_JSON))
+    } else {
+        EFFECTS.get_or_init(|| compile(SCHEMA_EFFECTS_JSON))
     }
 }
 
@@ -116,7 +122,7 @@ pub fn load_from_str(text: &str) -> Result<RenderIr, LoadError> {
         Some(found) if value.is_object() => found,
         _ => return Err(schema_issue(String::new(), "a Render IR is an object with a string `schema` field".into())),
     };
-    if found != VERSION && found != VERSION_2 && found != VERSION_3 && found != VERSION_4 && found != VERSION_5 {
+    if found != VERSION && found != VERSION_2 && found != VERSION_3 && found != VERSION_4 && found != VERSION_5 && found != VERSION_EFFECTS {
         return Err(LoadError::UnsupportedVersion { found: found.to_string(), supported: SUPPORTED });
     }
     // Each version is checked against its own shape, so an older document cannot carry a later version's addition.

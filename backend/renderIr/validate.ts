@@ -1,10 +1,10 @@
 /**
- * File Description: Loads and checks a Render IR document (`aideos.render/1`, its supersets through `aideos.render/5`): rejects bad JSON, an unknown version or a structurally invalid document (each version against its own schema), then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, for the Three stage its graph, tracks, parts, textures and face programs, for a picture its image asset, its one element and the properties that element may animate, and for colour tracks their elements, one track per paint and their keyframes). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files.
+ * File Description: Loads and checks a Render IR document (`aideos.render/1`, its supersets through `aideos.render/6`): rejects bad JSON, an unknown version or a structurally invalid document (each version against its own schema), then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, for the Three stage its graph, tracks, parts, textures and face programs, for a picture its image asset, its one element and the properties that element may animate, and for colour tracks their elements, one track per paint and their keyframes). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files.
  * Inputs and outputs: JSON text or an already parsed value -> a typed RenderIr, or a failure of kind not_json, unsupported_version or invalid_document with every issue found.
  * Used by: backend/renderIr/emit.ts (checks every emitted document), backend/renderIr/renderIr.test.ts, backend/renderIr/stage3d.test.ts.
  */
 
-import { IMAGE_ELEMENT_PROPERTIES, RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, type Asset, type FormatName, type Node, type RenderIr, type Stage3dNode } from "./schema";
+import { RENDER_IR_VERSION_5, renderIrSchemaEffects, IMAGE_ELEMENT_PROPERTIES, RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, type Asset, type FormatName, type Node, type RenderIr, type Stage3dNode } from "./schema";
 
 /** The versions this build reads, as the `supported` text of an unsupported_version failure. */
 export const SUPPORTED_VERSIONS_TEXT = RENDER_IR_VERSIONS.join(", ");
@@ -59,7 +59,7 @@ export function validateRenderIr(value: unknown): LoadResult {
     return { ok: false, error: { kind: "unsupported_version", found, supported: SUPPORTED_VERSIONS_TEXT } };
   }
   // Each version is checked against its own shape, so an older document cannot carry a later version's addition.
-  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : found === RENDER_IR_VERSION_2 ? renderIrSchemaV2 : found === RENDER_IR_VERSION_3 ? renderIrSchemaV3 : found === RENDER_IR_VERSION_4 ? renderIrSchemaV4 : renderIrSchemaV5).safeParse(value);
+  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : found === RENDER_IR_VERSION_2 ? renderIrSchemaV2 : found === RENDER_IR_VERSION_3 ? renderIrSchemaV3 : found === RENDER_IR_VERSION_4 ? renderIrSchemaV4 : found === RENDER_IR_VERSION_5 ? renderIrSchemaV5 : renderIrSchemaEffects).safeParse(value);
   if (!parsed.success) {
     return invalid(parsed.error.issues.map((i) => ({
       code: "schema",
