@@ -381,13 +381,13 @@ Schema (embedded in the binary with `include_str!`), typed deserialization, then
 ## Commands
 
 ```bash
-npm run render-ir:schema                    # regenerate every JSON Schema after editing schema.ts
-npm run render-ir:schema -- --check         # fail when a committed schema is out of date
+bun run render-ir:schema                    # regenerate every JSON Schema after editing schema.ts
+bun run render-ir:schema -- --check         # fail when a committed schema is out of date
 node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test backend/renderIr/renderIr.test.ts
 cargo test --locked --manifest-path native/Cargo.toml      # loader fixtures and renderer tests
 ```
 
-`npm test` finds the TypeScript suite by glob. `npm run ci -- unit` also runs the `cargo test` step
+`bun run test` finds the TypeScript suite by glob. `bun run ci -- unit` also runs the `cargo test` step
 (skipped with a reason on a machine without cargo, a failure under CI, which has it). Rust 1.85 or newer.
 
 ## Fixtures

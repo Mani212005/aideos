@@ -276,7 +276,7 @@ frame duration within 50ms of its audio duration.
   the text cards that overlay it.
 - `SceneView` is pure and cannot read disk, so committed assets reach the Remotion bundle through
   the generated, gitignored `src/dl/scene/assets/svgSources.generated.ts`. Regenerate it with
-  `npm run ensure:generated` whenever a `visuals/*.svg` changes.
+  `bun run ensure:generated` whenever a `visuals/*.svg` changes.
 - Compose a scene film on a **square** scene space (1920 x 1920). Each format takes a 1080-wide
   strip through the centre, so the shared safe area is the centre 1080 square; the wide cut also
   sees the left and right wings, and the reel also sees the top and bottom bands. `SceneStage`

@@ -26,7 +26,7 @@ aideos review hnsw-explainer --format reel          # explicit format (long or r
 aideos review path/to/video.mp4 --film film.json --words voiceover_words.json
 aideos review video.mp4 --words script.json        # narration text only: caption match and number grounding, no timings
 aideos review hnsw-explainer --format reel --pacing-profile reel-fast   # opt-in reel pace window (up to 240 wpm)
-npm run review -- <slug|mp4> [--format long|reel] [--pacing-profile reel-fast] [--json] [--no-ocr] [--out dir]
+bun run review -- <slug|mp4> [--format long|reel] [--pacing-profile reel-fast] [--json] [--no-ocr] [--out dir]
 ```
 
 Exit code: `0` all gates passed, `1` a gate failed, `2` the review could not run (missing file,
@@ -160,7 +160,7 @@ aideos study applies this rule to every pixel-derived number of a reference stud
 
 ### Calibration
 
-`npm run calibrate:review` re-runs the three reference videos and fails unless the tool still
+`bun run calibrate:review` re-runs the three reference videos and fails unless the tool still
 reproduces their recorded ordering and gate outcomes. The mp4s are the captain's own and are not in
 the repo: point `AIDEOS_CALIBRATION_A` (the preferred explainer), `AIDEOS_CALIBRATION_B` (the
 selected comparison explainer) and `AIDEOS_CALIBRATION_RAG` at them, optionally with `AIDEOS_CALIBRATION_A_WORDS`,
@@ -202,7 +202,7 @@ aideos gemini-review video.mp4 --json > review.json
 
 With `--json`, stdout contains only the JSON report; progress is sent to stderr. Exit code `0` means
 `ACCEPT`; exit code `1` means `REVISE` or that the review command could not complete. When invoking
-through npm (`npm run backend -- gemini-review`), use `npm run --silent` so npm's lifecycle banner does
+through npm (`bun run backend -- gemini-review`), use `bun run --silent` so npm's lifecycle banner does
 not precede the JSON document.
 
 The single-video judge reads its rubric, measured facts and JSON format from `review-brief.md` in
@@ -372,7 +372,7 @@ video paths. The skill also lists the single commands (`aideos render`, `reel`, 
 
 Supplemental: When `design/look.json` is available, `aideos review` also reports supplemental criterion 13 (`plan-adherence`: Look plan adherence) as a non-gating rendered-output check (non-gate until calibrated on the proof and two or three more films). This review score is separate from the design build gate; see [Production pipeline](PRODUCTION_PIPELINE.md#look-and-design-delivery). For reel reviews, deterministic facts also enforce the hard gate `reel_length`: container duration <= 179 s including the end card. This gate overrides any model pass when exceeded, and it fails when ffprobe cannot measure the duration (the facts then say the duration was not measured and give no duration timestamp).
 
-Run `npm run eval:look -- --plans <look.json-or-directory> [--min percent]` before changing look-treatment criteria wording.
+Run `bun run eval:look -- --plans <look.json-or-directory> [--min percent]` before changing look-treatment criteria wording.
 
 ## 5. Video model policy (`aideos.config.json`)
 
@@ -434,7 +434,7 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 
 ### Design check (the standard layer)
 
-- `aideos design check <film...>` (`npm run design:check -- <film> [--all] [--stills] [--json]`, `backend/designCheck/`) is the single gate every film's design passes, however it was made: film schema, scene engine validity, static self-contained artwork, locked palette plus the film's own accent (for a project whose theme the user chose, `theme.accentChosen`, that chosen accent is the only accent and the check fails any other one), Geist/JetBrains Mono only, no motion snaps while an element is visible, story holds over 2.5 seconds in compiled scene/camera data, one transform origin per element, picture locked to the narration, safe-area clearance from the caption band, on-screen counters showing a number that is actually spoken, SVG callouts composed with pictures (rules `callout-anchor`, `picture-cover` and leader `contrast`, see [Pictures and SVG together](GOOD_VIDEO.md#pictures-and-svg-together)), a narrator that is the voice of choice (rule `voice-of-choice`, see [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice)), and smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration). Leave `easing` off camera keyframes: `src/dl/scene/cameraTrack.ts` then flows a monotone spline through them, while easing every keyframe stops and bursts at each one and reads as jitter. Findings name the rule, the place and the fix, so an agent can be handed the report and repair its own design. `--stills` renders review stills into `.frames/<id>/` and restores the active film.
+- `aideos design check <film...>` (`bun run design:check -- <film> [--all] [--stills] [--json]`, `backend/designCheck/`) is the single gate every film's design passes, however it was made: film schema, scene engine validity, static self-contained artwork, locked palette plus the film's own accent (for a project whose theme the user chose, `theme.accentChosen`, that chosen accent is the only accent and the check fails any other one), Geist/JetBrains Mono only, no motion snaps while an element is visible, story holds over 2.5 seconds in compiled scene/camera data, one transform origin per element, picture locked to the narration, safe-area clearance from the caption band, on-screen counters showing a number that is actually spoken, SVG callouts composed with pictures (rules `callout-anchor`, `picture-cover` and leader `contrast`, see [Pictures and SVG together](GOOD_VIDEO.md#pictures-and-svg-together)), a narrator that is the voice of choice (rule `voice-of-choice`, see [Voice of choice](PRODUCTION_PIPELINE.md#voice-of-choice)), and smooth, speed-capped camera moves (max 20% frame width per second, no zero-duration jumps, and on the compiled curve at most 0.8% zoom change per frame and 0.3 widths/s^2 pan acceleration). Leave `easing` off camera keyframes: `src/dl/scene/cameraTrack.ts` then flows a monotone spline through them, while easing every keyframe stops and bursts at each one and reads as jitter. Findings name the rule, the place and the fix, so an agent can be handed the report and repair its own design. `--stills` renders review stills into `.frames/<id>/` and restores the active film.
 - Bespoke designs are data: `videos/<id>/design/design.json` (schema `backend/designSpec/spec.ts`: brief, accent, assets, cue-timed clips, camera poses, per-shot block overrides) plus SVGs in `visuals/`. `aideos design brief <id>` writes the designer's brief (`design/BRIEF.md`, the whole contract); `aideos design build <id>` resolves cues against the narration, compiles the scene through the kit, runs the design check and writes the film only on PASS, recording the outcome in `design/status.json`. Builds always start from `design/base-film.json` (the undesigned film, saved on the first build). `test_fixtures/packages/speculative-decoding-designed/` is the worked example.
 - Look planning and design delivery live in `backend/designSpec/designer.ts`; `ProductionRequest.design`
   (`backend/pipeline/types.ts`) selects inline, agent, server or explicit templates. Inline is the
@@ -451,7 +451,7 @@ need a desktop bus. The browser still has its existing 25 second deadline; no re
 
 - `aideos review <slug|mp4>` (`backend/review/`, [docs/REVIEW.md](REVIEW.md)) measures a rendered mp4 against the measurable rubric criteria (persistent stage, captions, readability, overlap, audio sync, pacing, number grounding, loudness, plus camera and carry-over from film data) and writes `review.json` (or `review.reel.json` for a reel) with evidence frames. Exit 1 on a failed gate, 2 when it cannot run. Run it on any video you make and attach the report.
 - A character film (Three stage) is reviewed in each output's own crop: presence, camera and each performance's evaluated contact against its decisive word come from `backend/review/source.ts`, and `backend/review/stageTruth.ts` is the one per-output summary both `review.json` and the Gemini facts read. A look performance pins `character: {id, version, hash}` (see `docs/THREE_STAGE_P3.md`).
-- Camera comes from film data and carry-over from element identity, never from pixels (global phase correlation and overlap in place both mislead, see the audit lessons in docs/REVIEW.md). A criterion with missing inputs is `skipped`, never a pass. Every threshold is in `backend/review/thresholds.ts` and was set from the three reference videos: re-run `npm run calibrate:review` (paths in env vars, the mp4s are never committed) after changing one.
+- Camera comes from film data and carry-over from element identity, never from pixels (global phase correlation and overlap in place both mislead, see the audit lessons in docs/REVIEW.md). A criterion with missing inputs is `skipped`, never a pass. Every threshold is in `backend/review/thresholds.ts` and was set from the three reference videos: re-run `bun run calibrate:review` (paths in env vars, the mp4s are never committed) after changing one.
 
 ### All-check (the whole review in the user's own agent session)
 

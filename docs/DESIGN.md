@@ -149,4 +149,4 @@ Every lens reads and writes the film through one state layer, described in `edit
 - `backend/timeline/voiceover_engine.ts` is imported by the browser bundle and must stay free of Node
   built-ins. ffmpeg-based waveform extraction lives in `backend/timeline/waveform.ts`; the editor
   fetches peaks via `/api/audio/peaks` and falls back to in-browser decoding (`editor/src/components/timeline/useAudioPeaks.ts`).
-- `npm test` discovers every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob, so a new suite is run
+- `bun run test` discovers every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob, so a new suite is run

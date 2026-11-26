@@ -48,9 +48,9 @@ validated.
 ## Working on it
 
 ```bash
-npm run validate        # ~2s: schema + runsheet rules, and prints the runsheet
+bun run validate        # ~2s: schema + runsheet rules, and prints the runsheet
 npx tsx backend/sceneKit/reviewFrames.ts <slug>  # review stills -> .frames/<slug>/review/
-npm run studio          # Remotion Studio
+bun run studio          # Remotion Studio
 ```
 
 `validate` enforces §08 as rules rather than advice: no device holds past
@@ -65,7 +65,7 @@ to the canvas every 90s, and at most three accents in a frame.
 - **A new film:** create a standalone video package under `videos/<slug>/`
   (`film.json`, `script.md`, `voiceover.wav`, `footage/`, `visuals/`),
   or copy `examples/hello-scene/`. The shadow module in `src/dl/films/<slug>.ts`
-  is generated automatically by `npm run ensure:generated`.
+  is generated automatically by `bun run ensure:generated`.
 
 ## Deliberately not implemented
 

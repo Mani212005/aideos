@@ -149,7 +149,7 @@ The CI guide owns the current test tiers and workflow coverage; see [CI.md](CI.m
 
 ## Verification record
 
-- `npm test` (rebased on the part 2 stage design gates): 874 pass, 0 fail, 3 pre-existing
+- `bun run test` (rebased on the part 2 stage design gates): 874 pass, 0 fail, 3 pre-existing
   intentional skips. New suites: `characters.test.ts` (16), `retarget.test.ts` (10, including 120 + 60 random-proportion cases),
   `journeys.test.ts` (10), `pixels.test.ts` (2, headless Chrome on software GL).
 - Lint gate: headers, eslint, root type-check, editor build (which type-checks the editor); `smoke:studio` and the

@@ -153,7 +153,7 @@ test("ci.yml runs the journeys as matrix shards 1..N derived from the matrix, wi
   const run = journeys.steps?.find((s) => s.name === "Journeys")?.run ?? "";
   const lines = run.split("\n").map((line) => line.trim());
   // Both toolchain forms (scripts/toolchain.ts) must take the shard index and total from the matrix itself.
-  for (const form of ["npm run ci -- journeys", "bun scripts/ci.ts journeys"]) {
+  for (const form of ["bun scripts/ci.ts journeys", "npx tsx scripts/ci.ts journeys"]) {
     assert.ok(lines.includes(`${form} --shard \${{ matrix.shard }}/\${{ strategy.job-total }}`), `the ${form.split(" ")[0]} form must take the shard total from the matrix itself`);
   }
   const upload = journeys.steps?.find((s) => s.name === "Keep failing frames and reports");

@@ -4,24 +4,24 @@ File Description: How aideos is checked - the one command that owns every CI ste
 
 # CI and tests
 
-One command owns the list: **`npm run ci`**. GitHub Actions and a contributor's laptop use the job
+One command owns the list: **`bun run ci`** (`bun scripts/ci.ts`). GitHub Actions and a contributor's laptop use the job
 definitions in `scripts/ci.ts`; the local validation tool (`.no-mistakes.yaml`) selects only the
 `static` job. Platform-dependent steps can be skipped locally with a reason.
 Add a check to `scripts/ci.ts` and it becomes part of the matching job everywhere that job runs.
 
 ```bash
-npm run ci                      # what a pull request runs: static, unit, journeys, legacy
-npm run ci -- static unit       # named jobs only
-npm run ci -- --list            # every job and the exact command of every step
-npm run ci -- journeys --bail   # stop at the first failing step instead of running them all
-npm run ci -- journeys --shard 2/3   # one third of the journeys, exactly what CI shard 2 runs
+bun run ci                      # what a pull request runs: static, unit, journeys, legacy
+bun run ci static unit          # named jobs only
+bun run ci --list               # every job and the exact command of every step
+bun run ci journeys --bail      # stop at the first failing step instead of running them all
+bun run ci journeys --shard 2/3 # one third of the journeys, exactly what CI shard 2 runs
 ```
 
 A job runs all of its steps even after one fails, then prints a timing table (and writes it to the
 GitHub job summary), so one run reports every problem.
 
-Every step has an npm form (the default) and a bun form; `AIDEOS_TOOLCHAIN=bun bun scripts/ci.ts <job>`
-runs the bun form. See [Toolchain switch (npm or bun)](#toolchain-switch-npm-or-bun).
+Every step has a bun form (the default) and an npm form; `AIDEOS_TOOLCHAIN=npm npx tsx scripts/ci.ts <job>`
+runs the npm form. See [Toolchain switch (bun or npm)](#toolchain-switch-bun-or-npm).
 
 ## Jobs
 
@@ -29,9 +29,9 @@ runs the bun form. See [Toolchain switch (npm or bun)](#toolchain-switch-npm-or-
 | --- | --- | --- |
 | `changes` | `scripts/ciChanges.mjs`: lists changed files grouped by area, computes shadow mode decisions and reasons for journeys and legacy, and reports shadow PR risk rating | every PR and push to main |
 | `static` | file headers, every test file is wired, eslint (src, backend, scripts, `editor/src`, `editor/vite.config.ts`, `test_fixtures/stillTalking`), `tsc` root (`scripts/typecheck_tracked.ts`: the root tsconfig's own files and options, narrowed to git-tracked files, so untracked or gitignored scratch such as film packages under `videos/` never fails lint, CI or a release), oxlint editor, editor build (`tsc -b` plus vite), `ruff check`, `ruff format --check` | every PR and push to main |
-| `unit` | warm the system Chrome (`scripts/warmChrome.ts`), `npm test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), native Render IR and renderer tests (`cargo test --locked --manifest-path native/Cargo.toml`), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
-| `journeys` (3 shards) | each shard: install ffmpeg, tesseract and the browser libraries (the pictures journey needs tesseract for the OCR design rule), restore the Rust cache and build the release `aideos-render` (the render jobs of the Three-stage journeys, cel or dots-v1, one performer or several, draw natively), warm the system Chrome (`scripts/warmChrome.ts`), `npm run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `npm run smoke:studio` (real studio: scrub, split, undo and redo, autosave, reload); the three shards split these between them (see [Journeys shards](#journeys-shards)) | every PR and push to main |
-| `legacy` | `npm run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
+| `unit` | warm the system Chrome (`scripts/warmChrome.ts`), `bun run test` (every `*.test.ts` under `backend/` and `scripts/`, found by glob), native Render IR and renderer tests (`cargo test --locked --manifest-path native/Cargo.toml`), `validate` on the example film, `design:check` on the fixture packages, `eval:look` (every committed look plan parses), `eval:visuals`, `performance:check` | every PR and push to main |
+| `journeys` (3 shards) | each shard: install ffmpeg, tesseract and the browser libraries (the pictures journey needs tesseract for the OCR design rule), restore the Rust cache and build the release `aideos-render` (the render jobs of the Three-stage journeys, cel or dots-v1, one performer or several, draw natively), warm the system Chrome (`scripts/warmChrome.ts`), `bun run test:journeys` (real pipeline, character and Three-stage checks, and real renders, including browser journeys for AI edit apply, new-project script save, and screenplay input gating; any todo case fails the job) and `bun run smoke:studio` (real studio: scrub, split, undo and redo, autosave, reload); the three shards split these between them (see [Journeys shards](#journeys-shards)) | every PR and push to main |
+| `legacy` | `bun run test:legacy`: golden frames of the films that existed before the 3D work; compares committed Linux baselines | every PR and push to main, Linux only |
 | `nightly` | `scripts/nightly_budget.ts`: the whole Iona film, wide and reel, with budgets on wall time, peak memory, peak temp disk and bundle size | 03:17 UTC and on demand, never on a PR |
 | `all-green` | fails unless all five jobs above succeeded (for `journeys`, every shard: the job result is the aggregate of its legs) | the one check to require |
 
@@ -43,7 +43,7 @@ Layers, from cheapest to dearest: static, unit and property tests (the maths on 
 feature tests with good and bad fixtures, headless journeys (below), regression (golden frames, plus
 a journey case for each bug the captain or a user reported), and the captain's eye for art, which no test can replace.
 
-`npm run test:live` opts into the Deepgram audio, live TTS narration and SVG frame-strip checks (provider credentials required for Deepgram); these are excluded from CI. `test:visual` still runs the SVG strip alone.
+`bun run test:live` opts into the Deepgram audio, live TTS narration and SVG frame-strip checks (provider credentials required for Deepgram); these are excluded from CI. `test:visual` still runs the SVG strip alone.
 
 The seven character and Three-stage suites run unchanged under `backend/journeys/`:
 
@@ -62,11 +62,11 @@ Both `test:journeys` and `scripts/ci.ts` select every `backend/journeys/**/*.jou
 ### Journeys shards
 
 The journeys job is a matrix of three legs, `journeys (shard 1/3)` to `journeys (shard 3/3)`. Each leg runs
-`npm run ci -- journeys --shard <i>/<n>`; `<n>` is `strategy.job-total`, so the shard count is the matrix
+`bun run ci journeys --shard <i>/<n>`; `<n>` is `strategy.job-total`, so the shard count is the matrix
 and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single place to read it:
 
 * **What is split**: every `backend/journeys/**/*.journey.ts` file found on disk, plus the studio smoke step
-  (`npm run smoke:studio`) as one more item. Each item runs in exactly one shard. A file is never split.
+  (`bun run smoke:studio`) as one more item. Each item runs in exactly one shard. A file is never split.
 * **How**: longest first, greedy. Items are sorted by weight (then name), and each goes to the shard with
   the least planned time so far (ties to the lowest shard). There is no clock, random or network input, so
   every leg computes the same plan.
@@ -98,11 +98,11 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
 ## Setup that every job shares
 
 * Every workflow job uses Node 22 and installs through the `.github/actions/install-dependencies` composite
-  action (on the bun path it also installs the Bun of `.bun-version` and runs `bun install`, see
-  [Toolchain switch (npm or bun)](#toolchain-switch-npm-or-bun)). It restores `node_modules` and `editor/node_modules` from one cache keyed on the OS, the CPU, the
+  action (on the default bun path it also installs the Bun of `.bun-version` and runs `bun install`, see
+  [Toolchain switch (bun or npm)](#toolchain-switch-bun-or-npm)). On the npm path it restores `node_modules` and `editor/node_modules` from one cache keyed on the OS, the CPU, the
   exact Node version, both `package.json` files, both lockfiles and `.npmrc`, then runs only
-  `npm run ensure:generated`. On a miss it runs `npm ci` (npm cache keyed on both lockfiles) and saves the
-  cache right after the install, before any step writes into `node_modules`. Why: the `npm ci` step took 39 to
+  `npx tsx scripts/ensure_generated.ts`. On a miss it runs `npm ci` (npm cache keyed on both lockfiles) and saves the
+  cache right after the install, before any step writes into `node_modules`. The bun path does the same under its own key. Why: the `npm ci` step took 39 to
   63 s per job (median 41 s) in GitHub job step timings of real runs on `main` (run ids 44886280947,
   44893547868, 44897331283, 44899769863, 44902106289); the bun evaluation report
   (`data/aideos-bun-evaluation/report.md`, section 1b) recorded 11 to 24 s on 15 Nov and 41 to 64 s on 17 to
@@ -153,35 +153,51 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
   `include-hidden-files: true` so `.ci-artifacts` directories are uploaded reliably. The journeys artifact
   uploads on failure, one artifact per shard (`journeys-evidence-1` to `journeys-evidence-3`); legacy evidence and the nightly budget report upload on every run.
 
-## Toolchain switch (npm or bun)
+## Toolchain switch (bun or npm)
 
 `AIDEOS_TOOLCHAIN` (read only by `scripts/toolchain.ts`) picks the JavaScript toolchain of every CI step.
-Unset or `npm` is the default path and is exactly what ran before the switch existed. `bun` is the full Bun
-path. Any other value fails the run.
+Unset or `bun` is the default, the full Bun path. `npm` is the path that ran before the flip (npm installs,
+`tsx` on Node, `node --test`), kept so the flip is reversible. Any other value fails the run.
 
-| Where | Flip to bun | Restore npm |
+| Where | Back to npm | Return to bun |
 | --- | --- | --- |
-| GitHub CI, every run | repository variable `AIDEOS_TOOLCHAIN=bun` (Settings, Secrets and variables, Actions, Variables) | delete the variable or set it to `npm` |
-| GitHub CI, one run | Actions, CI, Run workflow, `toolchain: bun` | the input defaults to `npm` |
-| A laptop | `AIDEOS_TOOLCHAIN=bun bun scripts/ci.ts <job>` | `npm run ci -- <job>` |
+| GitHub CI, every run | repository variable `AIDEOS_TOOLCHAIN=npm` (Settings, Secrets and variables, Actions, Variables) | delete the variable or set it to `bun` |
+| GitHub CI, one run | Actions, CI (or Nightly render budget, or Update goldens), Run workflow, `toolchain: npm` | the input defaults to `bun` |
+| A laptop | `npm ci`, then `AIDEOS_TOOLCHAIN=npm npx tsx scripts/ci.ts <job>` | `bun install`, then `bun run ci <job>` |
+| The local validation tool | `.no-mistakes.yaml` runs the bun form, and the npm form (with a message) on a machine without bun | |
+
+The package.json scripts are the bun default: `bun run test` runs `scripts/bunTest.ts` (never plain `bun test`,
+which is Bun's own runner without the aideos test setup), and the toolchain scripts (`ci`, `lint`, `test*`,
+`goldens:*`, `eval:*`, `performance:*`, `typecheck`, `smoke:studio`, `ensure:generated` and their pre-hooks) run
+on the Bun runtime. So the npm forms in `scripts/ci.ts` and the workflows never call a script that starts bun:
+they spell the program out (`npx tsx <file>`, the `node --test` command of `scripts/toolchain.ts`). The scripts
+of the product runtime (`backend`, `validate`, `review`, `design:check`, `render`, `render:reel`, `studio`,
+`bundle`, `farm`, `release`) run on Node through `tsx` or the Remotion CLI under either runner, and so do the
+editor's `dev` and `build` pre-hooks.
 
 What the bun path changes, step by step:
 
 * **Install.** `oven-sh/setup-bun` installs the Bun of `.bun-version`, then `bun install --frozen-lockfile
   --ignore-scripts` (root, then `--cwd editor`) and `bun scripts/ensure_generated.ts`. Bun reads the same
   `package-lock.json` files; `bunfig.toml` stops it from writing a `bun.lock`, so there is one lockfile and
-  nothing can drift. `--ignore-scripts` skips the root `postinstall` (it calls npm; its two commands run as
-  above) and dependency install scripts, which bun does not trust anyway (`onnxruntime-node`, `protobufjs`,
+  nothing can drift. `--ignore-scripts` skips the root `postinstall` (its two commands run as above, the editor
+  one frozen) and dependency install scripts, which bun does not trust anyway (`onnxruntime-node`, `protobufjs`,
   `@google/genai`; none is needed, and `.npmrc` is not read by bun). The installed tree has the same package
   versions as npm's except npm's nested `typescript@5.7.3` under `@remotion/eslint-config-flat` and the
   optional `@emnapi/runtime`, which bun leaves out. node_modules is cached under its own key (`bun-node-modules-...`).
-* **Scripts.** Every `npx tsx <file>` and `npm run <script>` step runs `bun <file>` on the Bun runtime;
-  eslint, `tsc -b` and `vite build` run through `bun x --bun --no-install`. The editor build is two steps on
-  this path (`tsc -b`, then `vite build`) so no npm pre-hook runs, and the legacy job runs
-  `ensure_generated` as its own step where npm runs the `test:legacy` pre-hook (the journeys shard that runs
-  the studio smoke does the same where npm runs the `presmoke:studio` pre-hook). `bunfig.toml` turns off
-  bun's automatic `.env` loading (Node never loads it; the CLI loads its own) and its auto-install of
-  missing packages.
+  A fresh `bun install --frozen-lockfile` gives the same tree every time (three fresh installs on the Linux
+  fleet machine listed the same 696 package directories and versions).
+* **The root postinstall** (`scripts/postinstall.mjs`, plain JavaScript) installs editor/ with the package
+  manager that is installing the root: `bun install --cwd editor --no-save` and `bun scripts/ensure_generated.ts`
+  under `bun install`, `npm --prefix editor ci` and `tsx scripts/ensure_generated.ts` under `npm ci` (the
+  Dockerfile, Vercel and `scripts/release.ts` install with npm). `--no-save` because the root `bunfig.toml` does
+  not reach `editor/`, and a plain `bun install --cwd editor` would write `editor/bun.lock`.
+* **Scripts.** Every `npx tsx <file>` step runs `bun <file>` on the Bun runtime; eslint, `tsc -b` and
+  `vite build` run through `bun x --bun --no-install`. The editor build is two steps on this path (`tsc -b`,
+  then `vite build`). The `ensure generated files` steps (before the studio smoke, in the shard that runs it,
+  and first in the legacy job) run on both paths, where the npm path used to run the `presmoke:studio` and
+  `test:legacy` pre-hooks. `bunfig.toml` turns off bun's automatic `.env` loading (Node never loads it; the CLI
+  loads its own) and its auto-install of missing packages.
 * **Tests.** `bun test` is not a drop-in for `node --test`, so the bun path runs every test command through
   `scripts/bunTest.ts`. It expands the same globs (`backend/**/*.test.ts` and `scripts/**/*.test.ts`, the
   journey and golden globs), sorted, and runs **`bun test --timeout=0 --preload
@@ -215,10 +231,18 @@ received its result, because the next test replaced `process.stdout.write`, the 
 process reports through. That test now passes its writes through, and Node counts all 18 tests of the file.
 The CI before and after numbers are in the pull request that added the switch.
 
-What stays on npm on both paths: `npm run <script>` for contributors, the `nightly` and `update-goldens`
-workflows (goldens are made on the default path), `Dockerfile`, `render.yaml`, `vercel.json` and
-`scripts/release.ts`. `.no-mistakes.yaml` runs `npm run ci -- static`, so it follows `AIDEOS_TOOLCHAIN`
-like any other `npm run ci`.
+Where Node or npm stays, and why:
+
+| Where | What runs | Why |
+| --- | --- | --- |
+| `package-lock.json`, `editor/package-lock.json`, `.npmrc` | the one lockfile per package; `.npmrc` for npm only | bun reads `package-lock.json` but cannot write it, and the npm path needs it for a reproducible `npm ci`. A `bun.lock` would be a second lockfile that can drift. Change a dependency with `npm install <pkg>` (it updates the lockfile), then `bun install` |
+| `scripts/postinstall.mjs` npm branch | `npm --prefix editor ci` | `npm ci` runs the root postinstall on the npm path, the Dockerfile, Vercel and the release install |
+| `Dockerfile`, `render.yaml`, `vercel.json` | `npm ci`, the editor build and the vite server on Node | the hosted studio and its deploys; the `node:22` image has no bun, and a deploy cannot be verified from a pull request |
+| `scripts/release.ts`, `scripts/releaseGateInputs.ts` | `npm ci` in the stable clone, `npm run ci` as the release gate (which starts `bun scripts/ci.ts`) | the publish step; the gate command is part of the recorded gate configuration (`ciInputs`), so changing it stops `--resume-gates` from reusing a CI gate an earlier attempt passed |
+| `bin/aideos` (product launcher), `editor/package.json` `dev` and `build` pre-hooks | the CLI with `tsx` on Node, `npm run validate`, `render`, `studio`, `backend` and the studio server through `npm run dev` | the product runtime, not the toolchain: the shipped CLI, the studio server and Remotion run on Node; `aideos test` and `aideos lint` run `bun run test` and `bun run lint` |
+| `backend/remotionRenderer.ts`, `backend/pipeline/render.ts`, `backend/review/music.ts`, the j14 journey | `npx remotion render` | the Remotion CLI renders on Node |
+| `scripts/studioDriver.ts` | `npx vite` (and `npm --prefix editor ci` when editor/ has no node_modules) | the studio smoke and journeys start the studio the way a user does, on Node |
+| the `changes` job | `node scripts/ciChanges.mjs` | dependency free and needs no install; Node is on every runner |
 
 ## Changed files (shadow mode)
 
@@ -300,7 +324,7 @@ no override variable: tests inject a fake sampler and `statfs`.
 | J8 failures give a named error | `j8_failures.journey.ts`: a phrase not spoken, an unknown shot and missing artwork are each named and write no film; a failed design stops the run with no mp4; unreachable targets fail the build and leave finite evaluator output; missing character resources and duplicate decisive phrases are refused by name; `j3_j5_stage.journey.ts` disables WebGL in real Chrome and checks export refusal and visible Player status | journey |
 | J9 existing SVG and template films render unchanged | `j9_template.journey.ts` (real pipeline, templates), `j9_svg_repeatability.journey.ts` (exact cold-render equality of Still Talking frame 2773), and `legacy.golden.ts` (golden frames of four films; committed Linux baselines) | journey, golden |
 | J10 an agent authors from the docs, bad input names the field | `j8_failures.journey.ts` checks bad values in design.json, look.json and character specs through their public validators; `schemaIssues.test.ts` covers nested unions, unknown fields, required values and version tags | unit, journey |
-| J11 a contributor opens a PR and the suite reproduces locally | `npm run ci`, `scripts/ci.test.ts` (workflows only call real jobs, every job is run by a workflow, least privilege) | static |
+| J11 a contributor opens a PR and the suite reproduces locally | `bun run ci`, `scripts/ci.test.ts` (workflows only call real jobs, every job is run by a workflow, least privilege) | static |
 | J12 a long render never fills the disk | `assertRenderDiskBudget` and `checkRenderDiskBudget` (`renderDiskBudget.test.ts`), the estimate against a real render's peak temp (`j12_render_disk.journey.ts`), temp-leak and size assertions in `j1_pipeline.journey.ts`, `stagePublicDir` cleanup never follows a symlink (`harness.test.ts`), nightly peak-temp budget | unit, journey, nightly |
 | J13 captions: click-select, move, resize, lock, undo, default position, reload, preview equals export | `j13_caption_placement.journey.ts`: clicks the captions (selects, does not play), checks the ring hugs the rendered card, drags for the whole video, resizes, locks (owner can still drag), undoes, restores the default position and reloads in both formats, then checks native Player caption ink bounds against PNG and MP4 export within 2 px | journey |
 
@@ -373,7 +397,7 @@ character work (`hello-scene`, `sample-explainer`, `inset-stage`, `still-talking
 them with `backend/journeys/goldens/`. A golden made on a Mac would not match Linux, so goldens are
 **only** produced by the **Update goldens** workflow on the CI platform, and the comparison is
 skipped (with a message saying so, never a pass) on any other platform. The legacy CI job
-(`npm run ci -- legacy`) pins `FONTCONFIG_FILE` to `scripts/golden-fonts.conf` (`rgba` set to `rgb`),
+(`bun run ci legacy`) pins `FONTCONFIG_FILE` to `scripts/golden-fonts.conf` (`rgba` set to `rgb`),
 ensuring Linux hosts lacking an explicit Fontconfig `rgba` setting reproduce the RGB subpixel text
 antialiasing used in the committed baselines.
 
@@ -382,7 +406,7 @@ described in [NATIVE_RENDERER.md](NATIVE_RENDERER.md#native-golden-frames)); it 
 
 What the legacy job reports:
 
-| Situation | Status in the `npm run ci` output and job summary | Exit code |
+| Situation | Status in the `bun run ci` output and job summary | Exit code |
 | --- | --- | --- |
 | no `MANIFEST.json` committed | **NOT COVERED**: a `NOT COVERED` line in the table, a GitHub warning annotation and a note in the job summary; the frames it rendered are uploaded as `candidate-goldens` | 0, so the first PR can merge |
 | manifest present, every frame matches | `passed` | 0 |
@@ -447,4 +471,4 @@ Remaining scope:
 
 ### Smoke check
 
-- `npm run smoke:studio` (`scripts/smoke_studio.ts`) starts the editor dev server, loads the studio in headless Chrome over the DevTools protocol and fails on a blank page, an uncaught exception, a `console.error`, or a Vite client error. It is part of CI's journeys job. Unit tests run in Node and cannot see browser-only crashes such as a Node built-in leaking into the client bundle (the blank studio after #43). It skips with a warning when no Chrome is installed; set `AIDEOS_SMOKE_REQUIRED=1` to make that a failure.
+- `bun run smoke:studio` (`scripts/smoke_studio.ts`) starts the editor dev server, loads the studio in headless Chrome over the DevTools protocol and fails on a blank page, an uncaught exception, a `console.error`, or a Vite client error. It is part of CI's journeys job. Unit tests run in Node and cannot see browser-only crashes such as a Node built-in leaking into the client bundle (the blank studio after #43). It skips with a warning when no Chrome is installed; set `AIDEOS_SMOKE_REQUIRED=1` to make that a failure.

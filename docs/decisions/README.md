@@ -32,12 +32,13 @@ Every entry has this shape:
 | 2026-11-21 | [Narration about 1.2x and edits 20 to 30 percent faster](2026-11-21-faster-narration-and-edits.md) | owner | Decided, not yet on main |
 | 2026-11-21 | [Illustrated stage: one plate and about 8 pictures, SVG keeps all text and motion](2026-11-21-illustrated-stage-picture-format.md) | owner | In force (phase 1) |
 | 2026-11-21 | [Hosted Studio stays look-only for strangers](2026-11-21-hosted-studio-look-only.md) | owner | In force |
-| 2026-11-21 | [Stay on npm, do not switch to bun](2026-11-21-stay-on-npm-not-bun.md) | owner | In force |
+| 2026-11-21 | [Stay on npm, do not switch to bun](2026-11-21-stay-on-npm-not-bun.md) | owner | Superseded by [2026-11-26-bun-default-toolchain.md](2026-11-26-bun-default-toolchain.md) |
 | 2026-11-21 | [Keep the "Used by" headers and add no automatic check](2026-11-21-keep-used-by-headers-no-checker.md) | owner | In force |
 | 2026-11-21 | [Delete weak tests at about 60 to 70 percent confidence](2026-11-21-delete-weak-tests-policy.md) | owner | In force |
 | 2026-11-21 | [A reusable verify skill with a Feature Map and evidence log](2026-11-21-verify-skill.md) | owner | In force |
 | 2026-11-21 | [Purge recurring bad code habits in 16 small slices](2026-11-21-habits-purge-slicing.md) | owner | In force (slices 1 to 3 merged, slice 4 open) |
 | 2026-11-22 | [Owner video feedback for the next video (music, narrator, SVG with pictures)](2026-11-22-video-feedback-next-video.md) | owner | Decided, not yet on main |
+| 2026-11-26 | [Bun is the default toolchain, npm stays selectable](2026-11-26-bun-default-toolchain.md) | owner | Decided, not yet on main |
 
 ## Adding an entry
 

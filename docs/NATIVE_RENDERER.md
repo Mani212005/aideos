@@ -69,7 +69,7 @@ AIDEOS_RENDERER=native aideos render        # require native: a film it cannot d
 The CLI writes one PNG and prints one line (`wrote frame.png (1920x1080, long, frame 43, cpu) in 246 ms`).
 Exit codes: 0 written, 1 the document, an asset or the frame was refused (the reason is on stderr), 2 a
 usage mistake. `--package` defaults to the IR file's directory; every asset path resolves against it.
-`npm run ci -- unit` runs the `cargo test` step (skipped with a reason on a laptop without cargo).
+`bun run ci -- unit` runs the `cargo test` step (skipped with a reason on a laptop without cargo).
 
 `video` loads the film once on the calling thread (so a bad document or asset fails before anything
 starts), then N worker threads (default: the machine's parallelism) each open their own `Renderer`, draw
@@ -220,7 +220,7 @@ version, the Skia pin and the tolerance.
 The test (run by `cargo test`, so by the CI unit job) renders each frame and requires a mean channel difference of
 at most 0.05 and at most 0.1% of pixels more than 8 apart, the same strict tolerance as
 `backend/journeys/goldenCompare.ts`. It is verified on Linux only (macOS glyphs are CoreText's). To remake the set
-after an intended change: `npm run goldens:native:ir` (needs the release binary; re-emits the IR) then
+after an intended change: `bun run goldens:native:ir` (needs the release binary; re-emits the IR) then
 `AIDEOS_NATIVE_GOLDEN_UPDATE=1 cargo test --locked --manifest-path native/Cargo.toml -p aideos-render --test golden`,
 which renders every frame twice and refuses to write a frame whose two renders differ. Never loosen the constants
 in the test; the manifest check fails if they change without a new set.

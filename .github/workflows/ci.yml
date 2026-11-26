@@ -1,4 +1,4 @@
-# File Description: Pull request and main CI. A first changes job classifies changed files in shadow mode, four parallel jobs (static, unit, journeys, legacy) each run one `npm run ci -- <job>` (journeys as three parallel shards), and a final all-green job gives branch protection a single check to require. AIDEOS_TOOLCHAIN picks npm (the default) or bun for every job (scripts/toolchain.ts): a manual run's `toolchain` input, else the repository variable AIDEOS_TOOLCHAIN, else npm.
+# File Description: Pull request and main CI. A first changes job classifies changed files in shadow mode, four parallel jobs (static, unit, journeys, legacy) each run one `bun scripts/ci.ts <job>` (journeys as three parallel shards), and a final all-green job gives branch protection a single check to require. AIDEOS_TOOLCHAIN picks bun (the default) or npm for every job (scripts/toolchain.ts): a manual run's `toolchain` input, else the repository variable AIDEOS_TOOLCHAIN, else bun.
 # Inputs and outputs: pull requests, pushes to main, manual runs (optional toolchain input), the AIDEOS_TOOLCHAIN repository variable -> changed files analysis, job results, a timing table in each job summary, failing frames and reports as artifacts.
 # Used by: GitHub Actions. Documented in docs/CI.md.
 name: CI
@@ -10,10 +10,10 @@ on:
   workflow_dispatch:
     inputs:
       toolchain:
-        description: "JavaScript toolchain for this run: npm (the default path) or bun (see scripts/toolchain.ts)"
+        description: "JavaScript toolchain for this run: bun (the default path) or npm (see scripts/toolchain.ts)"
         type: choice
-        options: [npm, bun]
-        default: npm
+        options: [bun, npm]
+        default: bun
 
 # A newer push to the same pull request supersedes the older run; main runs are never cancelled.
 concurrency:
@@ -28,9 +28,9 @@ env:
   # Software GL gives identical pixels on every runner, which is what makes 3D frames comparable.
   AIDEOS_GL: swangle
   RUFF_VERSION: "0.17.0"
-  # The one switch (scripts/toolchain.ts). Flip every run to bun by setting the repository variable AIDEOS_TOOLCHAIN=bun;
-  # delete it (or set npm) to restore npm. A manual run's input wins for that run only.
-  AIDEOS_TOOLCHAIN: ${{ inputs.toolchain || vars.AIDEOS_TOOLCHAIN || 'npm' }}
+  # The one switch (scripts/toolchain.ts). bun is the default; put every run back on npm by setting the repository
+  # variable AIDEOS_TOOLCHAIN=npm, delete it (or set bun) to return to bun. A manual run's input wins for that run only.
+  AIDEOS_TOOLCHAIN: ${{ inputs.toolchain || vars.AIDEOS_TOOLCHAIN || 'bun' }}
 
 jobs:
   changes:
@@ -65,7 +65,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          # The npm download cache serves only the npm path's `npm ci`; the bun path caches node_modules itself.
+          cache: ${{ env.AIDEOS_TOOLCHAIN == 'npm' && 'npm' || '' }}
           cache-dependency-path: |
             package-lock.json
             editor/package-lock.json
@@ -75,10 +76,10 @@ jobs:
         uses: ./.github/actions/install-dependencies
       - name: Static checks
         run: |
-          if [ "$AIDEOS_TOOLCHAIN" = bun ]; then
-            bun scripts/ci.ts static
+          if [ "$AIDEOS_TOOLCHAIN" = npm ]; then
+            npx tsx scripts/ci.ts static
           else
-            npm run ci -- static
+            bun scripts/ci.ts static
           fi
 
   unit:
@@ -90,7 +91,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          # The npm download cache serves only the npm path's `npm ci`; the bun path caches node_modules itself.
+          cache: ${{ env.AIDEOS_TOOLCHAIN == 'npm' && 'npm' || '' }}
           cache-dependency-path: |
             package-lock.json
             editor/package-lock.json
@@ -117,10 +119,10 @@ jobs:
       - name: Download the Remotion browser
         if: steps.remotion-browser.outputs.cache-hit != 'true'
         run: |
-          if [ "$AIDEOS_TOOLCHAIN" = bun ]; then
-            bun x --no-install remotion browser ensure
-          else
+          if [ "$AIDEOS_TOOLCHAIN" = npm ]; then
             npx remotion browser ensure
+          else
+            bun x --no-install remotion browser ensure
           fi
       - name: Restore the Rust build cache
         uses: actions/cache@v4
@@ -132,10 +134,10 @@ jobs:
           key: cargo-native-${{ runner.os }}-${{ hashFiles('native/Cargo.lock') }}
       - name: Unit and feature tests
         run: |
-          if [ "$AIDEOS_TOOLCHAIN" = bun ]; then
-            bun scripts/ci.ts unit
+          if [ "$AIDEOS_TOOLCHAIN" = npm ]; then
+            npx tsx scripts/ci.ts unit
           else
-            npm run ci -- unit
+            bun scripts/ci.ts unit
           fi
 
   # The journeys run as parallel shards: each leg runs a disjoint, deterministic share of the journey files
@@ -154,7 +156,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          # The npm download cache serves only the npm path's `npm ci`; the bun path caches node_modules itself.
+          cache: ${{ env.AIDEOS_TOOLCHAIN == 'npm' && 'npm' || '' }}
           cache-dependency-path: |
             package-lock.json
             editor/package-lock.json
@@ -181,10 +184,10 @@ jobs:
       - name: Download the Remotion browser
         if: steps.remotion-browser.outputs.cache-hit != 'true'
         run: |
-          if [ "$AIDEOS_TOOLCHAIN" = bun ]; then
-            bun x --no-install remotion browser ensure
-          else
+          if [ "$AIDEOS_TOOLCHAIN" = npm ]; then
             npx remotion browser ensure
+          else
+            bun x --no-install remotion browser ensure
           fi
       # The render jobs of the journeys draw every film the native renderer supports (the one-performer Three-stage
       # films since P4.2) with the release binary; without it they would fall back to Remotion.
@@ -201,10 +204,10 @@ jobs:
       # Includes the character and Three-stage suites selected by backend/journeys/**/*.journey.ts.
       - name: Journeys
         run: |
-          if [ "$AIDEOS_TOOLCHAIN" = bun ]; then
-            bun scripts/ci.ts journeys --shard ${{ matrix.shard }}/${{ strategy.job-total }}
+          if [ "$AIDEOS_TOOLCHAIN" = npm ]; then
+            npx tsx scripts/ci.ts journeys --shard ${{ matrix.shard }}/${{ strategy.job-total }}
           else
-            npm run ci -- journeys --shard ${{ matrix.shard }}/${{ strategy.job-total }}
+            bun scripts/ci.ts journeys --shard ${{ matrix.shard }}/${{ strategy.job-total }}
           fi
       - name: Keep failing frames and reports
         if: failure()
@@ -225,7 +228,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          # The npm download cache serves only the npm path's `npm ci`; the bun path caches node_modules itself.
+          cache: ${{ env.AIDEOS_TOOLCHAIN == 'npm' && 'npm' || '' }}
           cache-dependency-path: |
             package-lock.json
             editor/package-lock.json
@@ -252,17 +256,17 @@ jobs:
       - name: Download the Remotion browser
         if: steps.remotion-browser.outputs.cache-hit != 'true'
         run: |
-          if [ "$AIDEOS_TOOLCHAIN" = bun ]; then
-            bun x --no-install remotion browser ensure
-          else
+          if [ "$AIDEOS_TOOLCHAIN" = npm ]; then
             npx remotion browser ensure
+          else
+            bun x --no-install remotion browser ensure
           fi
       - name: Golden frames
         run: |
-          if [ "$AIDEOS_TOOLCHAIN" = bun ]; then
-            bun scripts/ci.ts legacy
+          if [ "$AIDEOS_TOOLCHAIN" = npm ]; then
+            npx tsx scripts/ci.ts legacy
           else
-            npm run ci -- legacy
+            bun scripts/ci.ts legacy
           fi
       - name: Keep candidate and failing frames
         if: always()

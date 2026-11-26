@@ -1,14 +1,14 @@
 /**
  * File Description: The one list of CI commands. A job is a named, ordered list of steps; GitHub
- * Actions, the local validation tool (.no-mistakes.yaml) and contributors all run `npm run ci`, so
+ * Actions, the local validation tool (.no-mistakes.yaml) and contributors all run `bun run ci`, so
  * a green run in one place means the same commands were green everywhere. Runs every step of a job
  * even after a failure (so one run reports every problem), prints a timing table and writes it to
  * the GitHub step summary when there is one.
  * The journeys job can run as one of N parallel shards (`--shard 2/3`): a deterministic plan from
  * scripts/ciJourneyShards.ts gives each shard a disjoint set of journey files, and exactly one shard the studio smoke step.
- * Every step has an npm form (the default) and a bun form; AIDEOS_TOOLCHAIN (scripts/toolchain.ts) picks which one runs.
+ * Every step has a bun form (the default) and an npm form; AIDEOS_TOOLCHAIN (scripts/toolchain.ts) picks which one runs.
  * Inputs and outputs: job names (static, unit, journeys, legacy, nightly; none means the PR set), flags (--bail, --list, --shard i/n for the journeys job) and AIDEOS_TOOLCHAIN -> exit code 0 when every step passed or was skipped, 1 otherwise.
- * Used by: npm run ci (bun scripts/ci.ts on the bun path), .github/workflows/*.yml, .no-mistakes.yaml, scripts/ci.test.ts.
+ * Used by: bun run ci (`npx tsx scripts/ci.ts` on the npm path), .github/workflows/*.yml, .no-mistakes.yaml, scripts/ci.test.ts.
  */
 
 import { environment } from "../backend/env";
@@ -130,9 +130,10 @@ const goldenVerdict: CiStep["verdict"] = {
   },
 };
 
-/** Every job for one toolchain. Add a step here (both its npm and its bun form) and it runs in CI, in the local validation tool and for contributors. */
+/** Every job for one toolchain. Add a step here (both its bun and its npm form) and it runs in CI, in the local validation tool and for contributors. */
 export function jobsFor(toolchain: Toolchain): CiJob[] {
-  /** A step command in its npm form and its bun form; the active toolchain picks one. */
+  /** A step command in its npm form and its bun form; the active toolchain picks one. The npm forms never run a
+   * package.json script that itself starts bun (those scripts are the bun default), so the npm path needs no bun. */
   const cmd = (npm: string[], bun: string[]): string[] => pick(toolchain, { npm, bun });
 
   /** Pays a fresh runner's slow first Chrome launch before any test bounds a launch; skipped on a laptop without Chrome, never under CI. */
@@ -160,7 +161,7 @@ export function jobsFor(toolchain: Toolchain): CiJob[] {
   /** The studio smoke check. In a shard it runs only where the plan put it; every other shard reports it skipped. */
   const studioSmokeStep: CiStep = {
     name: "studio smoke and scrub",
-    cmd: cmd(["npm", "run", "smoke:studio"], ["bun", "scripts/smoke_studio.ts"]),
+    cmd: cmd(["npx", "tsx", "scripts/smoke_studio.ts"], ["bun", "scripts/smoke_studio.ts"]),
     env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {},
     forShard: (plan) => ({
       ...studioSmokeStep,
@@ -169,20 +170,17 @@ export function jobsFor(toolchain: Toolchain): CiJob[] {
     }),
   };
 
-  /** Bun only: npm's `presmoke:studio` pre-hook regenerates the files the journey tests may have left changed; the bun path runs it as a step, in the shard that runs the smoke. */
-  const ensureGeneratedBeforeSmokeSteps: CiStep[] = toolchain === "bun"
-    ? [
-        {
-          name: "ensure generated files",
-          cmd: ["bun", "scripts/ensure_generated.ts"],
-          forShard: (plan) => ({
-            name: "ensure generated files",
-            cmd: ["bun", "scripts/ensure_generated.ts"],
-            skip: () => (plan.runsSmoke ? null : `runs in another shard (this is ${plan.shard.index}/${plan.shard.total})`),
-          }),
-        },
-      ]
-    : [];
+  /** Regenerates the files the journey tests may have left changed (what the `presmoke:studio` pre-hook does), in the shard that runs the smoke. */
+  const ensureGeneratedCmd = cmd(["npx", "tsx", "scripts/ensure_generated.ts"], ["bun", "scripts/ensure_generated.ts"]);
+  const ensureGeneratedBeforeSmokeStep: CiStep = {
+    name: "ensure generated files",
+    cmd: ensureGeneratedCmd,
+    forShard: (plan) => ({
+      name: "ensure generated files",
+      cmd: ensureGeneratedCmd,
+      skip: () => (plan.runsSmoke ? null : `runs in another shard (this is ${plan.shard.index}/${plan.shard.total})`),
+    }),
+  };
 
   /** The editor build: one npm script on the npm path; on the bun path its two commands run on the Bun runtime in editor/ (no npm pre-hook). */
   const editorBuildSteps: CiStep[] = toolchain === "bun"
@@ -197,7 +195,7 @@ export function jobsFor(toolchain: Toolchain): CiJob[] {
       id: "static",
       title: "Static checks: headers, wiring, eslint, type-checks, editor build, ruff",
       steps: [
-        { name: "ensure generated files", cmd: cmd(["npm", "run", "ensure:generated", "--silent"], ["bun", "scripts/ensure_generated.ts"]) },
+        { name: "ensure generated files", cmd: ensureGeneratedCmd },
         { name: "file headers", cmd: cmd(["npx", "tsx", "scripts/check_headers.ts"], ["bun", "scripts/check_headers.ts"]) },
         { name: "every test file is wired", cmd: cmd(["npx", "tsx", "scripts/check_tests_wired.ts"], ["bun", "scripts/check_tests_wired.ts"]) },
         {
@@ -243,12 +241,12 @@ export function jobsFor(toolchain: Toolchain): CiJob[] {
         {
           name: "eval:look (every committed look plan parses)",
           cmd: cmd(
-            ["npm", "run", "eval:look", "--silent", "--", "--plans", "test_fixtures/packages", "--min", "0"],
+            ["npx", "tsx", "backend/eval/lookEval.ts", "--plans", "test_fixtures/packages", "--min", "0"],
             ["bun", "backend/eval/lookEval.ts", "--plans", "test_fixtures/packages", "--min", "0"],
           ),
         },
-        { name: "eval:visuals", cmd: cmd(["npm", "run", "eval:visuals", "--silent"], ["bun", "backend/eval/shotVisualEval.ts"]) },
-        { name: "performance:check", cmd: cmd(["npm", "run", "performance:check", "--silent"], ["bun", "scripts/performance_check.ts"]) },
+        { name: "eval:visuals", cmd: cmd(["npx", "tsx", "backend/eval/shotVisualEval.ts"], ["bun", "backend/eval/shotVisualEval.ts"]) },
+        { name: "performance:check", cmd: cmd(["npx", "tsx", "scripts/performance_check.ts"], ["bun", "scripts/performance_check.ts"]) },
       ],
     },
     {
@@ -257,20 +255,20 @@ export function jobsFor(toolchain: Toolchain): CiJob[] {
       steps: [
         warmChromeStep,
         journeyTestsStep,
-        ...ensureGeneratedBeforeSmokeSteps,
+        ensureGeneratedBeforeSmokeStep,
         studioSmokeStep,
       ],
     },
     {
       id: "legacy",
       title: "Legacy regression: golden frames of existing SVG and template films",
-      // npm's `test:legacy` pre-hook rewrites the generated files the unit and journey tests may have left changed; the bun path runs it as a step.
+      // The first step rewrites the generated files the unit and journey tests may have left changed (what the `test:legacy` pre-hook does).
       // Pin Fontconfig to RGB subpixel text rendering so local Linux runs reproduce CI baselines.
       steps: [
-        ...(toolchain === "bun" ? [{ name: "ensure generated files", cmd: ["bun", "scripts/ensure_generated.ts"], skip: notLinux }] : []),
+        { name: "ensure generated files", cmd: ensureGeneratedCmd, skip: notLinux },
         {
           name: "golden frames",
-          cmd: cmd(["npm", "run", "test:legacy"], testCommand("bun", ["backend/journeys/**/*.golden.ts"])),
+          cmd: testCommand(toolchain, ["backend/journeys/**/*.golden.ts"]),
           env: { ...softwareGl(), FONTCONFIG_FILE: path.join(ROOT, "scripts/golden-fonts.conf") },
           skip: notLinux,
           verdict: goldenVerdict,
@@ -285,13 +283,13 @@ export function jobsFor(toolchain: Toolchain): CiJob[] {
   ];
 }
 
-/** The toolchain this process runs CI with (AIDEOS_TOOLCHAIN; npm when unset). */
+/** The toolchain this process runs CI with (AIDEOS_TOOLCHAIN; bun when unset). */
 export const TOOLCHAIN: Toolchain = activeToolchain(environment);
 
 /** Every job, for the active toolchain. */
 export const JOBS: CiJob[] = jobsFor(TOOLCHAIN);
 
-/** The jobs `npm run ci` runs when none is named: everything a pull request runs. */
+/** The jobs `bun run ci` runs when none is named: everything a pull request runs. */
 export const PR_JOBS = ["static", "unit", "journeys", "legacy"];
 
 /** Runs one step to completion, streaming its output, and returns its result. */
@@ -441,7 +439,7 @@ export function parseArgs(args: string[]): { named: string[]; bail: boolean; lis
     else if (!arg.startsWith("--")) named.push(arg);
   }
   const shard = shardValue === undefined ? undefined : parseShardSpec(shardValue);
-  if (shard && named.length === 0) throw new Error("--shard needs a job name, for example: npm run ci -- journeys --shard 1/3");
+  if (shard && named.length === 0) throw new Error("--shard needs a job name, for example: bun run ci journeys --shard 1/3");
   return { named, bail: args.includes("--bail"), list: args.includes("--list"), shard };
 }
 

@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "npm --prefix .. run ensure:generated --silent",
+    "predev": "../node_modules/.bin/tsx ../scripts/ensure_generated.ts",
     "dev": "vite",
-    "prebuild": "npm --prefix .. run ensure:generated --silent",
+    "prebuild": "../node_modules/.bin/tsx ../scripts/ensure_generated.ts",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
