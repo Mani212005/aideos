@@ -367,8 +367,8 @@ fn an_svg_feature_the_renderer_does_not_draw_is_refused_not_dropped() {
         "{err}"
     );
     assert!(
-        err.to_string().contains("filter"),
-        "the refusal names the filter: {err}"
+        err.to_string().contains("unsupported filter primitive <feTurbulence>"),
+        "the refusal names the filter primitive: {err}"
     );
 }
 
