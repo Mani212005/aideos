@@ -370,6 +370,7 @@ impl Renderer {
                 }
             }
         }
+        check_glyph_tracks(&ir, &fonts)?;
         let phrases = caption_phrases(&ir, &fonts);
         let stage3d = match shared.stage3d {
             Some(scene) => Some(scene),
@@ -447,6 +448,37 @@ impl Renderer {
         raster::draw_frame(surface.canvas(), &self.loaded, format, frame, w, h)?;
         read_rgba(&mut surface, w, h)
     }
+}
+
+/// Refuses a glyph track whose shaped index does not exist in every declared output format.
+fn check_glyph_tracks(ir: &RenderIr, fonts: &Fonts) -> Result<(), RenderError> {
+    let mut nodes = Vec::new();
+    walk(&ir.overlay, &mut nodes);
+    for node in nodes {
+        let Node::Text(t) = node else { continue };
+        let Some(tracks) = &t.glyph_tracks else { continue };
+        if tracks.is_empty() { continue; }
+        for format in [Format::Long, Format::Reel] {
+            let Some(b) = format.pick(&t.placement) else { continue };
+            let spec = TextSpec {
+                text: &t.text, font: &t.font, size: b.font_size, color: raster::ir_color(&t.color),
+                letter_spacing: t.letter_spacing * b.font_size, line_height: Some(t.line_height),
+                align: match t.align {
+                    aideos_render_ir::types::Align::Left => skia_safe::textlayout::TextAlign::Left,
+                    aideos_render_ir::types::Align::Center => skia_safe::textlayout::TextAlign::Center,
+                    aideos_render_ir::types::Align::Right => skia_safe::textlayout::TextAlign::Right,
+                },
+                shadows: Vec::new(),
+            };
+            let count = fonts.paragraph(&spec, b.w as f32).glyph_count();
+            if let Some(track) = tracks.iter().find(|track| track.glyph.0 as usize >= count) {
+                return Err(RenderError::Unsupported(format!(
+                    "text {:?} glyph {} is outside the {} shaped glyphs in {}", t.id, track.glyph.0, count, format.name()
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Chrome's text contrast and gamma: Chromium builds Skia for Linux with `SK_GAMMA_CONTRAST=0.2` and

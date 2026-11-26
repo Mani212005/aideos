@@ -1,4 +1,4 @@
-//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Drawing reads only the IR, the loaded assets and the frame number, so the same frame always draws the same pixels.
+//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Drawing depends only on the IR, assets and frame number.
 //! Inputs and outputs: a canvas, the loaded film (`Loaded`), a format, a frame number and the frame size -> pixels on the canvas.
 //! Used by: crate::renderer (CPU raster and the optional GPU surface).
 
@@ -17,7 +17,7 @@ use aideos_render_ir::types::{
 use skia_safe::textlayout::TextAlign;
 use skia_safe::gradient::{shaders, Colors, Gradient, Interpolation};
 use skia_safe::{
-    images, paint, AlphaType, Canvas, Color4f, ColorType, Data, FilterMode, Image,
+    images, paint, surfaces, AlphaType, Canvas, Color4f, ColorType, Data, FilterMode, Image,
     ImageInfo, Matrix, MipmapMode, Paint, RRect, Rect, SamplingOptions, TileMode,
 };
 
@@ -68,8 +68,52 @@ pub fn draw_frame(
     width: u32,
     height: u32,
 ) -> Result<(), RenderError> {
+    let Some(shutter) = &l.ir.shutter else {
+        return draw_frame_at(canvas, l, format, frame, f64::from(frame), width, height, true);
+    };
+    if !(2..=16).contains(&shutter.samples.0) || !shutter.angle.is_finite() || !(0.0 < shutter.angle && shutter.angle <= 360.0) {
+        return Err(RenderError::Unsupported("shutter needs 2 to 16 samples and an angle in (0, 360]".into()));
+    }
+    let surface_info = ImageInfo::new_n32_premul((width as i32, height as i32), None);
+    let mut surface = surfaces::raster(&surface_info, None, Some(&crate::renderer::frame_surface_props()))
+        .ok_or_else(|| RenderError::Skia("cannot create shutter surface".into()))?;
+    let len = width as usize * height as usize * 4;
+    let mut pixels = vec![0u8; len];
+    let mut sum = vec![0u16; len];
+    let count = shutter.samples.0;
+    for i in 0..count {
+        let offset = ((f64::from(i) + 0.5) / f64::from(count) - 0.5) * shutter.angle / 360.0;
+        let time = (f64::from(frame) + offset).clamp(0.0, f64::from(l.ir.film.duration_frames.0) - 1e-9);
+        draw_frame_at(surface.canvas(), l, format, frame, time, width, height, false)?;
+        let pixmap = surface.peek_pixels().ok_or_else(|| RenderError::Skia("cannot access shutter sample".into()))?;
+        let stride = pixmap.row_bytes();
+        let bytes = pixmap.bytes().ok_or_else(|| RenderError::Skia("cannot read shutter sample".into()))?;
+        let row_len = width as usize * 4;
+        for row in 0..height as usize {
+            for (total, pixel) in sum[row * row_len..(row + 1) * row_len].iter_mut().zip(&bytes[row * stride..row * stride + row_len]) {
+                *total += u16::from(*pixel);
+            }
+        }
+    }
+    let divisor = count as u16;
+    for (pixel, total) in pixels.iter_mut().zip(sum) { *pixel = ((total + divisor / 2) / divisor) as u8; }
+    let image = images::raster_from_data(&surface_info, Data::new_copy(&pixels), width as usize * 4)
+        .ok_or_else(|| RenderError::Skia("cannot wrap shutter image".into()))?;
+    canvas.clear(skia_safe::Color::TRANSPARENT);
+    canvas.draw_image(&image, (0.0, 0.0), None);
+    let ctx = OverlayCtx { l, format, frame, time: f64::from(frame), width, height };
+    for node in &l.ir.overlay {
+        if is_chrome(node) { draw_overlay_node(canvas, &ctx, node); }
+    }
+    Ok(())
+}
+
+/// Draws a single fractional 2D sample while keeping chrome on the delivered frame.
+fn draw_frame_at(
+    canvas: &Canvas, l: &Loaded, format: Format, frame: u32, time: f64, width: u32, height: u32, include_chrome: bool,
+) -> Result<(), RenderError> {
     canvas.clear(to_color(ir_color(&l.ir.background)));
-    let pose = eval::camera(&l.ir, frame);
+    let pose = eval::camera_at(&l.ir, time);
     let view = StageView { width, height, pose };
     let fit = eval::cover_fit(&l.ir, width, height) as f32;
     canvas.save();
@@ -80,20 +124,26 @@ pub fn draw_frame(
     canvas.scale((pose.zoom as f32, pose.zoom as f32));
     canvas.translate((-pose.center_x as f32, -pose.center_y as f32));
     for node in stage_order(&l.ir.stage) {
-        draw_stage_node(canvas, l, node, frame, &view)?;
+        draw_stage_node(canvas, l, node, time, frame, &view)?;
     }
     canvas.restore();
     let ctx = OverlayCtx {
         l,
         format,
         frame,
+        time,
         width,
         height,
     };
     for node in &l.ir.overlay {
-        draw_overlay_node(canvas, &ctx, node);
+        if include_chrome || !is_chrome(node) { draw_overlay_node(canvas, &ctx, node); }
     }
     Ok(())
+}
+
+/// Identifies the sharp overlay chrome composited once after shutter accumulation.
+fn is_chrome(node: &Node) -> bool {
+    matches!(node, Node::Rail(_) | Node::Captions(_) | Node::EndCard(_))
 }
 
 thread_local! {
@@ -151,25 +201,26 @@ fn draw_stage_node(
     canvas: &Canvas,
     l: &Loaded,
     node: &Node,
+    time: f64,
     frame: u32,
     view: &StageView,
 ) -> Result<(), RenderError> {
     let dur = l.ir.film.duration_frames.0;
     match node {
-        Node::Svg(n) => draw_svg_node(canvas, l, n, frame),
-        Node::Image(n) => draw_image_node(canvas, l, n, frame),
+        Node::Svg(n) => draw_svg_node(canvas, l, n, time),
+        Node::Image(n) => draw_image_node(canvas, l, n, time),
         Node::Stage3d(n) => return draw_stage3d_node(canvas, l, n, frame, view),
         Node::Group(g) => {
-            if !eval::is_visible(g.visible.as_ref(), frame) {
+            if !eval::is_visible_at(g.visible.as_ref(), time) {
                 return Ok(());
             }
-            let t = group_transform(g, frame, dur);
+            let t = group_transform(g, time, dur);
             canvas.save();
             apply_placement(canvas, &t);
             let mut result = Ok(());
             with_opacity(canvas, t.opacity, || {
                 for child in stage_order(&g.children) {
-                    if let Err(e) = draw_stage_node(canvas, l, child, frame, view) {
+                    if let Err(e) = draw_stage_node(canvas, l, child, time, frame, view) {
                         result = Err(e);
                         break;
                     }
@@ -230,7 +281,7 @@ fn draw_stage3d_node(
 }
 
 /// A group's resolved transform at a frame.
-fn group_transform(g: &GroupNode, frame: u32, dur: u32) -> NodeTransform {
+fn group_transform(g: &GroupNode, time: f64, dur: u32) -> NodeTransform {
     let base = NodeTransform {
         x: g.x,
         y: g.y,
@@ -240,12 +291,12 @@ fn group_transform(g: &GroupNode, frame: u32, dur: u32) -> NodeTransform {
         rotation: g.rotation,
         opacity: 1.0,
     };
-    eval::placed_transform(base, g.opacity, &g.tracks, frame, dur)
+    eval::placed_transform_at(base, g.opacity, &g.tracks, time, dur)
 }
 
 /// Draws an SVG asset placed on the stage with its element states for the frame.
-fn draw_svg_node(canvas: &Canvas, l: &Loaded, n: &SvgNode, frame: u32) {
-    if !eval::is_visible(n.visible.as_ref(), frame) {
+fn draw_svg_node(canvas: &Canvas, l: &Loaded, n: &SvgNode, time: f64) {
+    if !eval::is_visible_at(n.visible.as_ref(), time) {
         return;
     }
     let Some(doc) = l.svgs.get(&n.asset) else {
@@ -261,8 +312,8 @@ fn draw_svg_node(canvas: &Canvas, l: &Loaded, n: &SvgNode, frame: u32) {
         rotation: n.rotation,
         opacity: 1.0,
     };
-    let t = eval::placed_transform(base, n.opacity, &n.tracks, frame, dur);
-    let states = eval::element_states(n, frame, dur);
+    let t = eval::placed_transform_at(base, n.opacity, &n.tracks, time, dur);
+    let states = eval::element_states_at(n, time, dur);
     canvas.save();
     apply_placement(canvas, &t);
     with_opacity(canvas, t.opacity, || {
@@ -293,8 +344,8 @@ fn image_sampling(device_scale: f64) -> SamplingOptions {
 /// Draws a picture placed on the stage: the node placement, then its element state about its origin, then the image
 /// stretched over the `width` x `height` box centred there, with straight alpha blended over what is below (SceneView's
 /// `<image preserveAspectRatio="none">`). Opacity is the node's (a layer, like an svg node) times the element's own.
-fn draw_image_node(canvas: &Canvas, l: &Loaded, n: &ImageNode, frame: u32) {
-    if !eval::is_visible(n.visible.as_ref(), frame) {
+fn draw_image_node(canvas: &Canvas, l: &Loaded, n: &ImageNode, time: f64) {
+    if !eval::is_visible_at(n.visible.as_ref(), time) {
         return;
     }
     let Some(image) = l.images.get(&n.asset) else {
@@ -310,8 +361,8 @@ fn draw_image_node(canvas: &Canvas, l: &Loaded, n: &ImageNode, frame: u32) {
         rotation: n.rotation,
         opacity: 1.0,
     };
-    let t = eval::placed_transform(base, n.opacity, &n.tracks, frame, dur);
-    let state = eval::element_states_of(&n.element_tracks, frame, dur)
+    let t = eval::placed_transform_at(base, n.opacity, &n.tracks, time, dur);
+    let state = eval::element_states_of_at(&n.element_tracks, time, dur)
         .remove(&n.element)
         .unwrap_or_default();
     let element_opacity = state.opacity.unwrap_or(1.0);
@@ -348,6 +399,7 @@ pub struct OverlayCtx<'a> {
     pub l: &'a Loaded,
     pub format: Format,
     pub frame: u32,
+    pub time: f64,
     pub width: u32,
     pub height: u32,
 }
@@ -375,13 +427,13 @@ impl OverlayCtx<'_> {
 
 /// Draws one overlay node in frame pixels.
 fn draw_overlay_node(canvas: &Canvas, ctx: &OverlayCtx, node: &Node) {
-    let frame = ctx.frame;
+    let time = ctx.time;
     match node {
         Node::Group(g) => {
-            if !eval::is_visible(g.visible.as_ref(), frame) {
+            if !eval::is_visible_at(g.visible.as_ref(), time) {
                 return;
             }
-            let t = group_transform(g, frame, ctx.dur());
+            let t = group_transform(g, time, ctx.dur());
             canvas.save();
             apply_placement(canvas, &t);
             with_opacity(canvas, t.opacity, || {
@@ -414,13 +466,13 @@ fn apply_boxed(canvas: &Canvas, t: &NodeTransform, x: f64, y: f64, w: f64, h: f6
 
 /// Draws a rounded rectangle node with its fill and centred stroke.
 fn draw_rect_node(canvas: &Canvas, ctx: &OverlayCtx, r: &RectNode) {
-    if !eval::is_visible(r.visible.as_ref(), ctx.frame) {
+    if !eval::is_visible_at(r.visible.as_ref(), ctx.time) {
         return;
     }
     let Some(b) = ctx.format.pick(&r.placement) else {
         return;
     };
-    let t = eval::boxed_transform(r.opacity, &r.tracks, ctx.frame, ctx.dur());
+    let t = eval::boxed_transform_at(r.opacity, &r.tracks, ctx.time, ctx.dur());
     canvas.save();
     apply_boxed(canvas, &t, b.x, b.y, b.w, b.h);
     with_opacity(canvas, t.opacity, || {
@@ -483,13 +535,13 @@ fn text_align(a: Align) -> TextAlign {
 
 /// Draws a text node wrapped to its box width, top-aligned in the box. Letter spacing is in ems.
 fn draw_text_node(canvas: &Canvas, ctx: &OverlayCtx, t: &TextNode) {
-    if !eval::is_visible(t.visible.as_ref(), ctx.frame) {
+    if !eval::is_visible_at(t.visible.as_ref(), ctx.time) {
         return;
     }
     let Some(b) = ctx.format.pick(&t.placement) else {
         return;
     };
-    let tr = eval::boxed_transform(t.opacity, &t.tracks, ctx.frame, ctx.dur());
+    let tr = eval::boxed_transform_at(t.opacity, &t.tracks, ctx.time, ctx.dur());
     canvas.save();
     apply_boxed(canvas, &tr, b.x, b.y, b.w, b.h);
     with_opacity(canvas, tr.opacity, || {
@@ -504,7 +556,11 @@ fn draw_text_node(canvas: &Canvas, ctx: &OverlayCtx, t: &TextNode) {
             shadows: Vec::new(),
         };
         let paragraph = ctx.l.fonts.paragraph(&spec, b.w as f32);
-        paragraph.paint(canvas, (b.x as f32, b.y as f32));
+        if let Some(tracks) = t.glyph_tracks.as_ref().filter(|tracks| !tracks.is_empty()) {
+            paragraph.paint_glyph_tracks(canvas, (b.x as f32, b.y as f32).into(), tracks, ctx.time, ctx.dur());
+        } else {
+            paragraph.paint(canvas, (b.x as f32, b.y as f32));
+        }
     });
     canvas.restore();
 }

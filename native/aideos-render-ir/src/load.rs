@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 use serde_json::Value;
 
 use crate::types::RenderIr;
-use crate::{semantic, SUPPORTED, VERSION, VERSION_2, VERSION_3};
+use crate::{semantic, SUPPORTED, VERSION, VERSION_2, VERSION_3, VERSION_4};
 
 /// The committed `/1` JSON Schema, embedded so a built binary needs no file next to it.
 pub const SCHEMA_JSON: &str = include_str!("../schema/aideos.render.1.schema.json");
@@ -17,6 +17,9 @@ pub const SCHEMA_JSON: &str = include_str!("../schema/aideos.render.1.schema.jso
 pub const SCHEMA_V2_JSON: &str = include_str!("../schema/aideos.render.2.schema.json");
 /// The committed `/3` JSON Schema.
 pub const SCHEMA_V3_JSON: &str = include_str!("../schema/aideos.render.3.schema.json");
+
+/// The committed /4 JSON Schema.
+pub const SCHEMA_V4_JSON: &str = include_str!("../schema/aideos.render.4.schema.json");
 
 /// One problem in a document: a stable machine code, a JSON Pointer to the offending value and a sentence.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,12 +86,15 @@ fn validator(version: &str) -> &'static jsonschema::Validator {
     static V1: OnceLock<jsonschema::Validator> = OnceLock::new();
     static V2: OnceLock<jsonschema::Validator> = OnceLock::new();
     static V3: OnceLock<jsonschema::Validator> = OnceLock::new();
+    static V4: OnceLock<jsonschema::Validator> = OnceLock::new();
     if version == VERSION {
         V1.get_or_init(|| compile(SCHEMA_JSON))
     } else if version == VERSION_2 {
         V2.get_or_init(|| compile(SCHEMA_V2_JSON))
-    } else {
+    } else if version == VERSION_3 {
         V3.get_or_init(|| compile(SCHEMA_V3_JSON))
+    } else {
+        V4.get_or_init(|| compile(SCHEMA_V4_JSON))
     }
 }
 
@@ -106,7 +112,7 @@ pub fn load_from_str(text: &str) -> Result<RenderIr, LoadError> {
         Some(found) if value.is_object() => found,
         _ => return Err(schema_issue(String::new(), "a Render IR is an object with a string `schema` field".into())),
     };
-    if found != VERSION && found != VERSION_2 && found != VERSION_3 {
+    if found != VERSION && found != VERSION_2 && found != VERSION_3 && found != VERSION_4 {
         return Err(LoadError::UnsupportedVersion { found: found.to_string(), supported: SUPPORTED });
     }
     // Each version is checked against its own shape, so an older document cannot carry a later version's addition.

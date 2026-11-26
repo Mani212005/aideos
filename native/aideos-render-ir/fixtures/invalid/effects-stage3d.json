@@ -1,0 +1,488 @@
+{
+  "schema": "aideos.render/4",
+  "film": {
+    "id": "stage3d-minimal",
+    "fps": 30,
+    "durationFrames": 3
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#F4F1EA",
+  "assets": [
+    {
+      "kind": "mesh",
+      "id": "stage-mesh",
+      "path": "meshes/stage.mesh",
+      "parts": [
+        {
+          "id": "head",
+          "vertices": 3,
+          "indices": 3,
+          "uv": true
+        },
+        {
+          "id": "tip",
+          "vertices": 3,
+          "indices": 3,
+          "uv": false
+        }
+      ]
+    }
+  ],
+  "camera": {
+    "centerX": [
+      {
+        "frame": 0,
+        "value": 960
+      }
+    ],
+    "centerY": [
+      {
+        "frame": 0,
+        "value": 960
+      }
+    ],
+    "zoom": [
+      {
+        "frame": 0,
+        "value": 1
+      }
+    ],
+    "rotation": [
+      {
+        "frame": 0,
+        "value": 0
+      }
+    ]
+  },
+  "stage": [
+    {
+      "kind": "group",
+      "id": "ground-plane",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "tracks": [],
+      "children": []
+    },
+    {
+      "kind": "stage3d",
+      "id": "stage",
+      "mesh": "stage-mesh",
+      "treatment": "cel-v1",
+      "projection": {
+        "cameraZ": 2000,
+        "near": 0.1,
+        "far": 10000
+      },
+      "lighting": {
+        "directional": {
+          "position": [
+            3,
+            6,
+            5
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "intensity": 2
+        },
+        "ambient": {
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "intensity": 0.9424777960769379
+        }
+      },
+      "ramp": [
+        90,
+        175,
+        255
+      ],
+      "output": {
+        "dpr": 1,
+        "antialias": true,
+        "colorSpace": "srgb",
+        "toneMapping": "none",
+        "exposure": 1
+      },
+      "sampleFrames": 3,
+      "nodes": [
+        {
+          "id": "actor.group.placement",
+          "position": [
+            25,
+            -290,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": 85
+        },
+        {
+          "id": "actor.group.head",
+          "parent": "actor.group.placement",
+          "position": [
+            0,
+            1.6,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": 1
+        },
+        {
+          "id": "actor.mesh.head",
+          "parent": "actor.group.head",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": 1
+        },
+        {
+          "id": "actor.mesh.headInk",
+          "parent": "actor.mesh.head",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": 1
+        }
+      ],
+      "channels": [
+        {
+          "node": "actor.group.head",
+          "quaternion": [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0.0499791692706783,
+            0,
+            0.9987502603949663,
+            0,
+            0.09983341664682815,
+            0,
+            0.9950041652780258
+          ]
+        }
+      ],
+      "drawables": [
+        {
+          "id": "actor.mesh.head",
+          "node": "actor.mesh.head",
+          "part": "head",
+          "material": {
+            "kind": "face",
+            "texture": "actor.face",
+            "color": [
+              1,
+              1,
+              1
+            ],
+            "side": "front"
+          }
+        },
+        {
+          "id": "actor.mesh.headInk",
+          "node": "actor.mesh.headInk",
+          "part": "head",
+          "material": {
+            "kind": "ink",
+            "color": [
+              0.012,
+              0.01,
+              0.02
+            ],
+            "width": 0.04,
+            "side": "back"
+          }
+        },
+        {
+          "id": "actor.mesh.tip",
+          "node": "actor.mesh.head",
+          "part": "tip",
+          "material": {
+            "kind": "toon",
+            "color": [
+              0.46,
+              0.08,
+              0.03
+            ],
+            "side": "double",
+            "polygonOffset": {
+              "factor": -2,
+              "units": -2
+            }
+          }
+        }
+      ],
+      "faceTextures": [
+        {
+          "id": "actor.face",
+          "size": 256,
+          "flipY": true,
+          "filter": "linear",
+          "mipmaps": false,
+          "colorSpace": "srgb",
+          "programs": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "facePrograms": [
+        {
+          "ops": [
+            {
+              "op": "setTransform",
+              "args": [
+                256,
+                0,
+                0,
+                -256,
+                128,
+                128
+              ]
+            },
+            {
+              "op": "lineJoin",
+              "value": "round"
+            },
+            {
+              "op": "lineCap",
+              "value": "round"
+            },
+            {
+              "op": "fillStyle",
+              "paint": {
+                "kind": "color",
+                "color": "#f2d3b8",
+                "alpha": 1
+              }
+            },
+            {
+              "op": "fillRect",
+              "args": [
+                -0.5,
+                -0.5,
+                1,
+                1
+              ]
+            },
+            {
+              "op": "save"
+            },
+            {
+              "op": "scale",
+              "args": [
+                -1,
+                1
+              ]
+            },
+            {
+              "op": "translate",
+              "args": [
+                0.1,
+                0.05
+              ]
+            },
+            {
+              "op": "beginPath"
+            },
+            {
+              "op": "ellipse",
+              "args": [
+                0,
+                0,
+                0.07,
+                0.088,
+                0,
+                0,
+                7
+              ]
+            },
+            {
+              "op": "clip"
+            },
+            {
+              "op": "fillStyle",
+              "paint": {
+                "kind": "linearGradient",
+                "x0": 0,
+                "y0": -0.06,
+                "x1": 0,
+                "y1": 0.07,
+                "stops": [
+                  {
+                    "offset": 0,
+                    "color": "#3a5a40",
+                    "alpha": 1
+                  },
+                  {
+                    "offset": 1,
+                    "color": "#a3b18a",
+                    "alpha": 1
+                  }
+                ]
+              }
+            },
+            {
+              "op": "arc",
+              "args": [
+                0,
+                0.022,
+                0.012,
+                0,
+                7
+              ]
+            },
+            {
+              "op": "fill"
+            },
+            {
+              "op": "restore"
+            },
+            {
+              "op": "strokeStyle",
+              "paint": {
+                "kind": "color",
+                "color": "#2b1d14",
+                "alpha": 0.35
+              }
+            },
+            {
+              "op": "lineWidth",
+              "value": 0.009
+            },
+            {
+              "op": "globalAlpha",
+              "value": 0.6
+            },
+            {
+              "op": "beginPath"
+            },
+            {
+              "op": "moveTo",
+              "args": [
+                -0.085,
+                -0.2
+              ]
+            },
+            {
+              "op": "lineTo",
+              "args": [
+                0,
+                -0.21
+              ]
+            },
+            {
+              "op": "quadraticCurveTo",
+              "args": [
+                0,
+                -0.25,
+                0.085,
+                -0.2
+              ]
+            },
+            {
+              "op": "bezierCurveTo",
+              "args": [
+                0.05,
+                -0.22,
+                -0.05,
+                -0.22,
+                -0.085,
+                -0.2
+              ]
+            },
+            {
+              "op": "stroke"
+            }
+          ]
+        },
+        {
+          "ops": [
+            {
+              "op": "setTransform",
+              "args": [
+                256,
+                0,
+                0,
+                -256,
+                128,
+                128
+              ]
+            },
+            {
+              "op": "fillStyle",
+              "paint": {
+                "kind": "color",
+                "color": "#f2d3b8",
+                "alpha": 1
+              }
+            },
+            {
+              "op": "fillRect",
+              "args": [
+                -0.5,
+                -0.5,
+                1,
+                1
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "overlay": [],
+  "audio": [],
+  "shutter": {
+    "samples": 8,
+    "angle": 180
+  }
+}
