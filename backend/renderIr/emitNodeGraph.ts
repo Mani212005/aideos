@@ -38,7 +38,7 @@ export interface NodeGraphInput {
   accent: string;
   /** The theme's muted colour, `#RRGGBB` (the unlit label's start colour). */
   muted: string;
-  /** The theme's canvas colour, `#RRGGBB` (what lies behind the graph, so behind a card's backdrop). */
+  /** The colour behind the graph, `#RRGGBB`: the theme's canvas colour under its texture when the texture is uniform (`canvasBehindGraph`), so behind a card's backdrop. */
   canvasColor: string;
   /** The story frame a film frame shows (the end card holds the story's last frame). */
   frozen: (f: number) => number;

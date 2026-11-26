@@ -384,7 +384,7 @@ differ per format.
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
-rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, the paper-grain theme texture (`paper-fibers`; the blueprint grid and the dot matrix are drawn since P2.4a, for node-graph films only: a scene film on those themes is refused), legacy (non-library)
+rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
@@ -675,7 +675,7 @@ the fallback for everything not yet native:
 | P2.2c | `nativeSupport` accepts node-graph films with the flat camera (and `top-down`), behind the parity journey `backend/journeys/node_graph_native.journey.ts` at 0.995 on every measured frame against Remotion's Chrome (swangle); the gap it closed was not the blur but the layer composite (#324) and the TextReveal underline (#322) ([P2.2c](#p22c-node-graph-films-drawn-natively)) | done |
 | P2.3 | the node-graph camera angles other than `flat` (`getCameraPerspective`: CSS 3D perspective), a 4 x 4 perspective transform on the stage | planned |
 | P2.4a | the `blueprint-grid` and `subtle-dots` theme textures, lowered to explicit shapes in the `aideos.render/7` underlay (frame space, under the stage), behind a parity journey ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
-| P2.4b | the `paper-fibers` texture (`feTurbulence` and `feDiffuseLighting` under the canvas) | planned |
+| P2.4b | the `paper-fibers` texture of `paper-white`, `parchment` and `charcoal`: Chrome draws it as a flat darkening (the filter's `multiply` blend with the rect's black fill leaves no grain), lowered to that in the `/7` underlay, and a card's backdrop starts from the darkened canvas ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), several blocks per shot, panels other than `frame` | planned |
 | P2.6 | devices and the inset stage | planned |
 | P2.7 | imported footage and overlay clips (ffmpeg decode with accurate seek) | planned |
@@ -712,8 +712,8 @@ canvas draws what Remotion draws, and changing the card is a design decision out
 ### P2.2c node-graph films drawn natively
 
 `nativeSupport` accepts a node-graph film (no `film.scene`) whose camera angle is `flat` or `top-down` in every shot; the
-other angles stay refused until P2.3, and everything else `nativeSupport` checks still applies (the `paper-fibers` themes stay
-refused: P2.2c drew only the `smooth-dark` theme, which has no texture, and [P2.4a](#p24a-the-pattern-theme-textures) added the blueprint grid and the dot matrix; panels other than `frame` and `none`, blocks
+other angles stay refused until P2.3, and everything else `nativeSupport` checks still applies (P2.2c drew only the
+`smooth-dark` theme, which has no texture; [P2.4a](#p24a-the-pattern-theme-textures) added the blueprint grid and the dot matrix and P2.4b the paper grain; panels other than `frame` and `none`, blocks
 other than TextReveal and StatCounter, several blocks in a shot and footage stay refused). Cards that overlap (the lit
 card's 2% lift included) are refused too: Chrome's `backdrop-filter` blurs the card behind into the card in front, which
 the canvas does not draw (measured 0.990). The journey `backend/journeys/node_graph_native.journey.ts` asks the renderer
@@ -759,9 +759,20 @@ with bilinear sampling) rather than redrawing it, so a top-level underlay group 
 [RENDER_IR.md](RENDER_IR.md#the-underlay-aideosrender7)); before that the end-card frames of the blueprint fixture measured
 0.990 to 0.995, after it 0.997 and above. The journey `backend/journeys/theme_textures.journey.ts` asks the renderer
 choice for both formats of `test_fixtures/packages/node-graph-blueprint` and `node-graph-dots` (node-graph-flat on each
-theme; native must be chosen) and compares 21 frames of each (20, 45, 150, 255, 345, 435, 525, 570, 600 and the end card's
-660 and 749 long, 645 reel) with Remotion's stills at the stage bar 0.995, none left out. `paper-fibers` (turbulence and
-lighting) is still refused (P2.4b). The textures are drawn for node-graph films only: a film with a scene (an SVG scene film, a Three
+theme; native must be chosen), and since P2.4b `node-graph-paper` and `node-graph-charcoal`, and compares 21 frames of each
+(20, 45, 150, 255, 345, 435, 525, 570, 600 and the end card's 660 and 749 long, 645 reel) with Remotion's stills at the
+stage bar 0.995, none left out.
+
+`paper-fibers` (P2.4b) is `feTurbulence` lit by `feDiffuseLighting` and then `feBlend mode="multiply" in="SourceGraphic"`,
+where `SourceGraphic` is the rect's default black fill: black multiplied by anything is black, so Chrome draws no grain,
+only the black rect at its 0.8 opacity in the 0.28 layer. Measured in Chrome on `paper-white`, `parchment` and `charcoal`:
+one flat colour over the whole frame (248, 246, 240 becomes 193, 191, 187). It is lowered to exactly that: a black rect at
+0.8 in a layer at 71/255, the 8-bit opacity Chrome composites (0.28 itself gives 192). A card's backdrop blurs what lies
+behind it, so for these themes its copy starts from the darkened canvas, not the theme's canvas colour (that alone took
+paper-white long 285 from 0.965 to 0.995). Every 15th frame of `node-graph-paper` and `node-graph-charcoal`, long and reel:
+all at or above 0.995 (lowest 0.99513 and 0.99559).
+
+The textures are drawn for node-graph films only: a film with a scene (an SVG scene film, a Three
 stage or a character film) on one of these themes is refused ("the texture over a scene has not been measured against Remotion
 yet") until a journey measures the texture together with a scene.
 

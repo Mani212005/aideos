@@ -35,7 +35,7 @@ import { cssColor, hexAlpha, linearKeyframes, rgbHex } from "./irValues";
 export { cssColor, hexAlpha, linearKeyframes };
 import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
 import { emitNodeGraphCanvas, nodeGraphCanvasReasons } from "./emitNodeGraph";
-import { themeTexture } from "./emitThemeTexture";
+import { canvasBehindGraph, themeTexture } from "./emitThemeTexture";
 
 export type NativeFormat = "long" | "reel";
 
@@ -162,9 +162,9 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   if (film.videoClips?.length) reasons.push("imported video clips are Phase 2");
   if (film.overlayClips?.length) reasons.push("standalone overlay clips are Phase 2");
   const theme = BACKGROUND_THEMES[film.theme?.background ?? "paper-white"] ?? BACKGROUND_THEMES["paper-white"];
-  // The blueprint grid and the dot matrix are lowered into the `/7` underlay for node-graph films only (P2.4a, measured on those); the paper grain (turbulence and lighting) is not yet.
-  if (theme.gridType === "paper-fibers") reasons.push(`the ${theme.id} theme's ${theme.gridType} texture is not drawn natively`);
-  if (film.scene && (theme.gridType === "blueprint-grid" || theme.gridType === "subtle-dots")) {
+  // Every theme texture (the blueprint grid and the dot matrix since P2.4a, the paper grain since P2.4b) is lowered into the
+  // `/7` underlay for node-graph films only, which is what was measured; over a scene it is not measured yet.
+  if (film.scene && theme.gridType !== "none") {
     reasons.push(`the ${theme.id} theme's ${theme.gridType} texture over a scene has not been measured against Remotion yet`);
   }
   if (film.music || film.audio || film.sfx?.length || film.audioClips?.length) reasons.push("legacy music, effects and timeline audio clips are not mixed natively (library soundtracks are)");
@@ -651,7 +651,7 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
   ];
   const stagePart = scene
     ? sceneStagePart(input, scene, frozen, storyLast, last, frameScale, fonts, stage3d)
-    : nodeGraphStagePart({ film, timeline, width, height, fps, accent, muted: ctx.tokens.muted, canvasColor: ctx.tokens.canvas, frozen, frameScale, last, fonts,
+    : nodeGraphStagePart({ film, timeline, width, height, fps, accent, muted: ctx.tokens.muted, canvasColor: canvasBehindGraph(theme, ctx.tokens.canvas), frozen, frameScale, last, fonts,
       measure: width_, metrics, fontId: (family, weight) => (family === "sans" ? sansId(weight) : monoId(weight)) });
 
   const overlay: Node[] = [];
