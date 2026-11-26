@@ -1,0 +1,57 @@
+{
+  "schema": "aideos.render/3",
+  "film": {
+    "id": "v3-color-tracks",
+    "fps": 30,
+    "durationFrames": 90
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "art",
+      "path": "visuals/art.svg",
+      "elementIds": [
+        "card"
+      ]
+    }
+  ],
+  "stage": [
+    {
+      "kind": "svg",
+      "id": "stage",
+      "asset": "art",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "tracks": [],
+      "elementTracks": [],
+      "colorTracks": [
+        {
+          "target": "card",
+          "property": "fill",
+          "keyframes": [
+            {
+              "frame": 0,
+              "color": "#635BFF"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "overlay": [],
+  "audio": []
+}

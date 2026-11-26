@@ -1,4 +1,4 @@
-//! File Description: Draws a retained SVG asset with one frame's element states, matching the browser's rendering of the same markup in src/dl/scene/svgReact.tsx: the animated transform is appended to the authored one (translate, then rotate and scale about the origin), a driven opacity replaces the authored one, `drawOn` dashes a stroke over its own length (inherited by the strokeable shapes inside a group), and line endpoint tracks move a line. An element with a `filter` draws into a layer whose image filter (crate::raster::filter) runs over the region resolved against its geometric bounding box, with its opacity applied after the filter as in Chrome. A compositing layer is otherwise used only where the result needs one: a group below full opacity, or a shape with both a fill and a stroke below full opacity.
+//! File Description: Draws a retained SVG asset with one frame's element states, matching the browser's rendering of the same markup in src/dl/scene/svgReact.tsx: the animated transform is appended to the authored one (translate, then rotate and scale about the origin), a driven opacity replaces the authored one, `drawOn` dashes a stroke over its own length (inherited by the strokeable shapes inside a group), and line endpoint tracks move a line; `aideos.render/5` colour tracks replace an element's fill or stroke paint and a dash offset track its `stroke-dashoffset`, which its children inherit. An element with a `filter` draws into a layer whose image filter (crate::raster::filter) runs over the region resolved against its geometric bounding box, with its opacity applied after the filter as in Chrome. A compositing layer is otherwise used only where the result needs one: a group below full opacity, or a shape with both a fill and a stroke below full opacity.
 //! Inputs and outputs: a Skia canvas positioned in the asset's coordinate space, an `SvgDocument`, element states and the fonts -> pixels on the canvas.
 //! Used by: crate::raster (stage drawing).
 
@@ -67,8 +67,20 @@ fn draw_element(
     if e.hidden {
         return;
     }
-    let style = parent.inherit(&e.style);
+    let mut style = parent.inherit(&e.style);
     let state = e.id.as_ref().and_then(|id| draw.states.get(id));
+    // `aideos.render/5` tracks replace the element's paints and dash offset, which its children then inherit.
+    if let Some(s) = state {
+        if let Some(c) = s.fill {
+            style.fill = Paint::Color(c);
+        }
+        if let Some(c) = s.stroke {
+            style.stroke = Paint::Color(c);
+        }
+        if let Some(d) = s.dash_offset {
+            style.stroke_dashoffset = d;
+        }
+    }
     let opacity = state.and_then(|s| s.opacity).unwrap_or(e.opacity);
     if opacity <= 0.0 {
         return;

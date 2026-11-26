@@ -1,0 +1,100 @@
+{
+  "schema": "aideos.render/4",
+  "film": {
+    "id": "v4-color-and-dash",
+    "fps": 30,
+    "durationFrames": 90
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "art",
+      "path": "visuals/art.svg",
+      "elementIds": [
+        "card",
+        "label",
+        "packets"
+      ]
+    }
+  ],
+  "stage": [
+    {
+      "kind": "svg",
+      "id": "stage",
+      "asset": "art",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "tracks": [],
+      "elementTracks": [
+        {
+          "target": "packets",
+          "property": "dashOffset",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 0,
+              "ease": "linear"
+            },
+            {
+              "frame": 90,
+              "value": -315
+            }
+          ]
+        }
+      ],
+      "colorTracks": [
+        {
+          "target": "card",
+          "property": "stroke",
+          "keyframes": [
+            {
+              "frame": 0,
+              "color": "#FFFFFF14",
+              "ease": "linear"
+            },
+            {
+              "frame": 12,
+              "color": "#FFFFFF29",
+              "ease": "hold"
+            },
+            {
+              "frame": 30,
+              "color": "#635BFF"
+            }
+          ]
+        },
+        {
+          "target": "label",
+          "property": "fill",
+          "keyframes": [
+            {
+              "frame": 0,
+              "color": "#8E8E98",
+              "ease": "linear"
+            },
+            {
+              "frame": 18,
+              "color": "#E2E8F0"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "overlay": [],
+  "audio": []
+}
