@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the node-graph canvas emitter (native renderer Phase 2, P2.2b) through the public emitter: a node-graph film stays on Remotion unless the canvas is opted in, and a 3D camera angle is refused even then; opted in, the flat fixture film emits a valid `aideos.render/5` document whose camera puts every card where `camera.ts`'s `projectBox` puts it on every story frame; a card is ghosted before its node arrives, lit (accent border, lit background, 2% lift) once its shot has held on it, and resting again after; and a label too wide for its card wraps onto a second line with its tag chip on whole units.
+ * File Description: Behavioural tests of the node-graph canvas emitter (native renderer Phase 2, P2.2b) through the public emitter: a flat node-graph film is drawn natively (P2.2c), and a 3D camera angle is refused; the flat fixture film emits a valid `aideos.render/5` document whose camera puts every card where `camera.ts`'s `projectBox` puts it on every story frame; a card is ghosted before its node arrives, lit (accent border, lit background, 2% lift) once its shot has held on it, and resting again after; and a label too wide for its card wraps onto a second line with its tag chip on whole units.
  * Inputs and outputs: test_fixtures/packages/node-graph-flat and the fake measurer -> asserted IR values and canvas SVG.
  * Used by: npm test (Node test runner).
  */
@@ -25,9 +25,9 @@ function film(): Film {
   return JSON.parse(fs.readFileSync(FIXTURE, "utf8")) as Film;
 }
 
-/** Emits one format with the node-graph canvas opted in. */
+/** Emits one format of a node-graph film. */
 function emit(f: Film, format: NativeFormat = "long"): EmitResult {
-  return emitRenderIr({ film: f, format, svgSources: {}, measure: fakeMeasurer(), resolvePath: (p) => `/repo/${p}`, nodeGraphCanvas: true });
+  return emitRenderIr({ film: f, format, svgSources: {}, measure: fakeMeasurer(), resolvePath: (p) => `/repo/${p}` });
 }
 
 /** The canvas svg node of a document. */
@@ -52,12 +52,12 @@ function colorAt(node: Extract<Node, { kind: "svg" }>, target: string, property:
   return c.color;
 }
 
-test("a node-graph film stays on Remotion unless the canvas is opted in, and a 3D camera angle is refused even then", () => {
+test("a flat node-graph film is drawn natively, and a 3D camera angle is refused", () => {
   const f = film();
-  assert.ok(nativeSupport(f, "long").some((r) => r.includes("node-graph films") && r.includes("P2.2c")), nativeSupport(f, "long").join("\n"));
-  assert.deepEqual(nativeSupport(f, "long", { nodeGraphCanvas: true }), []);
+  assert.deepEqual(nativeSupport(f, "long"), []);
+  assert.deepEqual(nativeSupport(f, "reel"), []);
   const isometric = { ...f, theme: { ...f.theme, cameraAngle: "isometric" } } as Film;
-  assert.ok(nativeSupport(isometric, "reel", { nodeGraphCanvas: true }).some((r) => r.includes('camera angle "isometric"')));
+  assert.ok(nativeSupport(isometric, "reel").some((r) => r.includes('camera angle "isometric"')));
 });
 
 test("the canvas emits a valid /5 document whose camera places every card where camera.ts does", () => {

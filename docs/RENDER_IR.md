@@ -34,8 +34,8 @@ previous version; no editor or preview integration is provided in this slice. Se
 
 P2.2a of Phase 2 added `aideos.render/5`: a strict superset of `/4` that adds colour tracks and the `dashOffset`
 element track on svg nodes, what the node-graph canvas animates (see [Colour and dash offset](#colour-and-dash-offset-aideosrender5)).
-The emitter writes `/5` only for a node-graph film's canvas when `EmitInput.nodeGraphCanvas` is set (P2.2b,
-`backend/renderIr/emitNodeGraph.ts`); every other film is written as before.
+The emitter writes `/5` only for a node-graph film's canvas (P2.2b, `backend/renderIr/emitNodeGraph.ts`; render jobs draw
+flat node-graph films natively since P2.2c); every other film is written as before.
 
 `aideos.render/6` is a strict superset of `/5` that adds a native-only transition and seeded particles; colour tracks and
 particles may appear in one document. No emitter writes `/6` either. See
@@ -51,7 +51,7 @@ particles may appear in one document. No emitter writes `/6` either. See
 | Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json`, `aideos.render.3.schema.json`, `aideos.render.4.schema.json`, `aideos.render.5.schema.json`, `aideos.render.6.schema.json` |
 | Rust workspace and loader crate | `native/Cargo.toml`, `native/aideos-render-ir/` |
 | Mesh file codec (triangle, points and lines parts) | `backend/renderIr/mesh.ts` (write and read), `native/aideos-render-ir/src/mesh.rs` (read) |
-| Node-graph canvas emitter (opt-in, `/5`) | `backend/renderIr/emitNodeGraph.ts` |
+| Node-graph canvas emitter (`/5`) | `backend/renderIr/emitNodeGraph.ts` |
 | Stage3d emitter and reference pose | `backend/renderIr/emitStage3d.ts`, `backend/renderIr/stage3d.ts` |
 | Shared fixtures and their expected verdicts | `native/aideos-render-ir/fixtures/` (`valid/`, `invalid/`, `expectations.json`, `mesh/`) |
 | TypeScript tests | `backend/renderIr/renderIr.test.ts`, `mesh.test.ts`, `stage3d.test.ts`, `dots.test.ts` (dots-v1, P4.4) |

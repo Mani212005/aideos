@@ -1,5 +1,5 @@
 /**
- * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 to P4.3 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts), or an `aideos.render/3` document when it places pictures (the illustrated stage: each raster asset becomes an image node over its pinned PNG). With `nodeGraphCanvas` set, a node-graph film's canvas is emitted as an `aideos.render/5` document (emitNodeGraph.ts, Phase 2 P2.2b); `nativeSupport` refuses node-graph films otherwise. Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
+ * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 to P4.3 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts), or an `aideos.render/3` document when it places pictures (the illustrated stage: each raster asset becomes an image node over its pinned PNG). A node-graph film (no scene) has its canvas emitted as an `aideos.render/5` document (emitNodeGraph.ts, Phase 2 P2.2b, on for render jobs since P2.2c) under the flat camera; the CSS 3D camera angles are refused. Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
  * Inputs and outputs: a Film, a format, the scene's SVG sources and a text measurer -> a validated RenderIr plus the package files it references (fonts, artwork, audio) and the reasons a film is not supported.
  * Used by: backend/nativeRenderer.ts (prepare), backend/rendererSelection.ts (nativeSupport), backend/renderIr/emit.test.ts, backend/renderIr/emitNodeGraph.test.ts, backend/renderIr/stage3d.test.ts.
  */
@@ -95,12 +95,6 @@ export interface EmitInput {
   measure: Measurer;
   /** Resolves a repo-relative path (font files, `videos/<slug>/...` sources) to an absolute file path. */
   resolvePath: (repoRelative: string) => string;
-  /**
-   * Opts in to the node-graph canvas (P2.2b) for a film with no scene. Its parity with Remotion is measured but not yet at
-   * the bar on every frame (docs/NATIVE_RENDERER.md, P2.2b), so `nativeSupport` still refuses node-graph films and no
-   * render job sets this; the emitter's tests and the parity measurement do. P2.2c turns it on for every node-graph film.
-   */
-  nodeGraphCanvas?: boolean;
 }
 
 export interface EmitResult {
@@ -132,15 +126,12 @@ const IR_ID = new RegExp(ID_PATTERN);
  * This film-only check cannot predict failures that require SVG source, evaluated Three-stage data, generated IR,
  * or the native measurer's response. Those failures still surface during preparation.
  */
-export function nativeSupport(film: Film, format: NativeFormat, options: { nodeGraphCanvas?: boolean } = {}): string[] {
+export function nativeSupport(film: Film, format: NativeFormat): string[] {
   const reasons: string[] = [];
   const scene = film.scene;
-  // A node-graph film (no scene): the canvas emitter (P2.2b) draws the flat camera, but node-graph films stay on Remotion
-  // until P2.2c brings the native large blur to Chrome's (their parity is measured, not yet at the bar on every frame).
-  if (!scene) {
-    if (options.nodeGraphCanvas) reasons.push(...nodeGraphCanvasReasons(film));
-    else reasons.push("node-graph films (no film.scene) stay on Remotion until Phase 2 step P2.2c (the canvas is emitted since P2.2b, its blur parity is not yet at the bar)");
-  }
+  // A node-graph film (no scene): the canvas emitter (P2.2b) draws the flat camera, natively since P2.2c (its parity
+  // journey, backend/journeys/node_graph_native.journey.ts, holds every measured frame at the stage bar).
+  if (!scene) reasons.push(...nodeGraphCanvasReasons(film));
   else {
     if (scene.renderer === "three") reasons.push(...stage3dCarryReasons(scene));
     if (scene.actors && scene.actors.length > 0) reasons.push("scene actors (character rigs) are not drawn natively");
@@ -972,7 +963,7 @@ function sceneLastFrame(film: Film, format: NativeFormat): number {
 
 /** Emits a validated Render IR for one format of a film and lists the package files it references. */
 export function emitRenderIr(input: EmitInput): EmitResult {
-  const reasons = nativeSupport(input.film, input.format, { nodeGraphCanvas: input.nodeGraphCanvas });
+  const reasons = nativeSupport(input.film, input.format);
   if (reasons.length) throw new NativeUnsupportedError(reasons);
   const threeScene = input.film.scene?.renderer === "three" ? input.film.scene : undefined;
   // The stage is evaluated once: both layout passes below share it.
