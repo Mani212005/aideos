@@ -1,7 +1,7 @@
 /**
- * File Description: Helpers for the journeys that check the native renderer (P4.5): stage a film's emitted Render IR package, draw one cold frame with the `aideos-render` binary (one process, nothing carried over from any other frame), average a frame down to the native golden scale, and measure an exported video frame against a lossless frame. Nothing here touches Remotion, Chrome or the Player.
+ * File Description: Helpers for the journeys that check the native renderer (P4.5): stage a film's emitted Render IR package, draw one cold frame with the `aideos-render` binary (one process, nothing carried over from any other frame), average a frame down to the native golden scale, measure an exported video frame against a lossless frame, and measure the SSIM of a native frame against a Remotion frame on the stage (the parity bar of the native reports). Nothing here touches Remotion, Chrome or the Player.
  * Inputs and outputs: a film, a format and frame numbers, plus the release binary -> PNG files and raw RGB frames that the journeys compare.
- * Used by: backend/journeys/j1_pipeline.journey.ts (native determinism), backend/journeys/native_character_goldens.journey.ts.
+ * Used by: backend/journeys/j1_pipeline.journey.ts (native determinism), backend/journeys/native_character_goldens.journey.ts, backend/journeys/pictures_stage.journey.ts, backend/journeys/svg_filters.journey.ts.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -10,6 +10,11 @@ import { emitFilmIr, nativeBinaryProblem, nativeRendererBinary, stageRenderPacka
 import type { NativeFormat } from "../renderIr/emit";
 import type { Film } from "../../src/dl/schema";
 import type { Rgb } from "./harness";
+
+/** Native against Remotion on the stage (above the caption band): the bar of the native parity reports in docs/NATIVE_RENDERER.md. */
+export const STAGE_SSIM_MIN = 0.995;
+/** The stage region compared per format: the frame above the caption band and the chapter rail. */
+export const STAGE_CROP: Record<NativeFormat, string> = { long: "crop=1920:780:0:0", reel: "crop=1080:1400:0:0" };
 
 /** The golden scale of the native frame set: every frame is box-averaged 4 x 4 (`native/aideos-render/tests/golden.rs`). */
 export const GOLDEN_SHRINK = 4;
@@ -70,6 +75,14 @@ export function boxAverage(frame: Rgb, shrink = GOLDEN_SHRINK): Rgb {
     }
   }
   return { width, height, data };
+}
+
+/** The SSIM of two PNGs over one crop, measured by ffmpeg. */
+export function ssim(a: string, b: string, crop: string): number {
+  const run = spawnSync("ffmpeg", ["-nostdin", "-i", a, "-i", b, "-lavfi", `[0]${crop}[x];[1]${crop}[y];[x][y]ssim`, "-f", "null", "-"], { encoding: "utf8" });
+  const match = /All:([0-9.]+)/.exec(String(run.stderr));
+  if (run.status !== 0 || !match) throw new Error(`ffmpeg could not measure the SSIM of ${path.basename(a)}: ${String(run.stderr).slice(-300)}`);
+  return Number(match[1]);
 }
 
 /** The PSNR in dB between frame `n` of an mp4 and a PNG, compared in RGB (the measure `native/aideos-render/tests/video.rs` uses for a video frame against its reference still). */

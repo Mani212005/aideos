@@ -3,6 +3,7 @@
 //! Used by: crate::renderer (CPU raster and the optional GPU surface).
 
 pub mod chrome;
+pub mod filter;
 pub mod stage3d;
 pub mod svg;
 pub mod text;
