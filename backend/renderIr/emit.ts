@@ -195,9 +195,8 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
     if (shot.blocks.length === 1 && shot.blocks[0].c === "Body") reasons.push(`shot ${shot.id}: a Body block on its own is not measured against Remotion yet (only under a TextReveal)`);
     for (const block of shot.blocks) {
       if (!SUPPORTED_BLOCKS.has(block.c)) reasons.push(`shot ${shot.id}: ${block.c} blocks are Phase 2`);
-      if (block.c === "Body" && FORMAT_SIZE[format] && bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)).advance === undefined) {
-        reasons.push(`shot ${shot.id}: Body copy at ${bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)).fs} px has no measured Chrome advance size`);
-      }
+      const size = block.c === "Body" && FORMAT_SIZE[format] ? bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)) : undefined;
+      if (size && size.advance === undefined) reasons.push(`shot ${shot.id}: Body copy at ${size.fs} px has no measured Chrome advance size`);
       const unmeasured = block.c === "Body" ? firstUnmeasuredBodyChar(block.text) : undefined;
       if (unmeasured !== undefined) {
         reasons.push(`shot ${shot.id}: Body copy contains ${JSON.stringify(unmeasured)} (U+${unmeasured.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}); only white-space line breaks are measured against Chrome, so copy outside ASCII letters, digits, white space and . , ; : ' " ! ? ( ) & is refused`);
