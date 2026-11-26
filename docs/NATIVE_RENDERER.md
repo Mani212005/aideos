@@ -679,6 +679,7 @@ the fallback for everything not yet native:
 | P2.5a | the compiler's text card, a `TextReveal` headline followed by its `Body` support copy, with Chrome's `text-wrap: pretty` line breaking, behind a parity journey ([P2.5a](#p25a-body-copy-under-a-headline)) | done |
 | P2.5b | the `TokenStrip` device, alone in an inset panel and under a headline on the frame stage (the compiler's device card), behind a parity journey ([P2.5b](#p25b-the-tokenstrip-device)) | done |
 | P2.5c | the `LayerStack` device, alone in an inset panel and under a headline on the frame stage, behind a parity journey ([P2.5c](#p25c-the-layerstack-device)) | done |
+| P2.5d | a `LayerStack` of 10 or more bars whose "k / n" counter gains a digit mid-sweep (the schema's default 32 bars), behind the same journey ([P2.5d](#p25d-the-layerstack-counter-gaining-a-digit)) | done |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), other block combinations, panels other than `frame` | planned |
 | P2.6a | the `inset` panel holding exactly one StatCounter on a cut shot that is not the first, in a film with a scene, behind a parity journey ([P2.6a](#p26a-the-inset-panel)) | done |
 | P2.6b | the `inset` panel on the first shot, and one that opens on a camera move (its open and close fade, its content's delayed fade and entrance), behind the same journey ([P2.6b](#p26b-the-inset-panel-on-a-camera-move)) | done |
@@ -851,19 +852,31 @@ layers, from the top otherwise), marked by a 5 x 10 px accent tab 14 px to the s
 dimension in mono at 0.85 of the body size. The emitter draws each bar unlit before and after its lit step and lit within it,
 and the counter and tab once per step; bar boxes are pixel-snapped and mono lines use Blink's `line-height: normal`, as P2.5b
 measured. The fixture `test_fixtures/packages/layer-stacks` (a scene film) has five named layers alone in an inset that opens
-on a pan and a headline over an anonymous eight-bar stack. Measured against Remotion (swangle), 114 frames over both formats
+on a pan and a headline over an anonymous stack (eight bars in P2.5c, twelve since [P2.5d](#p25d-the-layerstack-counter-gaining-a-digit)). Measured against Remotion (swangle), 114 frames over both formats
 (every 6th frame through both stacks, the shots around them and the end card): all at or above 0.995, lowest 0.99840. The
-journey `backend/journeys/layer_stacks.journey.ts` pins native selection and 33 of those frames. A LayerStack alone on the frame
+journey `backend/journeys/layer_stacks.journey.ts` pins native selection and 33 of those frames (39 since P2.5d). A LayerStack alone on the frame
 stage, with a block other than a headline, or with a `prompt` stays refused. So does a LayerStack whose stack, 2.5-grid gap
 and label column (the widest of the top label, the bottom label and the "n / n" counter, mono at the label size plus 0.14 em
 letter spacing) exceed the column, because Remotion then shrinks the stack, and one with a named bar whose label, a grid and
 its dimension (mono at 0.85 of the body size) exceed the bar's content width, because the text overflows or wraps; neither is
-measured against Remotion. So does a LayerStack of 10 or more bars (named layers, or `count`, default 32) whose top and
-bottom labels are both shorter than the widest counter text ("n / n"): its counter gains a digit at 10, so the label column
-width moves over the sweep and Remotion's centred stack shifts, which is not measured. A named LayerStack in an inset whose bars' minimum heights (28 px each with a 6 px gap) exceed
+measured against Remotion. A LayerStack of 10 or more bars whose counter gains a digit at 10 was refused here and is drawn since P2.5d. A named LayerStack in an inset whose bars' minimum heights (28 px each with a 6 px gap) exceed
 the panel's content height (the region less the border and 3 grid of padding on each side) is refused, because Remotion's panel
 clips the overflow, and so is a named LayerStack under a headline on the frame stage (no producer, not measured); an
 anonymous `count` stack (3 px bars with 3 px gaps) stays native everywhere. `emit.test.ts` asserts each refusal by its reason.
+
+### P2.5d the LayerStack counter gaining a digit
+
+The LayerStack's label column is `flex: none`, as wide as its widest line at each step, and the stack and column are centred
+together, so when the "k / n" counter gains a digit at k = 10 (and is the column's widest line) the column widens by one label
+character and the whole stack moves left by half of it. The emitter draws the stack once per column width, each over the
+frames that width holds (one width, as before P2.5d, emits the same document). Chrome's JetBrains Mono advance at the long
+frame's 16.8 px label size is 0.09% narrower than the native shaper's (it equals the native shaper's at 16.7813 px, measured over
+300-glyph runs; 12 px is exact), and here that decides the pixel snapping: the stack's left edge after the shift is 676.53 in
+Chrome (snapped to 677) but 676.49 with native widths (676), which put 24 frames under the bar (lowest 0.99335). Label widths in
+the column are measured at Chrome's advance size (`CHROME_MONO_ADVANCE_SIZE`). The layer-stacks fixture's device card now has
+twelve bars with short labels, so its counter reaches 10 mid-shot (frame 426). Measured against Remotion (swangle), 142 frames
+over both formats (the P2.5c sweep plus every 2nd frame 430 to 470): all at or above 0.995, lowest 0.99840. The journey adds
+frames 426, 440 and 460.
 
 ### P2.6a the inset panel
 

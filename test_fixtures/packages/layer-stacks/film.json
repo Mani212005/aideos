@@ -106,20 +106,20 @@
       "move": "pan",
       "drift": false,
       "zoom": 1,
-      "scriptText": "Eight layers stand between the input and the output.",
+      "scriptText": "Twelve layers stand between the input and the output.",
       "speed": 1,
       "blocks": [
         {
           "c": "TextReveal",
-          "text": "Eight layers deep",
+          "text": "Twelve layers deep",
           "size": "headline",
           "accentWord": "layers"
         },
         {
           "c": "LayerStack",
-          "count": 8,
-          "bottomLabel": "Input",
-          "topLabel": "Output"
+          "count": 12,
+          "bottomLabel": "In",
+          "topLabel": "Out"
         }
       ]
     },
