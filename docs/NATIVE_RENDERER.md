@@ -386,7 +386,7 @@ Text is measured with `aideos-render measure`, so layout and drawing share one s
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
 music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter in a film with a scene, P2.6a and P2.6b), more than one block per shot (except a `TextReveal` followed by a `Body`, P2.5a) and blocks other than
-`TextReveal`, `StatCounter` and `Body` (a `Body` only under a headline, at a measured body size). Those stay on Remotion until their phase.
+`TextReveal`, `StatCounter` and `Body` (a `Body` only under a headline, at a measured body size, made of measured word shapes). Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
 carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid

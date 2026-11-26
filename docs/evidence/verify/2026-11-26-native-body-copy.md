@@ -4,7 +4,7 @@
 
 - **Date**: 2026-11-26
 - **Branch / PR**: `fm/aideos-native-p25a-body`
-- **Scope**: `backend/renderIr/bodyWrap.ts` (new: Blink's greedy and `ScoreLineBreaker` line breaking for `text-wrap: pretty`), `backend/renderIr/emit.ts` (`nativeSupport` accepts a `TextReveal` followed by a `Body`, refuses a lone `Body` and a body size with no measured advance size; `bodyLayout`, `bodyNodes`, `columnTops`, `CHROME_BODY_ADVANCE_SIZE`; `textRevealLayout` extracted from `textRevealNodes`, which takes an optional column top), the fixture `test_fixtures/packages/text-cards`, the journey `backend/journeys/text_cards.journey.ts`, its weight, docs. No Render IR change, no renderer change. Feature Map rows: Export & Rendering (native renderer, Render IR emitter), Parity gates.
+- **Scope**: `backend/renderIr/bodyWrap.ts` (new: Blink's greedy and `ScoreLineBreaker` line breaking for `text-wrap: pretty`), `backend/renderIr/emit.ts` (`nativeSupport` accepts a `TextReveal` followed by a `Body`, refuses a lone `Body`, a body size with no measured advance size and a word outside the measured shapes; `bodyLayout`, `bodyNodes`, `columnTops`, `CHROME_BODY_ADVANCE_SIZE`; `textRevealLayout` extracted from `textRevealNodes`, which takes an optional column top), the fixture `test_fixtures/packages/text-cards`, the journey `backend/journeys/text_cards.journey.ts`, its weight, docs. No Render IR change, no renderer change. Feature Map rows: Export & Rendering (native renderer, Render IR emitter), Parity gates.
 - **Risk tier**: Medium (films whose text cards carry support copy, the compiler's usual card, now render natively in `auto`; films without a `Body` emit the same documents).
 
 ## Why this slice
