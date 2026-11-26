@@ -19,7 +19,7 @@ adapter in `backend/nativeRenderer.ts` hands it an IR path, a package directory 
 
 ## Opt-in 2D effects (`aideos.render/4`)
 
-The native renderer accepts per-glyph tracks and an eight-sample-capable 2D shutter in `/4`. Shaped glyph
+The native renderer accepts per-glyph tracks and a 2D shutter (2 to 16 samples) in `/4`. Shaped glyph
 indices, sample placement, sharp chrome, and the explicit 3D and overlay-order restrictions are documented
 in [Render IR effects](RENDER_IR.md#effects-aideosrender4). The film emitter and editor do not yet write or
 preview those fields. Existing versions use the old integer frame path and keep their output unchanged.
