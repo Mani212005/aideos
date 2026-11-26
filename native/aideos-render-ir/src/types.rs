@@ -1,4 +1,4 @@
-//! File Description: The serde types of the Render IR (`aideos.render/1` and its superset `aideos.render/2`, which adds the stage3d node and the mesh asset), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
+//! File Description: The serde types of the Render IR (`aideos.render/1` through `/4`), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
 //! Inputs and outputs: a JSON document that already passed the JSON Schema check -> a typed `RenderIr`; a `RenderIr` -> the same JSON again.
 //! Used by: crate::load, crate::semantic, and the native renderer crates that evaluate the IR.
 
@@ -47,6 +47,16 @@ pub struct RenderIr {
     pub stage: Vec<Node>,
     pub overlay: Vec<Node>,
     pub audio: Vec<AudioClip>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shutter: Option<Shutter>,
+}
+
+/// Optional two-dimensional motion blur sampling for one delivered frame.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Shutter {
+    pub samples: Whole,
+    pub angle: f64,
 }
 
 /// Film identity and clock.
@@ -449,7 +459,25 @@ pub struct TextNode {
     pub line_height: f64,
     pub letter_spacing: f64,
     pub tracks: Vec<NodeTrack>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glyph_tracks: Option<Vec<GlyphTrack>>,
     pub placement: PerFormat<TextBox>,
+}
+
+/// One track on a shaped glyph in paint order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GlyphTrack {
+    pub glyph: Whole,
+    pub property: GlyphProperty,
+    pub keyframes: Vec<Keyframe>,
+}
+
+/// Properties animated relative to a glyph's shaped position and baseline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GlyphProperty {
+    X, Y, Scale, Rotation, Opacity,
 }
 
 /// Horizontal text alignment.

@@ -1,5 +1,5 @@
 /**
- * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) and the strict superset of that, `aideos.render/3` (adds the `image` stage node that draws a pinned picture, the illustrated stage). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
+ * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) the strict superset `aideos.render/3` (adds a pinned picture), and `aideos.render/4` (adds opt-in glyph tracks and a 2D shutter). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
  * Inputs and outputs: nothing at import time -> zod schemas and the TypeScript types inferred from them.
  * Used by: backend/renderIr/validate.ts, backend/renderIr/jsonSchema.ts, backend/renderIr/renderIr.test.ts.
  */
@@ -13,7 +13,9 @@ export const RENDER_IR_VERSION_2 = "aideos.render/2";
 /** The third version, a strict superset of `/2`: adds the `image` stage node, a pinned picture placed on the stage (the illustrated stage, phase 1). */
 export const RENDER_IR_VERSION_3 = "aideos.render/3";
 /** Every version the loaders read; any other value is rejected before the rest of the document is read. */
-export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3] as const;
+/** The fourth version adds opt-in 2D shutter sampling and shaped-glyph tracks. */
+export const RENDER_IR_VERSION_4 = "aideos.render/4";
+export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4] as const;
 export type RenderIrVersion = (typeof RENDER_IR_VERSIONS)[number];
 
 /** Largest frame index or count a document may carry (about 10 days at 30 fps), so integers stay exact. */
@@ -124,6 +126,16 @@ export const textNodeSchema = z.strictObject({
   placement: perFormat(z.strictObject({ x: z.number(), y: z.number(), w: z.number().min(0), h: z.number().min(0), fontSize: z.number().gt(0) })),
 });
 
+/** A shaped glyph, indexed in the renderer's laid-out paint order, with its own tracks. */
+export const glyphTrackSchema = z.strictObject({
+  glyph: frame,
+  property: z.enum(["x", "y", "scale", "rotation", "opacity"]),
+  keyframes: z.array(keyframeSchema).min(1),
+});
+
+/** Text with optional glyph tracks, exclusive to /4. */
+export const textNodeSchemaV4 = textNodeSchema.extend({ glyphTracks: z.array(glyphTrackSchema).optional() });
+
 export const railNodeSchema = z.strictObject({
   kind: z.literal("rail"),
   ...nodeBase,
@@ -205,7 +217,7 @@ export type Node =
   | Stage3dNode
   | z.infer<typeof svgNodeSchema>
   | z.infer<typeof rectNodeSchema>
-  | z.infer<typeof textNodeSchema>
+  | z.infer<typeof textNodeSchemaV4>
   | z.infer<typeof railNodeSchema>
   | z.infer<typeof captionsNodeSchema>
   | z.infer<typeof endCardNodeSchema>
@@ -282,7 +294,7 @@ export const renderIrSchema = z.strictObject({
 });
 
 /** A loaded document of any version, typed as the `/3` superset (an older document never holds a later version's additions). */
-export type RenderIr = Omit<z.infer<typeof renderIrSchemaV3>, "schema"> & { schema: RenderIrVersion };
+export type RenderIr = Omit<z.infer<typeof renderIrSchemaV4>, "schema"> & { schema: RenderIrVersion };
 export type Asset = z.infer<typeof assetSchemaV2>;
 export type Keyframe = z.infer<typeof keyframeSchema>;
 export type FormatName = "long" | "reel";
@@ -620,4 +632,28 @@ export const renderIrSchemaV3 = z.strictObject({
   stage: z.array(nodeSchemaV3),
   overlay: z.array(nodeSchemaV3),
   audio: z.array(audioClipSchema),
+});
+
+
+// /4 adds an opt-in shutter and per-glyph tracks, preserving older closed schemas.
+const groupNodeSchemaV4 = z.strictObject({
+  kind: z.literal("group"), ...nodeBase, x: z.number(), y: z.number(), scale: z.number().gt(0),
+  rotation: z.number(), tracks: z.array(nodeTrackSchema),
+  get children(): z.ZodArray<z.ZodType<Node>> { return z.array(nodeSchemaV4); },
+});
+
+/** Nodes supported by /4, including text with shaped-glyph tracks. */
+export const nodeSchemaV4: z.ZodType<Node> = z.discriminatedUnion("kind", [
+  svgNodeSchema, rectNodeSchema, textNodeSchemaV4, railNodeSchema, captionsNodeSchema,
+  endCardNodeSchema, stage3dNodeSchema, imageNodeSchema, groupNodeSchemaV4,
+]);
+
+/** The /4 document, with a bounded number of evenly spaced shutter samples. */
+export const renderIrSchemaV4 = z.strictObject({
+  schema: z.literal(RENDER_IR_VERSION_4),
+  film: z.strictObject({ id, fps: z.number().int().min(1).max(240), durationFrames: count }),
+  scene: size, formats: perFormat(size), background: color, assets: z.array(assetSchemaV2),
+  camera: cameraSchema.optional(), stage: z.array(nodeSchemaV4), overlay: z.array(nodeSchemaV4),
+  audio: z.array(audioClipSchema),
+  shutter: z.strictObject({ samples: z.number().int().min(2).max(16), angle: z.number().gt(0).max(360) }).optional(),
 });

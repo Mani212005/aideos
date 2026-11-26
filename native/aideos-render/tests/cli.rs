@@ -62,7 +62,7 @@ fn a_refused_frame_exits_1_with_the_reason() {
 fn an_unsupported_render_ir_version_exits_1() {
     let dir = common::scratch_dir("cli");
     let ir = dir.join("future.json");
-    std::fs::write(&ir, r#"{"schema":"aideos.render/4"}"#).unwrap();
+    std::fs::write(&ir, r#"{"schema":"aideos.render/5"}"#).unwrap();
     let out = dir.join("x.png");
     let o = run(&[
         ir.as_os_str(),
@@ -73,7 +73,7 @@ fn an_unsupported_render_ir_version_exits_1() {
     ]);
     assert_eq!(o.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&o.stderr)
-        .contains("unsupported Render IR version \"aideos.render/4\""));
+        .contains("unsupported Render IR version \"aideos.render/5\""));
 }
 
 /// Checks that a usage mistake exits 2.
