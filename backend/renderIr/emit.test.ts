@@ -342,6 +342,24 @@ test("an inset panel is drawn natively only in the measured forms, every other f
   assert.deepEqual(nativeSupport({ ...moved, shots: movedShots as unknown as typeof moved.shots }, "long"), []);
 });
 
+// Replaces the inset probe shot's blocks (and optionally its stage) with the given blocks.
+function stackFilm(blocks: unknown[], stage: "inset" | "frame" = "inset") {
+  return insetFilm((s) => { s.blocks = blocks; s.stage = stage; });
+}
+
+const NAMED_LAYERS = ["Cache", { label: "Router", dim: "x4" }, "Queue", { label: "Model", dim: "8 GPU" }, "Reply"];
+
+test("a named LayerStack that is too tall for its inset, or sits under a headline on the frame stage, is refused by its reason (P2.5c)", () => {
+  for (const format of ["long", "reel"] as const) {
+    assert.deepEqual(nativeSupport(stackFilm([{ c: "LayerStack", bottomLabel: "Request", topLabel: "Reply", layers: NAMED_LAYERS }]), format), [], `${format}: fixture inset shape`);
+    assert.deepEqual(nativeSupport(stackFilm([{ c: "TextReveal", text: "Eight layers deep", size: "headline", accentWord: "layers" }, { c: "LayerStack", count: 8, bottomLabel: "Input", topLabel: "Output" }], "frame"), format), [], `${format}: fixture headline shape`);
+    const tall = nativeSupport(stackFilm([{ c: "LayerStack", layers: Array.from({ length: 24 }, (_, i) => `L${i}`) }]), format);
+    assert.ok(tall.some((r) => r.includes("24 named bars") && r.includes("clips the overflow")), `${format}: ${tall.join("; ")}`);
+    const named = nativeSupport(stackFilm([{ c: "TextReveal", text: "Five layers", size: "headline", accentWord: "layers" }, { c: "LayerStack", layers: NAMED_LAYERS }], "frame"), format);
+    assert.ok(named.some((r) => r.includes("named LayerStack under a headline on the frame stage")), `${format}: ${named.join("; ")}`);
+  }
+});
+
 test("picture animation support agrees with the emitted IR validator for every scene property", () => {
   const film = nativeSceneFilm();
   const asset = film.scene!.props[0];

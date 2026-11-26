@@ -385,8 +385,8 @@ differ per format.
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
-music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter or one TokenStrip in a film with a scene, P2.6a, P2.6b and P2.5b), more than one block per shot (except a `TextReveal` followed by a `Body` or a `TokenStrip`, P2.5a and P2.5b) and blocks other than
-`TextReveal`, `StatCounter`, `Body` and `TokenStrip` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line). Those stay on Remotion until their phase.
+music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter, TokenStrip or LayerStack in a film with a scene, P2.6a, P2.6b, P2.5b and P2.5c), more than one block per shot (except a `TextReveal` followed by a `Body`, a `TokenStrip` or a `LayerStack`, P2.5a to P2.5c) and blocks other than
+`TextReveal`, `StatCounter`, `Body`, `TokenStrip` and `LayerStack` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
 carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid
@@ -678,6 +678,7 @@ the fallback for everything not yet native:
 | P2.4b | the `paper-fibers` texture of `paper-white`, `parchment` and `charcoal`: Chrome draws it as a flat darkening (the filter's `multiply` blend with the rect's black fill leaves no grain), lowered to that in the `/7` underlay, and a card's backdrop starts from the darkened canvas ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.5a | the compiler's text card, a `TextReveal` headline followed by its `Body` support copy, with Chrome's `text-wrap: pretty` line breaking, behind a parity journey ([P2.5a](#p25a-body-copy-under-a-headline)) | done |
 | P2.5b | the `TokenStrip` device, alone in an inset panel and under a headline on the frame stage (the compiler's device card), behind a parity journey ([P2.5b](#p25b-the-tokenstrip-device)) | done |
+| P2.5c | the `LayerStack` device, alone in an inset panel and under a headline on the frame stage, behind a parity journey ([P2.5c](#p25c-the-layerstack-device)) | done |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), other block combinations, panels other than `frame` | planned |
 | P2.6a | the `inset` panel holding exactly one StatCounter on a cut shot that is not the first, in a film with a scene, behind a parity journey ([P2.6a](#p26a-the-inset-panel)) | done |
 | P2.6b | the `inset` panel on the first shot, and one that opens on a camera move (its open and close fade, its content's delayed fade and entrance), behind the same journey ([P2.6b](#p26b-the-inset-panel-on-a-camera-move)) | done |
@@ -838,6 +839,32 @@ shots around them and the end card): all at or above 0.995, lowest 0.99833. The 
 `backend/journeys/token_strips.journey.ts` pins native selection and 33 of those frames. A TokenStrip alone on the frame stage,
 with a block other than a headline, or with a wrapping caption stays refused.
 
+### P2.5c the LayerStack device
+
+`LayerStack` (devices.tsx) grows (`flex: 1`) into all the height its column leaves: alone in an inset it fills the panel's
+content box, and under a headline the column has no free space to centre, so the headline sits at the stage's top and the
+stack fills the rest below the 2.5-grid gap. It is a stack of equal bars (`flex: 1`; a 6 px gap and a 28 px minimum for named
+layers, 3 px and 3 px for an anonymous `count`) 640 px wide for named layers or 460 px otherwise, at most 80% or 60% of the
+column, beside a label column (the top label, the lit step as "k / n" in the accent, the bottom label, spread top to bottom),
+the two centred together with a 2.5-grid gap. A linear sweep over the shot lights one bar at a time (from the bottom for named
+layers, from the top otherwise), marked by a 5 x 10 px accent tab 14 px to the stack's left. Named bars carry their label and
+dimension in mono at 0.85 of the body size. The emitter draws each bar unlit before and after its lit step and lit within it,
+and the counter and tab once per step; bar boxes are pixel-snapped and mono lines use Blink's `line-height: normal`, as P2.5b
+measured. The fixture `test_fixtures/packages/layer-stacks` (a scene film) has five named layers alone in an inset that opens
+on a pan and a headline over an anonymous eight-bar stack. Measured against Remotion (swangle), 114 frames over both formats
+(every 6th frame through both stacks, the shots around them and the end card): all at or above 0.995, lowest 0.99840. The
+journey `backend/journeys/layer_stacks.journey.ts` pins native selection and 33 of those frames. A LayerStack alone on the frame
+stage, with a block other than a headline, or with a `prompt` stays refused. So does a LayerStack whose stack, 2.5-grid gap
+and label column (the widest of the top label, the bottom label and the "n / n" counter, mono at the label size plus 0.14 em
+letter spacing) exceed the column, because Remotion then shrinks the stack, and one with a named bar whose label, a grid and
+its dimension (mono at 0.85 of the body size) exceed the bar's content width, because the text overflows or wraps; neither is
+measured against Remotion. So does a LayerStack of 10 or more bars (named layers, or `count`, default 32) whose top and
+bottom labels are both shorter than the widest counter text ("n / n"): its counter gains a digit at 10, so the label column
+width moves over the sweep and Remotion's centred stack shifts, which is not measured. A named LayerStack in an inset whose bars' minimum heights (28 px each with a 6 px gap) exceed
+the panel's content height (the region less the border and 3 grid of padding on each side) is refused, because Remotion's panel
+clips the overflow, and so is a named LayerStack under a headline on the frame stage (no producer, not measured); an
+anonymous `count` stack (3 px bars with 3 px gaps) stays native everywhere. `emit.test.ts` asserts each refusal by its reason.
+
 ### P2.6a the inset panel
 
 `Film.tsx` draws an `inset` shot's panel in the format's inset region (`getInsetRegion`): a box filled with the theme's
@@ -938,7 +965,7 @@ as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-g
 
 ## Not yet native
 
-Node-graph films, the other primitives, devices other than the TokenStrip ([P2.5b](#p25b-the-tokenstrip-device)), inset forms other than the measured ones ([P2.6a](#p26a-the-inset-panel), [P2.6b](#p26b-the-inset-panel-on-a-camera-move)), panel stages and footage (Phase 2; its first steps, P2.1
+Node-graph films, the other primitives, devices other than the TokenStrip and the LayerStack ([P2.5b](#p25b-the-tokenstrip-device), [P2.5c](#p25c-the-layerstack-device)), inset forms other than the measured ones ([P2.6a](#p26a-the-inset-panel), [P2.6b](#p26b-the-inset-panel-on-a-camera-move)), panel stages and footage (Phase 2; its first steps, P2.1
 and P2.2a, draw the SVG filter subset of glows and drop shadows and the colour and dash offset tracks of `aideos.render/5`; P2.2b emits the flat-camera node-graph canvas and P2.2c draws flat node-graph films natively, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and nothing of the Three stage any more: the cel stage with any number of performers is carried by
