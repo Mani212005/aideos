@@ -77,9 +77,7 @@ pub fn draw_frame(
     let surface_info = ImageInfo::new_n32_premul((width as i32, height as i32), None);
     let mut surface = surfaces::raster(&surface_info, None, Some(&crate::renderer::frame_surface_props()))
         .ok_or_else(|| RenderError::Skia("cannot create shutter surface".into()))?;
-    let len = width as usize * height as usize * 4;
-    let mut pixels = vec![0u8; len];
-    let mut sum = vec![0u16; len];
+    let mut sum = vec![0u16; width as usize * height as usize * 4];
     let count = shutter.samples.0;
     for i in 0..count {
         let offset = ((f64::from(i) + 0.5) / f64::from(count) - 0.5) * shutter.angle / 360.0;
@@ -96,8 +94,8 @@ pub fn draw_frame(
         }
     }
     let divisor = count as u16;
-    for (pixel, total) in pixels.iter_mut().zip(sum) { *pixel = ((total + divisor / 2) / divisor) as u8; }
-    let image = images::raster_from_data(&surface_info, Data::new_copy(&pixels), width as usize * 4)
+    let averaged: Vec<u8> = sum.iter().map(|total| ((*total + divisor / 2) / divisor) as u8).collect();
+    let image = images::raster_from_data(&surface_info, Data::new_copy(&averaged), width as usize * 4)
         .ok_or_else(|| RenderError::Skia("cannot wrap shutter image".into()))?;
     canvas.clear(skia_safe::Color::TRANSPARENT);
     canvas.draw_image(&image, (0.0, 0.0), None);
@@ -533,6 +531,20 @@ fn text_align(a: Align) -> TextAlign {
     }
 }
 
+/// Builds the one text layout contract of a text node at a box font size, shared by drawing and glyph track validation.
+pub(crate) fn text_spec(t: &TextNode, font_size: f64) -> TextSpec<'_> {
+    TextSpec {
+        text: &t.text,
+        font: &t.font,
+        size: font_size,
+        color: ir_color(&t.color),
+        letter_spacing: t.letter_spacing * font_size,
+        line_height: Some(t.line_height),
+        align: text_align(t.align),
+        shadows: Vec::new(),
+    }
+}
+
 /// Draws a text node wrapped to its box width, top-aligned in the box. Letter spacing is in ems.
 fn draw_text_node(canvas: &Canvas, ctx: &OverlayCtx, t: &TextNode) {
     if !eval::is_visible_at(t.visible.as_ref(), ctx.time) {
@@ -545,17 +557,7 @@ fn draw_text_node(canvas: &Canvas, ctx: &OverlayCtx, t: &TextNode) {
     canvas.save();
     apply_boxed(canvas, &tr, b.x, b.y, b.w, b.h);
     with_opacity(canvas, tr.opacity, || {
-        let spec = TextSpec {
-            text: &t.text,
-            font: &t.font,
-            size: b.font_size,
-            color: ir_color(&t.color),
-            letter_spacing: t.letter_spacing * b.font_size,
-            line_height: Some(t.line_height),
-            align: text_align(t.align),
-            shadows: Vec::new(),
-        };
-        let paragraph = ctx.l.fonts.paragraph(&spec, b.w as f32);
+        let paragraph = ctx.l.fonts.paragraph(&text_spec(t, b.font_size), b.w as f32);
         if let Some(tracks) = t.glyph_tracks.as_ref().filter(|tracks| !tracks.is_empty()) {
             paragraph.paint_glyph_tracks(canvas, (b.x as f32, b.y as f32).into(), tracks, ctx.time, ctx.dur());
         } else {

@@ -460,17 +460,7 @@ fn check_glyph_tracks(ir: &RenderIr, fonts: &Fonts) -> Result<(), RenderError> {
         if tracks.is_empty() { continue; }
         for format in [Format::Long, Format::Reel] {
             let Some(b) = format.pick(&t.placement) else { continue };
-            let spec = TextSpec {
-                text: &t.text, font: &t.font, size: b.font_size, color: raster::ir_color(&t.color),
-                letter_spacing: t.letter_spacing * b.font_size, line_height: Some(t.line_height),
-                align: match t.align {
-                    aideos_render_ir::types::Align::Left => skia_safe::textlayout::TextAlign::Left,
-                    aideos_render_ir::types::Align::Center => skia_safe::textlayout::TextAlign::Center,
-                    aideos_render_ir::types::Align::Right => skia_safe::textlayout::TextAlign::Right,
-                },
-                shadows: Vec::new(),
-            };
-            let count = fonts.paragraph(&spec, b.w as f32).glyph_count();
+            let count = fonts.paragraph(&raster::text_spec(t, b.font_size), b.w as f32).glyph_count();
             if let Some(track) = tracks.iter().find(|track| track.glyph.0 as usize >= count) {
                 return Err(RenderError::Unsupported(format!(
                     "text {:?} glyph {} is outside the {} shaped glyphs in {}", t.id, track.glyph.0, count, format.name()
