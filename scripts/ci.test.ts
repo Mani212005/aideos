@@ -12,7 +12,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import YAML from "yaml";
 import { JOBS, PR_JOBS, TOOLCHAIN, jobsFor, knownGapNotices, notCoveredNotices, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
-import { testCommand } from "./toolchain";
+import { testCommand, withTapReporter } from "./toolchain";
 
 const ROOT = path.resolve(__dirname, "..");
 const scripts = (JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
@@ -489,4 +489,14 @@ test("decision D0: skipped tests report as NOT COVERED in notCoveredNotices and 
   assert.match(table, /NOT COVERED \(skipped\): 2: ocr: monospace counter, review: burned-in captions/);
   const notices = notCoveredNotices([stepResult]);
   assert.ok(notices.some((n) => n.includes("has 2 test(s) NOT COVERED: ocr: monospace counter, review: burned-in captions")));
+});
+
+// Owner decision: `npm run test:journeys` keeps printing TAP, as it did before the runner moved into scripts/runTests.ts.
+test("the TAP flag of test:journeys puts --test-reporter=tap before the files on the npm path and leaves the bun path alone", () => {
+  const files = ["backend/journeys/**/*.journey.ts"];
+  const npmCmd = withTapReporter(testCommand("npm", files));
+  assert.ok(npmCmd.includes("--test-reporter=tap"));
+  assert.deepEqual(npmCmd.slice(-files.length), files);
+  assert.ok(npmCmd.indexOf("--test-reporter=tap") < npmCmd.indexOf(files[0]));
+  assert.deepEqual(withTapReporter(testCommand("bun", files)), testCommand("bun", files));
 });

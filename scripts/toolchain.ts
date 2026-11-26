@@ -43,6 +43,14 @@ export function testCommand(toolchain: Toolchain, files: string[]): string[] {
   return ["node", "--import", "tsx", "--import", FIXTURE_PRELOAD, "--test", "--test-concurrency=1", ...files];
 }
 
+/** Adds `--test-reporter=tap` to a `node --test` command, right after its concurrency flag; the bun test runner is returned unchanged. */
+export function withTapReporter(cmd: string[]): string[] {
+  if (isBunTestCommand(cmd)) return cmd;
+  const at = cmd.indexOf("--test-concurrency=1");
+  if (at < 0) return cmd;
+  return [...cmd.slice(0, at + 1), "--test-reporter=tap", ...cmd.slice(at + 1)];
+}
+
 /** True when the command is the bun test runner, whose TODO and skip report is a flag of its own. */
 export function isBunTestCommand(cmd: string[]): boolean {
   return cmd[0] === "bun" && cmd[1] === BUN_TEST_RUNNER;

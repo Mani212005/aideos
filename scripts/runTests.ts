@@ -2,7 +2,7 @@
  * File Description: The test entry of the package.json test scripts. It runs the test files or globs it is given with the
  * test command of the active toolchain (scripts/toolchain.ts): the per-file bun runner on the bun path, serial `node --test`
  * on the npm path, so `npm test` needs no bun and `bun run test` needs no extra setup.
- * Inputs and outputs: test files or globs as arguments plus AIDEOS_TOOLCHAIN and npm_config_user_agent -> the test output on
+ * Inputs and outputs: test files or globs as arguments (a leading --tap prints TAP on the npm path) plus AIDEOS_TOOLCHAIN and npm_config_user_agent -> the test output on
  * inherited stdio and the test command's exit code (1 when it cannot start).
  * Used by: the test, test:journeys, test:live, test:legacy, test:visual and goldens:update scripts of package.json.
  */
@@ -10,7 +10,7 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { environment } from "../backend/env";
-import { activeToolchain, testCommand } from "./toolchain";
+import { activeToolchain, testCommand, withTapReporter } from "./toolchain";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -22,13 +22,16 @@ function resolveProgram(cmd: string[]): string[] {
 }
 
 /** Runs the toolchain's test command for the given files from the repo root and returns its exit code. */
-function main(files: string[]): number {
+function main(args: string[]): number {
+  const tap = args[0] === "--tap";
+  const files = tap ? args.slice(1) : args;
   if (files.length === 0) {
-    console.error("[runTests] usage: scripts/runTests.ts <test file or glob>...");
+    console.error("[runTests] usage: scripts/runTests.ts [--tap] <test file or glob>...");
     return 1;
   }
-  const [program, ...args] = resolveProgram(testCommand(activeToolchain(environment), files));
-  const result = spawnSync(program, args, { stdio: "inherit", cwd: ROOT });
+  const command = testCommand(activeToolchain(environment), files);
+  const [program, ...programArgs] = resolveProgram(tap ? withTapReporter(command) : command);
+  const result = spawnSync(program, programArgs, { stdio: "inherit", cwd: ROOT });
   if (result.error) {
     console.error(`[runTests] could not start ${program}: ${result.error.message}`);
     return 1;

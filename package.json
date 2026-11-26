@@ -72,7 +72,7 @@
     "intelligibility": "node scripts/run.mjs scripts/intelligibility/round_trip.ts",
     "validate:film": "tsx scripts/validate_film.ts",
     "test": "node scripts/run.mjs scripts/runTests.ts \"backend/**/*.test.ts\" \"scripts/**/*.test.ts\"",
-    "test:journeys": "node scripts/run.mjs scripts/runTests.ts \"backend/journeys/**/*.journey.ts\"",
+    "test:journeys": "node scripts/run.mjs scripts/runTests.ts --tap \"backend/journeys/**/*.journey.ts\"",
     "test:live": "RUN_TTS_TESTS=1 RUN_VISUAL_TESTS=1 node scripts/run.mjs scripts/runTests.ts \"backend/live/**/*.live.ts\"",
     "test:legacy": "node scripts/run.mjs scripts/runTests.ts \"backend/journeys/**/*.golden.ts\"",
     "goldens:native:ir": "node scripts/run.mjs scripts/native_golden_ir.ts",
