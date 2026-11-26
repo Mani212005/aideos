@@ -292,6 +292,14 @@ export const JOBS: CiJob[] = jobsFor(TOOLCHAIN);
 /** The jobs `bun run ci` runs when none is named: everything a pull request runs. */
 export const PR_JOBS = ["static", "unit", "journeys", "legacy"];
 
+/** Resolves the bare program name `bun` to this runner's own Bun binary when it is not on PATH (Bun lifecycle scripts); other programs pass through. */
+function resolveProgram(program: string): string {
+  if (program !== "bun") return program;
+  if (process.versions.bun) return process.execPath;
+  const launcher = environment.npm_execpath;
+  return launcher && path.basename(launcher).replace(/\.exe$/i, "") === "bun" ? launcher : program;
+}
+
 /** Runs one step to completion, streaming its output, and returns its result. */
 export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
   const reason = step.skip?.() ?? null;
@@ -305,7 +313,7 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
     const reportDir = step.todoCases ? fs.mkdtempSync(path.join(ROOT, ".ci-todo-report-")) : null;
     const reportPath = reportDir ? path.join(reportDir, "todos.json") : null;
     const runCmd = reportPath ? withTestReport(cmd, reportPath) : cmd;
-    const child = spawn(runCmd[0], runCmd.slice(1), {
+    const child = spawn(resolveProgram(runCmd[0]), runCmd.slice(1), {
       cwd: step.cwd ? path.join(ROOT, step.cwd) : ROOT,
       stdio: step.todoCases ? ["inherit", "pipe", "inherit"] : "inherit",
       env: { ...environment, ...step.env },
