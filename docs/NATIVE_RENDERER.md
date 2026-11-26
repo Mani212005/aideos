@@ -712,8 +712,8 @@ canvas draws what Remotion draws, and changing the card is a design decision out
 ### P2.2c node-graph films drawn natively
 
 `nativeSupport` accepts a node-graph film (no `film.scene`) whose camera angle is `flat` or `top-down` in every shot; the
-other angles stay refused until P2.3, and everything else `nativeSupport` checks still applies (only the `smooth-dark`
-theme has no texture, so it is the one node-graph theme drawn natively; panels other than `frame` and `none`, blocks
+other angles stay refused until P2.3, and everything else `nativeSupport` checks still applies (the `paper-fibers` themes stay
+refused: P2.2c drew only the `smooth-dark` theme, which has no texture, and [P2.4a](#p24a-the-pattern-theme-textures) added the blueprint grid and the dot matrix; panels other than `frame` and `none`, blocks
 other than TextReveal and StatCounter, several blocks in a shot and footage stay refused). Cards that overlap (the lit
 card's 2% lift included) are refused too: Chrome's `backdrop-filter` blurs the card behind into the card in front, which
 the canvas does not draw (measured 0.990). The journey `backend/journeys/node_graph_native.journey.ts` asks the renderer
