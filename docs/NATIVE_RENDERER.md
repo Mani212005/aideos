@@ -724,7 +724,7 @@ other angles stay refused until P2.3, and everything else `nativeSupport` checks
 other than TextReveal and StatCounter, several blocks in a shot and footage stay refused). Cards that overlap (the lit
 card's 2% lift included) are refused too: Chrome's `backdrop-filter` blurs the card behind into the card in front, which
 the canvas does not draw (measured 0.990). The journey `backend/journeys/node_graph_native.journey.ts` asks the renderer
-choice for both formats of two fixtures (native must be chosen) and compares their frames with Remotion's stills at the
+choice for both formats of each fixture (native must be chosen; P2.5e added a third, below) and compares their frames with Remotion's stills at the
 stage bar 0.995, none left out: `test_fixtures/packages/node-graph-flat` at 20, 45, 60, 100, 150, 250, 255, 330, 345, 420,
 435, 520, 525 and an end-card frame, and `test_fixtures/packages/node-graph-cases` (a bright amber accent, small nodes at
 a zoom of 9.3, cards 46 units apart, a StatCounter over the canvas) at every shot's midpoint, its lowest sweep frames and
