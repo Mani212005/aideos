@@ -804,7 +804,11 @@ ends), and the block enters as one, 70 ms after the headline. The fixture `test_
 has three cards: copy the pretty pass re-breaks in both formats, a wrapping headline over four lines of copy, and one line of
 copy. Measured against Remotion (swangle), 86 frames over both formats (every 10th frame across the cards, the shots around
 them and the end card): all at or above 0.995, lowest 0.99848. The journey `backend/journeys/text_cards.journey.ts` pins native
-selection and 27 of those frames. A `Body` on its own, other block pairs and other primitives stay refused.
+selection and 27 of those frames. A `Body` on its own, other block pairs and other primitives stay refused. Only white-space
+line breaks are measured: a `Body` whose text has any character outside ASCII letters, digits, white space and
+`. , ; : ' " ! ? ( ) &` (a hyphen, slash, dash, soft hyphen, zero-width space, non-breaking space, any other break
+opportunity of Chrome's UAX 14 breaker) is refused with a reason naming the shot and the first such character, and the film
+stays with Remotion.
 
 ### P2.6a the inset panel
 

@@ -120,6 +120,15 @@ const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body"]);
 /** The shared IR identifier rule applied to generated asset and node identifiers. */
 const IR_ID = new RegExp(ID_PATTERN);
 
+/** The characters whose line breaks were measured against Chrome: ASCII letters, digits, white space and . , ; : ' " ! ? ( ) &. */
+const MEASURED_BODY_CHARS = /^[A-Za-z0-9 \t\r\n.,;:'"!?()&]*$/;
+
+/** The first character of Body copy outside the measured set (one Chrome's UAX 14 breaker may break at), or undefined when all are measured. */
+function firstUnmeasuredBodyChar(text: string): string | undefined {
+  if (MEASURED_BODY_CHARS.test(text)) return undefined;
+  return Array.from(text).find((ch) => !MEASURED_BODY_CHARS.test(ch));
+}
+
 /**
  * Lists film-only reasons this film cannot be drawn natively in this format; empty means no known film-only refusal.
  * Phase 1 covers SVG scene films: the stage, the camera, `frame` text cards (TextReveal, StatCounter),
@@ -188,6 +197,10 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       if (!SUPPORTED_BLOCKS.has(block.c)) reasons.push(`shot ${shot.id}: ${block.c} blocks are Phase 2`);
       if (block.c === "Body" && FORMAT_SIZE[format] && bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)).advance === undefined) {
         reasons.push(`shot ${shot.id}: Body copy at ${bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)).fs} px has no measured Chrome advance size`);
+      }
+      const unmeasured = block.c === "Body" ? firstUnmeasuredBodyChar(block.text) : undefined;
+      if (unmeasured !== undefined) {
+        reasons.push(`shot ${shot.id}: Body copy contains ${JSON.stringify(unmeasured)} (U+${unmeasured.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}); only white-space line breaks are measured against Chrome, so copy outside ASCII letters, digits, white space and . , ; : ' " ! ? ( ) & is refused`);
       }
     }
     if (shot.needsFootage) reasons.push(`shot ${shot.id}: footage is Phase 2`);
