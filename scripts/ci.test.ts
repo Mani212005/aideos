@@ -72,7 +72,8 @@ function extractCiJobIds(cmd: string): string[] {
   return ids;
 }
 
-test("every npm script a job runs exists in package.json, and every file a bun or npx tsx step runs exists", () => {
+// npx tsx steps (the npm form of the bun steps) are checked for file existence too.
+test("every npm script a job runs exists in package.json, and every file a bun step runs exists", () => {
   for (const job of jobsFor("bun")) {
     for (const step of job.steps) {
       if (step.cmd[0] !== "bun" || step.cmd[1] === "x") continue;
@@ -99,7 +100,8 @@ test("the pull request set only names real jobs and nightly stays out of it", ()
   assert.ok(!PR_JOBS.includes("nightly"));
 });
 
-test("every workflow runs CI through `bun scripts/ci.ts <job>` (or its npm form) with known jobs only", () => {
+// The npm form of the CI entry point is now `npx tsx scripts/ci.ts <job>`; the bun form `bun scripts/ci.ts <job>` is accepted too.
+test("every workflow runs CI through `npm run ci -- <job>` with known jobs only", () => {
   assert.ok(workflows.length > 0, "expected at least one workflow under .github/workflows");
   const known = new Set(JOBS.map((j) => j.id));
   for (const file of workflows) {
