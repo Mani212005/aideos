@@ -8,9 +8,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { boundTheme, boundThemeName, DEFAULT_PROJECT_ACCENT, filmAccent } from "../../src/projectTheme";
-import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir, resolveRepoAssetPath } from "../videoPackageLoader";
 import { CHARACTER_LIBRARY, loadCharacterFile } from "../characters/library";
-import { HOUSE_PACE } from "../pacingProfile";
+import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 import { formatDurationSec } from "../formatDurationSec";
 
 /** A character an author can name in a performance, as the brief lists it. */

@@ -16,7 +16,8 @@ import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
 import { buildSvgSources } from "../scene/buildSvgSources";
 import { readFilm } from "../pipeline/filmStore";
 import { writeDesignBrief } from "./brief";
-import { designFilm, type DesignLlmCaller } from "./designer";
+import { designFilm } from "./designer";
+import type { DesignLlmCaller } from "../pipeline/deliveryTypes";
 
 const ROOT = path.resolve(__dirname, "../..");
 const DEMO = path.join(TEST_VIDEOS_DIR, "speculative-decoding-designed");

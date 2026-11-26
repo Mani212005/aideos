@@ -9,7 +9,7 @@
 import path from "node:path";
 import { writeDescriptionCredits } from "../masterAudio";
 import { readFilm } from "../pipeline/filmStore";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { reelForRender } from "../reelCut/store";
 import { assertDeliverable } from "../deliveryGate";
 import { createRenderJob } from "../renderJob";

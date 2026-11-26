@@ -14,7 +14,7 @@ import { environment } from "../env";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { herdrSocket, paneInfo, realHerdr, type HerdrLocation, type HerdrRun } from "../allCheck/herdr";
 
 /** The coding agents aideos can start itself (a replacement) and recognize as an originating session. */

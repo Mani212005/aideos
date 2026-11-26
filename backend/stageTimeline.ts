@@ -4,7 +4,7 @@
  * Used by: design check, measured pacing, Gemini facts and pipeline verification.
  */
 import fs from "node:fs";
-import { resolveRepoAssetPath } from "../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "./videoPackageLoader";
 import { buildTimeline, type TimedShot } from "../src/dl/camera";
 import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import type { Film } from "../src/dl/schema";
@@ -16,7 +16,7 @@ import { elementVisible, VISIBLE_OPACITY_MIN } from "../src/dl/scene/visibility"
 import { projectedSvgParts } from "./designCheck/insetRegion";
 import { prepareStageFacts } from "../src/dl/scene/stageFacts";
 import { partsInViewport } from "../src/dl/scene/stageGeometry";
-import { HOUSE_PACE } from "./pacingProfile";
+import { HOUSE_PACE } from "../src/dl/pacingProfile";
 
 export type StageState = { motion: "moving" | "holding"; segment: "story" | "end-card" };
 export interface StageSpan extends StageState { from: number; to: number }

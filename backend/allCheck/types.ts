@@ -7,7 +7,7 @@
  */
 
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 
 /** The two deliverables of a film: 16:9 long-form and 9:16 reel. */
 export type CheckFormat = "long" | "reel";

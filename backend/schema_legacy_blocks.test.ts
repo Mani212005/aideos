@@ -14,7 +14,7 @@ import path from "node:path";
 import { blockSchema, filmSchema, LEGACY_BLOCK_KINDS, parseFilm, shotSchema } from "../src/dl/schema";
 import { convertFilmToLayeredFilm } from "../src/dl/convertFilm";
 import { validateLayeredFilm } from "../src/dl/validateLayeredFilm";
-import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { getVideosDir } from "./videoPackageLoader";
 import { ensureGenerated, FILMS_DIR } from "./pipeline/generatedFiles";
 import { readFilm } from "./pipeline/filmStore";
 import { loadFixtureFilm } from "./testSupport/fixtureFilms";

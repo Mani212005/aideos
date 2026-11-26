@@ -17,7 +17,7 @@ import path from "node:path";
 import "./testSupport/fixtureVideosDir";
 import { parseFilm } from "../src/dl/schema";
 import type { Scene } from "../src/dl/scene/types";
-import { validateSceneWithNodeAssets } from "../src/dl/scene/validateSceneNode";
+import { validateSceneWithNodeAssets } from "./scene/validateSceneNode";
 import { compileScene } from "../src/dl/scene/compile";
 import { parseSvgDocument, collectSvgElementIds } from "../src/dl/scene/svgDocument";
 import { loadSceneAssets } from "./scene/loadSceneAssets";
@@ -25,7 +25,7 @@ import { renderFrameSvgMarkup } from "./scene/renderStill";
 import { buildSvgSources, collectSvgSources, renderModule, generatedModulePath } from "./scene/buildSvgSources";
 import { ensureGenerated } from "./pipeline/generatedFiles";
 import { BEATS } from "../test_fixtures/stillTalking/beats";
-import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { getVideosDir } from "./videoPackageLoader";
 
 const ROOT = path.resolve(__dirname, "..");
 const PACKAGE_DIR = path.join(getVideosDir(), "still-talking");

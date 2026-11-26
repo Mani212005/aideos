@@ -354,7 +354,7 @@ journey("J99 what the user does, in words", async (ctx) => {
   comparisons. A pixel assertion needs a deterministic reason to be equal.
 * Journey todos are forbidden: the structured reporter lists them by name and fails the job.
   Record intentionally excluded scope in this document instead of adding a passing placeholder.
-* Studio journeys use `scripts/studioDriver.ts` (`startEditor`, `StudioPage`: real key presses,
+* Studio journeys use `backend/testSupport/studioDriver.ts` (`startEditor`, `StudioPage`: real key presses,
   clicks, typing, element screenshots, `intercept` to answer a model-backed `/api/*` call from the test,
   `hold` to pause an `/api/*` request in flight, error collection, and timeout diagnostics reporting the
   last probe failure and page state) and live next to `scripts/smoke_studio.ts` or in `backend/journeys/` (a studio journey

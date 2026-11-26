@@ -4,7 +4,7 @@
  * Used by: editor/vite.config.ts (api/projects/new), backend/newProjectFilm.test.ts.
  */
 
-import { HOUSE_PACE } from "./pacingProfile";
+import { HOUSE_PACE } from "../src/dl/pacingProfile";
 import { filmSchema, filmUnderFloorMessage, parseFilm, type Film, type ThemeConfig } from "../src/dl/schema";
 import { buildFilmPartsFromScript, hasScreenplayTags } from "./scriptIntake";
 

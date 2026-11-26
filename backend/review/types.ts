@@ -10,9 +10,37 @@
  * Used by: backend/review/review.ts, backend/review/criteria.ts.
  */
 import type { FilmFacts } from "./source";
-import type { StageTruth } from "./stageTruth";
 import type { VideoFacts } from "../media/probe";
 import type { TimedWord } from "../pcm";
+
+/** The truthful stage description for one output. */
+export interface StageTruth {
+  renderer: "three";
+  treatments: FilmFacts["stageTreatments"];
+  fps: number;
+  format: "long" | "reel";
+  viewport: { width: number; height: number };
+  characters: Array<{ castId: string; id: string | null; version: number | null; rig: string | null; hash: string | null; name: string | null }>;
+  props: string[];
+  /** Cast members no performance draws: never on screen. */
+  hidden: string[];
+  shots: Array<{ id: string; startSec: number; endSec: number; inFrameAtStart: string[]; inFrameAtEnd: string[]; offFrameAtStart: string[]; offFrameAtEnd: string[] }>;
+  performances: Array<{
+    id: string; action: string; actor: string; prop: string; character: string | null;
+    decisive: { shotId: string; phrase: string; edge: "start" | "end" };
+    /** Frame of the decisive word from the timed words, null when they are missing or do not contain it. */
+    cueFrame: number | null;
+    contactFrame: number | null;
+    ownership: NonNullable<FilmFacts["performances"]>[number]["ownership"];
+    /** Contact minus cue, in frames; null when either is unknown. */
+    offsetFrames: number | null;
+    presentAtContact: string[];
+    afterState: string;
+  }>;
+  camera: { moves: number; maxSpeedWidthsPerSec: number; summary: string };
+  measured: readonly string[];
+  unmeasured: readonly string[];
+}
 
 /** Facts about the rendered file: one definition, beside the one probe that measures them. */
 export type { VideoFacts };

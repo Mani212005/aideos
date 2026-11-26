@@ -51,7 +51,8 @@ export function SoundtrackPanel({ film, selectedSection, onCommit, onClose, onPr
   // Stops audition audio and ignores late requests when the panel or project closes.
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; previewRequest.current++; audio.current?.pause(); };
+    const request = previewRequest;
+    return () => { mounted.current = false; request.current++; audio.current?.pause(); };
   }, []);
 
   // Builds a proposal without touching disk, then commits it through the owner's undo history.

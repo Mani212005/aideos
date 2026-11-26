@@ -25,7 +25,7 @@ import { assertBrollReady, type RenderProfile } from "../backend/renderJob";
 import { emitFilmIr, nativeBinaryProblem } from "../backend/nativeRenderer";
 import { nativeSupport } from "../backend/renderIr/emit";
 import { readFilm } from "../backend/pipeline/filmStore";
-import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { getVideosDir } from "../backend/videoPackageLoader";
 
 const GIB = 1024 ** 3;
 

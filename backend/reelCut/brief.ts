@@ -9,7 +9,7 @@ import { parseFilm } from "../../src/dl/schema";
 import {
   getVideosDir,
   resolvePackageDir,
-} from "../../src/dl/videoPackageLoader";
+} from "../videoPackageLoader";
 import { designSpecSchema } from "../designSpec/spec";
 import { lookPlanSchema } from "../lookPlan/schema";
 import { createReelContext, type ReelContext } from "./constraints";

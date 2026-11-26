@@ -14,7 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSyncBounded } from "../backend/proc";
 import { findChromeBinary } from "../backend/scene/renderStill";
-import { startEditor, StudioPage } from "./studioDriver";
+import { startEditor, StudioPage } from "../backend/testSupport/studioDriver";
 import { installVoiceOfChoiceForTests } from "../backend/testSupport/fakeVcd";
 
 // Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.

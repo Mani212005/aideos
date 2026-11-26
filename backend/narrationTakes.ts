@@ -13,7 +13,7 @@
 import { createHash } from "node:crypto";
 import type { LineAudio } from "./voiceLines";
 import { longestSilenceSec, trimSilence } from "./pcm";
-import { HOUSE_PACE } from "./pacingProfile";
+import { HOUSE_PACE } from "../src/dl/pacingProfile";
 
 /** One take as a synthesizer returns it: the audio and, when the voice service reports one, its own naturalness score in 0..1. */
 export interface TakeResult {

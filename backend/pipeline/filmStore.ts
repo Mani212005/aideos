@@ -23,7 +23,7 @@ import { filmRevision, revisionOfFilm } from "../filmRevision";
 import { traceBus } from "../agentBridge/traceBus";
 import { filmEditState, noteFilmWrite } from "../filmAcceptance/store";
 import { filmDifferences } from "../filmAcceptance/machine";
-import { getVideosDir, resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir, resolvePackageDir } from "../videoPackageLoader";
 import { ROOT, FILMS_DIR, FILM_ID, filmFromModule, filmModule, ensureGenerated, setActiveFilm } from "./generatedFiles";
 
 export { ROOT, FILMS_DIR, FILM_ID, ensureGenerated, setActiveFilm };

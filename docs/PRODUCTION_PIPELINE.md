@@ -297,7 +297,7 @@ the lines if you switch back). Trimming, boundary fades, gap insertion
 and peak normalization all happen on samples rather than on encoded files, so the reported segment
 offsets are exact and nothing is stitched across a sample-rate or channel-layout mismatch. The
 default pause is 170 ms between narration segments and 750 ms before a segment that opens a new
-chapter (the [house pace](GOOD_VIDEO.md#house-pace) gaps, `HOUSE_PACE` in `backend/pacingProfile.ts`). For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
+chapter (the [house pace](GOOD_VIDEO.md#house-pace) gaps, `HOUSE_PACE` in `src/dl/pacingProfile.ts`). For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
 scene-film voiceover beats can provide chapter names explicitly. Both pause lengths and explicit
 chapter-start flags can be overridden through the audio options. The longer chapter breath gives
 later music changes room to land between spoken lines. The assembled audio is then normalized to

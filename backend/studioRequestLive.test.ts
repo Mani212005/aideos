@@ -10,7 +10,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { startEditor } from "../scripts/studioDriver";
+import { startEditor } from "./testSupport/studioDriver";
 import { DEFAULT_BODY_LIMIT_BYTES, UPLOAD_BODY_LIMIT_BYTES } from "./studioRequest";
 
 // Sends a POST that only announces `declaredBytes` of body and then sends a few bytes, so the server has to decide from the header alone.

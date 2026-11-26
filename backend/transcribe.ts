@@ -9,7 +9,7 @@
 import fs from "fs";
 import path from "path";
 import type { WordInfo } from "./audio";
-import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { getVideosDir } from "./videoPackageLoader";
 
 /** A transcribed word: the shared WordInfo shape plus the ASR backend's own confidence score. */
 export interface TranscribedWord extends WordInfo {

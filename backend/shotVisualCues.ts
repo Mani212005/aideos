@@ -8,7 +8,7 @@
  * Used by: backend/jev.ts, backend/pipeline/design.ts.
  */
 
-import type { ShotVisual } from "./jev";
+import type { ShotVisual } from "./shotVisualTypes";
 
 /** A number read out of narration, with the unit suffix and label a StatCounter shows for it. */
 export interface NarrationQuantity {

@@ -12,7 +12,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { reviewPairwise, reviewVideo as geminiReview, formatReviewSummary, renderVideoForSlug, assertSlugDeliverable } from "../geminiReview";
 import { decisionScore, formatScore, reachesBar } from "../geminiReview";
 import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";

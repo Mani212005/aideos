@@ -10,6 +10,8 @@
 import type { TtsBackendName } from "../tts";
 import type { VcdLanguagePreference } from "../vcdClient";
 import type { JudgeState } from "../lookPlan/contract";
+import type { DesignLlmCaller, ReelDeliveryMode } from "./deliveryTypes";
+import type { JudgeRunner } from "../visionJudge/types";
 
 /** The ordered stages a production run moves through. */
 export const PRODUCTION_STAGES = [
@@ -96,9 +98,9 @@ export interface ProductionRequest {
   /** Look and design delivery policy; defaults to inline with resumable needs-input results. */
   design?: DesignMode;
   /** Reel cut delivery; defaults to the design policy, with templates mapped to inline. */
-  reel?: import("../reelCut/writer").ReelDeliveryMode;
+  reel?: ReelDeliveryMode;
   /** Server reel writer injection; null disables model calls. */
-  reelLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
+  reelLlmCaller?: DesignLlmCaller | null;
   /** Narration injection for deterministic pipeline tests. */
   reelSynthesizer?: import("../endCard/voice").LineSynthesizer;
   /** Legacy alias: false selects templates. True uses the default inline policy. */
@@ -108,9 +110,9 @@ export interface ProductionRequest {
   /** How long the design stage waits for the connected agent (default 20 minutes). */
   designAgentTimeoutMs?: number;
   /** Caller for server-mode look and design; null disables it. Defaults to the film's own agent session (else the videoModels.generation override). */
-  designLlmCaller?: import("../designSpec/designer").DesignLlmCaller | null;
+  designLlmCaller?: DesignLlmCaller | null;
   /** Renderer-independent visual judgment injection. */
-  designJudgeRunner?: import("../designSpec/designer").DesignFilmOptions["judgeRunner"];
+  designJudgeRunner?: JudgeRunner;
   /** Writes chart contents from the narration; defaults to Gemini when configured, null for none. */
   deviceCaller?: import("./deviceData").DeviceLlmCaller | null;
   /** Studio owner key: the bespoke design task goes to the owner's agent connected through `aideos connect`. */

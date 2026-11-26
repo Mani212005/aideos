@@ -13,7 +13,7 @@ import path from "node:path";
 import type { Film } from "../../src/dl/schema";
 import type { ShotVisualResult } from "../jev";
 import type { DeviceReport } from "./deviceData";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 
 
 /** One shot's recorded visual decision. */

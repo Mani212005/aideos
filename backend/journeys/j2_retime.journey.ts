@@ -12,7 +12,7 @@ import { journey, probeVideo } from "./harness";
 import { IONA_BEATS, ionaScript, journeyRequest, produceIona } from "./ionaFilm";
 import { runProduction } from "../pipeline/run";
 import { readFilm } from "../pipeline/filmStore";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import { readFilmFacts } from "../review/source";
 import { loadNarration } from "../review/speech";

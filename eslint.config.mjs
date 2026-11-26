@@ -81,6 +81,17 @@ export default [
     },
   },
   {
+    // Browser film code cannot depend on Node tools or test-only sources.
+    files: ["src/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": ["error", { patterns: [{ group: ["**/backend/**", "**/scripts/**", "**/test_fixtures/**"], message: "Keep browser film code independent of Node and test layers." }] }] },
+  },
+  {
+    // Production backend modules cannot depend on scripts or fixture data.
+    files: ["backend/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.ts", "**/*.journey.ts", "**/*.golden.ts", "**/*.live.ts", "backend/testSupport/**", "backend/journeys/**"],
+    rules: { "no-restricted-imports": ["error", { patterns: [{ group: ["**/scripts/**", "**/test_fixtures/**"], message: "Keep production backend code independent of scripts and fixtures." }] }] },
+  },
+  {
     files: LEGACY_ANY,
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },

@@ -7,7 +7,7 @@
 import { callerWorkingDirectory } from "../paths";
 import fs from "node:fs";
 import path from "node:path";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 import { formatIssues, parseCharacter, type ParsedCharacter } from "../../src/dl/characters/validate";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
 import type { CharacterRig } from "../../src/dl/performance/types";

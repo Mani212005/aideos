@@ -9,7 +9,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir, resolveRepoAssetPath } from "../videoPackageLoader";
 import { DOT_RESOURCES, STAGE_RESOURCES } from "../../src/dl/scene/rigs/registry";
 import { characterCandidates } from "../characters/library";
 import { withoutGenerated } from "../defaultSoundtrack";

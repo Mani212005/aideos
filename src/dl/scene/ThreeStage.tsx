@@ -23,7 +23,7 @@ import { reportThreeStageInitializationFailure } from "./threeStageError";
 import { buildDots } from "./materials/dots";
 import { stageTreatmentAt } from "./materials/treatment";
 import type { Scene } from "./types";
-import type { TestStageVisibility } from "../SceneStage";
+export interface TestStageVisibility { character?: string; prop?: string }
 
 interface Props { scene: Scene; width: number; height: number; testVisibility?: TestStageVisibility }
 

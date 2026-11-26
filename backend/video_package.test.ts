@@ -12,7 +12,7 @@ import "./testSupport/fixtureVideosDir";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { loadVideoPackage, getVideosDir } from "../src/dl/videoPackageLoader";
+import { loadVideoPackage, getVideosDir } from "./videoPackageLoader";
 import { parseFilm, DEVICE_BLOCKS } from "../src/dl/schema";
 import { validateFilmAudioAndAssets } from "../src/dl/validateFilm";
 import { buildTimeline, totalFrames } from "../src/dl/camera";

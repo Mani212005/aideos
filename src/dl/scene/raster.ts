@@ -1,7 +1,7 @@
 /**
  * File Description: The pure rules of a picture asset (`EnvironmentAsset.raster`, the illustrated stage's plate and generated objects) that both renderers, the scene validator and the design build share: where a picture's file may live, its one animatable element id, the box it draws in its asset's local space and the checks on its declared size and pin. Pure: no Node imports, so the Remotion bundle, the emitter and the validators all read the same rules.
  * Inputs and outputs: an environment asset or its raster source -> its element ids, drawn box and the problems with its declaration.
- * Used by: src/dl/scene/SceneView.tsx, src/dl/scene/compile.ts, src/dl/scene/validateScene.ts, src/dl/scene/validateSceneNode.ts, backend/scene/loadSceneAssets.ts, backend/renderIr/emit.ts, backend/designCheck/*.
+ * Used by: src/dl/scene/SceneView.tsx, src/dl/scene/compile.ts, src/dl/scene/validateScene.ts, backend/scene/validateSceneNode.ts, backend/scene/loadSceneAssets.ts, backend/renderIr/emit.ts, backend/designCheck/*.
  */
 
 import type { EnvironmentAsset, RasterSource } from "./types";

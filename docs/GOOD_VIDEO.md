@@ -125,7 +125,7 @@ really fit this nicely. Honestly, I think that the reels that we produce are a b
 more faster editing. By faster editing, I mean the story needs to pace up a bit by like 20-30% more speed."
 
 Every new film, long and reel alike (they share one narration-locked timeline), is made at 1.2x the pace before
-that decision. [`backend/pacingProfile.ts`](../backend/pacingProfile.ts) owns the numbers and derives each from
+that decision. [`src/dl/pacingProfile.ts`](../src/dl/pacingProfile.ts) owns the numbers and derives each from
 the old one, so the targets above (story hold, mean beat, dead air, words per minute, camera moves and holds) and
 the silences between lines all move together:
 
@@ -150,10 +150,10 @@ the silences between lines all move together:
 - **Shorter beats, more camera.** Beats average at most 10 s (shorter is fine), the camera moves at least once per 17 s and holds
   2.5 to 4 s per subject, and no story picture holds still past 2.5 s.
 - **Scaled minimum length.** The film schema refuses a film shorter than 10 s at narration rate 1, scaled by the rate
-  (`minFilmSecAt` in `backend/pacingProfile.ts`): 8.3 s at the 1.2x house pace. The error reads `film is under 8.3s`.
+  (`minFilmSecAt` in `src/dl/pacingProfile.ts`): 8.3 s at the 1.2x house pace. The error reads `film is under 8.3s`.
 - **More cuts, earlier hook.** At most 2.4 hard cuts per minute (2 before), a carry-over with transformation at least
   once per 17 s (20 before), and the reel's first word starts before 0.25 s (0.3 before). Each is the old value
-  scaled by 1.2 in `backend/pacingProfile.ts`; the 10 to 16 word hook sentence is unchanged.
+  scaled by 1.2 in `src/dl/pacingProfile.ts`; the 10 to 16 word hook sentence is unchanged.
 - **Unchanged and at least as strict.** Camera speed (20% of the frame width per second), captions,
   readability, overlap, audio sync and the reel caption safe zone. The 179 s reel cap is a platform limit; a
   reel cut budgets words from the long take's measured pace, so it speeds up with the long by itself.

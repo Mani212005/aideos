@@ -23,7 +23,7 @@ import { compileScene, type CompiledEntity, type CompiledFrame } from "../../src
 import type { Scene } from "../../src/dl/scene/types";
 import { stageProjection } from "../../src/dl/scene/projection";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
-import { getExamplesDir, getVideosDir, resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { getExamplesDir, getVideosDir, resolvePackageDir, resolveRepoAssetPath } from "../videoPackageLoader";
 import { pictureLocalBox } from "../pictures/bounds";
 import {
   apply,

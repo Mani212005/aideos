@@ -17,7 +17,7 @@ import { prepareSoundtrack } from "./soundtrack";
 import { parseFilm } from "../src/dl/schema";
 import { deliveryTimeline, type DeliveryFormat } from "../src/dl/delivery";
 import { soundtrackItem } from "../src/dl/audio/sectionMixer";
-import { resolvePackageDir } from "../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "./videoPackageLoader";
 
 // Produces mono tone assets at the library item's recorded loudness, with an identifiable real ending.
 function tone(file: string, frequency: number, duration: number, lufs: number, gate?: string): void {

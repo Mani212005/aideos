@@ -5,9 +5,9 @@
  */
 import fs from "node:fs";
 import { openBrowser } from "@remotion/renderer";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { glFlag } from "../pipeline/render";
-import { startEditor } from "../../scripts/studioDriver";
+import { startEditor } from "../testSupport/studioDriver";
 import type { CompositionId } from "./remotionFrames";
 
 // Opens a native-size Player with real seek controls and waits for the stage's committed absolute frame.

@@ -33,7 +33,7 @@ import {
 import { runProduction } from "./pipeline/run";
 import { FILMS_DIR, VIDEOS_DIR } from "./pipeline/filmStore";
 import { checkVoiceoverIntake } from "./voiceoverIntake";
-import { startEditor } from "../scripts/studioDriver";
+import { startEditor } from "./testSupport/studioDriver";
 import { installVoiceOfChoiceForTests } from "./testSupport/fakeVcd";
 
 // Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.

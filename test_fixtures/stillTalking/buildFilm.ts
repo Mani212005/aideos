@@ -11,7 +11,7 @@
 import { parseFilm, type Film, type Shot } from "../../src/dl/schema";
 import { writeFilm, setActiveFilm } from "../../backend/pipeline/filmStore";
 import type { Scene } from "../../src/dl/scene/types";
-import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
+import { validateSceneWithNodeAssets } from "../../backend/scene/validateSceneNode";
 import { compileScene } from "../../src/dl/scene/compile";
 import { loadSceneAssets } from "../../backend/scene/loadSceneAssets";
 import { buildSvgSources } from "../../backend/scene/buildSvgSources";

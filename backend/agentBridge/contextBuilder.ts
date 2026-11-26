@@ -11,7 +11,7 @@ import path from "node:path";
 import { FILM_ID, readFilm, ROOT } from "../pipeline/filmStore";
 import type { AgentTaskContext, DispatchOptions } from "./types";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { parseLookPlan } from "../lookPlan/schema";
 import { STORY_SCRIPT_RULES } from "../scriptIntake";
 import { boundTheme, boundThemeName } from "../../src/projectTheme";

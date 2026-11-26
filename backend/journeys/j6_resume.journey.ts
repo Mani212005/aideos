@@ -12,7 +12,7 @@ import { decodeFrame, frameDiff, journey } from "./harness";
 import { journeyRequest, produceIona } from "./ionaFilm";
 import { runProduction } from "../pipeline/run";
 import { readFilm } from "../pipeline/filmStore";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { characterHash } from "../../src/dl/characters/hash";
 import { characterSpecSchema } from "../../src/dl/characters/schema";
 import { rawSpec } from "../testSupport/characters";

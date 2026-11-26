@@ -6,7 +6,7 @@
 
 import path from "node:path";
 import type { Command } from "commander";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { hashFileOrNull } from "../filmAcceptance/store";
 import {
   formatOwnerVerdict,

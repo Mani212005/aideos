@@ -12,7 +12,7 @@ import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
 import { parseSvgDocument } from "../../src/dl/scene/svgDocument";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 import { rasterElementIds } from "../../src/dl/scene/raster";
 import { rasterFileProblems } from "../pictures/png";
 

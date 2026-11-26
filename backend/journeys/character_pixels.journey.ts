@@ -16,7 +16,7 @@ import { CHARACTER_FILES, loadSpec } from "../testSupport/characters";
 import { writeCharacterPackage } from "../testSupport/characterFilms";
 import { chromeAvailable, evaluatePage } from "../characters/browser";
 import { renderCharacterSheet } from "../characters/sheet";
-import type { PixelRequest, PixelResult } from "../characters/pixelPage";
+import type { PixelRequest, PixelResult } from "../testSupport/pixelPage";
 import { parseFilm } from "../../src/dl/schema";
 import type { Scene } from "../../src/dl/scene/types";
 import type { StageCast } from "../../src/dl/scene/stageContract";
@@ -66,7 +66,7 @@ async function productionCharacterStills(outDir: string): Promise<Array<PixelReq
 async function runPixelPage(request: PixelRequest): Promise<PixelResult> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-pixels-"));
   try {
-    await build({ entryPoints: [path.join(__dirname, "../characters/pixelPage.ts")], outfile: path.join(dir, "pixel.js"), bundle: true, format: "iife", platform: "browser", logLevel: "silent" });
+    await build({ entryPoints: [path.join(__dirname, "../testSupport/pixelPage.ts")], outfile: path.join(dir, "pixel.js"), bundle: true, format: "iife", platform: "browser", logLevel: "silent" });
     fs.writeFileSync(path.join(dir, "index.html"), `<!doctype html><meta charset="utf-8"><script>window.__pixelRequest=${JSON.stringify(request).replace(/</g, "\\u003c")};</script><script src="pixel.js"></script>`);
     const { value, errors } = await evaluatePage<PixelResult>(path.join(dir, "index.html"), "window.__pixels");
     assert.deepEqual(errors, []);

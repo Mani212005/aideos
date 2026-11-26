@@ -33,7 +33,7 @@ export const PCM_SAMPLE_RATE = 24000;
 /**
  * Kokoro default pace multiplier, applied natively because Kokoro has its own speaking-rate setting (backends
  * without one are re-paced by time-stretch in backend/audio.ts instead). It is 1.05 because that is the smallest
- * 0.05 step whose take of the sample-explainer fixture clears the house wpm floor (backend/pacingProfile.ts):
+ * 0.05 step whose take of the sample-explainer fixture clears the house wpm floor (src/dl/pacingProfile.ts):
  * measured with local Kokoro af_heart at the house gaps, 0.9 gave 135 wpm, 0.95 gave 140, 1.0 gave 144 and 1.05
  * gave 147 wpm (floor 145). It is not the old 0.75 times the house narration rate, which lands below the floor.
  */

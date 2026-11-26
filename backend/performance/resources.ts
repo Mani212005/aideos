@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 import { DOT_RESOURCES, DOT_RESOURCE_HASH, STAGE_RESOURCES, APPROVED_REFERENCES, STAGE_RESOURCE_HASH, CEL_TREATMENT } from "../../src/dl/scene/rigs/registry";
 
 // Verifies approved rig, art and adapter resources, exposing missing files as failures instead of SVG evidence.

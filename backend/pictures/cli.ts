@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Command } from "commander";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { designSpecSchema } from "../designSpec/spec";
 import { archivedPictureFiles, pictureFingerprint, pictureFiles, readCachedPicture, requestFor, storedPictureSha256, storePicture, type DeclaredPictures } from "./cache";
 import { composePicturePrompt, promptProblems } from "./policy";

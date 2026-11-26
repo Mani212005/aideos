@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { expectFile } from "../testSupport/expectFile";
 import { loadFixtureFilm } from "../testSupport/fixtureFilms";
 import { readFilm, writeFilm } from "./filmStore";

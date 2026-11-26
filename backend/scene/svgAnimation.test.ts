@@ -28,7 +28,7 @@ import {
   serializeSvgDocument,
 } from "../../src/dl/scene/svgDocument";
 import { compileScene } from "../../src/dl/scene/compile";
-import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
+import { validateSceneWithNodeAssets } from "./validateSceneNode";
 import { loadSceneAssets } from "./loadSceneAssets";
 import { renderFrameSvgMarkup } from "./renderStill";
 import { renderSvgNodes } from "../../src/dl/scene/svgReact";

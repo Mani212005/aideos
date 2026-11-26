@@ -8,7 +8,7 @@ import { prepareSoundtrack } from "../soundtrack";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { parseFilm, type Film } from "../../src/dl/schema";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { DELIVERY_CONFIG, deliveryTimeline, type DeliveryConfig, type DeliveryFormat } from "../../src/dl/delivery";
 import { FILMS_DIR, filmModule } from "../pipeline/generatedFiles";
 import { ProductionError } from "../pipeline/types";

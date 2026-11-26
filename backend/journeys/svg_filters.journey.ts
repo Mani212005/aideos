@@ -13,7 +13,7 @@ import { openFilm } from "./remotionFrames";
 import { createSelectedRenderer } from "../rendererSelection";
 import { createNativeRenderer } from "../nativeRenderer";
 import { picturePackage, silentWav } from "../testSupport/pictureReelCut";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import type { Renderer } from "../renderJob";
 
 const SLUG = "pictures-stage-glow";

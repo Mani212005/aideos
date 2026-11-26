@@ -10,7 +10,7 @@
 import * as path from "path";
 import { writeSvgAssets } from "../../backend/sceneKit";
 import { buildAllArtwork } from "./artwork";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../../backend/videoPackageLoader";
 
 /** Absolute path to the film's visuals directory. */
 export function visualsDir(): string {

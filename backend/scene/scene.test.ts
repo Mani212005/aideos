@@ -9,7 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import path from "path";
 import type { Scene } from "../../src/dl/scene/types";
-import { validateSceneWithNodeAssets as validateScene } from "../../src/dl/scene/validateSceneNode";
+import { validateSceneWithNodeAssets as validateScene } from "./validateSceneNode";
 
 const TEST_SVG = path.resolve("test_fixtures/svg/test_prop.svg");
 

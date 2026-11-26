@@ -14,7 +14,7 @@ import os from "os";
 import path from "path";
 import type { ProductionFormat, RenderedOutput } from "./types";
 import { ROOT } from "./filmStore";
-import { getExamplesDir, getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getExamplesDir, getVideosDir } from "../videoPackageLoader";
 import { runRenderCommand, type RenderProcessDeps } from "../renderProcess";
 import { execFileSyncBounded, spawnSyncBounded } from "../proc";
 export { RENDER_RESERVE_BYTES } from "../renderProcess";

@@ -14,7 +14,7 @@ import { openPlayer } from "./playerFrames";
 import { readFilm } from "../pipeline/filmStore";
 import { checkLookPlanById } from "../lookPlan/check";
 import { THREE_CHARACTERS, copyCharacterSpecs, editDesignForThreeCharacters, editLookForThreeCharacters } from "../testSupport/characterFilms";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { prepareStageFacts } from "../../src/dl/scene/stageFacts";
 import type { Scene } from "../../src/dl/scene/types";
 

@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { journey } from "./harness";
 import { findChromeBinary } from "../scene/renderStill";
-import { startEditor, StudioPage } from "../../scripts/studioDriver";
+import { startEditor, StudioPage } from "../testSupport/studioDriver";
 import { installVoiceOfChoiceForTests } from "../testSupport/fakeVcd";
 
 // Narrate in the voice of choice (the owner voice) through the deterministic fake voice service, even when this file runs alone.

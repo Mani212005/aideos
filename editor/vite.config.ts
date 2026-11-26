@@ -37,7 +37,7 @@ import { newProjectFilmTheme } from '../src/projectTheme.ts';
 import type { Film } from '../src/dl/schema.ts'
 import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { CorruptFilmError, readFilm, readStoredFilm, writeFilm as writeStoredFilm, type WriteFilmOptions } from '../backend/pipeline/filmStore.ts';
-import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../src/dl/videoPackageLoader.ts'
+import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../backend/videoPackageLoader.ts'
 import { chunkTextForTTS, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
@@ -91,7 +91,7 @@ import { checkVoiceoverIntake } from '../backend/voiceoverIntake.ts'
 import { bodyLimitFor, declaredBodyTooLarge, isSafeId, readJsonBody, resolveInside, safeDecodeURIComponent, SAFE_ID } from '../backend/studioRequest.ts'
 import { readNarrationLog, readScriptText, syncNarrationLog } from '../backend/narrationLog.ts'
 import { recordedStatus, synthesizeLines, resampleLinear, voiceLinesDir, pacedVoiceKey, unpacedVoiceKey, narratingVoiceKey, type SpokenLine } from '../backend/voiceLines.ts'
-import { NARRATION_RATE } from '../backend/pacingProfile.ts'
+import { NARRATION_RATE } from '../src/dl/pacingProfile.ts'
 import { DEFAULT_KOKORO_SPEED } from '../backend/tts.ts'
 import {
   assembleSegments,

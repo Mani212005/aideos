@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { parseDeliveryConfig } from "../../src/dl/delivery";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import type { ProduceAudioResult } from "../audio";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { FILMS_DIR } from "../pipeline/generatedFiles";

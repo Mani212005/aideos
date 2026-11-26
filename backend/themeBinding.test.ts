@@ -26,7 +26,7 @@ import { backgroundPresetSchema, filmSchema, parseFilm, themeSchema, type Film }
 import { convertFilmToLayeredFilm } from "../src/dl/convertFilm";
 import { validateLayeredFilm } from "../src/dl/validateLayeredFilm";
 import { boundTheme, DEFAULT_PROJECT_ACCENT, filmAccent, newProjectFilmTheme, PROJECT_THEMES, resolveProjectTheme } from "../src/projectTheme";
-import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { getVideosDir } from "./videoPackageLoader";
 import { TEST_VIDEOS_DIR } from "./testSupport/fixtureVideosDir";
 import { loadFixtureFilm } from "./testSupport/fixtureFilms";
 import type { SegmentAudioInfo } from "./audio";

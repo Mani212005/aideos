@@ -27,7 +27,7 @@ import { fieldIssues } from "../../src/dl/schemaIssues";
 import { createCues } from "../sceneKit";
 import { readVisualChoices } from "../pipeline/visualChoices";
 import { resolveCue } from "./cues";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { formatIssues } from "../../src/dl/characters/validate";
 import type { CharacterSpec } from "../../src/dl/characters/schema";
 import { loadCharacter } from "../characters/library";

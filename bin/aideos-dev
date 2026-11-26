@@ -14,7 +14,7 @@ root="$(cd "$(dirname "$target")/.." && pwd -P)"
 export AIDEOS_PINNED_ROOT="$root"
 export AIDEOS_PROJECT_ROOT="$root"
 # Honor a customized videos directory (the same one setup records for copy-film); default to the checkout's own.
-# A relative value resolves against the checkout, like src/dl/videoPackageLoader.ts. Refuse stable's own videos.
+# A relative value resolves against the checkout, like backend/videoPackageLoader.ts. Refuse stable's own videos.
 case "${AIDEOS_VIDEOS_DIR:-}" in
   "") videos="$root/videos" ;;
   /*) videos="$AIDEOS_VIDEOS_DIR" ;;

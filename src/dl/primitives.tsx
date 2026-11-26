@@ -5,7 +5,6 @@
  */
 
 import React from "react";
-import { useVideoConfig } from "remotion";
 import {
   accentAt,
   useTokens,
@@ -13,7 +12,7 @@ import {
   SERIF,
   useLayout,
 } from "./tokens";
-import { frames, MS, useEntrance, useProgress } from "./motion";
+import { frames, MS, useEntrance, useMotionTiming, useProgress } from "./motion";
 import { useAccent } from "./accent";
 import { useAlign } from "./align";
 import { compactNumber } from "./numberFormat";
@@ -90,13 +89,7 @@ export const TextReveal: React.FC<
   const palette = useTokens();
   const accent = useAccent();
   const align = useAlign();
-  let fps = 30;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    fps = useVideoConfig().fps;
-  } catch {
-    // Unit test fallback
-  }
+  const { fps } = useMotionTiming();
   const base = start + frames(MS.stagger * index, fps);
 
   return (

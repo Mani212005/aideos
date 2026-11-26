@@ -9,7 +9,7 @@
  */
 
 import { storyRanges } from "../stageTimeline";
-import { HOUSE_PACE } from "../pacingProfile";
+import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 import type { Loudness, Silence } from "./media";
 import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";

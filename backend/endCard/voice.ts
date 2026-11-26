@@ -18,7 +18,7 @@ import type { TtsBackendName } from "../tts";
 import type { VcdLanguagePreference } from "../vcdClient";
 import { DELIVERY_CONFIG, endCardEnabledFor, type DeliveryConfig } from "../../src/dl/delivery";
 import type { Film } from "../../src/dl/schema";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { readFilm, writeFilm } from "../pipeline/filmStore";
 
 /** Folder inside a package holding the spoken line. */

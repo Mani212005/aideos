@@ -4,7 +4,7 @@
  * Used by: editor/src/screens/EditStage.tsx.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Player } from "@remotion/player";
 import { CheckCircle2, CircleAlert, Loader2, Play, RefreshCw, X } from "lucide-react";
 import type { Film } from "../../../src/dl/schema";
@@ -50,7 +50,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
   const [error, setError] = useState("");
 
   // Loads the package's current cut and check state without copying it into the long film.
-  async function refresh(): Promise<void> {
+  const refresh = useCallback(async (): Promise<void> => {
     try {
       const response = await fetch(`/api/reel/${encodeURIComponent(filmId)}`);
       if (!response.ok) throw new Error(await responseError(response));
@@ -59,7 +59,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     }
-  }
+  }, [filmId]);
 
   // Rebuilds through the same inline backend reel delivery used by the CLI.
   async function rebuild(): Promise<void> {
@@ -80,7 +80,7 @@ export function ReelPanel({ filmId, onClose, onPreviewStart }: { filmId: string;
   }
 
   // Refreshes when the panel opens or the selected project changes.
-  useEffect(() => { void refresh(); }, [filmId]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const preview = data?.previewFilm ?? null;
   const timeline = useMemo(() => {

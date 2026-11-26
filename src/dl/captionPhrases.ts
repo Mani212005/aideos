@@ -3,7 +3,7 @@
  * Inputs and outputs: caption words, placement lookup and measured word widths -> timed two-line phrases.
  * Used by: KineticSubtitles and caption placement tests.
  */
-import type { CaptionWord } from "./KineticSubtitles";
+export interface CaptionWord { text: string; startFrame: number; endFrame: number }
 import type { CaptionPlacement } from "./schema";
 import { resolveCaptionCardWidth, type CaptionFormat } from "./captionPlacement";
 export type CaptionPhrase = {

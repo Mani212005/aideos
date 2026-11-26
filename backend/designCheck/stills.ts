@@ -15,7 +15,7 @@ import { parseFilm } from "../../src/dl/schema";
 import { readActiveFilmSource, restoreActiveFilmSource, setActiveFilm } from "../pipeline/filmStore";
 import { FPS } from "../sceneKit";
 import { midShotPicks, renderReviewStills, type StillPick } from "../sceneKit/reviewStills";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 
 const REPO_ROOT = repositoryRoot;
 

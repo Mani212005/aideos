@@ -16,7 +16,7 @@ import { buildCaptionPhrases, captionPhraseAtFrame } from "../../src/dl/captionP
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { measureCaptionWords } from "../review/captionMeasurements";
 import { prepareSvgProjection } from "./insetRegion";
-import type { DesignCheckContext, DesignFinding, DesignRule } from "./designCheck";
+import type { DesignCheckContext, DesignFinding, DesignRule } from "./types";
 
 // Reports a real geometric overlap, excluding antialias fringe and edge touching.
 function overlaps(a: SceneRect, b: SceneRect): boolean {

@@ -21,7 +21,7 @@ import {
 } from "../../src/dl/captionPlacement";
 import { getInsetRegion } from "../../src/dl/fullScreenHeroLayout";
 import { prepareSvgProjection } from "./insetRegion";
-import type { DesignFinding } from "./designCheck";
+import type { DesignFinding } from "./types";
 // Applies draft placement fields to the active disk film without accepting request-owned scene data.
 export function applyCaptionPlacementDraft(requestedFilm: Film, activeFilm: Film): Film {
   if (requestedFilm.id !== activeFilm.id)

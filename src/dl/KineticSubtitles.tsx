@@ -4,27 +4,24 @@
  * Used by: src/dl/Film.tsx.
  */
 
-import React, { useMemo } from "react";
+import React from "react";
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
   SUBTITLE_CARD_PADDING_Y,
   SUBTITLE_LINE_HEIGHT,
 } from "./fullScreenHeroLayout";
 import { accentAt, SANS } from "./tokens";
-import { measureText } from "@remotion/layout-utils";
-import { buildCaptionPhrases } from "./captionPhrases";
+import type { CaptionPhrase } from "./captionPhrases";
 import type { CaptionPlacement } from "./schema";
 import { resolveCaptionCardWidth, type ResolvedCaptionPlacement } from "./captionPlacement";
 import { frames } from "./motion";
 
-export interface CaptionWord {
-  text: string;
-  startFrame: number;
-  endFrame: number;
-}
+export type { CaptionWord } from "./captionPhrases";
+import type { CaptionWord } from "./captionPhrases";
 
 export interface KineticSubtitleProps {
   words: CaptionWord[];
+  phrases: CaptionPhrase[];
   fontSize?: number;
   fontFamily?: string;
   primaryColor?: string;
@@ -35,6 +32,7 @@ export interface KineticSubtitleProps {
 
 export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   words,
+  phrases,
   fontSize = 32,
   fontFamily = SANS,
   primaryColor = "#FFFFFF",
@@ -45,20 +43,6 @@ export const KineticSubtitles: React.FC<KineticSubtitleProps> = ({
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const format = width < height ? "reel" : "long";
-  const measureWord = React.useCallback(
-    (text: string) => typeof (globalThis as { document?: unknown }).document === "undefined"
-      ? Number.NaN
-      : measureText({ text, fontFamily, fontSize, fontWeight: 700 }).width,
-    [fontFamily, fontSize],
-  );
-
-  // Compute every phrase once so neither position nor wrapping can change during a phrase.
-  const phrases = useMemo(() => buildCaptionPhrases({
-    words, fps, fontSize, width, format,
-    placementAt,
-    measure: measureWord,
-  }), [words, fps, fontSize, width, format, measureWord, placementAt]);
-
   // If no words, don't render
   if (!words || words.length === 0) return null;
 

@@ -10,7 +10,7 @@ import path from "node:path";
 import lockfile from "proper-lockfile";
 import type { Film } from "../src/dl/schema";
 import type { ProductionFormat, RenderedOutput } from "./pipeline/types";
-import { resolvePackageDir } from "../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "./videoPackageLoader";
 import { ensureRetimedAudio } from "./audio";
 import { assertDeliverable } from "./deliveryGate";
 import { masterAudio, type MasterResult } from "./masterAudio";

@@ -1191,7 +1191,7 @@ test("design rebuild keeps locked and unlocked owner placements", async () => {
   const { editProgramSchema } = await import("./editPlanner/schema");
   const id = "speculative-decoding-designed";
   const original = readFilm(id)!;
-  const { resolvePackageDir } = await import("../src/dl/videoPackageLoader");
+  const { resolvePackageDir } = await import("./videoPackageLoader");
   const lookFile = `${resolvePackageDir(id)}/design/look.json`;
   const look = fs.readFileSync(lookFile, "utf8");
   // This legacy design exercises the documented build path without a look plan.

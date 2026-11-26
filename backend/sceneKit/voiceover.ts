@@ -17,8 +17,8 @@ import * as path from "path";
 import { isProcTimeout, spawnSyncBounded } from "../proc";
 import dotenv from "dotenv";
 import { produceAudioPipeline } from "../audio";
-import { HOUSE_PACE, NARRATION_RATE } from "../pacingProfile";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { HOUSE_PACE, NARRATION_RATE } from "../../src/dl/pacingProfile";
+import { getVideosDir } from "../videoPackageLoader";
 import type { NarrationTiming } from "./timing";
 import { norm } from "./text";
 import type { TimedWord } from "../pcm";
@@ -71,7 +71,7 @@ export interface VoiceoverConfig {
 export type HeardWord = TimedWord;
 
 /**
- * Scene-film narration defaults. Pace and line gap are the house pace (backend/pacingProfile.ts): Kokoro spoke
+ * Scene-film narration defaults. Pace and line gap are the house pace (src/dl/pacingProfile.ts): Kokoro spoke
  * scene films at speed 1 and left 420 ms between lines before the 2026-11-21 decision, and both scale by the
  * house rate; a synthesizer without its own speed setting is re-paced by the narration pipeline instead.
  */

@@ -114,7 +114,7 @@ Every video is narrated with the owner's cloned voice (the local `vcd` service, 
 ### Stage 4: Spatial Graph & Canvas Layout (`src/dl/CanvasGraph.tsx`)
 1. **2D Node Layout**: Positions concept nodes on the continuous spatial graph with bounding boxes $(x, y, w, h)$.
 2. **Camera Framing**: Solves continuous camera framing and zoom targets across canvas nodes.
-3. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `voiceover_lines/`, `narration_log.json`, `footage/`, `visuals/`) loaded by `src/dl/videoPackageLoader.ts`.
+3. **Package Assembly**: Assembles self-contained video package under `videos/<slug>/` (`film.json`, `script.md`, `voiceover.wav`, `voiceover_lines/`, `narration_log.json`, `footage/`, `visuals/`) loaded by `backend/videoPackageLoader.ts`.
 
 ### Stage 5: Remotion Video Rendering (`src/dl/Film.tsx`)
 1. **Compositions**:

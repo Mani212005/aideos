@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildDesign } from "../designSpec/build";
 import { readFilm } from "../pipeline/filmStore";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import type { Film } from "../../src/dl/schema";
 import { CHARACTER_FILES, characterPin, type FixtureCharacter } from "./characters";
 

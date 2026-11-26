@@ -1,14 +1,14 @@
 /**
  * File Description: A small, dependency-free PNG reader and writer for the picture layer (the illustrated stage's plate and generated objects): reads a PNG's size from its header, decodes any standard PNG (every colour type and bit depth, Adam7 interlacing, palette transparency) into straight-alpha RGBA8, encodes RGBA8 as a plain PNG (the tiny synthetic test fixtures), hashes file bytes with sha256, and checks a declared picture against its file on disk. Uses only node:zlib and node:crypto, so the design check, the scene validator and the image cache read pixels the same way without a native image library.
  * Inputs and outputs: PNG bytes or a repo-relative path -> { width, height } or decoded RGBA pixels; RGBA pixels -> PNG bytes; a declared RasterSource -> the problems with its file.
- * Used by: src/dl/scene/validateSceneNode.ts, backend/pictures/cache.ts, backend/designCheck/pictures.ts, backend/designSpec/build.ts, backend/scene/loadSceneAssets.ts, tests.
+ * Used by: backend/scene/validateSceneNode.ts, backend/pictures/cache.ts, backend/designCheck/pictures.ts, backend/designSpec/build.ts, backend/scene/loadSceneAssets.ts, tests.
  */
 
 import crypto from "node:crypto";
 import fs from "node:fs";
 import zlib from "node:zlib";
 import type { RasterSource } from "../../src/dl/scene/types";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 
 /** The eight bytes every PNG starts with. */
 const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);

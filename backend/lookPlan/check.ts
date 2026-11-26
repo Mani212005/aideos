@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { safeParseLookPlan } from "./schema";
 import { fieldIssues } from "../../src/dl/schemaIssues";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { loadCharacter } from "../characters/library";

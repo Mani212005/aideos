@@ -229,7 +229,25 @@ export function CaptionObject({
     if (next) lastCardBox.current = next;
     setCardBox((previous) => (previous?.w === next?.w && previous?.h === next?.h ? previous : next));
   }, [host]);
-  useLayoutEffect(measureCard);
+  // The Player commits independently of this overlay; track card replacement and resizing directly.
+  useLayoutEffect(() => {
+    if (!host) return;
+    const resize = new ResizeObserver(measureCard);
+    let observed: HTMLElement | null = null;
+    const syncCard = () => {
+      const card = host.querySelector<HTMLElement>("[data-caption-card]");
+      if (card !== observed) {
+        if (observed) resize.unobserve(observed);
+        observed = card;
+        if (card) resize.observe(card);
+      }
+      measureCard();
+    };
+    const mutations = new MutationObserver(syncCard);
+    mutations.observe(host, { childList: true, subtree: true });
+    syncCard();
+    return () => { mutations.disconnect(); resize.disconnect(); };
+  }, [host, measureCard]);
   // Follows whichever Player is mounted now, including one replaced by Refresh preview.
   const mountedPlayer = playerRef.current;
   useEffect(() => {
