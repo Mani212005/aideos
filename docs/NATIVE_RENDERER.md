@@ -938,7 +938,7 @@ as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-g
 
 ## Not yet native
 
-Node-graph films, the other primitives, devices, inset forms other than the measured ones ([P2.6a](#p26a-the-inset-panel), [P2.6b](#p26b-the-inset-panel-on-a-camera-move)), panel stages and footage (Phase 2; its first steps, P2.1
+Node-graph films, the other primitives, devices other than the TokenStrip ([P2.5b](#p25b-the-tokenstrip-device)), inset forms other than the measured ones ([P2.6a](#p26a-the-inset-panel), [P2.6b](#p26b-the-inset-panel-on-a-camera-move)), panel stages and footage (Phase 2; its first steps, P2.1
 and P2.2a, draw the SVG filter subset of glows and drop shadows and the colour and dash offset tracks of `aideos.render/5`; P2.2b emits the flat-camera node-graph canvas and P2.2c draws flat node-graph films natively, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and nothing of the Three stage any more: the cel stage with any number of performers is carried by
