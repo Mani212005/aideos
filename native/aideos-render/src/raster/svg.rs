@@ -1,4 +1,4 @@
-//! File Description: Draws a retained SVG asset with one frame's element states, matching the browser's rendering of the same markup in src/dl/scene/svgReact.tsx: the animated transform is appended to the authored one (translate, then rotate and scale about the origin), a driven opacity replaces the authored one, `drawOn` dashes a stroke over its own length (inherited by the strokeable shapes inside a group), and line endpoint tracks move a line. A compositing layer is used only where the result needs one: a group below full opacity, or a shape with both a fill and a stroke below full opacity.
+//! File Description: Draws a retained SVG asset with one frame's element states, matching the browser's rendering of the same markup in src/dl/scene/svgReact.tsx: the animated transform is appended to the authored one (translate, then rotate and scale about the origin), a driven opacity replaces the authored one, `drawOn` dashes a stroke over its own length (inherited by the strokeable shapes inside a group), and line endpoint tracks move a line. An element with a `filter` draws into a layer whose image filter (crate::raster::filter) runs over the region resolved against its geometric bounding box, with its opacity applied after the filter as in Chrome. A compositing layer is otherwise used only where the result needs one: a group below full opacity, or a shape with both a fill and a stroke below full opacity.
 //! Inputs and outputs: a Skia canvas positioned in the asset's coordinate space, an `SvgDocument`, element states and the fonts -> pixels on the canvas.
 //! Used by: crate::raster (stage drawing).
 
@@ -6,12 +6,14 @@ use std::collections::BTreeMap;
 
 use skia_safe::textlayout::TextAlign;
 use skia_safe::{
+    canvas::SaveLayerRec,
     gradient::{shaders, Colors, Gradient as SkGradient, Interpolation},
     paint, Canvas, ClipOp, Color4f, ContourMeasureIter, Matrix, Paint as SkPaint, Path, PathEffect,
     PathFillType, Point, Rect, Shader, TileMode,
 };
 
 use crate::eval::ElementState;
+use crate::raster::filter::{self, filter_region};
 use crate::raster::text::{Fonts, TextSpec};
 use crate::svg::color::Rgba;
 use crate::svg::{
@@ -86,6 +88,87 @@ fn draw_element(
     {
         canvas.clip_path(clip, ClipOp::Intersect, true);
     }
+    let filter = e.filter.as_ref().and_then(|id| draw.doc.filters.get(id));
+    match filter {
+        None => draw_content(canvas, draw, e, &style, state, opacity, draw_on),
+        Some(f) => {
+            // The filter applies to the element as drawn, then its opacity (CSS order: filter, clip-path, opacity).
+            // An empty region, or a filter with no primitives, draws nothing.
+            if let Some(image_filter) = filter_region(f, element_bbox(draw, e, state))
+                .and_then(|region| filter::build(f, region))
+            {
+                let mut paint = SkPaint::default();
+                paint.set_image_filter(image_filter);
+                paint.set_alpha_f(opacity as f32);
+                canvas.save_layer(&SaveLayerRec::default().paint(&paint));
+                draw_content(canvas, draw, e, &style, state, 1.0, draw_on);
+                canvas.restore();
+            }
+        }
+    }
+    canvas.restore();
+}
+
+/// The line endpoint overrides an element state carries.
+fn line_override(state: Option<&ElementState>) -> LineOverride {
+    state.map_or_else(LineOverride::default, |s| LineOverride {
+        x1: s.x1,
+        y1: s.y1,
+        x2: s.x2,
+        y2: s.y2,
+    })
+}
+
+/// Joins two boxes, keeping zero-width or zero-height ones (a straight line still has a box).
+fn join(a: Option<Rect>, b: Rect) -> Rect {
+    match a {
+        None => b,
+        Some(a) => Rect::new(
+            a.left.min(b.left),
+            a.top.min(b.top),
+            a.right.max(b.right),
+            a.bottom.max(b.bottom),
+        ),
+    }
+}
+
+/// The geometric bounding box of an element in its own user space (inside its transform and animated state), as
+/// SVG `getBBox()` gives it: the fill geometry without stroke, a group's the union of its rendered children's boxes in
+/// its space. None when the element has no geometry. Text never reaches here: a bounding-box filter on text is refused
+/// at load.
+fn element_bbox(draw: &SvgDraw, e: &Element, state: Option<&ElementState>) -> Option<Rect> {
+    match &e.kind {
+        Kind::Shape(shape) => shape
+            .to_path(line_override(state))
+            .map(|p| p.compute_tight_bounds()),
+        Kind::Text(_) => None,
+        Kind::Group => {
+            let mut acc: Option<Rect> = None;
+            for child in e.children.iter().filter(|c| !c.hidden) {
+                let child_state = child.id.as_ref().and_then(|id| draw.states.get(id));
+                if let Some(b) = element_bbox(draw, child, child_state) {
+                    let mut m = child.transform;
+                    if let Some(s) = child_state {
+                        m = Matrix::concat(&m, &state_matrix(s));
+                    }
+                    acc = Some(join(acc, m.map_rect(b).0));
+                }
+            }
+            acc
+        }
+    }
+}
+
+/// Draws an element's own content (a group's children, a shape or a text run) at `opacity`, in its placed space.
+fn draw_content(
+    canvas: &Canvas,
+    draw: &SvgDraw,
+    e: &Element,
+    style: &ComputedStyle,
+    state: Option<&ElementState>,
+    opacity: f64,
+    draw_on: Option<f64>,
+) {
     match &e.kind {
         Kind::Group => {
             let layered = opacity < 1.0;
@@ -93,26 +176,20 @@ fn draw_element(
                 canvas.save_layer_alpha_f(None, opacity as f32);
             }
             for child in &e.children {
-                draw_element(canvas, draw, child, &style, draw_on);
+                draw_element(canvas, draw, child, style, draw_on);
             }
             if layered {
                 canvas.restore();
             }
         }
         Kind::Shape(shape) => {
-            let line = state.map_or_else(LineOverride::default, |s| LineOverride {
-                x1: s.x1,
-                y1: s.y1,
-                x2: s.x2,
-                y2: s.y2,
-            });
-            if let Some(path) = shape.to_path(line) {
+            if let Some(path) = shape.to_path(line_override(state)) {
                 draw_shape(
                     canvas,
                     draw,
                     &path,
                     shape.is_line(),
-                    &style,
+                    style,
                     opacity,
                     draw_on,
                 );
@@ -120,11 +197,10 @@ fn draw_element(
         }
         Kind::Text(run) => {
             if style.visible {
-                draw_text(canvas, draw, run.x, run.y, &run.content, &style, opacity);
+                draw_text(canvas, draw, run.x, run.y, &run.content, style, opacity);
             }
         }
     }
-    canvas.restore();
 }
 
 /// Builds a paint for a fill or stroke paint value, or None when it paints nothing.

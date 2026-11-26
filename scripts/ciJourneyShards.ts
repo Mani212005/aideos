@@ -22,7 +22,7 @@ export const DEFAULT_WEIGHT_SECONDS = 60;
 /**
  * Median seconds of each journey file on a GitHub runner, summed over its tests, from 8 journeys
  * jobs of 13 to 14 November 2026 (data: per-test `duration_ms` of the TAP log), except the P4.5 additions (the native determinism journey in
- * j1_pipeline, about 40 s, and native_character_goldens, about 40 s) and the illustrated stage's pictures_stage (13 s on the Linux laptop, planned at 20 s), which are local measurements until a CI run replaces them. Keys are paths
+ * j1_pipeline, about 40 s, and native_character_goldens, about 40 s) the illustrated stage's pictures_stage (13 s on the Linux laptop, planned at 20 s) and svg_filters (12 s on the Linux laptop, planned at 15 s), which are local measurements until a CI run replaces them. Keys are paths
  * relative to backend/journeys. The table only balances the shards: a stale or missing entry costs
  * balance, never coverage, because every file on disk is planned.
  */
@@ -48,6 +48,7 @@ export const JOURNEY_WEIGHTS_SECONDS: Readonly<Record<string, number>> = {
   "j9_svg_repeatability.journey.ts": 28,
   "j3_studio_edit.journey.ts": 28,
   "pictures_stage.journey.ts": 20,
+  "svg_filters.journey.ts": 15,
   "character_resume.journey.ts": 22,
   "j15_legacy_sfx_preview.journey.ts": 12,
   "j8_failures.journey.ts": 7,

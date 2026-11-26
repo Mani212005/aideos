@@ -5,12 +5,11 @@
  */
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { decodeFrame, frameDiff, journey } from "./harness";
 import { TOLERANCE } from "./goldenCompare";
-import { boxAverage, nativeJourneyProblem, nativeJourneysRequired, renderNativeFrame, stageNativePackage } from "./nativeFrames";
+import { STAGE_CROP, STAGE_SSIM_MIN, boxAverage, nativeJourneyProblem, nativeJourneysRequired, renderNativeFrame, ssim, stageNativePackage } from "./nativeFrames";
 import { openFilm } from "./remotionFrames";
 import { buildDesign } from "../designSpec/build";
 import { readFilm } from "../pipeline/filmStore";
@@ -20,7 +19,7 @@ import { createSelectedRenderer } from "../rendererSelection";
 import { createNativeRenderer } from "../nativeRenderer";
 import { encodePng } from "../pictures/png";
 import { buildReel } from "../reelCut/build";
-import { picturePackage, stretchPastReelCap, writePictureCut } from "../testSupport/pictureReelCut";
+import { picturePackage, silentWav, stretchPastReelCap, writePictureCut } from "../testSupport/pictureReelCut";
 import { offPalettePicture } from "../testSupport/pictureFixtures";
 import { resolvePackageDir } from "../videoPackageLoader";
 import type { Renderer } from "../renderJob";
@@ -29,22 +28,9 @@ import type { Film } from "../../src/dl/schema";
 
 const SLUG = "pictures-stage";
 const GOLDEN_ROOT = path.resolve(__dirname, "../../native/aideos-render/fixtures/golden");
-/** Native against Remotion on the stage (above the caption band): the bar of the native parity reports in docs/NATIVE_RENDERER.md. */
-const STAGE_SSIM_MIN = 0.995;
-/** The stage region compared per format: the frame above the caption band and the chapter rail. */
-const STAGE_CROP: Record<NativeFormat, string> = { long: "crop=1920:780:0:0", reel: "crop=1080:1400:0:0" };
 
 const problem = nativeJourneyProblem();
 const skip = problem && !nativeJourneysRequired() ? problem : false;
-
-/** Writes a silent 8 kHz WAV narration of `seconds` (the fixture package has no recording). */
-function silentWav(file: string, seconds: number): void {
-  const n = Math.round(8000 * seconds);
-  const h = Buffer.alloc(44);
-  h.write("RIFF", 0); h.writeUInt32LE(36 + n, 4); h.write("WAVEfmt ", 8); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
-  h.writeUInt32LE(8000, 24); h.writeUInt32LE(8000, 28); h.writeUInt16LE(1, 32); h.writeUInt16LE(8, 34); h.write("data", 36); h.writeUInt32LE(n, 40);
-  fs.writeFileSync(file, Buffer.concat([h, Buffer.alloc(n, 128)]));
-}
 
 /** Builds the fixture through the real design build (picture cache, pins and every picture rule) and returns its film per format. */
 function buildFixture(): Record<NativeFormat, Film> {
@@ -52,14 +38,6 @@ function buildFixture(): Record<NativeFormat, Film> {
   const built = buildDesign(SLUG, "hand-built");
   assert.equal(built.state, "passed", `the fixture builds: ${JSON.stringify(built.errors.concat(built.findings.filter((f) => f.severity === "error").map((f) => f.message)))}`);
   return { long: readFilm(SLUG)!, reel: reelForRender(SLUG)! };
-}
-
-/** The SSIM of two PNGs over one crop, measured by ffmpeg. */
-function ssim(a: string, b: string, crop: string): number {
-  const run = spawnSync("ffmpeg", ["-nostdin", "-i", a, "-i", b, "-lavfi", `[0]${crop}[x];[1]${crop}[y];[x][y]ssim`, "-f", "null", "-"], { encoding: "utf8" });
-  const match = /All:([0-9.]+)/.exec(String(run.stderr));
-  if (run.status !== 0 || !match) throw new Error(`ffmpeg could not measure the SSIM of ${path.basename(a)}: ${String(run.stderr).slice(-300)}`);
-  return Number(match[1]);
 }
 
 /** The golden frames of one format of the fixture, from the committed cases. */

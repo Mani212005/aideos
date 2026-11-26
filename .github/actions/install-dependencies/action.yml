@@ -1,24 +1,35 @@
-# File Description: Composite action that installs root and editor dependencies for every CI job, restoring both node_modules trees from one cache and running `npm ci` only on a miss.
-# Inputs and outputs: a checked-out repo with Node on PATH -> root `node_modules` and `editor/node_modules` ready, generated film shadows written, `cache-hit` output.
+# File Description: Composite action that installs root and editor dependencies for every CI job with the toolchain AIDEOS_TOOLCHAIN names (scripts/toolchain.ts): npm (the default) restores both node_modules trees from one cache and runs `npm ci` only on a miss; bun installs Bun (pinned by .bun-version) and does the same with `bun install --frozen-lockfile`, reading the same package-lock.json files.
+# Inputs and outputs: a checked-out repo with Node on PATH and AIDEOS_TOOLCHAIN in the environment -> root `node_modules` and `editor/node_modules` ready (bun on PATH on the bun path), generated film shadows written, `cache-hit` output.
 # Used by: .github/workflows/ci.yml (static, unit, journeys and legacy jobs). Documented in docs/CI.md.
 name: Install dependencies
-description: Restore node_modules from a cache keyed on both lockfiles, both package.json files, .npmrc, the OS, the CPU and the exact Node version, or run npm ci and save it.
+description: Restore node_modules from a cache keyed on the toolchain, both lockfiles, both package.json files, the toolchain settings, the OS, the CPU and the exact Node (and Bun) version, or install and save it.
 
 outputs:
   cache-hit:
-    description: "'true' when node_modules came from the cache and npm ci was skipped."
-    value: ${{ steps.modules.outputs.cache-hit }}
+    description: "'true' when node_modules came from the cache and the install was skipped."
+    value: ${{ steps.modules.outputs.cache-hit || steps.bun-modules.outputs.cache-hit }}
 
 runs:
   using: composite
   steps:
+    # An unknown toolchain fails here, before anything is installed (scripts/toolchain.ts refuses it the same way).
+    - name: Check the toolchain
+      shell: bash
+      run: |
+        case "${AIDEOS_TOOLCHAIN:-npm}" in
+          npm|bun) echo "toolchain: ${AIDEOS_TOOLCHAIN:-npm}" ;;
+          *) echo "::error::AIDEOS_TOOLCHAIN must be npm or bun, got '${AIDEOS_TOOLCHAIN}'"; exit 1 ;;
+        esac
     # The exact Node version goes into the key because native addons (onnxruntime-node, sharp) are tied to it.
     - name: Read the Node version
       id: node
       shell: bash
       run: echo "version=$(node --version)" >> "$GITHUB_OUTPUT"
+
+    # npm path (the default).
     - name: Restore node_modules
       id: modules
+      if: env.AIDEOS_TOOLCHAIN != 'bun'
       uses: actions/cache/restore@v4
       with:
         path: |
@@ -27,13 +38,13 @@ runs:
         key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.version }}-${{ hashFiles('package.json', 'package-lock.json', 'editor/package.json', 'editor/package-lock.json', '.npmrc') }}
     # npm ci runs the root postinstall, which also runs `npm --prefix editor ci` and ensure_generated.
     - name: Install with npm ci (cache miss)
-      if: steps.modules.outputs.cache-hit != 'true'
+      if: env.AIDEOS_TOOLCHAIN != 'bun' && steps.modules.outputs.cache-hit != 'true'
       shell: bash
       run: npm ci
     # Saved right after the install, before any job step writes into node_modules, so every job shares one clean tree.
     # Several jobs miss at once on a cold key: the first save wins and the others only log a warning.
     - name: Save node_modules (cache miss)
-      if: steps.modules.outputs.cache-hit != 'true'
+      if: env.AIDEOS_TOOLCHAIN != 'bun' && steps.modules.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: |
@@ -42,6 +53,42 @@ runs:
         key: ${{ steps.modules.outputs.cache-primary-key }}
     # The postinstall of a cache hit never ran, so write the generated film shadows and bundled SVG assets here.
     - name: Write generated files (cache hit)
-      if: steps.modules.outputs.cache-hit == 'true'
+      if: env.AIDEOS_TOOLCHAIN != 'bun' && steps.modules.outputs.cache-hit == 'true'
       shell: bash
       run: npm run ensure:generated
+
+    # bun path: the same lockfiles, its own cache key (bun lays node_modules out differently from npm).
+    - name: Install Bun
+      if: env.AIDEOS_TOOLCHAIN == 'bun'
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      with:
+        bun-version-file: .bun-version
+    - name: Restore node_modules (bun)
+      id: bun-modules
+      if: env.AIDEOS_TOOLCHAIN == 'bun'
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          node_modules
+          editor/node_modules
+        key: bun-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.version }}-${{ hashFiles('.bun-version', 'bunfig.toml', 'package.json', 'package-lock.json', 'editor/package.json', 'editor/package-lock.json') }}
+    # --ignore-scripts skips the root postinstall (it calls npm), whose two commands run here instead. Dependency
+    # install scripts are untrusted under bun anyway (onnxruntime-node, protobufjs, @google/genai): none is needed.
+    - name: Install with bun install (cache miss)
+      if: env.AIDEOS_TOOLCHAIN == 'bun' && steps.bun-modules.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        bun install --frozen-lockfile --ignore-scripts
+        bun install --cwd editor --frozen-lockfile --ignore-scripts
+    - name: Save node_modules (bun, cache miss)
+      if: env.AIDEOS_TOOLCHAIN == 'bun' && steps.bun-modules.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          node_modules
+          editor/node_modules
+        key: ${{ steps.bun-modules.outputs.cache-primary-key }}
+    - name: Write generated files (bun)
+      if: env.AIDEOS_TOOLCHAIN == 'bun'
+      shell: bash
+      run: bun scripts/ensure_generated.ts

@@ -6,8 +6,9 @@
  * the GitHub step summary when there is one.
  * The journeys job can run as one of N parallel shards (`--shard 2/3`): a deterministic plan from
  * scripts/ciJourneyShards.ts gives each shard a disjoint set of journey files, and exactly one shard the studio smoke step.
- * Inputs and outputs: job names (static, unit, journeys, legacy, nightly; none means the PR set) and flags (--bail, --list, --shard i/n for the journeys job) -> exit code 0 when every step passed or was skipped, 1 otherwise.
- * Used by: npm run ci, .github/workflows/*.yml, .no-mistakes.yaml, scripts/ci.test.ts.
+ * Every step has an npm form (the default) and a bun form; AIDEOS_TOOLCHAIN (scripts/toolchain.ts) picks which one runs.
+ * Inputs and outputs: job names (static, unit, journeys, legacy, nightly; none means the PR set), flags (--bail, --list, --shard i/n for the journeys job) and AIDEOS_TOOLCHAIN -> exit code 0 when every step passed or was skipped, 1 otherwise.
+ * Used by: npm run ci (bun scripts/ci.ts on the bun path), .github/workflows/*.yml, .no-mistakes.yaml, scripts/ci.test.ts.
  */
 
 import { environment } from "../backend/env";
@@ -20,14 +21,17 @@ import path from "node:path";
 import { clearGoldenOutcome, readGoldenOutcome } from "../backend/journeys/goldenResult";
 import { findChromeBinary } from "../backend/scene/chromeBinary";
 import { parseShardSpec, planJourneyShard, type ShardPlan, type ShardSpec } from "./ciJourneyShards";
+import { activeToolchain, pick, testCommand, withTestReport, type Toolchain } from "./toolchain";
 
 const ROOT = repositoryRoot;
 
 /** One command of a job. `skip` returns a reason to leave the step out on this machine. */
 export interface CiStep {
   name: string;
-  /** Program and arguments, run from the repo root without a shell. */
+  /** Program and arguments, run from the repo root (or `cwd`) without a shell. */
   cmd: string[];
+  /** Working directory relative to the repo root; the repo root when absent. */
+  cwd?: string;
   /** Rewrites the command just before it runs (used to find the right ruff launcher). */
   resolve?: (cmd: string[]) => string[];
   /** Extra environment for this step only. */
@@ -126,126 +130,166 @@ const goldenVerdict: CiStep["verdict"] = {
   },
 };
 
-/** Pays a fresh runner's slow first Chrome launch before any test bounds a launch; skipped on a laptop without Chrome, never under CI. */
-const warmChromeStep: CiStep = {
-  name: "warm the system Chrome (first launch on a fresh runner)",
-  cmd: ["npx", "tsx", "scripts/warmChrome.ts"],
-  skip: () => (findChromeBinary() || inCi() ? null : "no Chrome installed; CI always runs it"),
-};
+/** Every job for one toolchain. Add a step here (both its npm and its bun form) and it runs in CI, in the local validation tool and for contributors. */
+export function jobsFor(toolchain: Toolchain): CiJob[] {
+  /** A step command in its npm form and its bun form; the active toolchain picks one. */
+  const cmd = (npm: string[], bun: string[]): string[] => pick(toolchain, { npm, bun });
 
-/** The node test command for the journeys: every journey file by glob, or exactly the given files (one shard). */
-const journeyTestCmd = (files?: string[]): string[] => [
-  "node",
-  "--import",
-  "tsx",
-  "--import",
-  "./backend/testSupport/fixtureVideosDir.ts",
-  "--test",
-  "--test-concurrency=1",
-  ...(files ?? ["backend/journeys/**/*.journey.ts"]),
-];
+  /** Pays a fresh runner's slow first Chrome launch before any test bounds a launch; skipped on a laptop without Chrome, never under CI. */
+  const warmChromeStep: CiStep = {
+    name: "warm the system Chrome (first launch on a fresh runner)",
+    cmd: cmd(["npx", "tsx", "scripts/warmChrome.ts"], ["bun", "scripts/warmChrome.ts"]),
+    skip: () => (findChromeBinary() || inCi() ? null : "no Chrome installed; CI always runs it"),
+  };
 
-/** The journey tests. In a shard it runs only that shard's files; a shard with none is skipped, never widened (a bare `node --test` would run everything). */
-const journeyTestsStep: CiStep = {
-  name: "journey tests",
-  cmd: journeyTestCmd(),
-  // The studio journeys (backend/journeys/j3_studio_edit.journey.ts) need Chrome: under CI a missing one fails, never skips.
-  env: { ...softwareGl(), npm_config_loglevel: "silent", ...(inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {}) },
-  todoCases: true,
-  forShard: (plan) => ({
-    ...journeyTestsStep,
-    forShard: undefined,
-    cmd: journeyTestCmd(plan.journeyFiles),
-    skip: () => (plan.journeyFiles.length ? null : `no journey files are planned for shard ${plan.shard.index}/${plan.shard.total}`),
-  }),
-};
+  /** The journey tests. In a shard it runs only that shard's files; a shard with none is skipped, never widened (a bare test runner would run everything). */
+  const journeyTestsStep: CiStep = {
+    name: "journey tests",
+    cmd: testCommand(toolchain, ["backend/journeys/**/*.journey.ts"]),
+    // The studio journeys (backend/journeys/j3_studio_edit.journey.ts) need Chrome: under CI a missing one fails, never skips.
+    env: { ...softwareGl(), npm_config_loglevel: "silent", ...(inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {}) },
+    todoCases: true,
+    forShard: (plan) => ({
+      ...journeyTestsStep,
+      forShard: undefined,
+      cmd: testCommand(toolchain, plan.journeyFiles),
+      skip: () => (plan.journeyFiles.length ? null : `no journey files are planned for shard ${plan.shard.index}/${plan.shard.total}`),
+    }),
+  };
 
-/** The studio smoke check. In a shard it runs only where the plan put it; every other shard reports it skipped. */
-const studioSmokeStep: CiStep = {
-  name: "studio smoke and scrub",
-  cmd: ["npm", "run", "smoke:studio"],
-  env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {},
-  forShard: (plan) => ({
-    ...studioSmokeStep,
-    forShard: undefined,
-    skip: () => (plan.runsSmoke ? null : `runs in another shard (this is ${plan.shard.index}/${plan.shard.total})`),
-  }),
-};
+  /** The studio smoke check. In a shard it runs only where the plan put it; every other shard reports it skipped. */
+  const studioSmokeStep: CiStep = {
+    name: "studio smoke and scrub",
+    cmd: cmd(["npm", "run", "smoke:studio"], ["bun", "scripts/smoke_studio.ts"]),
+    env: inCi() ? { AIDEOS_SMOKE_REQUIRED: "1" } : {},
+    forShard: (plan) => ({
+      ...studioSmokeStep,
+      forShard: undefined,
+      skip: () => (plan.runsSmoke ? null : `runs in another shard (this is ${plan.shard.index}/${plan.shard.total})`),
+    }),
+  };
 
-/** Every job. Add a step here and it runs in CI, in the local validation tool and for contributors. */
-export const JOBS: CiJob[] = [
-  {
-    id: "static",
-    title: "Static checks: headers, wiring, eslint, type-checks, editor build, ruff",
-    steps: [
-      { name: "ensure generated files", cmd: ["npm", "run", "ensure:generated", "--silent"] },
-      { name: "file headers", cmd: ["npx", "tsx", "scripts/check_headers.ts"] },
-      { name: "every test file is wired", cmd: ["npx", "tsx", "scripts/check_tests_wired.ts"] },
-      { name: "eslint (src, backend, scripts, editor, test_fixtures/stillTalking)", cmd: ["npx", "eslint", "src", "backend", "scripts", "editor/src", "editor/vite.config.ts", "test_fixtures/stillTalking"] },
-      { name: "tsc root (tracked source only)", cmd: ["npx", "tsx", "scripts/typecheck_tracked.ts"] },
-      { name: "oxlint editor", cmd: ["npm", "--prefix", "editor", "run", "lint"] },
-      { name: "editor build (tsc -b plus vite)", cmd: ["npm", "--prefix", "editor", "run", "build"] },
-      ruffStep("ruff check", ["check", "."]),
-      ruffStep("ruff format --check", ["format", "--check", "."]),
-    ],
-  },
-  {
-    id: "unit",
-    title: "Unit and feature tests, fixture design checks, evals",
-    steps: [
-      warmChromeStep,
-      {
-        name: "unit and feature tests",
-        cmd: [
-          "node",
-          "--import",
-          "tsx",
-          "--import",
-          "./backend/testSupport/fixtureVideosDir.ts",
-          "--test",
-          "--test-concurrency=1",
-          "backend/**/*.test.ts",
-          "scripts/**/*.test.ts",
-        ],
-        todoCases: true,
-      },
-      {
-        name: "native render IR and renderer (cargo test)",
-        cmd: ["cargo", "test", "--locked", "--manifest-path", "native/Cargo.toml"],
-        skip: cargoMissing,
-      },
-      { name: "validate hello-scene", cmd: ["npm", "run", "validate", "--silent", "--", "examples/hello-scene/film.json"] },
-      {
-        name: "design:check fixtures",
-        cmd: ["npm", "run", "design:check", "--silent", "--", "--all"],
-        env: { AIDEOS_VIDEOS_DIR: "test_fixtures/packages" },
-      },
-      { name: "eval:look (every committed look plan parses)", cmd: ["npm", "run", "eval:look", "--silent", "--", "--plans", "test_fixtures/packages", "--min", "0"] },
-      { name: "eval:visuals", cmd: ["npm", "run", "eval:visuals", "--silent"] },
-      { name: "performance:check", cmd: ["npm", "run", "performance:check", "--silent"] },
-    ],
-  },
-  {
-    id: "journeys",
-    title: "Headless user journeys: character and Three-stage checks, real pipeline, real render, real studio",
-    steps: [
-      warmChromeStep,
-      journeyTestsStep,
-      studioSmokeStep,
-    ],
-  },
-  {
-    id: "legacy",
-    title: "Legacy regression: golden frames of existing SVG and template films",
-    // Pin Fontconfig to RGB subpixel text rendering so local Linux runs reproduce CI baselines.
-    steps: [{ name: "golden frames", cmd: ["npm", "run", "test:legacy"], env: { ...softwareGl(), FONTCONFIG_FILE: path.join(ROOT, "scripts/golden-fonts.conf") }, skip: notLinux, verdict: goldenVerdict }],
-  },
-  {
-    id: "nightly",
-    title: "Nightly: longer render with time, memory and bundle-size budgets",
-    steps: [{ name: "render budget", cmd: ["npx", "tsx", "scripts/nightly_budget.ts"], env: softwareGl() }],
-  },
-];
+  /** Bun only: npm's `presmoke:studio` pre-hook regenerates the files the journey tests may have left changed; the bun path runs it as a step, in the shard that runs the smoke. */
+  const ensureGeneratedBeforeSmokeSteps: CiStep[] = toolchain === "bun"
+    ? [
+        {
+          name: "ensure generated files",
+          cmd: ["bun", "scripts/ensure_generated.ts"],
+          forShard: (plan) => ({
+            name: "ensure generated files",
+            cmd: ["bun", "scripts/ensure_generated.ts"],
+            skip: () => (plan.runsSmoke ? null : `runs in another shard (this is ${plan.shard.index}/${plan.shard.total})`),
+          }),
+        },
+      ]
+    : [];
+
+  /** The editor build: one npm script on the npm path; on the bun path its two commands run on the Bun runtime in editor/ (no npm pre-hook). */
+  const editorBuildSteps: CiStep[] = toolchain === "bun"
+    ? [
+        { name: "editor build (tsc -b)", cmd: ["bun", "x", "--bun", "--no-install", "tsc", "-b"], cwd: "editor" },
+        { name: "editor build (vite build)", cmd: ["bun", "x", "--bun", "--no-install", "vite", "build"], cwd: "editor" },
+      ]
+    : [{ name: "editor build (tsc -b plus vite)", cmd: ["npm", "--prefix", "editor", "run", "build"] }];
+
+  return [
+    {
+      id: "static",
+      title: "Static checks: headers, wiring, eslint, type-checks, editor build, ruff",
+      steps: [
+        { name: "ensure generated files", cmd: cmd(["npm", "run", "ensure:generated", "--silent"], ["bun", "scripts/ensure_generated.ts"]) },
+        { name: "file headers", cmd: cmd(["npx", "tsx", "scripts/check_headers.ts"], ["bun", "scripts/check_headers.ts"]) },
+        { name: "every test file is wired", cmd: cmd(["npx", "tsx", "scripts/check_tests_wired.ts"], ["bun", "scripts/check_tests_wired.ts"]) },
+        {
+          name: "eslint (src, backend, scripts, editor, test_fixtures/stillTalking)",
+          cmd: [
+            ...cmd(["npx", "eslint"], ["bun", "x", "--bun", "--no-install", "eslint"]),
+            "src", "backend", "scripts", "editor/src", "editor/vite.config.ts", "test_fixtures/stillTalking",
+          ],
+        },
+        { name: "tsc root (tracked source only)", cmd: cmd(["npx", "tsx", "scripts/typecheck_tracked.ts"], ["bun", "scripts/typecheck_tracked.ts"]) },
+        toolchain === "bun"
+          ? { name: "oxlint editor", cmd: ["bun", "x", "--no-install", "oxlint"], cwd: "editor" }
+          : { name: "oxlint editor", cmd: ["npm", "--prefix", "editor", "run", "lint"] },
+        ...editorBuildSteps,
+        ruffStep("ruff check", ["check", "."]),
+        ruffStep("ruff format --check", ["format", "--check", "."]),
+      ],
+    },
+    {
+      id: "unit",
+      title: "Unit and feature tests, fixture design checks, evals",
+      steps: [
+        warmChromeStep,
+        {
+          name: "unit and feature tests",
+          cmd: testCommand(toolchain, ["backend/**/*.test.ts", "scripts/**/*.test.ts"]),
+          todoCases: true,
+        },
+        {
+          name: "native render IR and renderer (cargo test)",
+          cmd: ["cargo", "test", "--locked", "--manifest-path", "native/Cargo.toml"],
+          skip: cargoMissing,
+        },
+        {
+          name: "validate hello-scene",
+          cmd: cmd(["npm", "run", "validate", "--silent", "--", "examples/hello-scene/film.json"], ["bun", "scripts/validate_film.ts", "examples/hello-scene/film.json"]),
+        },
+        {
+          name: "design:check fixtures",
+          cmd: cmd(["npm", "run", "design:check", "--silent", "--", "--all"], ["bun", "backend/cli.ts", "design-check", "--all"]),
+          env: { AIDEOS_VIDEOS_DIR: "test_fixtures/packages" },
+        },
+        {
+          name: "eval:look (every committed look plan parses)",
+          cmd: cmd(
+            ["npm", "run", "eval:look", "--silent", "--", "--plans", "test_fixtures/packages", "--min", "0"],
+            ["bun", "backend/eval/lookEval.ts", "--plans", "test_fixtures/packages", "--min", "0"],
+          ),
+        },
+        { name: "eval:visuals", cmd: cmd(["npm", "run", "eval:visuals", "--silent"], ["bun", "backend/eval/shotVisualEval.ts"]) },
+        { name: "performance:check", cmd: cmd(["npm", "run", "performance:check", "--silent"], ["bun", "scripts/performance_check.ts"]) },
+      ],
+    },
+    {
+      id: "journeys",
+      title: "Headless user journeys: character and Three-stage checks, real pipeline, real render, real studio",
+      steps: [
+        warmChromeStep,
+        journeyTestsStep,
+        ...ensureGeneratedBeforeSmokeSteps,
+        studioSmokeStep,
+      ],
+    },
+    {
+      id: "legacy",
+      title: "Legacy regression: golden frames of existing SVG and template films",
+      // npm's `test:legacy` pre-hook rewrites the generated files the unit and journey tests may have left changed; the bun path runs it as a step.
+      // Pin Fontconfig to RGB subpixel text rendering so local Linux runs reproduce CI baselines.
+      steps: [
+        ...(toolchain === "bun" ? [{ name: "ensure generated files", cmd: ["bun", "scripts/ensure_generated.ts"], skip: notLinux }] : []),
+        {
+          name: "golden frames",
+          cmd: cmd(["npm", "run", "test:legacy"], testCommand("bun", ["backend/journeys/**/*.golden.ts"])),
+          env: { ...softwareGl(), FONTCONFIG_FILE: path.join(ROOT, "scripts/golden-fonts.conf") },
+          skip: notLinux,
+          verdict: goldenVerdict,
+        },
+      ],
+    },
+    {
+      id: "nightly",
+      title: "Nightly: longer render with time, memory and bundle-size budgets",
+      steps: [{ name: "render budget", cmd: cmd(["npx", "tsx", "scripts/nightly_budget.ts"], ["bun", "scripts/nightly_budget.ts"]), env: softwareGl() }],
+    },
+  ];
+}
+
+/** The toolchain this process runs CI with (AIDEOS_TOOLCHAIN; npm when unset). */
+export const TOOLCHAIN: Toolchain = activeToolchain(environment);
+
+/** Every job, for the active toolchain. */
+export const JOBS: CiJob[] = jobsFor(TOOLCHAIN);
 
 /** The jobs `npm run ci` runs when none is named: everything a pull request runs. */
 export const PR_JOBS = ["static", "unit", "journeys", "legacy"];
@@ -262,18 +306,9 @@ export function runStep(job: CiJob, step: CiStep): Promise<StepResult> {
     let skippedNames: string[] = [];
     const reportDir = step.todoCases ? fs.mkdtempSync(path.join(ROOT, ".ci-todo-report-")) : null;
     const reportPath = reportDir ? path.join(reportDir, "todos.json") : null;
-    const runCmd = reportPath
-      ? [
-          cmd[0],
-          "--test-reporter=tap",
-          "--test-reporter=./scripts/ciTodoReporter.cjs",
-          "--test-reporter-destination=stdout",
-          `--test-reporter-destination=${reportPath}`,
-          ...cmd.slice(1),
-        ]
-      : cmd;
+    const runCmd = reportPath ? withTestReport(cmd, reportPath) : cmd;
     const child = spawn(runCmd[0], runCmd.slice(1), {
-      cwd: ROOT,
+      cwd: step.cwd ? path.join(ROOT, step.cwd) : ROOT,
       stdio: step.todoCases ? ["inherit", "pipe", "inherit"] : "inherit",
       env: { ...environment, ...step.env },
     });

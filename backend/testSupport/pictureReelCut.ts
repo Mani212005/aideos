@@ -1,7 +1,7 @@
 /**
- * File Description: Test fixture for a picture film whose reel must be cut: copies the synthetic pictures-stage package (tiny generated PNGs, pinned in its design.json, never real art) into a fresh package, builds its design, stretches it past the reel cap and writes a checked cut with measured-style narration stubs. Also holds the shared narration stub that gives exact shot boundaries and word times.
+ * File Description: Test fixture for a picture film whose reel must be cut: copies the synthetic pictures-stage package (tiny generated PNGs, pinned in its design.json, never real art) into a fresh package, builds its design, stretches it past the reel cap and writes a checked cut with measured-style narration stubs. Also holds the shared narration stub that gives exact shot boundaries and word times, and the silent WAV that stands in for a fixture's missing recording.
  * Inputs and outputs: a new slug -> a built long film, a reel cut file and a narrator stub that needs no TTS or network.
- * Used by: backend/reelCut/build.test.ts and backend/journeys/pictures_stage.journey.ts.
+ * Used by: backend/reelCut/build.test.ts, backend/journeys/pictures_stage.journey.ts and backend/journeys/svg_filters.journey.ts.
  */
 
 import fs from "node:fs";
@@ -22,6 +22,15 @@ const STRETCH = 20;
 const TIGHT_NARRATION: Record<string, string> = { plate: "One dark stage holds every piece.", orb: "An orb arrives and settles.", chip: "Then a chip joins the orb on the stage." };
 /** The measured length of each reel shot, in seconds. */
 const REEL_SHOT_SECONDS = [3, 3, 4];
+
+/** Writes a silent 8 kHz WAV narration of `seconds` (the fixture package has no recording). */
+export function silentWav(file: string, seconds: number): void {
+  const n = Math.round(8000 * seconds);
+  const h = Buffer.alloc(44);
+  h.write("RIFF", 0); h.writeUInt32LE(36 + n, 4); h.write("WAVEfmt ", 8); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
+  h.writeUInt32LE(8000, 24); h.writeUInt32LE(8000, 28); h.writeUInt16LE(1, 32); h.writeUInt16LE(8, 34); h.write("data", 36); h.writeUInt32LE(n, 40);
+  fs.writeFileSync(file, Buffer.concat([h, Buffer.alloc(n, 128)]));
+}
 
 /** Makes a narration result with exact shot boundaries and evenly spaced words for the real cue matcher. */
 export function narration(texts: string[], durations: number[], dir = ""): ProduceAudioResult {
