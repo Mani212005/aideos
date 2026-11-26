@@ -385,8 +385,8 @@ differ per format.
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
-music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter in a film with a scene, P2.6a and P2.6b), more than one block per shot and blocks other than
-`TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
+music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter in a film with a scene, P2.6a and P2.6b), more than one block per shot (except a `TextReveal` followed by a `Body`, P2.5a) and blocks other than
+`TextReveal`, `StatCounter` and `Body` (a `Body` only under a headline, at a measured body size). Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
 carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid
@@ -676,7 +676,8 @@ the fallback for everything not yet native:
 | P2.3 | the node-graph camera angles other than `flat` (`getCameraPerspective`: CSS 3D perspective), a 4 x 4 perspective transform on the stage | planned |
 | P2.4a | the `blueprint-grid` and `subtle-dots` theme textures, lowered to explicit shapes in the `aideos.render/7` underlay (frame space, under the stage), behind a parity journey ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.4b | the `paper-fibers` texture of `paper-white`, `parchment` and `charcoal`: Chrome draws it as a flat darkening (the filter's `multiply` blend with the rect's black fill leaves no grain), lowered to that in the `/7` underlay, and a card's backdrop starts from the darkened canvas ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
-| P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), several blocks per shot, panels other than `frame` | planned |
+| P2.5a | the compiler's text card, a `TextReveal` headline followed by its `Body` support copy, with Chrome's `text-wrap: pretty` line breaking, behind a parity journey ([P2.5a](#p25a-body-copy-under-a-headline)) | done |
+| P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), other block combinations, panels other than `frame` | planned |
 | P2.6a | the `inset` panel holding exactly one StatCounter on a cut shot that is not the first, in a film with a scene, behind a parity journey ([P2.6a](#p26a-the-inset-panel)) | done |
 | P2.6b | the `inset` panel on the first shot, and one that opens on a camera move (its open and close fade, its content's delayed fade and entrance), behind the same journey ([P2.6b](#p26b-the-inset-panel-on-a-camera-move)) | done |
 | P2.6 | devices in the inset, an inset with no block, an inset in a node-graph film | planned |
@@ -777,6 +778,33 @@ all at or above 0.995 (lowest 0.99513 and 0.99559).
 The textures are drawn for node-graph films only: a film with a scene (an SVG scene film, a Three
 stage or a character film) on one of these themes is refused ("the texture over a scene has not been measured against Remotion
 yet") until a journey measures the texture together with a scene.
+
+### P2.5a Body copy under a headline
+
+The compiler's text card is a headline and, when a beat has a second on-screen line, its support copy (`design.ts`
+`buildTextBlocks`: a `TextReveal` then a `Body`). `Film.tsx` stacks them in the stage's centred column (a 2.5-grid gap,
+`justify-content: center`). `Body` sets Geist 400 at the body size in the muted colour, left-aligned, in a box as wide as its
+text up to its measure (680 px on the long frame, the stage on the reel) and centred, with `line-height` 1.5 and
+`text-wrap: pretty`. Its line breaks are the hard part:
+
+- Chrome's `text-wrap: pretty` is Blink's `ScoreLineBreaker`, ported in `backend/renderIr/bodyWrap.ts`: the greedy breaker, then,
+  when the paragraph's last line is a single word narrower than a third of the line, a dynamic programme over the last four
+  lines (squared slack per line, a free last line, a per-line penalty of `4 * width * size`, an orphan penalty on the last break),
+  kept only when it finds as many lines; single precision as Blink.
+- Remotion's Chrome runs with `--font-render-hinting=none`, so glyphs are placed at subpixels. Its Geist 400 advances at 24 px
+  equal the native shaper's at 24 px, but at 33.6 px (the long frame's body size) they equal the native shaper's at 33.585 px
+  (measured over every word prefix of 400 sentences: all 2402 within 1/64 px at 33.585, 37 at 33.6). The emitter measures the
+  copy at that size for breaking and placing words (`CHROME_BODY_ADVANCE_SIZE`); a body size with no measured advance size is
+  refused.
+- Line-break differential against Remotion's Chrome (a probe page with the same CSS and launch flags): the same lines for all
+  400 sentences in both formats, the pretty pass changing 87 of them on the long frame and 42 on the reel.
+
+Each word is a text node at Chrome's position (the next word starts where the paragraph's width up to it, less its own width,
+ends), and the block enters as one, 70 ms after the headline. The fixture `test_fixtures/packages/text-cards` (a scene film)
+has three cards: copy the pretty pass re-breaks in both formats, a wrapping headline over four lines of copy, and one line of
+copy. Measured against Remotion (swangle), 86 frames over both formats (every 10th frame across the cards, the shots around
+them and the end card): all at or above 0.995, lowest 0.99848. The journey `backend/journeys/text_cards.journey.ts` pins native
+selection and 27 of those frames. A `Body` on its own, other block pairs and other primitives stay refused.
 
 ### P2.6a the inset panel
 
