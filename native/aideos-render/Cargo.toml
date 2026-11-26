@@ -1,4 +1,4 @@
-# File Description: Manifest of the native frame renderer: evaluates an aideos.render/1, /2 or /3 Render IR per frame and draws it with Skia (CPU raster reference, optional GPU), with the `aideos-render` CLI that renders one frame to a PNG, renders a whole film to an mp4 (through aideos-encode), measures text or checks loadability.
+# File Description: Manifest of the native frame renderer: evaluates an aideos.render/1, /2, /3, /4 or /5 Render IR per frame and draws it with Skia (CPU raster reference, optional GPU), with the `aideos-render` CLI that renders one frame to a PNG, renders a whole film to an mp4 (through aideos-encode), measures text or checks loadability.
 # Inputs and outputs: none -> the aideos-render library and binary.
 # Used by: native/Cargo.toml (workspace member), docs/NATIVE_RENDERER.md, the CI unit job's cargo step.
 [package]

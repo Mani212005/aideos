@@ -1,10 +1,10 @@
 /**
- * File Description: Loads and checks a Render IR document (`aideos.render/1`, its superset `aideos.render/2` or that one's superset `aideos.render/3`): rejects bad JSON, an unknown version or a structurally invalid document (each version against its own schema), then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, for the Three stage its graph, tracks, parts, textures and face programs, and for a picture its image asset, its one element and the properties that element may animate). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files.
+ * File Description: Loads and checks a Render IR document (`aideos.render/1`, its supersets through `aideos.render/5`): rejects bad JSON, an unknown version or a structurally invalid document (each version against its own schema), then runs the cross-reference and range rules a schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, for the Three stage its graph, tracks, parts, textures and face programs, for a picture its image asset, its one element and the properties that element may animate, and for colour tracks their elements, one track per paint and their keyframes). The Rust loader in native/aideos-render-ir implements the same rules with the same issue codes and is tested against the same fixture files.
  * Inputs and outputs: JSON text or an already parsed value -> a typed RenderIr, or a failure of kind not_json, unsupported_version or invalid_document with every issue found.
  * Used by: backend/renderIr/emit.ts (checks every emitted document), backend/renderIr/renderIr.test.ts, backend/renderIr/stage3d.test.ts.
  */
 
-import { IMAGE_ELEMENT_PROPERTIES, RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, type Asset, type FormatName, type Keyframe, type Node, type RenderIr, type Stage3dNode } from "./schema";
+import { IMAGE_ELEMENT_PROPERTIES, RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, type Asset, type FormatName, type Node, type RenderIr, type Stage3dNode } from "./schema";
 
 /** The versions this build reads, as the `supported` text of an unsupported_version failure. */
 export const SUPPORTED_VERSIONS_TEXT = RENDER_IR_VERSIONS.join(", ");
@@ -59,7 +59,7 @@ export function validateRenderIr(value: unknown): LoadResult {
     return { ok: false, error: { kind: "unsupported_version", found, supported: SUPPORTED_VERSIONS_TEXT } };
   }
   // Each version is checked against its own shape, so an older document cannot carry a later version's addition.
-  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : found === RENDER_IR_VERSION_2 ? renderIrSchemaV2 : renderIrSchemaV3).safeParse(value);
+  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : found === RENDER_IR_VERSION_2 ? renderIrSchemaV2 : found === RENDER_IR_VERSION_3 ? renderIrSchemaV3 : found === RENDER_IR_VERSION_4 ? renderIrSchemaV4 : renderIrSchemaV5).safeParse(value);
   if (!parsed.success) {
     return invalid(parsed.error.issues.map((i) => ({
       code: "schema",
@@ -125,15 +125,15 @@ export function checkSemantics(ir: RenderIr): Issue[] {
     return undefined;
   };
 
-  // Checks a keyframe list: strictly increasing frames inside the film, an ease on every segment, values in range.
-  const checkKeyframes = (path: string, keys: Keyframe[], range?: { min: number; max: number; exclusiveMin?: boolean }) => {
+  // Checks a keyframe list (numeric or colour): strictly increasing frames inside the film, an ease on every segment, values in range.
+  const checkKeyframes = (path: string, keys: Array<{ frame: number; ease?: string; value?: number }>, range?: { min: number; max: number; exclusiveMin?: boolean }) => {
     keys.forEach((k, i) => {
       const kp = at(path, i);
       if (i > 0 && k.frame <= keys[i - 1].frame) add("keyframes_unordered", at(kp, "frame"), "keyframe frames must strictly increase");
       if (k.frame > duration) add("frame_out_of_range", at(kp, "frame"), `frame ${k.frame} is past the film's ${duration} frames`);
       if (i < keys.length - 1 && k.ease === undefined) add("ease_missing", kp, "every keyframe but the last names the easing of the segment after it");
       if (i === keys.length - 1 && k.ease !== undefined) add("ease_on_last", at(kp, "ease"), "the last keyframe has no segment after it");
-      if (range && (k.value < range.min || k.value > range.max || (range.exclusiveMin && k.value <= range.min))) {
+      if (range && k.value !== undefined && (k.value < range.min || k.value > range.max || (range.exclusiveMin && k.value <= range.min))) {
         add("value_out_of_range", at(kp, "value"), `value ${k.value} is outside ${range.exclusiveMin ? "(" : "["}${range.min}, ${Number.isFinite(range.max) ? range.max : "infinity"}${Number.isFinite(range.max) ? "]" : ")"}`);
       }
     });
@@ -177,6 +177,8 @@ export function checkSemantics(ir: RenderIr): Issue[] {
       ids.add(node.id);
       const allowed = node.kind === "stage3d" ? space === "stage" && top : space === "stage" ? node.kind === "svg" || node.kind === "image" || node.kind === "group" : node.kind !== "svg" && node.kind !== "image";
       if (!allowed) add("node_not_allowed", at(p, "kind"), node.kind === "stage3d" ? "a stage3d node is drawn only at the top of the stage" : `a ${node.kind} node cannot be drawn in the ${space}`);
+      if (ir.shutter && node.kind === "stage3d") add("shutter_not_supported", at(p, "kind"), "the 2D shutter does not sample stage3d");
+      if (ir.shutter && !top && (node.kind === "captions" || node.kind === "rail" || node.kind === "endCard")) add("shutter_not_supported", at(p, "kind"), "chrome must be top-level when the 2D shutter is enabled");
       if (node.visible) checkSpan(at(p, "visible"), node.visible.fromFrame, node.visible.toFrame);
       switch (node.kind) {
         case "stage3d": {
@@ -216,6 +218,18 @@ export function checkSemantics(ir: RenderIr): Issue[] {
             const range = t.property === "scale" ? { min: 0, max: Number.POSITIVE_INFINITY, exclusiveMin: true } : UNIT_PROPERTIES.has(t.property) ? { min: 0, max: 1 } : undefined;
             checkKeyframes(at(tp, "keyframes"), t.keyframes, range);
           });
+          if (node.kind === "svg") {
+            // Colour tracks (`/5`): each names an element the asset declares, and one paint of an element has one track.
+            const paints = new Set<string>();
+            node.colorTracks?.forEach((t, j) => {
+              const tp = at(p, "colorTracks", j);
+              if (asset?.kind === "svg" && !asset.elementIds.includes(t.target)) add("unknown_element", at(tp, "target"), `asset ${node.asset} declares no element ${t.target}`);
+              const key = `${t.target}\u0000${t.property}`;
+              if (paints.has(key)) add("duplicate_track", tp, `${t.property} of ${t.target} is driven by two tracks`);
+              paints.add(key);
+              checkKeyframes(at(tp, "keyframes"), t.keyframes);
+            });
+          }
           break;
         }
         case "rect":
@@ -229,6 +243,17 @@ export function checkSemantics(ir: RenderIr): Issue[] {
           needAsset(at(p, "font"), node.font, "font");
           checkNodeTracks(p, node.tracks);
           checkFormats(at(p, "placement"), node.placement);
+          {
+            const seen = new Set<string>();
+            node.glyphTracks?.forEach((track, i) => {
+              const tp = at(p, "glyphTracks", i);
+              const key = `${track.glyph}:${track.property}`;
+              if (seen.has(key)) add("duplicate_track", tp, `glyph ${track.glyph} property ${track.property} is driven by two tracks`);
+              seen.add(key);
+              const range = track.property === "opacity" ? { min: 0, max: 1 } : track.property === "scale" ? { min: 0, max: Number.POSITIVE_INFINITY, exclusiveMin: true } : undefined;
+              checkKeyframes(at(tp, "keyframes"), track.keyframes, range);
+            });
+          }
           break;
         case "rail": {
           needAsset(at(p, "font"), node.font, "font");
@@ -272,6 +297,14 @@ export function checkSemantics(ir: RenderIr): Issue[] {
       }
     });
   };
+  if (ir.shutter) {
+    let chromeSeen = false;
+    ir.overlay.forEach((node, i) => {
+      const chrome = node.kind === "rail" || node.kind === "captions" || node.kind === "endCard";
+      if (chromeSeen && !chrome) add("shutter_not_supported", at("/overlay", i, "kind"), "2D content must precede chrome when the 2D shutter is enabled");
+      chromeSeen ||= chrome;
+    });
+  }
   walk(ir.stage, "/stage", "stage", true);
   walk(ir.overlay, "/overlay", "overlay", true);
 

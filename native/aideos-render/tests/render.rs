@@ -1,4 +1,4 @@
-//! File Description: Behavioural tests of the CPU raster through the public `Renderer`: cold renders are byte-identical across processes, any frame renders the same whatever was rendered before it (deterministic seeking), both formats have their sizes, element tracks and the camera move the pixels they should, and every load-time refusal (unknown format, frame out of range, missing or escaping asset, unsupported SVG, undeclared element, unvendored font) names its cause.
+//! File Description: Behavioural tests of the CPU raster through the public `Renderer`: cold renders are byte-identical across processes, any frame renders the same whatever was rendered before it (deterministic seeking), both formats have their sizes, element tracks (with `aideos.render/5` colour and dash offset tracks) and the camera move the pixels they should, and every load-time refusal (unknown format, frame out of range, missing or escaping asset, unsupported SVG, undeclared element, unvendored font) names its cause.
 //! Inputs and outputs: the fixture package and scratch packages -> asserted frames, pixels and errors.
 //! Used by: `cargo test --manifest-path native/Cargo.toml`.
 
@@ -48,6 +48,7 @@ fn renderer_with_svg(source: &str) -> Renderer {
         layer: 0,
         tracks: Vec::new(),
         element_tracks: Vec::new(),
+        color_tracks: None,
     })];
     ir.overlay.clear();
     Renderer::new(ir, &dir).expect("custom SVG package loads")
@@ -240,6 +241,40 @@ fn visible_svg_child_overrides_hidden_group() {
     );
     let frame = r.render_frame(Format::Long, 0).expect("render frame");
     assert_eq!(pixel(&frame, 960, 540), [255, 0, 0, 255]);
+}
+
+/// Checks that `aideos.render/5` tracks reach the pixels: a colour track on a group repaints the child that inherits its
+/// fill (green at frame 0, halfway to blue at frame 5), and a dash offset track moves the authored dashes along a line.
+#[test]
+fn colour_and_dash_offset_tracks_repaint_and_move_the_artwork() {
+    let r = renderer_with_svg(
+        r##"<svg><g id="painted" fill="#ff0000"><rect width="1920" height="900"/></g><line id="dashed" x1="0" y1="1100" x2="1920" y2="1100" stroke="#ffffff" stroke-width="40" stroke-dasharray="100 100"/></svg>"##,
+    );
+    let mut ir = r.ir().clone();
+    ir.schema = "aideos.render/5".into();
+    for asset in &mut ir.assets {
+        if let Asset::Svg(svg) = asset {
+            svg.element_ids = vec!["painted".into(), "dashed".into()];
+        }
+    }
+    let Node::Svg(node) = &mut ir.stage[0] else { panic!("the stage holds the svg node") };
+    *node = serde_json::from_value(serde_json::json!({
+        "id": "svg-test", "asset": "orbit", "x": 0, "y": 0, "scale": 1, "rotation": 0, "layer": 0, "tracks": [],
+        "elementTracks": [{ "target": "dashed", "property": "dashOffset", "keyframes": [{ "frame": 0, "value": 100 }] }],
+        "colorTracks": [{ "target": "painted", "property": "fill", "keyframes": [
+            { "frame": 0, "color": "#00FF00", "ease": "linear" }, { "frame": 10, "color": "#0000FF" }] }]
+    }))
+    .expect("the /5 svg node parses");
+    let dir = std::path::PathBuf::from(r.package_dir());
+    let r = Renderer::new(ir, &dir).expect("the /5 document loads");
+    let first = r.render_frame(Format::Long, 0).expect("render frame 0");
+    // At frame 0 the camera shows scene y 420 to 1500 at full size: the rect's rows are 0 to 480 on screen.
+    assert_eq!(pixel(&first, 960, 200), [0, 255, 0, 255], "the group's colour track paints the child");
+    // Offset 100 shifts the 100 on, 100 off pattern by one dash: the first 100 px are a gap, the next 100 are drawn.
+    assert_eq!(pixel(&first, 50, 680), BACKGROUND, "the dash offset moved a gap to the line's start");
+    assert_eq!(pixel(&first, 150, 680), [255, 255, 255, 255]);
+    let halfway = pixel(&r.render_frame(Format::Long, 5).expect("render frame 5"), 960, 200);
+    assert!(halfway[0] == 0 && halfway[1].abs_diff(128) <= 1 && halfway[2].abs_diff(128) <= 1, "{halfway:?}");
 }
 
 /// Checks that hidden clip children are omitted and clip-rule cuts a hole from the clip mask.

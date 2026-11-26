@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { RENDER_IR_SCHEMA_PATH, RENDER_IR_SCHEMA_V2_PATH, RENDER_IR_SCHEMA_V3_PATH, renderIrJsonSchemaText, renderIrJsonSchemaV2Text, renderIrJsonSchemaV3Text } from "./jsonSchema";
+import { RENDER_IR_SCHEMA_PATH, RENDER_IR_SCHEMA_V2_PATH, RENDER_IR_SCHEMA_V3_PATH, RENDER_IR_SCHEMA_V4_PATH, RENDER_IR_SCHEMA_V5_PATH, renderIrJsonSchemaText, renderIrJsonSchemaV2Text, renderIrJsonSchemaV3Text, renderIrJsonSchemaV4Text, renderIrJsonSchemaV5Text } from "./jsonSchema";
 import { parseRenderIr, validateRenderIr } from "./validate";
 
 const FIXTURES = path.resolve(__dirname, "../../native/aideos-render-ir/fixtures");
@@ -44,7 +44,7 @@ test("invalid fixtures are refused with the verdict the Rust loader also gives",
     assert.equal(result.error.kind, want.kind, rel);
     if (want.kind === "unsupported_version" && result.error.kind === "unsupported_version") {
       assert.equal(result.error.found, want.found, rel);
-      assert.equal(result.error.supported, "aideos.render/1, aideos.render/2, aideos.render/3");
+      assert.equal(result.error.supported, "aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5");
     }
     if (want.kind === "invalid_document" && result.error.kind === "invalid_document") {
       const structural = want.issues.every((i) => i.path === undefined);
@@ -95,6 +95,10 @@ test("the committed /3 JSON Schema is the one the zod source produces", () => {
   assert.equal(fs.readFileSync(RENDER_IR_SCHEMA_V3_PATH, "utf8"), renderIrJsonSchemaV3Text(), "run `npm run render-ir:schema`");
 });
 
+test("the committed /5 JSON Schema is the one the zod source produces", () => {
+  assert.equal(fs.readFileSync(RENDER_IR_SCHEMA_V5_PATH, "utf8"), renderIrJsonSchemaV5Text(), "run `npm run render-ir:schema`");
+});
+
 test("the /2 example and every /1 example survive a JSON round trip unchanged, keeping their version", () => {
   for (const rel of expectations.valid) {
     const original = JSON.parse(read(rel)) as { schema: string };
@@ -108,4 +112,8 @@ test("the /2 example and every /1 example survive a JSON round trip unchanged, k
   }
   const stage = (JSON.parse(read("valid/stage3d-minimal.json")) as { schema: string }).schema;
   assert.equal(stage, "aideos.render/2");
+});
+
+test("the committed /4 JSON Schema is the one the zod source produces", () => {
+  assert.equal(fs.readFileSync(RENDER_IR_SCHEMA_V4_PATH, "utf8"), renderIrJsonSchemaV4Text(), "run `npm run render-ir:schema`");
 });

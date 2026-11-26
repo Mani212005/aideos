@@ -1,0 +1,166 @@
+{
+  "schema": "aideos.render/4",
+  "film": {
+    "id": "kinetic-type",
+    "fps": 30,
+    "durationFrames": 90
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    },
+    "reel": {
+      "width": 1080,
+      "height": 1920
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "font",
+      "id": "geist-600",
+      "path": "fonts/Geist-SemiBold.ttf",
+      "family": "Geist",
+      "weight": 600
+    },
+    {
+      "kind": "font",
+      "id": "geist-700",
+      "path": "fonts/Geist-Bold.ttf",
+      "family": "Geist",
+      "weight": 700
+    },
+    {
+      "kind": "font",
+      "id": "mono-500",
+      "path": "fonts/JetBrainsMono-Medium.ttf",
+      "family": "JetBrains Mono",
+      "weight": 500
+    }
+  ],
+  "stage": [],
+  "overlay": [
+    {
+      "kind": "captions",
+      "id": "captions",
+      "font": "geist-700",
+      "color": "#FFFFFF",
+      "highlightColor": "#635BFF",
+      "backgroundColor": "#0A0F1DE0",
+      "words": [
+        {
+          "text": "Tokens",
+          "startFrame": 0,
+          "endFrame": 10
+        },
+        {
+          "text": "go",
+          "startFrame": 10,
+          "endFrame": 16
+        },
+        {
+          "text": "in,",
+          "startFrame": 16,
+          "endFrame": 24
+        },
+        {
+          "text": "tokens",
+          "startFrame": 30,
+          "endFrame": 40
+        },
+        {
+          "text": "come",
+          "startFrame": 40,
+          "endFrame": 48
+        },
+        {
+          "text": "out.",
+          "startFrame": 48,
+          "endFrame": 60
+        }
+      ],
+      "placement": {
+        "long": {
+          "fontSize": 32,
+          "spans": [
+            {
+              "fromFrame": 0,
+              "x": 0.5,
+              "y": 0.78,
+              "w": 0.7
+            }
+          ]
+        },
+        "reel": {
+          "fontSize": 36,
+          "spans": [
+            {
+              "fromFrame": 0,
+              "x": 0.5,
+              "y": 0.78
+            },
+            {
+              "fromFrame": 45,
+              "x": 0.5,
+              "y": 0.7
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "text",
+      "id": "kinetic",
+      "text": "AB",
+      "font": "geist-600",
+      "color": "#F5F7FA",
+      "align": "left",
+      "lineHeight": 1.1,
+      "letterSpacing": 0,
+      "tracks": [],
+      "glyphTracks": [
+        {
+          "glyph": 0,
+          "property": "x",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": -150,
+              "ease": "linear"
+            },
+            {
+              "frame": 30,
+              "value": 150
+            }
+          ]
+        }
+      ],
+      "placement": {
+        "long": {
+          "x": 500,
+          "y": 350,
+          "w": 800,
+          "h": 200,
+          "fontSize": 180
+        },
+        "reel": {
+          "x": 200,
+          "y": 500,
+          "w": 680,
+          "h": 200,
+          "fontSize": 180
+        }
+      }
+    }
+  ],
+  "audio": [],
+  "shutter": {
+    "samples": 8,
+    "angle": 360
+  }
+}

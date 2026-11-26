@@ -5,6 +5,8 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
+use aideos_render_ir::types::{GlyphProperty, GlyphTrack};
+
 use skia_safe::font_style::{Slant, Weight, Width};
 use skia_safe::textlayout::{
     FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextAlign, TextStyle, TypefaceFontProvider,
@@ -294,6 +296,46 @@ impl Text {
     /// Paints HTML text with its top-left corner at `at`, placed as Blink places it (baseline on a whole pixel).
     pub fn paint(&self, canvas: &Canvas, at: impl Into<Point>) {
         self.paint_with(canvas, at.into(), true);
+    }
+
+    /// Counts shaped glyphs in the paragraph's paint order, including spaces and ligatures.
+    pub fn glyph_count(&self) -> usize {
+        self.runs().iter().map(|run| run.glyphs.len()).sum()
+    }
+
+    /// Paints individually tracked glyphs at their shaped positions, without changing layout or advances.
+    pub fn paint_glyph_tracks(&self, canvas: &Canvas, at: Point, tracks: &[GlyphTrack], time: f64, duration: u32) {
+        let mut poses: BTreeMap<u32, (f64, f64, f64, f64, f64)> = BTreeMap::new();
+        for track in tracks {
+            let pose = poses.entry(track.glyph.0).or_insert((0.0, 0.0, 1.0, 0.0, 1.0));
+            let value = crate::eval::track::sample_at(&track.keyframes, time, duration);
+            match track.property {
+                GlyphProperty::X => pose.0 = value,
+                GlyphProperty::Y => pose.1 = value,
+                GlyphProperty::Scale => pose.2 = value,
+                GlyphProperty::Rotation => pose.3 = value,
+                GlyphProperty::Opacity => pose.4 = value,
+            }
+        }
+        let mut index = 0u32;
+        let mut paint = Paint::default();
+        paint.set_anti_alias(true);
+        for run in self.runs() {
+            let baseline = (f64::from(at.y) + run.baseline).round() as f32;
+            for (&glyph, position) in run.glyphs.iter().zip(&run.positions) {
+                let &(x, y, scale, rotation, opacity) = poses.get(&index).unwrap_or(&(0.0, 0.0, 1.0, 0.0, 1.0));
+                index += 1;
+                if opacity <= 0.0 { continue; }
+                paint.set_color(self.color);
+                paint.set_alpha_f(self.color.a() as f32 / 255.0 * opacity as f32);
+                canvas.save();
+                canvas.translate((run.origin.x + at.x + run.dx + position.x + x as f32, baseline + position.y + y as f32));
+                canvas.rotate(rotation as f32, None);
+                canvas.scale((scale as f32, scale as f32));
+                canvas.draw_glyphs_at(&[glyph], GlyphPositions::Points(&[Point::new(0.0, 0.0)]), Point::new(0.0, 0.0), &run.font, &paint);
+                canvas.restore();
+            }
+        }
     }
 
     /// Paints SVG text with its first line's baseline exactly at `at` (an SVG `y` is the baseline), unrounded.

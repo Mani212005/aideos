@@ -1,4 +1,4 @@
-//! File Description: The serde types of the Render IR (`aideos.render/1` and its superset `aideos.render/2`, which adds the stage3d node and the mesh asset), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
+//! File Description: The serde types of the Render IR (`aideos.render/1` through `/5`: `/4` adds glyph tracks and the 2D shutter, `/5` colour tracks and the dash offset element track on svg nodes), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
 //! Inputs and outputs: a JSON document that already passed the JSON Schema check -> a typed `RenderIr`; a `RenderIr` -> the same JSON again.
 //! Used by: crate::load, crate::semantic, and the native renderer crates that evaluate the IR.
 
@@ -47,6 +47,16 @@ pub struct RenderIr {
     pub stage: Vec<Node>,
     pub overlay: Vec<Node>,
     pub audio: Vec<AudioClip>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shutter: Option<Shutter>,
+}
+
+/// Optional two-dimensional motion blur sampling for one delivered frame.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Shutter {
+    pub samples: Whole,
+    pub angle: f64,
 }
 
 /// Film identity and clock.
@@ -153,6 +163,8 @@ pub enum ElementProperty {
     Y1,
     X2,
     Y2,
+    /// `aideos.render/5`: the element's `stroke-dashoffset` in its own user units.
+    DashOffset,
 }
 
 /// A keyframed property of one element of an SVG asset.
@@ -164,6 +176,42 @@ pub struct ElementTrack {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Point>,
     pub keyframes: Vec<Keyframe>,
+}
+
+/// How a colour track moves to its next keyframe (`aideos.render/5`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ColorEase {
+    Linear,
+    Hold,
+}
+
+/// The colour at a frame and the easing of the segment after it (`aideos.render/5`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ColorKeyframe {
+    pub frame: Whole,
+    pub color: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ease: Option<ColorEase>,
+}
+
+/// The paint a colour track drives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ColorProperty {
+    Fill,
+    Stroke,
+}
+
+/// The fill or stroke colour of one element of an SVG asset over time (`aideos.render/5`): it replaces the element's own
+/// paint, and between keyframes each straight-alpha channel moves linearly or holds.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ColorTrack {
+    pub target: String,
+    pub property: ColorProperty,
+    pub keyframes: Vec<ColorKeyframe>,
 }
 
 /// A half-open span of frames in which a node is drawn.
@@ -370,6 +418,9 @@ pub struct SvgNode {
     pub layer: i32,
     pub tracks: Vec<NodeTrack>,
     pub element_tracks: Vec<ElementTrack>,
+    /// `aideos.render/5`: colour tracks on elements of the asset; absent means none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_tracks: Option<Vec<ColorTrack>>,
 }
 
 /// A pinned picture placed on the stage (`aideos.render/3`): placed like an svg node, then its own element tracks
@@ -449,7 +500,25 @@ pub struct TextNode {
     pub line_height: f64,
     pub letter_spacing: f64,
     pub tracks: Vec<NodeTrack>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glyph_tracks: Option<Vec<GlyphTrack>>,
     pub placement: PerFormat<TextBox>,
+}
+
+/// One track on a shaped glyph in paint order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GlyphTrack {
+    pub glyph: Whole,
+    pub property: GlyphProperty,
+    pub keyframes: Vec<Keyframe>,
+}
+
+/// Properties animated relative to a glyph's shaped position and baseline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GlyphProperty {
+    X, Y, Scale, Rotation, Opacity,
 }
 
 /// Horizontal text alignment.
