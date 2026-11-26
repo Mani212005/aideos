@@ -183,7 +183,7 @@ bounding-box filter has an empty region and draws nothing, exactly as in Chrome.
 every other primitive (`feColorMatrix`, `feBlend`, `feTurbulence`, lighting, ...), primitive subregions
 (`x`/`y`/`width`/`height` on a primitive), `primitiveUnits="objectBoundingBox"`, a filter `href`, `edgeMode` other
 than `none`, the `BackgroundImage`, `BackgroundAlpha`, `FillPaint` and `StrokePaint` inputs, a negative deviation, a
-user-space region that leaves a side to the viewport, CSS filter functions (`filter="blur(4px)"`), a reference to a
+user-space region that leaves a side to the viewport, CSS filter functions (`filter="blur(4px)"`), a filter list or any text after the `url(#id)` reference (`filter="url(#a) url(#b)"`), a reference to a
 missing filter, and a bounding-box filter on text (its box depends on the glyphs; a user-space region is drawn).
 Parity with Remotion is in [P2.1 parity](#p21-svg-filters-glow-and-drop-shadow).
 
