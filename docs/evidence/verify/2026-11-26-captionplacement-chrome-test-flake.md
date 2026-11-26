@@ -4,7 +4,7 @@
 
 - **Date**: 2026-11-26
 - **Branch / PR**: fm/aideos-captionplacement-flake-chrome-launch
-- **Scope**: Chrome measurement (serialized sync/async parity check) in `backend/captionPlacement.test.ts`; Studio Captions row in `docs/verify/FEATURE_MAP.md`.
+- **Scope**: Chrome measurement (serialized sync/async parity check) in `backend/captionPlacement.test.ts`.
 - **Risk tier**: Low
 
 ## Reliability checklist
@@ -18,7 +18,7 @@
 | No sleeps | PASS | No waits added. |
 | No mocks of thing under test | PASS | Chrome measurement remains real in both targeted suites. |
 | Protected suites unloosened | PASS | No journey, assertion, timeout, tolerance, or golden was weakened. |
-| Weak-test audit | PASS | The sync/async parity assertion in `captionPlacement.test.ts` is kept unchanged in strength. The async result is now awaited before the sync call, so the two Chrome launches no longer overlap. The module-level measurement cache is shared, so the sync call reads the widths the awaited async call cached; the assertion keeps its original form and can no longer race two Chrome launches. |
+| Weak-test audit | PASS | The sync/async parity assertion in `captionPlacement.test.ts` is kept. The async result is awaited first, so the two Chrome launches never overlap. The sync call then runs on a fresh instance of `captionMeasurements` (module cache deleted before `require`), so its measurement cache is empty and it launches its own Chrome; the comparison stays independent. No production code changed. |
 | Independent review | PENDING | The required no-mistakes review follows the commit handoff. |
 | Evidence log written | PASS | This file. |
 
@@ -26,7 +26,8 @@
 
 | Command | Result | Notes / artifacts |
 | --- | --- | --- |
-| Three sequential runs of `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/captionPlacement.test.ts` (parity assertion restored and serialized) | PASS (exit 0) | 41/41 each; 7.6 s, 7.7 s, 7.4 s. Load average about 2.9 on the 12-core worker. |
+| Three sequential runs of `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/captionPlacement.test.ts` (parity assertion kept, serialized, fresh-module sync call) | PASS (exit 0) | 41/41 each; 6.9 s, 8.9 s, 7.8 s. Load average 1.6/2.1/2.5 after the runs. |
+| Perturbation check: sync result temporarily overridden for `RunnerParityWordQZ731`, then `--test-name-pattern="review phrase measurement"` | FAIL as expected | The assertion detects a sync/async divergence. Perturbation reverted; final diff contains none. |
 | `git diff --check` | PASS (exit 0) | No whitespace errors. |
 
 ## Fix attempts

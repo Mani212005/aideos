@@ -1300,7 +1300,11 @@ test("review phrase measurement matches rendered word widths", async () => {
   );
   const parityWords = ["RunnerParityWordQZ731", "DifferentWidthsQZ731"];
   const asynchronous = await measureCaptionWordsAsync(parityWords, 47);
-  const synchronous = measureCaptionWords(parityWords, 47);
+  const modulePath = require.resolve("./review/captionMeasurements");
+  delete require.cache[modulePath];
+  const independent = require(modulePath) as typeof import("./review/captionMeasurements");
+  assert.notEqual(independent.measureCaptionWords, measureCaptionWords);
+  const synchronous = independent.measureCaptionWords(parityWords, 47);
   assert.deepEqual(asynchronous, synchronous);
 });
 
