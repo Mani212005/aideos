@@ -4,7 +4,7 @@ File Description: How aideos is checked - the one command that owns every CI ste
 
 # CI and tests
 
-One command owns the list: **`bun run ci`** (`bun scripts/ci.ts`). GitHub Actions and a contributor's laptop use the job
+One command owns the list: **`bun run ci`** (`node scripts/run.mjs scripts/ci.ts`, which runs it on Bun). GitHub Actions and a contributor's laptop use the job
 definitions in `scripts/ci.ts`; the local validation tool (`.no-mistakes.yaml`) selects only the
 `static` job. Platform-dependent steps can be skipped locally with a reason.
 Add a check to `scripts/ci.ts` and it becomes part of the matching job everywhere that job runs.

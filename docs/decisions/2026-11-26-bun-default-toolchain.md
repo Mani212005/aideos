@@ -27,4 +27,4 @@ Make Bun the default: `AIDEOS_TOOLCHAIN` unset means bun, CI workflows, package.
 
 ## Where it lives now
 
-`scripts/toolchain.ts` (the default), `.github/workflows/ci.yml`, `nightly.yml` and `update-goldens.yml` (the `toolchain` input and the repository variable), `.github/actions/install-dependencies/action.yml`, `scripts/postinstall.mjs`, `package.json`, `.no-mistakes.yaml`, and [docs/CI.md](../CI.md#toolchain-switch-bun-or-npm), which lists every place Node or npm stays and why.
+`scripts/toolchain.ts` (the default), `scripts/run.mjs` and `scripts/runTests.ts` (the package.json launcher: Bun under `bun run`, tsx on Node under `npm run`), `.github/workflows/ci.yml`, `nightly.yml` and `update-goldens.yml` (the `toolchain` input and the repository variable), `.github/actions/install-dependencies/action.yml`, `scripts/postinstall.mjs`, `package.json`, `.no-mistakes.yaml`, and [docs/CI.md](../CI.md#toolchain-switch-bun-or-npm), which lists every place Node or npm stays and why.
