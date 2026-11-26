@@ -1,0 +1,26 @@
+Usage: aideos-backend review [options] <target>
+
+Review a rendered video against the good-video rubric: measurable checks on the
+mp4 (and film data), evidence frames, exit 1 when a gate fails
+
+Arguments:
+  target                      a film slug under videos/ or the path of an mp4
+
+Options:
+  --format <format>           review long or reel; default reviews every
+                              rendered format
+  --film <film.json>          film data to read the camera, persistence and
+                              geometry from (a slug review finds it itself)
+  --words <file>              word timings (voiceover_words.json) or narration
+                              text, for audio sync, caption matching and
+                              grounding
+  --out <dir>                 where review.json and the review/ evidence frames
+                              are written
+  --no-ocr                    skip the OCR pass (no caption, readability,
+                              overlap or grounding checks)
+  --pacing-profile <profile>  opt-in narration pace window for reel reviews:
+                              reel-fast allows up to 240 words per minute
+                              (default: 145 to 215)
+  --json                      print the report as JSON on stdout (progress goes
+                              to stderr)
+  -h, --help                  display help for command

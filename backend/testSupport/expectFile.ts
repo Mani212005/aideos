@@ -1,7 +1,7 @@
 /**
  * File Description: Expect-test helper: renders a structured value as stable, diff-friendly JSON (small objects and arrays stay on one line, so a changed keyframe is one changed line) and compares it with a committed expected file under test_fixtures/expect/. The expected files are captured from the real code, never typed. After an intended change, run the test with AIDEOS_UPDATE_EXPECT=1 to rewrite them, then review the git diff line by line before committing.
  * Inputs and outputs: a value or text and an expected-file path -> returns when equal, throws with the first differing line and the update command when not (or when the file is missing).
- * Used by: backend/renderIr/emit.expect.test.ts, backend/timelineResults.expect.test.ts, backend/pipeline/filmJson.expect.test.ts, backend/modelReply.expect.test.ts, backend/jev.expect.test.ts, backend/media/probe.expect.test.ts, backend/geminiReview/geminiReview.expect.test.ts.
+ * Used by: backend/renderIr/emit.expect.test.ts, backend/timelineResults.expect.test.ts, backend/pipeline/filmJson.expect.test.ts, backend/modelReply.expect.test.ts, backend/jev.expect.test.ts, backend/media/probe.expect.test.ts, backend/geminiReview/geminiReview.expect.test.ts, backend/review/review.test.ts, backend/cli.expect.test.ts.
  */
 
 import assert from "node:assert/strict";
