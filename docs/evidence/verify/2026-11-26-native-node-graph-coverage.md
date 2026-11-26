@@ -34,6 +34,9 @@ frame shot over the canvas; six shots over two chapters, 540 story frames, end c
    past the box, so light from outside bled in. The copy is now clipped to the box with its mirror images across each
    edge and corner, then blurred and cut to the rounded box. Chrome ignores `edgeMode` on SVG `feGaussianBlur` (none,
    mirror and duplicate draw the same), so the mirror is built from plain SVG and the native SVG subset is unchanged.
+   Each of the 8 mirror copies draws only the edges that can reach the filter region through it (the in-box copy keeps the
+   edges that meet the card box; a side or corner copy keeps those that meet the band of the box, 3 x 12 = 36 units deep,
+   that its reflection maps into the region), so the copies are pruned to the blur reach and the pixels are unchanged.
 3. **The accent, the zoom above the shadow cap, the StatCounter: clear the bar** (below).
 
 ## Sweeps after the change: every 15th frame of each delivered video, long and reel

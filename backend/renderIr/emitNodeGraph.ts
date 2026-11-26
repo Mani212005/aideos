@@ -314,16 +314,21 @@ export function emitNodeGraphCanvas(input: NodeGraphInput): NodeGraphCanvas {
       defs.push(`<clipPath id="${k}-clip"><rect ${rect(box, RADIUS)}/></clipPath>`);
       defs.push(`<clipPath id="${k}-bd-box"><rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.w)}" height="${n(box.h)}"/></clipPath>`);
       defs.push(`<filter id="${k}-backdrop-f" filterUnits="userSpaceOnUse" x="${n(region.x0)}" y="${n(region.y0)}" width="${n(region.x1 - region.x0)}" height="${n(region.y1 - region.y0)}" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="${BACKDROP_BLUR}"/></filter>`);
-      const inBox = (prefix: string) => `<g clip-path="url(#${k}-bd-box)"><rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.w)}" height="${n(box.h)}" fill="${input.canvasColor}"/>${behind.map((e) => e.draw(prefix)).join("")}</g>`;
+      const inBox = (prefix: string, edges: EdgeDraw[]) => `<g clip-path="url(#${k}-bd-box)"><rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.w)}" height="${n(box.h)}" fill="${input.canvasColor}"/>${edges.map((e) => e.draw(prefix)).join("")}</g>`;
+      // A mirror copy only reaches the filter region from the band of the box next to its reflecting edge (`reach` wide, the whole side on a kept axis); content deeper inside mirrors beyond the region and is cropped, so keeping only the edges in that band is exact.
+      const band = (s: number, lo: number, size: number): [number, number] => (s < 0 ? [lo, lo + reach] : s > 0 ? [lo + size - reach, lo + size] : [lo, lo + size]);
       // A reflection across the left or right edge (sx -1 or 1) and the top or bottom edge (sy -1 or 1); 0 keeps the axis.
       const mirror = (sx: number, sy: number) => {
         const ex = sx < 0 ? box.x : box.x + box.w;
         const ey = sy < 0 ? box.y : box.y + box.h;
         return `matrix(${sx ? -1 : 1} 0 0 ${sy ? -1 : 1} ${n(sx ? 2 * ex : 0)} ${n(sy ? 2 * ey : 0)})`;
       };
-      const copies = [inBox(`${k}-bd-`)];
+      const copies = [inBox(`${k}-bd-`, behind)];
       for (const [sx, sy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-        copies.push(`<g transform="${mirror(sx, sy)}">${inBox(`${k}-bd${sx + 1}${sy + 1}-`)}</g>`);
+        const [bx0, bx1] = band(sx, box.x, box.w);
+        const [by0, by1] = band(sy, box.y, box.h);
+        const reaching = behind.filter((e) => e.box.x0 < bx1 && e.box.x1 > bx0 && e.box.y0 < by1 && e.box.y1 > by0);
+        copies.push(`<g transform="${mirror(sx, sy)}">${inBox(`${k}-bd${sx + 1}${sy + 1}-`, reaching)}</g>`);
       }
       parts.push(`<g clip-path="url(#${k}-clip)"><g filter="url(#${k}-backdrop-f)">${copies.join("")}</g></g>`);
     }
