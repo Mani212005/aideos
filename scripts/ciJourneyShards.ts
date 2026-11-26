@@ -22,7 +22,7 @@ export const DEFAULT_WEIGHT_SECONDS = 60;
 /**
  * Median seconds of each journey file on a GitHub runner, summed over its tests, from 8 journeys
  * jobs of 13 to 14 November 2026 (data: per-test `duration_ms` of the TAP log), except the P4.5 additions (the native determinism journey in
- * j1_pipeline, about 40 s, and native_character_goldens, about 40 s) the illustrated stage's pictures_stage (13 s on the Linux laptop, planned at 20 s) svg_filters (12 s on the Linux laptop, planned at 15 s) and node_graph_native (44 s on the Linux laptop, planned at 50 s), which are local measurements until a CI run replaces them. Keys are paths
+ * j1_pipeline, about 40 s, and native_character_goldens, about 40 s) the illustrated stage's pictures_stage (13 s on the Linux laptop, planned at 20 s) svg_filters (12 s on the Linux laptop, planned at 15 s) and node_graph_native (two node-graph fixtures: 91 s on the Linux laptop, 65 s on a runner for the first alone, planned at 130 s), which are local measurements until a CI run replaces them. Keys are paths
  * relative to backend/journeys. The table only balances the shards: a stale or missing entry costs
  * balance, never coverage, because every file on disk is planned.
  */
@@ -30,6 +30,7 @@ export const JOURNEY_WEIGHTS_SECONDS: Readonly<Record<string, number>> = {
   "j3_j5_stage.journey.ts": 247,
   "j3_j4_dots.journey.ts": 197,
   "j1_pipeline.journey.ts": 174,
+  "node_graph_native.journey.ts": 130,
   "j2_retime.journey.ts": 90,
   "j6_resume.journey.ts": 88,
   "j13_caption_placement.journey.ts": 79,
@@ -41,7 +42,6 @@ export const JOURNEY_WEIGHTS_SECONDS: Readonly<Record<string, number>> = {
   "character_dots_pixels.journey.ts": 48,
   "character_retarget.journey.ts": 46,
   "j9_template.journey.ts": 42,
-  "node_graph_native.journey.ts": 50,
   "native_character_goldens.journey.ts": 40,
   "character_pixels.journey.ts": 36,
   "j4_character_crops.journey.ts": 35,
