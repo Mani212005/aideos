@@ -4,7 +4,7 @@ File Description: Reference for the native renderer `native/aideos-render` (R2 a
 
 # Native renderer (`native/aideos-render`)
 
-`aideos-render` evaluates a Render IR [`aideos.render/1`, `/2` or `/3`](RENDER_IR.md) as a pure function of the frame
+`aideos-render` evaluates a Render IR [`aideos.render/1`, `/2`, `/3` or `/5`](RENDER_IR.md) as a pure function of the frame
 number and draws the frame with Skia. Skia's **CPU rasterizer is the deterministic reference**; an
 optional GPU path draws the same frame through OpenGL. There is no browser, no DOM and no HTML.
 
@@ -662,7 +662,8 @@ the fallback for everything not yet native:
 | Step | What | State |
 | --- | --- | --- |
 | P2.1 | the SVG filter subset of glows and drop shadows (above), which the node-graph canvas uses for its live edges (`CanvasGraph.tsx`, `neonGlow`) and onto which a card's CSS `box-shadow` lowers; scene artwork with such a filter, refused by the loader before and so rendered on Remotion, is now drawn natively | done |
-| P2.2 | the node-graph canvas in the emitter, flat camera: `CanvasGraph` lowered to generated SVG (cards as rounded rects with their gradient, edges as paths with the P2.1 glow) with the camera from `camAt`, node arrival and activeness as element tracks; needs IR element tracks the IR lacks (a colour crossfade for borders and labels, a dash offset for the travelling packets) and the cards' `box-shadow` and `backdrop-filter` | next |
+| P2.2a | `aideos.render/5`: colour tracks (fill and stroke, mixed per channel as Remotion's `interpolateColors`) and the `dashOffset` element track on svg nodes, what the node-graph canvas animates (card borders and labels, the edges' travelling packets): schema, loaders and validators in TypeScript and Rust, the evaluator and the raster ([RENDER_IR.md](RENDER_IR.md#colour-and-dash-offset-aideosrender5)); no emitter writes `/5` yet | done: nothing changes for users |
+| P2.2b | the node-graph canvas in the emitter, flat camera: `CanvasGraph` lowered to generated SVG (cards as rounded rects with their gradient and their `box-shadow` on the P2.1 filters, edges as paths with the P2.1 glow, labels as SVG text) with the camera from `camAt`, node arrival and activeness as element, colour and dash offset tracks; the cards' `backdrop-filter` measured; `nativeSupport` accepts flat node-graph films | next |
 | P2.3 | the node-graph camera angles other than `flat` (`getCameraPerspective`: CSS 3D perspective), a 4 x 4 perspective transform on the stage | planned |
 | P2.4 | the textured themes (`paper-fibers` turbulence, `blueprint-grid` and `subtle-dots` patterns) | planned |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), several blocks per shot, panels other than `frame` | planned |

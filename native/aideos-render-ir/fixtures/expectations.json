@@ -1,6 +1,7 @@
 {
   "//": "Shared by backend/renderIr/renderIr.test.ts and native/aideos-render-ir/tests/fixtures.rs. A structural issue lists only its code (a JSON Schema validator and zod word and locate those differently); every other issue lists its code and exact JSON Pointer.",
   "valid": [
+    "valid/color-and-dash.json",
     "valid/gradient-and-axis-scale.json",
     "valid/image-stage.json",
     "valid/integral-floats.json",
@@ -466,13 +467,58 @@
     },
     "invalid/unsupported-version.json": {
       "kind": "unsupported_version",
-      "found": "aideos.render/4"
+      "found": "aideos.render/6"
     },
     "invalid/wrong-type.json": {
       "kind": "invalid_document",
       "issues": [
         {
           "code": "schema"
+        }
+      ]
+    },
+    "invalid/v3-dash-offset.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/v3-color-tracks.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/color-tracks.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "unknown_element",
+          "path": "/stage/0/colorTracks/0/target"
+        },
+        {
+          "code": "keyframes_unordered",
+          "path": "/stage/0/colorTracks/1/keyframes/1/frame"
+        },
+        {
+          "code": "ease_on_last",
+          "path": "/stage/0/colorTracks/1/keyframes/1/ease"
+        },
+        {
+          "code": "duplicate_track",
+          "path": "/stage/0/colorTracks/2"
+        },
+        {
+          "code": "ease_missing",
+          "path": "/stage/0/colorTracks/2/keyframes/0"
+        },
+        {
+          "code": "frame_out_of_range",
+          "path": "/stage/0/colorTracks/2/keyframes/1/frame"
         }
       ]
     }

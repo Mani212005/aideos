@@ -1,4 +1,4 @@
-//! File Description: The cross-reference and range rules a JSON Schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, the Three stage's graph, channels, parts, textures and face programs, and a picture's pinned image asset, its one element and the properties that element may animate). Implements the same rules, issue codes and JSON Pointers as backend/renderIr/validate.ts; both are tested against the same fixtures.
+//! File Description: The cross-reference and range rules a JSON Schema cannot express (known assets, ordered keyframes, one origin per element, per-format placement, spans inside the film, the Three stage's graph, channels, parts, textures and face programs, a picture's pinned image asset, its one element and the properties that element may animate, and colour tracks' elements, one track per paint and their keyframes). Implements the same rules, issue codes and JSON Pointers as backend/renderIr/validate.ts; both are tested against the same fixtures.
 //! Inputs and outputs: a structurally valid `RenderIr` -> every `Issue` found, in document order.
 //! Used by: crate::load.
 
@@ -265,6 +265,39 @@ impl<'a> Checker<'a> {
             }
         }
         self.check_element_tracks(p, &n.element_tracks);
+        // Colour tracks (`/5`): each names an element the asset declares, and one paint of an element has one track.
+        let mut paints = HashSet::new();
+        for (j, t) in n.color_tracks.iter().flatten().enumerate() {
+            let tp = at(p, &[&"colorTracks", &j]);
+            if let Some(Asset::Svg(a)) = asset {
+                if !a.element_ids.iter().any(|e| e == &t.target) {
+                    self.add("unknown_element", at(&tp, &[&"target"]), format!("asset {} declares no element {}", n.asset, t.target));
+                }
+            }
+            if !paints.insert((t.target.as_str(), t.property)) {
+                self.add("duplicate_track", tp.clone(), format!("{:?} of {} is driven by two tracks", t.property, t.target));
+            }
+            self.check_color_keyframes(&at(&tp, &[&"keyframes"]), &t.keyframes);
+        }
+    }
+
+    /// Checks a colour keyframe list with the rules of a numeric one: strictly increasing frames inside the film and an ease on every segment.
+    fn check_color_keyframes(&mut self, path: &str, keys: &[ColorKeyframe]) {
+        for (i, k) in keys.iter().enumerate() {
+            let kp = at(path, &[&i]);
+            if i > 0 && k.frame.0 <= keys[i - 1].frame.0 {
+                self.add("keyframes_unordered", at(&kp, &[&"frame"]), "keyframe frames must strictly increase".into());
+            }
+            if k.frame.0 > self.duration {
+                self.add("frame_out_of_range", at(&kp, &[&"frame"]), format!("frame {} is past the film's {} frames", k.frame.0, self.duration));
+            }
+            if i + 1 < keys.len() && k.ease.is_none() {
+                self.add("ease_missing", kp.clone(), "every keyframe but the last names the easing of the segment after it".into());
+            }
+            if i + 1 == keys.len() && k.ease.is_some() {
+                self.add("ease_on_last", at(&kp, &[&"ease"]), "the last keyframe has no segment after it".into());
+            }
+        }
     }
 
     /// Checks an image node: a pinned image asset, its node tracks, and element tracks only on its one element and only of placement, scale, rotation and opacity.
@@ -280,7 +313,7 @@ impl<'a> Checker<'a> {
             if t.target != n.element {
                 self.add("unknown_element", at(&tp, &[&"target"]), format!("image node {} has the one element {}, not {}", n.id, n.element, t.target));
             }
-            if matches!(t.property, ElementProperty::DrawOn | ElementProperty::X1 | ElementProperty::Y1 | ElementProperty::X2 | ElementProperty::Y2) {
+            if matches!(t.property, ElementProperty::DrawOn | ElementProperty::X1 | ElementProperty::Y1 | ElementProperty::X2 | ElementProperty::Y2 | ElementProperty::DashOffset) {
                 self.add("property_not_allowed", at(&tp, &[&"property"]), format!("a picture's {:?} cannot be animated; move, scale, rotate or fade it", t.property));
             }
         }

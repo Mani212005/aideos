@@ -1,5 +1,5 @@
 //! File Description: Behavioural tests of the frame evaluator through its public API. Reference values marked "from TypeScript" were produced by running the project's own implementations (applySvgEasing, compileCameraTrack, buildCaptionPhrases, Remotion's spring) on the same inputs, so these tests hold the native evaluator to the curves the Remotion render uses today.
-//! Inputs and outputs: keyframes, element tracks, caption words and the fixture IR -> asserted evaluated values.
+//! Inputs and outputs: keyframes, element and colour tracks, caption words and the fixture IR -> asserted evaluated values.
 //! Used by: `cargo test --manifest-path native/Cargo.toml`.
 
 mod common;
@@ -401,4 +401,44 @@ fn formats_parse_by_their_wire_names() {
     assert_eq!(Format::parse("long"), Some(Format::Long));
     assert_eq!(Format::parse("reel"), Some(Format::Reel));
     assert_eq!(Format::parse("wide"), None);
+}
+
+/// Checks `aideos.render/5` colour tracks and the dash offset: a linear segment mixes each straight-alpha channel as
+/// Remotion's `interpolateColors` does (it then rounds each channel; the IR keeps the exact mix), a hold segment keeps the
+/// earlier colour, the ends hold, and a dash offset track sets the element's `stroke-dashoffset`.
+#[test]
+fn colour_tracks_mix_like_interpolate_colors_and_dash_offset_follows_its_track() {
+    let node: aideos_render_ir::types::SvgNode = serde_json::from_str(
+        r##"{"id":"n","asset":"art","x":0,"y":0,"scale":1,"rotation":0,"layer":0,"tracks":[],
+            "elementTracks":[{"target":"packets","property":"dashOffset","keyframes":[{"frame":0,"value":0,"ease":"linear"},{"frame":90,"value":-315}]}],
+            "colorTracks":[
+              {"target":"label","property":"fill","keyframes":[{"frame":0,"color":"#8E8E98","ease":"linear"},{"frame":18,"color":"#E2E8F0"}]},
+              {"target":"group","property":"fill","keyframes":[{"frame":0,"color":"#FF7A45","ease":"linear"},{"frame":20,"color":"#635BFF80"}]},
+              {"target":"card","property":"stroke","keyframes":[{"frame":10,"color":"#FFFFFF14","ease":"hold"},{"frame":30,"color":"#635BFF"}]}]}"##,
+    )
+    .expect("the svg node parses");
+    let rgba255 = |c: aideos_render::svg::color::Rgba| [c.r * 255.0, c.g * 255.0, c.b * 255.0, c.a];
+    let at = |frame: u32| eval::element_states(&node, frame, 90);
+    // From TypeScript: interpolateColors(9, [0, 18], ["#8E8E98", "#E2E8F0"]) is rgba(184, 187, 196, 1).
+    let label = rgba255(at(9)["label"].fill.expect("the label's fill is driven"));
+    for (got, want) in label.iter().zip([184.0, 187.0, 196.0, 1.0]) {
+        assert_near(f64::from(*got), want, 1e-3, "label fill at frame 9");
+    }
+    // From TypeScript: interpolateColors(5, [0, 20], [#FF7A45, rgba(99, 91, 255, 0.5)]) is rgba(216, 114, 116, 0.875); the
+    // IR's exact mix is within half a level of each rounded channel (alpha 0x80 is 128 / 255).
+    let group = rgba255(at(5)["group"].fill.expect("the group's fill is driven"));
+    let alpha = 1.0 + (128.0 / 255.0 - 1.0) * 0.25;
+    for (got, want) in group.iter().zip([216.0, 114.0, 116.0]) {
+        assert_near(f64::from(*got), want, 0.5, "group fill at frame 5");
+    }
+    assert_near(f64::from(group[3]), alpha, 1e-6, "group fill alpha at frame 5");
+    // A hold keeps the earlier colour up to the next keyframe; before the first and after the last the ends hold.
+    let card = |frame: u32| rgba255(at(frame)["card"].stroke.expect("the card's stroke is driven"));
+    assert_eq!(card(0), card(29), "held from before the first keyframe to the frame before the next");
+    assert_near(f64::from(card(29)[3]), 20.0 / 255.0, 1e-6, "the held alpha is the first keyframe's");
+    assert_eq!(card(30), [99.0, 91.0, 255.0, 1.0]);
+    assert_eq!(card(89), card(30));
+    assert_eq!(at(45)["packets"].dash_offset, Some(-157.5));
+    assert_eq!(at(45)["label"].dash_offset, None, "an element without a dash offset track keeps its authored one");
+    assert!(at(0)["packets"].fill.is_none() && at(0)["packets"].stroke.is_none(), "no colour track, no override");
 }

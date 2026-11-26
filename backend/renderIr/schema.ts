@@ -1,5 +1,5 @@
 /**
- * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) and the strict superset of that, `aideos.render/3` (adds the `image` stage node that draws a pinned picture, the illustrated stage). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
+ * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) the strict superset of that, `aideos.render/3` (adds the `image` stage node that draws a pinned picture, the illustrated stage), and its strict superset `aideos.render/5` (adds colour tracks and a stroke dash offset track on SVG elements, for the node-graph canvas of native Phase 2). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
  * Inputs and outputs: nothing at import time -> zod schemas and the TypeScript types inferred from them.
  * Used by: backend/renderIr/validate.ts, backend/renderIr/jsonSchema.ts, backend/renderIr/renderIr.test.ts.
  */
@@ -12,8 +12,10 @@ export const RENDER_IR_VERSION = "aideos.render/1";
 export const RENDER_IR_VERSION_2 = "aideos.render/2";
 /** The third version, a strict superset of `/2`: adds the `image` stage node, a pinned picture placed on the stage (the illustrated stage, phase 1). */
 export const RENDER_IR_VERSION_3 = "aideos.render/3";
+/** Version 5, a strict superset of `/3` (`/4`, per-glyph text and 2D shutter, is built in parallel): adds `colorTracks` (fill and stroke colours over time) and the `dashOffset` element track on svg nodes (native Phase 2, P2.2a). */
+export const RENDER_IR_VERSION_5 = "aideos.render/5";
 /** Every version the loaders read; any other value is rejected before the rest of the document is read. */
-export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3] as const;
+export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_5] as const;
 export type RenderIrVersion = (typeof RENDER_IR_VERSIONS)[number];
 
 /** Largest frame index or count a document may carry (about 10 days at 30 fps), so integers stay exact. */
@@ -203,7 +205,8 @@ export interface GroupNode {
 export type Node =
   | ImageNode
   | Stage3dNode
-  | z.infer<typeof svgNodeSchema>
+  // The `/5` svg node: the `/1` to `/3` node plus the dash offset track and colour tracks, so one type reads every version.
+  | z.infer<typeof svgNodeSchemaV5>
   | z.infer<typeof rectNodeSchema>
   | z.infer<typeof textNodeSchema>
   | z.infer<typeof railNodeSchema>
@@ -281,8 +284,8 @@ export const renderIrSchema = z.strictObject({
   audio: z.array(audioClipSchema),
 });
 
-/** A loaded document of any version, typed as the `/3` superset (an older document never holds a later version's additions). */
-export type RenderIr = Omit<z.infer<typeof renderIrSchemaV3>, "schema"> & { schema: RenderIrVersion };
+/** A loaded document of any version, typed as the `/5` superset (an older document never holds a later version's additions). */
+export type RenderIr = Omit<z.infer<typeof renderIrSchemaV5>, "schema"> & { schema: RenderIrVersion };
 export type Asset = z.infer<typeof assetSchemaV2>;
 export type Keyframe = z.infer<typeof keyframeSchema>;
 export type FormatName = "long" | "reel";
@@ -619,5 +622,100 @@ export const renderIrSchemaV3 = z.strictObject({
   camera: cameraSchema.optional(),
   stage: z.array(nodeSchemaV3),
   overlay: z.array(nodeSchemaV3),
+  audio: z.array(audioClipSchema),
+});
+
+// ---------------------------------------------------------------------------------------------
+// aideos.render/5: colour and dash offset over time on SVG elements. Everything above is unchanged `/3`; `/5` adds
+// what follows (native Phase 2, P2.2a: what the node-graph canvas animates that `/3` cannot carry).
+// ---------------------------------------------------------------------------------------------
+
+/** `/5` element properties: `/3`'s plus `dashOffset`, the element's `stroke-dashoffset` in its own user units (the travelling dashes of a node-graph edge). */
+export const ELEMENT_PROPERTIES_V5 = [...ELEMENT_PROPERTIES, "dashOffset"] as const;
+export const elementTrackSchemaV5 = z.strictObject({
+  /** Id of an element inside the SVG asset's own document. */
+  target: text,
+  property: z.enum(ELEMENT_PROPERTIES_V5),
+  /** Transform origin in the asset's coordinate space; only for scale and rotate properties. */
+  origin: z.strictObject({ x: z.number(), y: z.number() }).optional(),
+  keyframes: z.array(keyframeSchema).min(1),
+});
+
+/** How a colour track moves between two keyframes: straight to the next colour per channel, or held until it. */
+export const COLOR_EASES = ["linear", "hold"] as const;
+/** One colour keyframe: the colour at a frame, plus the easing of the segment that follows it. */
+export const colorKeyframeSchema = z.strictObject({
+  frame,
+  color,
+  ease: z.enum(COLOR_EASES).optional(),
+});
+
+/** The paints a colour track may drive. */
+export const COLOR_PROPERTIES = ["fill", "stroke"] as const;
+/**
+ * The fill or stroke colour of one element over time. It replaces the element's own paint (so its children inherit it, as
+ * a `fill` or `stroke` attribute would); between keyframes the red, green, blue and alpha channels move linearly in
+ * straight (unpremultiplied) alpha, as Remotion's `interpolateColors` mixes them, or hold.
+ */
+export const colorTrackSchema = z.strictObject({
+  /** Id of an element inside the SVG asset's own document. */
+  target: text,
+  property: z.enum(COLOR_PROPERTIES),
+  keyframes: z.array(colorKeyframeSchema).min(1),
+});
+
+export type ColorTrack = z.infer<typeof colorTrackSchema>;
+export type ColorKeyframe = z.infer<typeof colorKeyframeSchema>;
+
+/** A `/5` svg node: `/3`'s plus the `dashOffset` element track and optional colour tracks (absent means none). */
+export const svgNodeSchemaV5 = z.strictObject({
+  kind: z.literal("svg"),
+  ...nodeBase,
+  asset: id,
+  x: z.number(),
+  y: z.number(),
+  scale: z.number().gt(0),
+  rotation: z.number(),
+  layer: z.number().int().min(-2147483648).max(2147483647),
+  tracks: z.array(nodeTrackSchema),
+  elementTracks: z.array(elementTrackSchemaV5),
+  colorTracks: z.array(colorTrackSchema).optional(),
+});
+
+const groupNodeSchemaV5 = z.strictObject({
+  kind: z.literal("group"),
+  ...nodeBase,
+  x: z.number(),
+  y: z.number(),
+  scale: z.number().gt(0),
+  rotation: z.number(),
+  tracks: z.array(nodeTrackSchema),
+  get children(): z.ZodArray<z.ZodType<Node>> { return z.array(nodeSchemaV5); },
+});
+
+/** Any `/5` node. */
+export const nodeSchemaV5: z.ZodType<Node> = z.discriminatedUnion("kind", [
+  svgNodeSchemaV5,
+  rectNodeSchema,
+  textNodeSchema,
+  railNodeSchema,
+  captionsNodeSchema,
+  endCardNodeSchema,
+  stage3dNodeSchema,
+  imageNodeSchema,
+  groupNodeSchemaV5,
+]);
+
+/** The whole `/5` document: `/3` plus colour tracks and the dash offset track on svg nodes. */
+export const renderIrSchemaV5 = z.strictObject({
+  schema: z.literal(RENDER_IR_VERSION_5),
+  film: z.strictObject({ id, fps: z.number().int().min(1).max(240), durationFrames: count }),
+  scene: size,
+  formats: perFormat(size),
+  background: color,
+  assets: z.array(assetSchemaV2),
+  camera: cameraSchema.optional(),
+  stage: z.array(nodeSchemaV5),
+  overlay: z.array(nodeSchemaV5),
   audio: z.array(audioClipSchema),
 });

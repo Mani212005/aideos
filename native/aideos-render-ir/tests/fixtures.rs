@@ -69,7 +69,7 @@ fn invalid_fixtures_are_refused_with_the_expected_verdict() {
             ("not_json", LoadError::NotJson(_)) => {}
             ("unsupported_version", LoadError::UnsupportedVersion { found, supported }) => {
                 assert_eq!(found, want["found"].as_str().unwrap(), "{rel}");
-                assert_eq!(*supported, "aideos.render/1, aideos.render/2, aideos.render/3");
+                assert_eq!(*supported, "aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/5");
             }
             ("invalid_document", LoadError::Invalid(issues)) => {
                 let want_issues = want["issues"].as_array().unwrap();

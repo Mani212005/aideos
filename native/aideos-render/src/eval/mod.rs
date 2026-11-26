@@ -1,4 +1,4 @@
-//! File Description: The frame evaluator: resolves everything a frame depends on from the Render IR as a pure function of (IR, format, frame number), with no clocks and no state carried between frames, so frames can be evaluated in any order. It covers the camera, node and element tracks, visibility, the chapter rail, the end card's entrances and press, and (in `captions`) the kinetic caption phrases.
+//! File Description: The frame evaluator: resolves everything a frame depends on from the Render IR as a pure function of (IR, format, frame number), with no clocks and no state carried between frames, so frames can be evaluated in any order. It covers the camera, node and element tracks (with `aideos.render/5`'s colour tracks and dash offset), visibility, the chapter rail, the end card's entrances and press, and (in `captions`) the kinetic caption phrases.
 //! Inputs and outputs: a loaded `RenderIr`, a frame number and a format -> plain value structs (camera pose, transforms, element states, rail and end card state).
 //! Used by: crate::raster (drawing), crate::renderer, and the evaluator tests in tests/evaluator.rs.
 
@@ -9,8 +9,11 @@ pub mod track;
 use std::collections::BTreeMap;
 
 use aideos_render_ir::types::{
-    Chapter, ElementProperty, ElementTrack, NodeProperty, NodeTrack, RenderIr, SvgNode, Visible,
+    Chapter, ColorEase, ColorKeyframe, ColorProperty, ElementProperty, ElementTrack, NodeProperty,
+    NodeTrack, RenderIr, SvgNode, Visible,
 };
+
+use crate::svg::color::{parse_color, Rgba};
 
 use self::track::{ease_expo_out, quantize, sample};
 
@@ -192,6 +195,11 @@ pub struct ElementState {
     pub y1: Option<f64>,
     pub x2: Option<f64>,
     pub y2: Option<f64>,
+    /// `aideos.render/5`: set only when a track drives the element's `stroke-dashoffset`.
+    pub dash_offset: Option<f64>,
+    /// `aideos.render/5`: set only when a colour track drives the element's fill or stroke paint.
+    pub fill: Option<Rgba>,
+    pub stroke: Option<Rgba>,
 }
 
 impl Default for ElementState {
@@ -211,6 +219,9 @@ impl Default for ElementState {
             y1: None,
             x2: None,
             y2: None,
+            dash_offset: None,
+            fill: None,
+            stroke: None,
         }
     }
 }
@@ -227,7 +238,40 @@ fn element_value(track: &ElementTrack, frame: u32, dur: u32) -> f64 {
 /// Evaluates every element track of an SVG node at a frame, keyed by element id.
 /// `scale` sets both axes; a `scaleX` or `scaleY` track, when present, wins on its own axis.
 pub fn element_states(node: &SvgNode, frame: u32, dur: u32) -> BTreeMap<String, ElementState> {
-    element_states_of(&node.element_tracks, frame, dur)
+    let mut states = element_states_of(&node.element_tracks, frame, dur);
+    for track in node.color_tracks.iter().flatten() {
+        let colour = sample_color(&track.keyframes, frame);
+        let state = states.entry(track.target.clone()).or_default();
+        match track.property {
+            ColorProperty::Fill => state.fill = Some(colour),
+            ColorProperty::Stroke => state.stroke = Some(colour),
+        }
+    }
+    states
+}
+
+/// Samples a colour track (`aideos.render/5`): held before the first and after the last keyframe; between two, held or
+/// each straight-alpha channel moved linearly (Remotion's `interpolateColors` mix, unrounded).
+pub fn sample_color(keyframes: &[ColorKeyframe], frame: u32) -> Rgba {
+    let colour = |k: &ColorKeyframe| parse_color(&k.color).unwrap_or(Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 });
+    let (Some(first), Some(last)) = (keyframes.first(), keyframes.last()) else {
+        return Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
+    };
+    if keyframes.len() == 1 || frame <= first.frame.0 {
+        return colour(first);
+    }
+    if frame >= last.frame.0 {
+        return colour(last);
+    }
+    let next = keyframes.iter().position(|k| k.frame.0 > frame).unwrap_or(keyframes.len() - 1);
+    let (k0, k1) = (&keyframes[next - 1], &keyframes[next]);
+    let (c0, c1) = (colour(k0), colour(k1));
+    if k0.ease != Some(ColorEase::Linear) {
+        return c0;
+    }
+    let t = (f64::from(frame - k0.frame.0) / f64::from(k1.frame.0 - k0.frame.0)) as f32;
+    let mix = |a: f32, b: f32| a + (b - a) * t;
+    Rgba { r: mix(c0.r, c1.r), g: mix(c0.g, c1.g), b: mix(c0.b, c1.b), a: mix(c0.a, c1.a) }
 }
 
 /// Evaluates a list of element tracks (an svg node's, or an image node's tracks on its one element) at a frame, keyed by element id.
@@ -266,6 +310,7 @@ pub fn element_states_of(
             ElementProperty::Y1 => state.y1 = Some(v),
             ElementProperty::X2 => state.x2 = Some(v),
             ElementProperty::Y2 => state.y2 = Some(v),
+            ElementProperty::DashOffset => state.dash_offset = Some(v),
         }
     }
     states
