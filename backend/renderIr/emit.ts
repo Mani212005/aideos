@@ -321,6 +321,11 @@ function motionTrack(property: "opacity" | "y" | "x" | "scaleX", value: (f: numb
   return { property, keyframes: linearKeyframes(value, Math.max(0, Math.floor(from)), Math.max(0, Math.ceil(to))) };
 }
 
+/** Rounds a layout coordinate to a whole pixel as Blink's `ToRoundedVector2d` does (half away from zero). */
+function blinkPixelSnap(v: number): number {
+  return Math.sign(v) * Math.round(Math.abs(v));
+}
+
 /** A shot's text-card box: the frame inside its margins (Film.tsx `Stage` for a `frame` stage). */
 function stageRect(ctx: LayoutCtx) {
   const captions = ctx.film.subtitles !== false && ctx.film.captions !== "off";
@@ -396,6 +401,9 @@ function textRevealNodes(ctx: LayoutCtx, id: string, block: { text: string; size
         const drawFrom = base + frames(MS.stagger * i + MS.enter * 0.6, ctx.fps);
         const draw = (f: number) => progressAt(f, drawFrom, enterFrames);
         const h = ctx.layout.px(2);
+        // The underline carries a `scaleX` transform, which is not a pure translation, so Blink rounds its paint offset to
+        // whole pixels (it drops the subpixel accumulation): its box paints at the rounded layout position, not the
+        // fractional one (measured 0.45 px lower than unsnapped at frames 45 and 60 of node-graph-flat). Its size stays exact.
         nodes.push({
           kind: "rect",
           id: `${id}-w${i}-underline`,
@@ -406,7 +414,7 @@ function textRevealNodes(ctx: LayoutCtx, id: string, block: { text: string; size
             motionTrack("scaleX", draw, drawFrom, drawFrom + enterFrames),
             motionTrack("x", (f) => ((draw(f) - 1) * w.coreWidth) / 2, drawFrom, drawFrom + enterFrames),
           ],
-          placement: { [ctx.format]: { x, y: y + lineH + 0.1 * fs - h, w: w.coreWidth, h } },
+          placement: { [ctx.format]: { x: blinkPixelSnap(x), y: blinkPixelSnap(y + lineH + 0.1 * fs - h), w: w.coreWidth, h } },
         });
       }
       x += w.width + colGap;
