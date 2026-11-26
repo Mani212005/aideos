@@ -17,7 +17,9 @@ import { dispatchTask } from "../agentBridge/dispatcher";
 import { buildDesign, designDir, formatBuildStatus, readDesignStatus, readCheckedLookPlan, type DesignBuildStatus } from "./build";
 import { closeBuildRequest, fileDigest, openBuildRequest } from "./buildRecord";
 import { renderDesignBrief, writeDesignBrief } from "./brief";
-import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJudge/judge";
+import { judgeAndRepair } from "../visionJudge/judge";
+import type { JudgeOptions, JudgeResult, JudgeRunner } from "../visionJudge/types";
+import type { DesignLlmCaller } from "../pipeline/deliveryTypes";
 import { resolvePackageDir } from "../videoPackageLoader";
 import { availableCharacters, renderLookBrief, writeLookBrief, writeLookMd, type LookPlan } from "../lookPlan";
 import type { DesignMode } from "../pipeline/types";
@@ -31,9 +33,6 @@ import { checkSoundtrack } from "../designCheck/soundtrack";
 import { designAcceptance, judgeBuiltDesign, type JudgeState } from "../lookPlan/contract";
 import { parseModelJson } from "../modelReply";
 
-
-/** Asks a text model for a completion; injectable so tests never reach a real model. */
-export type DesignLlmCaller = (prompt: string, systemInstruction: string) => Promise<string>;
 
 /** How a film's design was finally made. */
 export interface DesignOutcome {
@@ -68,7 +67,7 @@ export interface DesignFilmOptions {
   /** Vision-judge settings, or false to skip it. It is off under the Node test runner unless given here. */
   judge?: JudgeOptions | false;
   /** Supplies visual evidence from an alternative renderer or a deterministic test. */
-  judgeRunner?: typeof judgeAndRepair;
+  judgeRunner?: JudgeRunner;
 }
 
 // Delivers a look or design task through the same channel ladder and waits for validated output.

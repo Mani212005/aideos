@@ -18,73 +18,16 @@ import { environment } from "../env";
 import fs from "node:fs";
 import path from "node:path";
 import { dispatchTask } from "../agentBridge/dispatcher";
-import type { DispatchOptions, DispatchResult } from "../agentBridge/types";
+import type { DispatchResult } from "../agentBridge/types";
 import { readFilm } from "../pipeline/filmStore";
 import {
   DEFAULT_EMBEDDING_THRESHOLD,
   judgeFrameVerdicts,
-  type FrameVerdict,
   type FrameVerdictState,
-  type JevDecisionOptions,
-  type SuggestionVerdict,
 } from "../jev";
 import { appendEmbeddingLog, judgeDir, readAgentReview, type EmbeddingLogEntry, type SampleReview } from "./agentReview";
-import { clampStride, renderSamples, type SampleOptions, type SampleStill } from "./sampler";
-
-/** Scores a rendered still against the intent text (0..1); injectable so tests and real embedders plug in. */
-export type EmbedFn = (pngPath: string, intent: string) => Promise<number> | number;
-
-/** Options for one judging pass. */
-export interface JudgeOptions extends SampleOptions {
-  /** Image-text score below which a frame does not match its intent (default 0.5). */
-  threshold?: number;
-  /** Skip the agent round even when one is connected (the default under the Node test runner). */
-  skipAgent?: boolean;
-  agentTimeoutMs?: number;
-  pollMs?: number;
-  /** Studio owner key, so the task reaches the owner's agent connected through `aideos connect`. */
-  ownerKey?: string;
-  /** Overrides where the score comes from; by default it is the coding model's own report. */
-  embed?: EmbedFn;
-  jevOptions?: JevDecisionOptions;
-  /** Sends the review task; injectable so a test never messages a live session. */
-  dispatch?: (opts: DispatchOptions) => Promise<DispatchResult>;
-  onProgress?: (message: string) => void;
-}
-
-/** One sample with everything the judge learned about it. */
-export interface JudgedSample {
-  frame: number;
-  shotId: string;
-  png: string;
-  embedding: { score: number | null; threshold: number; pass: boolean | null; source: EmbeddingLogEntry["source"] };
-  note: string;
-  suggestions: string[];
-  repaired: boolean;
-  verdict: FrameVerdict;
-  verdictSource: "jev" | "confidence-fallback" | "heuristic-fallback";
-  suggestionVerdicts: SuggestionVerdict[];
-}
-
-/** A sample that did not match, with the exact text to hand back to synthesis. */
-export interface JudgeFailure {
-  frame: number;
-  shotId: string;
-  verdict: FrameVerdict;
-  error: string;
-}
-
-/** The outcome of judging one film. */
-export interface JudgeResult {
-  filmId: string;
-  /** Why nothing was judged (no scene, no Chrome), or undefined when the pass ran. */
-  skipped?: string;
-  agentRound: "reported" | "skipped" | "no-agent" | "timed-out";
-  samples: JudgedSample[];
-  failures: JudgeFailure[];
-  /** True or false when image evidence was judged, null when visual judgment was unavailable. */
-  passed: boolean | null;
-}
+import type { JudgeOptions, JudgeResult, JudgedSample, JudgeFailure, RepairFn } from "./types";
+import { clampStride, renderSamples, type SampleStill } from "./sampler";
 
 // True when the dispatch actually reached a listening agent (the queue and task file alone mean nobody is).
 function reachedAgent(dispatch: DispatchResult): boolean {
@@ -250,9 +193,6 @@ export async function judgeFilm(filmId: string, options: JudgeOptions = {}, inst
   fs.writeFileSync(path.join(judgeDir(filmId), "verdicts.json"), JSON.stringify({ at: new Date().toISOString(), ...result }, null, 2) + "\n");
   return result;
 }
-
-/** Repairs a film from a judge failure report; true only when a passing design build was written. */
-export type RepairFn = (errors: string) => Promise<boolean>;
 
 // Judges a film and, while samples fail, hands each exact error back to synthesis for a bounded number of rounds.
 export async function judgeAndRepair(

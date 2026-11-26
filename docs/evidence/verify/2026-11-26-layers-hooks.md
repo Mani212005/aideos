@@ -32,7 +32,9 @@
 | `npm --prefix editor run build` | PASS | Final build includes the warning fixes and caption observer refinement. |
 | `./node_modules/.bin/tsx /tmp/aideos-timing-parity.ts` | PASS | 500 generated inputs against the original timeline module. |
 | ESLint stdin restriction probe | PASS | A browser film import of backend audio is rejected. |
-| TypeScript import graph scan | PASS | No multi-file cycles among tracked and new production TypeScript files. |
+| TypeScript import graph scan | PASS | 441 production files under src, backend, editor/src (tests, journeys, testSupport and scripts excluded). Static imports, re-exports, type-only imports, `import type`, `import("...")` type references and dynamic imports all count as edges. Result: 0 multi-file strongly connected components. The earlier scan missed one 9-file component through `backend/pipeline/types.ts`; it is now broken by the leaf modules `backend/pipeline/deliveryTypes.ts` and `backend/visionJudge/types.ts`. |
+| `tsc --noEmit -p .`, `eslint backend/pipeline backend/visionJudge backend/designSpec backend/reelCut`, `tsc -b` in `editor` | PASS | After the leaf-type extraction. |
+| `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/visionJudge/visionJudge.test.ts backend/designSpec/designer.test.ts backend/designSpec/motionRequests.test.ts backend/pipeline/pipeline.test.ts backend/reelCut/*.test.ts` | PASS | 143 tests. |
 
 ## Fix attempts
 

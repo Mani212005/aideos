@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { generationCallerOrNull } from "../aideosConfig";
 import { dispatchTask } from "../agentBridge/dispatcher";
-import type { DesignLlmCaller } from "../designSpec/designer";
+import type { DesignLlmCaller, ReelDeliveryMode } from "../pipeline/deliveryTypes";
 import type { LineSynthesizer } from "../endCard/voice";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
@@ -20,7 +20,6 @@ import { reelCutSchema } from "./schema";
 import { ProductionError } from "../pipeline/types";
 import { parseModelJson } from "../modelReply";
 
-export type ReelDeliveryMode = "inline" | "agent" | "server";
 export interface ReelWriterOptions {
   mode?: ReelDeliveryMode;
   llmCaller?: DesignLlmCaller | null;

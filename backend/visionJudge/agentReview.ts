@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { designDir } from "../designSpec/build";
+import type { EmbeddingSource } from "./types";
 
 /** One sample's review by the coding model. */
 export const sampleReviewSchema = z.object({
@@ -48,7 +49,7 @@ export interface EmbeddingLogEntry {
   /** The threshold the score was held to. */
   threshold: number;
   pass: boolean | null;
-  source: "agent" | "injected" | "none";
+  source: EmbeddingSource;
 }
 
 // Returns the folder holding a film's judge records.

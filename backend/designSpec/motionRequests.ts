@@ -20,7 +20,8 @@ import { readFilm, writeFilm } from "../pipeline/filmStore";
 import { buildDesign, designDir, readDesignStatus } from "./build";
 import { closeBuildRequest, openBuildRequest } from "./buildRecord";
 import { writeDesignBrief } from "./brief";
-import { designWithServerModel, type DesignLlmCaller } from "./designer";
+import { designWithServerModel } from "./designer";
+import type { DesignLlmCaller } from "../pipeline/deliveryTypes";
 import type { DesignSource } from "./compile";
 
 /** One described motion and what came of it. */
