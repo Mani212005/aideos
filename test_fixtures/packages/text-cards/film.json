@@ -1,0 +1,244 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "text-cards",
+  "title": "Text cards",
+  "fps": 30,
+  "accent": "#635BFF",
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "accent": "#635BFF"
+  },
+  "chapters": [
+    "Rack"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "rack",
+        "label": "Rack",
+        "x": 160,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      },
+      {
+        "id": "work",
+        "label": "Work",
+        "x": 590,
+        "y": 200,
+        "w": 280,
+        "h": 124
+      }
+    ],
+    "edges": [
+      {
+        "from": "rack",
+        "to": "work"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "rack",
+      "ch": "Rack",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "all",
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "One rack holds the work.",
+      "speed": 1,
+      "blocks": []
+    },
+    {
+      "id": "card-a",
+      "ch": "Rack",
+      "dur": 4.0,
+      "stage": "frame",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Servers share the work. The rack holds the work until a server is free to take the next request off the queue in turn.",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Servers share the work",
+          "size": "display",
+          "accentWord": "share"
+        },
+        {
+          "c": "Body",
+          "text": "The rack holds the work until a server is free to take the next request off the queue in turn."
+        }
+      ]
+    },
+    {
+      "id": "card-b",
+      "ch": "Rack",
+      "dur": 5.0,
+      "stage": "frame",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "When a server slows down, the others pick up its share. When one server slows down the others pick up its share, the queue keeps moving at a steady pace, and nobody waiting on a request notices the slower machine at all.",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "When a server slows down, the others pick up its share",
+          "size": "headline",
+          "accentWord": "share"
+        },
+        {
+          "c": "Body",
+          "text": "When one server slows down the others pick up its share, the queue keeps moving at a steady pace, and nobody waiting on a request notices the slower machine at all."
+        }
+      ]
+    },
+    {
+      "id": "card-c",
+      "ch": "Rack",
+      "dur": 3.0,
+      "stage": "frame",
+      "look": "all",
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Nothing waits. The work splits evenly across the rack.",
+      "speed": 1,
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Nothing waits",
+          "size": "display"
+        },
+        {
+          "c": "Body",
+          "text": "The work splits evenly across the rack."
+        }
+      ]
+    },
+    {
+      "id": "after",
+      "ch": "Rack",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "all",
+      "move": "zoom-out",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Each tile moves to a shelf.",
+      "speed": 1,
+      "blocks": []
+    }
+  ],
+  "scene": {
+    "schemaVersion": "1.0.0",
+    "sceneId": "text-cards",
+    "fps": 30,
+    "durationFrames": 540,
+    "sceneSize": {
+      "w": 1920,
+      "h": 1920
+    },
+    "background": {
+      "assetId": "background",
+      "svgSource": "videos/text-cards/visuals/canvas.svg",
+      "layer": 0,
+      "position": {
+        "x": 960,
+        "y": 960
+      },
+      "scale": 4.8,
+      "rotation": 0,
+      "opacity": 1
+    },
+    "props": [
+      {
+        "assetId": "rack",
+        "svgSource": "videos/text-cards/visuals/rack.svg",
+        "layer": 1,
+        "position": {
+          "x": 760,
+          "y": 700
+        },
+        "scale": 1.1,
+        "rotation": 0,
+        "opacity": 1,
+        "animation": {
+          "timelineId": "rack-motion",
+          "clips": [
+            {
+              "clipId": "rack-in",
+              "targets": [
+                "rack"
+              ],
+              "property": "opacity",
+              "from": 0,
+              "to": 1,
+              "startFrame": 0,
+              "durationFrames": 24,
+              "easing": "expoOut"
+            },
+            {
+              "clipId": "tile-a-move",
+              "targets": [
+                "tile-a"
+              ],
+              "property": "translateX",
+              "from": 0,
+              "to": 300,
+              "startFrame": 20,
+              "durationFrames": 60,
+              "easing": "expoInOut"
+            },
+            {
+              "clipId": "tile-b-move",
+              "targets": [
+                "tile-b"
+              ],
+              "property": "translateX",
+              "from": 0,
+              "to": 200,
+              "startFrame": 150,
+              "durationFrames": 80,
+              "easing": "expoInOut"
+            },
+            {
+              "clipId": "tile-c-move",
+              "targets": [
+                "tile-c"
+              ],
+              "property": "translateX",
+              "from": 0,
+              "to": 240,
+              "startFrame": 300,
+              "durationFrames": 80,
+              "easing": "expoInOut"
+            },
+            {
+              "clipId": "tile-a-back",
+              "targets": [
+                "tile-a"
+              ],
+              "property": "translateX",
+              "from": 300,
+              "to": 100,
+              "startFrame": 430,
+              "durationFrames": 80,
+              "easing": "expoInOut"
+            }
+          ]
+        }
+      }
+    ],
+    "actors": [],
+    "audioSource": "none",
+    "audioDurationMs": 18000
+  }
+}

@@ -32,6 +32,7 @@ import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_
 import { rasterElementIds } from "../../src/dl/scene/raster";
 import { validateRenderIr } from "./validate";
 import { cssColor, hexAlpha, linearKeyframes, rgbHex } from "./irValues";
+import { prettyLines, type WordPosition } from "./bodyWrap";
 
 export { cssColor, hexAlpha, linearKeyframes };
 import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
@@ -115,9 +116,17 @@ export class NativeUnsupportedError extends Error {
 }
 
 /** Block kinds the emitter lays out (the text cards of Phase 1). */
-const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter"]);
+const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body"]);
 /** The shared IR identifier rule applied to generated asset and node identifiers. */
 const IR_ID = new RegExp(ID_PATTERN);
+
+/** The word shapes whose line breaks were measured against Chrome: optional opening mark, a lone & or letters and digits with internal . , ' groups, optional closing mark, optional one trailing . , ; : ! ?. */
+const MEASURED_BODY_WORD = /^[("']?(?:&|[A-Za-z0-9]+(?:[.,'][A-Za-z0-9]+)*)[)"']?[.,;:!?]?$/;
+
+/** The first white-space separated word of Body copy outside the measured shapes (one Chrome's UAX 14 breaker may break inside), or undefined when all are measured. */
+function firstUnmeasuredBodyWord(text: string): string | undefined {
+  return text.split(/[ \t\r\n]+/).find((word) => word !== "" && !MEASURED_BODY_WORD.test(word));
+}
 
 /**
  * Lists film-only reasons this film cannot be drawn natively in this format; empty means no known film-only refusal.
@@ -179,9 +188,18 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
       if (shot.blocks.some((b) => b.c !== "StatCounter")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter natively`);
     } else if (shot.stage !== "frame" && shot.stage !== "none") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
-    if (shot.blocks.length > 1) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively`);
+    // P2.5a: the one measured column is the compiler's text card, a headline then its support copy (design.ts `buildTextBlocks`).
+    const headlineAndBody = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && shot.blocks[1].c === "Body";
+    if (shot.blocks.length > 1 && !headlineAndBody) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body is)`);
+    if (shot.blocks.length === 1 && shot.blocks[0].c === "Body") reasons.push(`shot ${shot.id}: a Body block on its own is not measured against Remotion yet (only under a TextReveal)`);
     for (const block of shot.blocks) {
       if (!SUPPORTED_BLOCKS.has(block.c)) reasons.push(`shot ${shot.id}: ${block.c} blocks are Phase 2`);
+      const size = block.c === "Body" && FORMAT_SIZE[format] ? bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)) : undefined;
+      if (size && size.advance === undefined) reasons.push(`shot ${shot.id}: Body copy at ${size.fs} px has no measured Chrome advance size`);
+      const unmeasured = block.c === "Body" ? firstUnmeasuredBodyWord(block.text) : undefined;
+      if (unmeasured !== undefined) {
+        reasons.push(`shot ${shot.id}: Body copy word ${JSON.stringify(unmeasured)} is not a measured word shape; only white-space line breaks between measured word shapes (letters and digits, with an optional opening or closing ( ) " ' mark, internal . , ' groups and one trailing . , ; : ! ?) are measured against Chrome`);
+      }
     }
     if (shot.needsFootage) reasons.push(`shot ${shot.id}: footage is Phase 2`);
   }
@@ -382,6 +400,16 @@ function insetMotion(ctx: LayoutCtx, t: TimedShot): { panelTrack: ReturnType<typ
   };
 }
 
+/** The tops of a headline and its Body in the stage's centred column: their heights and the 2.5-grid gap, centred as a whole. */
+function columnTops(ctx: LayoutCtx, headline: { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }, body: { text: string }): [number, number] {
+  const rect = stageRect(ctx);
+  const first = textRevealLayout(ctx, headline).blockH;
+  const gap = ctx.layout.grid * 2.5;
+  const total = first + gap + bodyLayout(ctx, body).height;
+  const top = rect.y + (rect.h - total) / 2;
+  return [top, top + first + gap];
+}
+
 /** Film.tsx's `CLOSE_MS`: how long a panel takes to fade out at the end of its shot. */
 const INSET_CLOSE_MS = 420;
 
@@ -391,8 +419,76 @@ function stageRect(ctx: LayoutCtx) {
   return getStageCardRect(ctx.format, ctx.width, ctx.height, ctx.layout.margin, captions);
 }
 
-/** Lays out a TextReveal block: per-word text nodes with their entrance, and the accent word's underline. */
-function textRevealNodes(ctx: LayoutCtx, id: string, block: { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }, start: number, index: number): Node[] {
+/**
+ * The font size whose shaped advances equal Chrome's for Geist 400 at each body size a film uses (Remotion's Chrome, with its
+ * `--font-render-hinting=none`, measured over every word prefix of 400 sentences): 24 px advances as 24 px, but 33.6 px
+ * advances as 33.585 px (all 2402 prefixes within 1/64 px; at 33.6 px only 37 are). Line breaking needs Chrome's widths.
+ */
+const CHROME_BODY_ADVANCE_SIZE = new Map<number, number>([[24, 24], [33.599999999999994, 33.585]]);
+
+/** The body size of a format, and the size Chrome's advances at that size are measured at (nativeSupport refuses any other). */
+function bodySizes(layout: DLLayout): { fs: number; advance: number | undefined } {
+  const fs = layout.type("body").fontSize;
+  return { fs, advance: CHROME_BODY_ADVANCE_SIZE.get(fs) };
+}
+
+/**
+ * A Body block's layout (primitives.tsx `Body`, P2.5a): Geist at the body size in the muted colour, left-aligned (no panel
+ * gives a centred `AlignContext`) in a box as wide as its text up to its measure (680 px on the long frame, the stage on the
+ * reel) and centred in the stage, broken into lines as Chrome breaks `text-wrap: pretty` (backend/renderIr/bodyWrap.ts) on
+ * Chrome's advances, each line `line-height` 1.5 (in 1/64 px). Words are placed one by one at Chrome's positions.
+ */
+function bodyLayout(ctx: LayoutCtx, block: { text: string }) {
+  const type = ctx.layout.type("body");
+  const { fs, advance } = bodySizes(ctx.layout);
+  const em = parseFloat(type.letterSpacing) || 0;
+  const font = sansId(type.fontWeight);
+  const rect = stageRect(ctx);
+  const measure = ctx.format === "long" ? ctx.layout.px(680) : rect.w;
+  // CSS collapses runs of white space into one space between words.
+  const words = block.text.trim().split(/\s+/).filter(Boolean);
+  const width = (text: string) => ctx.width_({ text, font, size: advance ?? fs, letterSpacing: em * fs });
+  // Each word's end is the paragraph's width up to it; the next word starts where its own width ends the next prefix.
+  const ends = words.map((_, i) => width(words.slice(0, i + 1).join(" ")));
+  const own = words.map((w) => width(w));
+  const positions: WordPosition[] = ends.map((end, i) => ({ end, next: i + 1 < words.length ? ends[i + 1] - own[i + 1] : end }));
+  const maxContent = ends.length ? ends[ends.length - 1] : 0;
+  const boxW = Math.min(maxContent, measure, rect.w);
+  const starts = prettyLines(positions, boxW, fs);
+  const lineH = Math.floor(type.lineHeight * fs * 64) / 64;
+  return { fs, em, font, rect, words, own, positions, boxW, starts, lineH, height: starts.length * lineH };
+}
+
+/** Lays out a Body block from `top`: one text node per word at Chrome's positions, the block entering as one (rise and fade). */
+function bodyNodes(ctx: LayoutCtx, id: string, block: { text: string }, start: number, index: number, top: number): Node {
+  const { fs, em, font, rect, words, own, positions, boxW, starts, lineH } = bodyLayout(ctx, block);
+  const boxX = rect.x + (rect.w - boxW) / 2;
+  const children: Node[] = [];
+  starts.forEach((first, line) => {
+    const last = line + 1 < starts.length ? starts[line + 1] : words.length;
+    const lineStart = first === 0 ? 0 : positions[first - 1].next;
+    for (let i = first; i < last; i++) {
+      const wordStart = i === 0 ? 0 : positions[i - 1].next;
+      children.push({
+        kind: "text", id: `${id}-w${i}`, text: words[i], font, color: ctx.tokens.muted, align: "left",
+        lineHeight: lineH / fs, letterSpacing: em, tracks: [],
+        placement: { [ctx.format]: { x: boxX + wordStart - lineStart, y: top + line * lineH, w: own[i] + fs, h: lineH, fontSize: fs } },
+      });
+    }
+  });
+  const from = start + frames(MS.stagger * index, ctx.fps);
+  const enterFrames = frames(MS.enter, ctx.fps);
+  const rise = ctx.layout.px(12);
+  const enter = (f: number) => progressAt(f, from, enterFrames);
+  return {
+    kind: "group", id, x: 0, y: 0, scale: 1, rotation: 0,
+    tracks: [motionTrack("opacity", enter, from, from + enterFrames), motionTrack("y", (f) => (1 - enter(f)) * rise, from, from + enterFrames)],
+    children,
+  };
+}
+
+/** A TextReveal block's type, measured words and greedy flex-wrapped rows, shared by its nodes and its height in a column. */
+function textRevealLayout(ctx: LayoutCtx, block: { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }) {
   const type = ctx.layout.type(block.size ?? "headline");
   const fs = type.fontSize;
   const em = parseFloat(type.letterSpacing) || 0;
@@ -418,7 +514,13 @@ function textRevealNodes(ctx: LayoutCtx, id: string, block: { text: string; size
     } else rows.push({ items: [w], width: w.width });
   }
   const blockH = rows.length * lineH + (rows.length - 1) * rowGap;
-  const top = rect.y + (rect.h - blockH) / 2;
+  return { type, fs, em, font, lineH, colGap, rowGap, rect, words, rows, blockH };
+}
+
+/** Lays out a TextReveal block (centred in the stage, or from `columnTop` in a column): per-word text nodes with their entrance, and the accent word's underline. */
+function textRevealNodes(ctx: LayoutCtx, id: string, block: { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }, start: number, index: number, columnTop?: number): Node[] {
+  const { type, fs, em, font, lineH, colGap, rowGap, rect, words, rows, blockH } = textRevealLayout(ctx, block);
+  const top = columnTop ?? rect.y + (rect.h - blockH) / 2;
   // The block's max-content width: every word on one row, summed exactly as a row's width is.
   const maxContent = words.reduce((sum, w, i) => (i === 0 ? w.width : sum + (colGap + w.width)), 0);
   const blockW = Math.min(maxContent, rect.w);
@@ -586,8 +688,11 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
     const motion = inset && shot.move !== "cut" && t.index !== 0 ? insetMotion(ctx, t) : undefined;
     const content: Node[] = [];
     const contentStart = motion ? motion.contentStart : t.from;
+    // A headline and its support copy stack in the panel's centred column (Film.tsx: `gap` 2.5 grid, `justify-content: center`).
+    const column = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && shot.blocks[1].c === "Body" ? columnTops(ctx, shot.blocks[0], shot.blocks[1]) : undefined;
     shot.blocks.forEach((block, i) => {
-      if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i));
+      if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i, column?.[i]));
+      else if (block.c === "Body" && column) content.push(bodyNodes(ctx, `${id}-b${i}`, block, contentStart, i, column[i]));
       else if (block.c === "StatCounter") content.push(statCounterNodes(ctx, `${id}-b${i}`, block, contentStart, i, span, inset ? insetContentRect(ctx) : stageRect(ctx)));
     });
     if (motion) children.push({ kind: "group", id: `${id}-content`, x: 0, y: 0, scale: 1, rotation: 0, tracks: [motion.contentTrack], children: content });
