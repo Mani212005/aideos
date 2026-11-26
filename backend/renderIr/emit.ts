@@ -4,7 +4,7 @@
  * Used by: backend/nativeRenderer.ts (prepare), backend/rendererSelection.ts (nativeSupport), backend/renderIr/emit.test.ts, backend/renderIr/emitNodeGraph.test.ts, backend/renderIr/stage3d.test.ts.
  */
 
-import { normalizeFilmSoundtrack, type Film, type Shot } from "../../src/dl/schema";
+import { normalizeFilmSoundtrack, type Block, type Film, type Shot } from "../../src/dl/schema";
 import type { Scene, EnvironmentAsset } from "../../src/dl/scene/types";
 import { validateSvgTimeline, applySvgEasing, type SvgAnimationClip, type SvgEasing } from "../../src/dl/scene/svgAnimation";
 import { compileCameraTrack } from "../../src/dl/scene/cameraTrack";
@@ -116,7 +116,7 @@ export class NativeUnsupportedError extends Error {
 }
 
 /** Block kinds the emitter lays out (the text cards of Phase 1). */
-const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body"]);
+const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip"]);
 /** The shared IR identifier rule applied to generated asset and node identifiers. */
 const IR_ID = new RegExp(ID_PATTERN);
 
@@ -186,12 +186,19 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       // the first shot, or a shot that opens on a camera move.
       if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
       if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
-      if (shot.blocks.some((b) => b.c !== "StatCounter")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter natively`);
+      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter or a TokenStrip natively`);
     } else if (shot.stage !== "frame" && shot.stage !== "none") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
-    // P2.5a: the one measured column is the compiler's text card, a headline then its support copy (design.ts `buildTextBlocks`).
-    const headlineAndBody = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && shot.blocks[1].c === "Body";
-    if (shot.blocks.length > 1 && !headlineAndBody) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body is)`);
+    // P2.5a and P2.5b: the measured columns are the compiler's text card (a headline then its support copy, design.ts
+    // `buildTextBlocks`) and its device card (a headline then a TokenStrip, `buildBlocksForShotVisual`).
+    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip");
+    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body or a TokenStrip is)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "Body") reasons.push(`shot ${shot.id}: a Body block on its own is not measured against Remotion yet (only under a TextReveal)`);
+    if (shot.blocks.length === 1 && shot.blocks[0].c === "TokenStrip" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a TokenStrip on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
+    const strip = shot.blocks.find((b) => b.c === "TokenStrip");
+    if (strip?.c === "TokenStrip" && FORMAT_SIZE[format]) {
+      const wide = tokenStripTooWide(strip, layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme), format, shot.stage === "inset", film.subtitles !== false && film.captions !== "off");
+      if (wide) reasons.push(`shot ${shot.id}: ${wide}`);
+    }
     for (const block of shot.blocks) {
       if (!SUPPORTED_BLOCKS.has(block.c)) reasons.push(`shot ${shot.id}: ${block.c} blocks are Phase 2`);
       const size = block.c === "Body" && FORMAT_SIZE[format] ? bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)) : undefined;
@@ -400,12 +407,13 @@ function insetMotion(ctx: LayoutCtx, t: TimedShot): { panelTrack: ReturnType<typ
   };
 }
 
-/** The tops of a headline and its Body in the stage's centred column: their heights and the 2.5-grid gap, centred as a whole. */
-function columnTops(ctx: LayoutCtx, headline: { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }, body: { text: string }): [number, number] {
+/** The tops of a headline and the block under it (Body copy or a TokenStrip) in the stage's centred column: their heights and the 2.5-grid gap, centred as a whole. */
+function columnTops(ctx: LayoutCtx, headline: { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }, second: Block): [number, number] {
   const rect = stageRect(ctx);
   const first = textRevealLayout(ctx, headline).blockH;
   const gap = ctx.layout.grid * 2.5;
-  const total = first + gap + bodyLayout(ctx, body).height;
+  const secondH = second.c === "Body" ? bodyLayout(ctx, second).height : second.c === "TokenStrip" ? tokenStripLayout(ctx, second, rect).height : 0;
+  const total = first + gap + secondH;
   const top = rect.y + (rect.h - total) / 2;
   return [top, top + first + gap];
 }
@@ -476,6 +484,139 @@ function bodyNodes(ctx: LayoutCtx, id: string, block: { text: string }, start: n
       });
     }
   });
+  const from = start + frames(MS.stagger * index, ctx.fps);
+  const enterFrames = frames(MS.enter, ctx.fps);
+  const rise = ctx.layout.px(12);
+  const enter = (f: number) => progressAt(f, from, enterFrames);
+  return {
+    kind: "group", id, x: 0, y: 0, scale: 1, rotation: 0,
+    tracks: [motionTrack("opacity", enter, from, from + enterFrames), motionTrack("y", (f) => (1 - enter(f)) * rise, from, from + enterFrames)],
+    children,
+  };
+}
+
+/** JetBrains Mono's advance for every Latin glyph, in em (600 of 1000 units): a mono run's width needs no measuring. */
+const MONO_ADVANCE_EM = 0.6;
+
+/**
+ * Why a TokenStrip cannot be laid out natively in its panel, or undefined: its caption must fit on one line in the column (a
+ * caption that wraps is not measured). Uses the mono advance, so it runs before any measuring.
+ */
+function tokenStripTooWide(block: { caption?: string }, layout: DLLayout, format: NativeFormat, inset: boolean, captions: boolean): string | undefined {
+  if (!block.caption) return undefined;
+  const { width, height } = FORMAT_SIZE[format];
+  const region = inset ? getInsetRegion(format, width, height) : getStageCardRect(format, width, height, layout.margin, captions);
+  const available = inset ? region.w - 2 - 6 * layout.grid : region.w;
+  const size = Number(layout.label().fontSize);
+  const captionW = block.caption.length * (MONO_ADVANCE_EM + 0.14) * size;
+  return captionW > available ? `a TokenStrip caption ${Math.round(captionW)} px wide wraps in its ${Math.round(available)} px column, which is not measured against Remotion yet` : undefined;
+}
+
+/**
+ * A TokenStrip's layout (devices.tsx `TokenStrip`, P2.5b): mono chips (0.9 of the body size, padding one grid by 1.5 grid,
+ * a 1 px border, the chip radius times 0.6) in a wrapping row with a one-grid gap, and an optional label-style caption two
+ * grids below. The block is as wide as its widest content up to the column (`fit-content`) and centred in it; chips wrap
+ * greedily and sit at the left of each row; the caption sits at the block's left.
+ */
+function tokenStripLayout(ctx: LayoutCtx, block: { tokens: string[]; caption?: string }, rect: { x: number; y: number; w: number; h: number }) {
+  const g = ctx.layout.grid;
+  const size = ctx.layout.type("body").fontSize * 0.9;
+  const font = monoId(400);
+  // Blink's `line-height: normal` is the rounded ascent plus the rounded descent (JetBrains Mono has no line gap): 28 px at the
+  // reel's 21.6 px, where the native line metrics round the sum instead (29).
+  const metrics = ctx.metrics(font, size);
+  const m = { ...metrics, height: Math.round(metrics.ascent) + Math.round(metrics.descent) };
+  const chipH = m.height + 2 * g + 2;
+  const chips = block.tokens.map((text) => {
+    const textW = ctx.width_({ text, font, size, letterSpacing: 0 });
+    return { text, textW, w: textW + 3 * g + 2 };
+  });
+  const labelSize = Number(ctx.layout.label().fontSize);
+  const labelM = ctx.metrics(font, labelSize);
+  const caption = block.caption ? block.caption.toUpperCase() : "";
+  const captionW = caption ? ctx.width_({ text: caption, font, size: labelSize, letterSpacing: 0.14 * labelSize }) : 0;
+  let rowMax = 0;
+  let rowX = 0;
+  for (const c of chips) {
+    rowMax = rowX + c.w;
+    rowX += c.w + g;
+  }
+  const width = Math.min(Math.max(rowMax, captionW), rect.w);
+  const placed: Array<{ text: string; textW: number; w: number; x: number; y: number }> = [];
+  let x = 0;
+  let y = 0;
+  for (const chip of chips) {
+    if (x > 0 && x + chip.w > width) {
+      x = 0;
+      y += chipH + g;
+    }
+    placed.push({ ...chip, x, y });
+    x += chip.w + g;
+  }
+  const rowsH = y + chipH;
+  const height = rowsH + (caption ? 2 * g + labelM.height : 0);
+  return { g, size, font, m, chipH, chips: placed, labelSize, labelM, caption, captionW, rowsH, width, height };
+}
+
+/**
+ * Lays out a TokenStrip from `top` in `rect`: each chip off (sunken fill, rule border, muted text) until the shot's sweep
+ * reaches it (devices.tsx `useSweep`: linear from the entrance's end to a move before the shot's end), then on (an accent
+ * fill fading from 0.1 to 0.18 as the sweep crosses it, an accent border at 0.5, ink text); a `lit` chip is on from the
+ * start at 0.22. The block enters as one.
+ */
+function tokenStripNodes(ctx: LayoutCtx, id: string, block: { tokens: string[]; lit: number[]; caption?: string }, start: number, index: number, top: number, rect: { x: number; y: number; w: number; h: number }, duration: number, span: { from: number; to: number }): Node {
+  const L = tokenStripLayout(ctx, block, rect);
+  const x0 = rect.x + (rect.w - L.width) / 2;
+  const radius = ctx.layout.radius.chip * 0.6;
+  const sweepFrom = start + frames(MS.enter, ctx.fps);
+  const sweepSpan = Math.max(1, duration - frames(MS.enter + MS.move, ctx.fps));
+  const head = (f: number) => Math.max(0, Math.min(1, (f - sweepFrom) / sweepSpan)) * block.tokens.length;
+  const accent = ctx.accent;
+  const children: Node[] = [];
+  // One chip in one state: its fill, its border on the 1 px band, and its text.
+  const chipNodes = (key: string, chip: (typeof L.chips)[number], fill: string, border: string, ink: string, fillTracks: ReturnType<typeof motionTrack>[] = []): Node[] => {
+    const cx = x0 + chip.x;
+    const cy = top + chip.y;
+    // Blink paints a box's background and border pixel-snapped (each edge rounded to a whole pixel), so the 1 px border is one
+    // crisp row; the text inside keeps its fractional position.
+    const bx = Math.round(cx);
+    const by = Math.round(cy);
+    const bw = Math.round(cx + chip.w) - bx;
+    const bh = Math.round(cy + L.chipH) - by;
+    return [
+      { kind: "rect", id: `${key}-fill`, fill, radius, tracks: fillTracks, placement: { [ctx.format]: { x: bx, y: by, w: bw, h: bh } } },
+      { kind: "rect", id: `${key}-border`, radius: radius - 0.5, tracks: [], stroke: { color: border, width: 1 }, placement: { [ctx.format]: { x: bx + 0.5, y: by + 0.5, w: bw - 1, h: bh - 1 } } },
+      {
+        kind: "text", id: `${key}-text`, text: chip.text, font: L.font, color: ink, align: "left", lineHeight: L.m.height / L.size, letterSpacing: 0, tracks: [],
+        placement: { [ctx.format]: { x: cx + 1 + 1.5 * L.g, y: cy + 1 + L.g, w: chip.textW + L.size, h: L.m.height, fontSize: L.size } },
+      },
+    ];
+  };
+  const onBorder = hexAlpha(accent, 0.5);
+  L.chips.forEach((chip, i) => {
+    const key = `${id}-c${i}`;
+    if (block.lit.includes(i)) {
+      children.push(...chipNodes(key, chip, hexAlpha(accent, 0.22), onBorder, rgbHex(ctx.tokens.ink)));
+      return;
+    }
+    let on = span.from;
+    while (on < span.to && !(head(on) > i)) on++;
+    if (on > span.from) {
+      children.push({ kind: "group", id: `${key}-off`, visible: { fromFrame: span.from, toFrame: on }, x: 0, y: 0, scale: 1, rotation: 0, tracks: [],
+        children: chipNodes(`${key}-off`, chip, cssColor(ctx.tokens.sunken), cssColor(ctx.tokens.rule()), rgbHex(ctx.tokens.muted)) });
+    }
+    if (on < span.to) {
+      const landing = (f: number) => 0.1 + Math.max(0, Math.min(1, head(f) - i)) * 0.08;
+      children.push({ kind: "group", id: `${key}-on`, visible: { fromFrame: on, toFrame: span.to }, x: 0, y: 0, scale: 1, rotation: 0, tracks: [],
+        children: chipNodes(`${key}-on`, chip, accent, onBorder, rgbHex(ctx.tokens.ink), [motionTrack("opacity", landing, on, Math.min(span.to, Math.ceil(sweepFrom + ((i + 1) / block.tokens.length) * sweepSpan) + 1))]) });
+    }
+  });
+  if (L.caption) {
+    children.push({
+      kind: "text", id: `${id}-caption`, text: L.caption, font: L.font, color: rgbHex(ctx.tokens.muted), align: "left", lineHeight: L.labelM.height / L.labelSize, letterSpacing: 0.14, tracks: [],
+      placement: { [ctx.format]: { x: x0, y: top + L.rowsH + 2 * L.g, w: L.captionW + L.labelSize, h: L.labelM.height, fontSize: L.labelSize } },
+    });
+  }
   const from = start + frames(MS.stagger * index, ctx.fps);
   const enterFrames = frames(MS.enter, ctx.fps);
   const rise = ctx.layout.px(12);
@@ -689,10 +830,15 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
     const content: Node[] = [];
     const contentStart = motion ? motion.contentStart : t.from;
     // A headline and its support copy stack in the panel's centred column (Film.tsx: `gap` 2.5 grid, `justify-content: center`).
-    const column = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && shot.blocks[1].c === "Body" ? columnTops(ctx, shot.blocks[0], shot.blocks[1]) : undefined;
+    const column = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip") ? columnTops(ctx, shot.blocks[0], shot.blocks[1]) : undefined;
     shot.blocks.forEach((block, i) => {
       if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i, column?.[i]));
       else if (block.c === "Body" && column) content.push(bodyNodes(ctx, `${id}-b${i}`, block, contentStart, i, column[i]));
+      else if (block.c === "TokenStrip") {
+        const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
+        const top = column ? column[i] : rect.y + (rect.h - tokenStripLayout(ctx, block, rect).height) / 2;
+        content.push(tokenStripNodes(ctx, `${id}-b${i}`, block, contentStart, i, top, rect, t.to - t.from, span));
+      }
       else if (block.c === "StatCounter") content.push(statCounterNodes(ctx, `${id}-b${i}`, block, contentStart, i, span, inset ? insetContentRect(ctx) : stageRect(ctx)));
     });
     if (motion) children.push({ kind: "group", id: `${id}-content`, x: 0, y: 0, scale: 1, rotation: 0, tracks: [motion.contentTrack], children: content });

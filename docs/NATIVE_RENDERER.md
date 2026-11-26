@@ -385,8 +385,8 @@ differ per format.
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
-music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter in a film with a scene, P2.6a and P2.6b), more than one block per shot (except a `TextReveal` followed by a `Body`, P2.5a) and blocks other than
-`TextReveal`, `StatCounter` and `Body` (a `Body` only under a headline, at a measured body size, made of measured word shapes). Those stay on Remotion until their phase.
+music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter or one TokenStrip in a film with a scene, P2.6a, P2.6b and P2.5b), more than one block per shot (except a `TextReveal` followed by a `Body` or a `TokenStrip`, P2.5a and P2.5b) and blocks other than
+`TextReveal`, `StatCounter`, `Body` and `TokenStrip` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line). Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
 carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid
@@ -677,6 +677,7 @@ the fallback for everything not yet native:
 | P2.4a | the `blueprint-grid` and `subtle-dots` theme textures, lowered to explicit shapes in the `aideos.render/7` underlay (frame space, under the stage), behind a parity journey ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.4b | the `paper-fibers` texture of `paper-white`, `parchment` and `charcoal`: Chrome draws it as a flat darkening (the filter's `multiply` blend with the rect's black fill leaves no grain), lowered to that in the `/7` underlay, and a card's backdrop starts from the darkened canvas ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.5a | the compiler's text card, a `TextReveal` headline followed by its `Body` support copy, with Chrome's `text-wrap: pretty` line breaking, behind a parity journey ([P2.5a](#p25a-body-copy-under-a-headline)) | done |
+| P2.5b | the `TokenStrip` device, alone in an inset panel and under a headline on the frame stage (the compiler's device card), behind a parity journey ([P2.5b](#p25b-the-tokenstrip-device)) | done |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), other block combinations, panels other than `frame` | planned |
 | P2.6a | the `inset` panel holding exactly one StatCounter on a cut shot that is not the first, in a film with a scene, behind a parity journey ([P2.6a](#p26a-the-inset-panel)) | done |
 | P2.6b | the `inset` panel on the first shot, and one that opens on a camera move (its open and close fade, its content's delayed fade and entrance), behind the same journey ([P2.6b](#p26b-the-inset-panel-on-a-camera-move)) | done |
@@ -814,6 +815,29 @@ the shot and the first such word, and the film stays with Remotion. Those shapes
 generated sentences of letters, and 400 more with digits and the punctuation, 397 carrying at least one): every word-prefix
 width within 1/64 px and the same line breaks in both formats.
 
+### P2.5b the TokenStrip device
+
+`TokenStrip` (devices.tsx) is a wrapping row of mono chips (0.9 of the body size, one grid by 1.5 grid of padding, a 1 px
+border, the chip radius times 0.6, a one-grid gap) and an optional label-style caption two grids below. The block is as wide as
+its widest content up to its column and centred in it; chips wrap greedily and sit at the left of each row. A sweep runs
+linearly from the entrance's end to one camera move before the shot's end: a chip is off (sunken fill, rule border, muted text)
+until the sweep reaches it, then on (an accent fill at 0.1 rising to 0.18 as the sweep crosses it, an accent border at 0.5,
+ink text); a `lit` chip is on from the start at 0.22. The emitter draws each chip state as a group shown over its frames, the
+rising fill as an opacity track. Two Blink details measured on the way:
+
+- Blink paints a box's background and border pixel-snapped (each edge rounded to a whole pixel); unsnapped chips smeared the
+  1 px border over two rows.
+- Blink's `line-height: normal` is the rounded ascent plus the rounded descent: 28 px for JetBrains Mono at the reel's 21.6 px,
+  where the native line metrics round the sum (29). With both, the lowest frame went from 0.99553 to 0.99833.
+
+JetBrains Mono gives every Latin glyph a 0.6 em advance, so `nativeSupport` computes a caption's width without measuring and
+refuses a caption that would wrap. The fixture `test_fixtures/packages/token-strips` (a scene film) has a TokenStrip alone in an
+inset that opens on a pan (eight chips, three `lit`, wrapping to two rows on the long frame) and a headline over a TokenStrip on
+the frame stage. Measured against Remotion (swangle), 114 frames over both formats (every 6th frame through both strips, the
+shots around them and the end card): all at or above 0.995, lowest 0.99833. The journey
+`backend/journeys/token_strips.journey.ts` pins native selection and 33 of those frames. A TokenStrip alone on the frame stage,
+with a block other than a headline, or with a wrapping caption stays refused.
+
 ### P2.6a the inset panel
 
 `Film.tsx` draws an `inset` shot's panel in the format's inset region (`getInsetRegion`): a box filled with the theme's
@@ -914,7 +938,7 @@ as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-g
 
 ## Not yet native
 
-Node-graph films, the other primitives, devices, inset forms other than the measured ones ([P2.6a](#p26a-the-inset-panel), [P2.6b](#p26b-the-inset-panel-on-a-camera-move)), panel stages and footage (Phase 2; its first steps, P2.1
+Node-graph films, the other primitives, devices other than the TokenStrip ([P2.5b](#p25b-the-tokenstrip-device)), inset forms other than the measured ones ([P2.6a](#p26a-the-inset-panel), [P2.6b](#p26b-the-inset-panel-on-a-camera-move)), panel stages and footage (Phase 2; its first steps, P2.1
 and P2.2a, draw the SVG filter subset of glows and drop shadows and the colour and dash offset tracks of `aideos.render/5`; P2.2b emits the flat-camera node-graph canvas and P2.2c draws flat node-graph films natively, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and nothing of the Three stage any more: the cel stage with any number of performers is carried by
