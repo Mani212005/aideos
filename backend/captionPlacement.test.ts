@@ -1299,9 +1299,14 @@ test("review phrase measurement matches rendered word widths", async () => {
     measured.readable,
   );
   const parityWords = ["RunnerParityWordQZ731", "DifferentWidthsQZ731"];
-  const asynchronous = measureCaptionWordsAsync(parityWords, 47);
-  const synchronous = measureCaptionWords(parityWords, 47);
-  assert.deepEqual(await asynchronous, synchronous);
+  // Await the async Chrome launch first so launches never overlap, then reload the module so the sync
+  // call starts with an empty measurement cache and measures independently instead of reading the async result.
+  const asynchronous = await measureCaptionWordsAsync(parityWords, 47);
+  const freshSpecifier = `./review/captionMeasurements.ts?independent=${Date.now()}`;
+  const independent = (await import(freshSpecifier)) as typeof import("./review/captionMeasurements");
+  assert.notEqual(independent.measureCaptionWords, measureCaptionWords);
+  const synchronous = independent.measureCaptionWords(parityWords, 47);
+  assert.deepEqual(asynchronous, synchronous);
 });
 
 // Owner decision: the retired reel default (0.5, 0.78) is not an owner choice and resolves to the reel safe default.
