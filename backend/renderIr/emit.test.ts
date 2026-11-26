@@ -154,7 +154,8 @@ test("headline words enter in order, wrap inside the stage, and the accent under
   const box = (underline as Extract<Node, { kind: "rect" }>).placement.long!;
   assert.ok(mid > 0 && mid < 1);
   assert.ok(Math.abs(trackAt(underline, "x", 12, 0) - ((mid - 1) * box.w) / 2) < 1e-9, "the left edge stays put while it grows");
-  // The closing line is wider than the stage, so it wraps onto rows centred in the frame.
+  // The closing line is wider than the stage, so it wraps: as in TextReveal (rows flex-start in a block centred in the
+  // stage), every row starts at the stage's left edge.
   const closing = nodes(ir.overlay).filter((n): n is Extract<Node, { kind: "text" }> => n.kind === "text" && n.id.startsWith("card-3-"));
   const rows = [...new Set(closing.map((n) => n.placement.long!.y))];
   assert.ok(rows.length >= 2, "the long line wraps");
@@ -163,7 +164,7 @@ test("headline words enter in order, wrap inside the stage, and the accent under
     const left = Math.min(...row.map((n) => n.placement.long!.x));
     const right = Math.max(...row.map((n) => n.placement.long!.x + n.placement.long!.w - n.placement.long!.fontSize));
     assert.ok(left >= 96 && right <= 1920 - 96 + 1e-6, "rows stay inside the stage margins");
-    assert.ok(Math.abs((left + right) / 2 - 960) < 1e-6, "rows are centred");
+    assert.ok(Math.abs(left - 96) < 1e-6, "every row starts at the stage's left edge");
   }
 });
 
