@@ -384,7 +384,7 @@ differ per format.
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
-rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
+rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a Three stage (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films, and over vector scene films since P2.4c), legacy (non-library)
 music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter, TokenStrip or LayerStack in a film with a scene, P2.6a, P2.6b, P2.5b and P2.5c), more than one block per shot (except a `TextReveal` followed by a `Body`, a `TokenStrip` or a `LayerStack`, P2.5a to P2.5c) and blocks other than
 `TextReveal`, `StatCounter`, `Body`, `TokenStrip` and `LayerStack` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Blocks on a `none` stage are not drawn by `Film.tsx` and do not count (P2.5e), except an `AnalogyInset`. Those stay on Remotion until their phase.
 
@@ -676,6 +676,7 @@ the fallback for everything not yet native:
 | P2.3 | the node-graph camera angles other than `flat` (`getCameraPerspective`: CSS 3D perspective), a 4 x 4 perspective transform on the stage | planned |
 | P2.4a | the `blueprint-grid` and `subtle-dots` theme textures, lowered to explicit shapes in the `aideos.render/7` underlay (frame space, under the stage), behind a parity journey ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.4b | the `paper-fibers` texture of `paper-white`, `parchment` and `charcoal`: Chrome draws it as a flat darkening (the filter's `multiply` blend with the rect's black fill leaves no grain), lowered to that in the `/7` underlay, and a card's backdrop starts from the darkened canvas ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
+| P2.4c | the theme textures over a vector scene film, behind a parity journey (a Three stage stays refused) ([P2.4c](#p24c-theme-textures-over-a-scene)) | done |
 | P2.5a | the compiler's text card, a `TextReveal` headline followed by its `Body` support copy, with Chrome's `text-wrap: pretty` line breaking, behind a parity journey ([P2.5a](#p25a-body-copy-under-a-headline)) | done |
 | P2.5b | the `TokenStrip` device, alone in an inset panel and under a headline on the frame stage (the compiler's device card), behind a parity journey ([P2.5b](#p25b-the-tokenstrip-device)) | done |
 | P2.5c | the `LayerStack` device, alone in an inset panel and under a headline on the frame stage, behind a parity journey ([P2.5c](#p25c-the-layerstack-device)) | done |
@@ -779,9 +780,20 @@ behind it, so for these themes its copy starts from the darkened canvas, not the
 paper-white long 285 from 0.965 to 0.995). Every 15th frame of `node-graph-paper` and `node-graph-charcoal`, long and reel:
 all at or above 0.995 (lowest 0.99513 and 0.99559).
 
-The textures are drawn for node-graph films only: a film with a scene (an SVG scene film, a Three
-stage or a character film) on one of these themes is refused ("the texture over a scene has not been measured against Remotion
-yet") until a journey measures the texture together with a scene.
+The textures were drawn for node-graph films only until [P2.4c](#p24c-theme-textures-over-a-scene) measured them under a vector
+scene; a Three stage or a character film on one of these themes is still refused ("the texture over a Three stage has not been
+measured against Remotion yet").
+
+### P2.4c theme textures over a scene
+
+`Film.tsx` draws the theme texture under the stage for every film, a scene film included: the texture layer, then the scene
+(whose background asset usually covers the frame, so the texture shows only where the scene leaves the canvas bare), pushed
+together by the end card. The native underlay is the same layer in the same place (between the background and the stage), so
+a vector scene film's texture is emitted exactly as a node-graph film's. The fixtures `test_fixtures/packages/scene-paper-white`
+and `scene-blueprint` are inset-stage on the paper grain and on the blueprint grid (the theme also sets the inset panel's surface
+and the rail's scrim). Measured against Remotion (swangle), every 15th frame of both formats through the end card (118 frames):
+all at or above 0.995, lowest 0.99847. The journey `backend/journeys/scene_textures.journey.ts` pins native selection and 21
+frames per fixture. A Three stage (or a character film) on a textured theme stays refused until measured.
 
 ### P2.5a Body copy under a headline
 
