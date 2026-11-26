@@ -1,4 +1,4 @@
-//! File Description: Behavioral coverage of SVG parsing through its public API, including definition inheritance, hidden clip geometry and explicit refusal of unsupported rendering declarations.
+//! File Description: Behavioral coverage of SVG parsing through its public API, including definition inheritance, hidden clip geometry, the filter subset's input and colour-space rules, and explicit refusal of unsupported rendering declarations and filter features.
 //! Inputs and outputs: SVG documents -> parsed public SVG models or named parse errors.
 //! Used by: `cargo test --manifest-path native/Cargo.toml`.
 
@@ -89,4 +89,163 @@ fn unsupported_rendering_attributes_and_styles_are_refused() {
     }
     parse(r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" preserveAspectRatio="none" id="root" class="asset" data-note="x" aria-label="art"><rect width="10" height="10" id="shape"/></svg>"##)
         .expect("inert attributes remain accepted");
+}
+
+/// Resolves filter inputs as Filter Effects 1 does: `in` defaults to the previous result (SourceGraphic first), a name no
+/// earlier primitive gives counts as no name, and `color-interpolation-filters` is linearRGB unless the filter, an
+/// ancestor of it or the primitive itself says otherwise; ids inside a filter are element ids of the asset.
+#[test]
+fn filter_inputs_and_colour_spaces_follow_the_filter_effects_rules() {
+    use aideos_render::svg::filter::{ColorSpace, CompositeOperator, FilterInput, FilterOp};
+    let doc = parse(
+        r##"<svg><defs color-interpolation-filters="sRGB">
+          <filter id="glow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="linearRGB">
+            <feGaussianBlur id="first-blur" stdDeviation="4" result="blur1"/>
+            <feGaussianBlur stdDeviation="8 2" result="blur2"/>
+            <feMerge><feMergeNode in="blur2"/><feMergeNode in="blur1"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="shadow">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dy="2" in="no-such-result" result="off" color-interpolation-filters="linearRGB"/>
+            <feFlood flood-color="#102030" flood-opacity="0.5"/>
+            <feComposite in2="off" operator="in"/>
+          </filter>
+        </defs><path d="M0 0 L10 10" stroke="red" filter="url(#glow)"/><rect width="4" height="4" filter="url(#shadow)"/></svg>"##,
+    )
+    .expect("the glow and shadow filters parse");
+    let glow = &doc.filters["glow"];
+    assert!(glow.region.bbox_units);
+    assert_eq!((glow.region.x, glow.region.width), (-0.3, 1.6));
+    assert!(glow
+        .primitives
+        .iter()
+        .all(|p| p.space == ColorSpace::LinearRgb));
+    assert_eq!(
+        glow.primitives[1].op,
+        FilterOp::Blur {
+            input: FilterInput::Result(0),
+            std_x: 8.0,
+            std_y: 2.0
+        }
+    );
+    assert_eq!(
+        glow.primitives[2].op,
+        FilterOp::Merge {
+            inputs: vec![
+                FilterInput::Result(1),
+                FilterInput::Result(0),
+                FilterInput::SourceGraphic
+            ]
+        }
+    );
+    let shadow = &doc.filters["shadow"];
+    assert!(
+        shadow.region.bbox_units,
+        "the default region is in bounding-box units"
+    );
+    assert_eq!(
+        (
+            shadow.region.x,
+            shadow.region.y,
+            shadow.region.width,
+            shadow.region.height
+        ),
+        (-0.1, -0.1, 1.2, 1.2)
+    );
+    assert_eq!(
+        shadow.primitives[0].space,
+        ColorSpace::Srgb,
+        "inherited from <defs>"
+    );
+    assert_eq!(
+        shadow.primitives[1].space,
+        ColorSpace::LinearRgb,
+        "the primitive's own value wins"
+    );
+    assert_eq!(
+        shadow.primitives[1].op,
+        FilterOp::Offset {
+            input: FilterInput::Result(0),
+            dx: 0.0,
+            dy: 2.0
+        },
+        "an unknown result name reads the previous result"
+    );
+    let FilterOp::Flood { color } = shadow.primitives[2].op else {
+        panic!("feFlood")
+    };
+    assert_eq!((color.a, color.r), (0.5, 16.0 / 255.0));
+    assert_eq!(
+        shadow.primitives[3].op,
+        FilterOp::Composite {
+            input: FilterInput::Result(2),
+            input2: FilterInput::Result(1),
+            operator: CompositeOperator::In
+        }
+    );
+    assert_eq!(doc.elements[0].filter.as_deref(), Some("glow"));
+    assert!(
+        doc.ids.contains("first-blur"),
+        "a primitive's id is an element id of the asset, as the emitter lists it"
+    );
+}
+
+/// Names every filter feature outside the drawn subset instead of drawing a filter partly.
+#[test]
+fn unsupported_filter_features_are_refused_by_name() {
+    for (source, named) in [
+        (
+            r##"<svg><filter id="f"><feColorMatrix values="0"/></filter></svg>"##,
+            "feColorMatrix",
+        ),
+        (
+            r##"<svg><filter id="f"><feGaussianBlur x="0" stdDeviation="2"/></filter></svg>"##,
+            "\"x\"",
+        ),
+        (
+            r##"<svg><filter id="f" primitiveUnits="objectBoundingBox"><feOffset dx="1"/></filter></svg>"##,
+            "primitiveUnits",
+        ),
+        (
+            r##"<svg><filter id="f"><feGaussianBlur in="BackgroundImage" stdDeviation="2"/></filter></svg>"##,
+            "BackgroundImage",
+        ),
+        (
+            r##"<svg><filter id="f"><feGaussianBlur edgeMode="duplicate" stdDeviation="2"/></filter></svg>"##,
+            "edgeMode",
+        ),
+        (
+            r##"<svg><filter id="f"><feGaussianBlur stdDeviation="-2"/></filter></svg>"##,
+            "negative",
+        ),
+        (
+            r##"<svg><filter id="f"><feComposite operator="lighter"/></filter></svg>"##,
+            "lighter",
+        ),
+        (
+            r##"<svg><filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="10"><feOffset/></filter></svg>"##,
+            "height",
+        ),
+        (
+            r##"<svg><filter id="f" href="#g"><feOffset/></filter></svg>"##,
+            "href",
+        ),
+        (
+            r##"<svg><rect width="4" height="4" filter="blur(4px)"/></svg>"##,
+            "blur(4px)",
+        ),
+        (
+            r##"<svg><rect width="4" height="4" filter="url(#missing)"/></svg>"##,
+            "missing",
+        ),
+        (
+            r##"<svg><filter id="f"><feOffset/></filter><g filter="url(#f)"><text>hi</text></g></svg>"##,
+            "objectBoundingBox filter on text",
+        ),
+    ] {
+        let error = parse(source).expect_err("an unsupported filter feature was accepted");
+        assert!(error.to_string().contains(named), "{source}: {error}");
+    }
+    parse(r##"<svg><filter id="f" filterUnits="userSpaceOnUse" x="0" y="0" width="100" height="40"><feOffset dx="2"/></filter><text filter="url(#f)">hi</text></svg>"##)
+        .expect("a user-space filter on text has a region without the text's box");
 }

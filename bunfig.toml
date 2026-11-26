@@ -1,0 +1,14 @@
+# File Description: Bun settings for the bun toolchain (AIDEOS_TOOLCHAIN=bun, see scripts/toolchain.ts); npm ignores this file.
+# Inputs and outputs: read by bun run, bun test and bun install started from the repo root -> no .env loading, no auto-install, no bun.lock.
+# Used by: bun (every command started at the repo root), docs/CI.md.
+
+# Never load .env files: Node never does, tests must never read secrets, and the CLI loads its own .env explicitly.
+env = false
+
+[install]
+# A missing package is an error, never a silent download at run time.
+auto = "disable"
+
+[install.lockfile]
+# package-lock.json stays the only lockfile: bun reads it and never writes a second one that could drift.
+save = false
