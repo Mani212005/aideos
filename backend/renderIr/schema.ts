@@ -17,7 +17,9 @@ export const RENDER_IR_VERSION_5 = "aideos.render/5";
 /** Every version the loaders read; any other value is rejected before the rest of the document is read. */
 /** The fourth version adds opt-in 2D shutter sampling and shaped-glyph tracks. */
 export const RENDER_IR_VERSION_4 = "aideos.render/4";
-export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSION_5] as const;
+export const RENDER_IR_VERSION_EFFECTS = "aideos.render/6";
+/** Every supported version. */
+export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSION_5, RENDER_IR_VERSION_EFFECTS] as const;
 export type RenderIrVersion = (typeof RENDER_IR_VERSIONS)[number];
 
 /** Largest frame index or count a document may carry (about 10 days at 30 fps), so integers stay exact. */
@@ -297,7 +299,7 @@ export const renderIrSchema = z.strictObject({
 });
 
 /** A loaded document of any version, typed as the `/5` superset (an older document never holds a later version's additions). */
-export type RenderIr = Omit<z.infer<typeof renderIrSchemaV5>, "schema"> & { schema: RenderIrVersion };
+export type RenderIr = Omit<z.infer<typeof renderIrSchemaEffects>, "schema"> & { schema: RenderIrVersion };
 export type Asset = z.infer<typeof assetSchemaV2>;
 export type Keyframe = z.infer<typeof keyframeSchema>;
 export type FormatName = "long" | "reel";
@@ -755,4 +757,21 @@ export const renderIrSchemaV5 = z.strictObject({
   overlay: z.array(nodeSchemaV5),
   audio: z.array(audioClipSchema),
   shutter: z.strictObject({ samples: z.number().int().min(2).max(16), angle: z.number().gt(0).max(360) }).optional(),
+});
+
+/** Optional native-only effects. A transition reveals or covers the scene with a solid colour. */
+export const renderIrSchemaEffects = renderIrSchemaV5.extend({
+  schema: z.literal(RENDER_IR_VERSION_EFFECTS),
+  transition: z.strictObject({
+    kind: z.enum(["fade", "wipe"]), direction: z.enum(["in", "out"]),
+    startFrame: frame, durationFrames: z.number().int().min(1).max(MAX_FRAME), color,
+  }).optional(),
+  particles: z.array(z.strictObject({
+    seed: z.number().int().min(0).max(4294967295), count: z.number().int().min(1).max(1000),
+    startFrame: frame, lifetimeFrames: z.number().int().min(1).max(MAX_FRAME),
+    x: z.number().min(-1000000).max(1000000), y: z.number().min(-1000000).max(1000000),
+    velocityX: z.number().min(-10000).max(10000), velocityY: z.number().min(-10000).max(10000),
+    spread: z.number().min(0).max(10000), gravity: z.number().min(-10000).max(10000),
+    radius: z.number().gt(0).max(1000), color,
+  })).max(16).optional(),
 });

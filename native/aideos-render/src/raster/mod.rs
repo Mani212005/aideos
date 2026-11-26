@@ -1,9 +1,10 @@
-//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Drawing depends only on the IR, assets and frame number.
+//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Opt-in seeded particles and SkSL transitions are evaluated per sample. The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Drawing depends only on the IR, assets and frame number.
 //! Inputs and outputs: a canvas, the loaded film (`Loaded`), a format, a frame number and the frame size -> pixels on the canvas.
 //! Used by: crate::renderer (CPU raster and the optional GPU surface).
 
 pub mod chrome;
 pub mod filter;
+pub mod effects;
 pub mod stage3d;
 pub mod svg;
 pub mod text;
@@ -124,7 +125,9 @@ fn draw_frame_at(
     for node in stage_order(&l.ir.stage) {
         draw_stage_node(canvas, l, node, time, frame, &view)?;
     }
+    if let Some(emitters) = &l.ir.particles { effects::draw_particles(canvas, emitters, time)?; }
     canvas.restore();
+    if let Some(transition) = &l.ir.transition { effects::draw_transition(canvas, transition, time, width, height)?; }
     let ctx = OverlayCtx {
         l,
         format,

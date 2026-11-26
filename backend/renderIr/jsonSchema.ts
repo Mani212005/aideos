@@ -6,7 +6,7 @@
 
 import path from "node:path";
 import { z } from "zod";
-import { renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5 } from "./schema";
+import { renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, renderIrSchemaEffects, RENDER_IR_VERSION_EFFECTS } from "./schema";
 
 /** The committed `/1` schema file, shared with the Rust crate. */
 export const RENDER_IR_SCHEMA_PATH = path.resolve(__dirname, "../../native/aideos-render-ir/schema/aideos.render.1.schema.json");
@@ -91,4 +91,13 @@ export function renderIrJsonSchemaV5(): Record<string, unknown> {
 /** The canonical text of the `/5` schema file: two-space JSON with a trailing newline. */
 export function renderIrJsonSchemaV5Text(): string {
   return `${JSON.stringify(renderIrJsonSchemaV5(), null, 2)}\n`;
+}
+
+/** The committed native effects schema file. */
+export const RENDER_IR_SCHEMA_EFFECTS_PATH = path.resolve(__dirname, `../../native/aideos-render-ir/schema/${RENDER_IR_VERSION_EFFECTS.replace("/", ".")}.schema.json`);
+
+/** Serializes the native effects schema. */
+export function renderIrJsonSchemaEffectsText(): string {
+  const schema = z.toJSONSchema(renderIrSchemaEffects, { target: "draft-2020-12", io: "input", unrepresentable: "throw" }) as Record<string, unknown>;
+  return `${JSON.stringify({ ...schema, $id: `urn:aideos:schema:${RENDER_IR_VERSION_EFFECTS.replace("/", ":")}`, title: `${RENDER_IR_VERSION_EFFECTS} (Render IR)` }, null, 2)}\n`;
 }

@@ -49,6 +49,49 @@ pub struct RenderIr {
     pub audio: Vec<AudioClip>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shutter: Option<Shutter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transition: Option<Transition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub particles: Option<Vec<ParticleEmitter>>,
+}
+
+/// A solid-colour transition over the stage, leaving overlays sharp.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct Transition {
+    pub kind: TransitionKind,
+    pub direction: TransitionDirection,
+    pub start_frame: Whole,
+    pub duration_frames: Whole,
+    pub color: String,
+}
+
+/// Supported runtime shader transition shapes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TransitionKind { Fade, Wipe }
+
+/// Whether the stage is revealed or covered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TransitionDirection { In, Out }
+
+/// A bounded, deterministic stream of moving circles in scene coordinates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ParticleEmitter {
+    pub seed: Whole,
+    pub count: Whole,
+    pub start_frame: Whole,
+    pub lifetime_frames: Whole,
+    pub x: f64,
+    pub y: f64,
+    pub velocity_x: f64,
+    pub velocity_y: f64,
+    pub spread: f64,
+    pub gravity: f64,
+    pub radius: f64,
+    pub color: String,
 }
 
 /// Optional two-dimensional motion blur sampling for one delivered frame.

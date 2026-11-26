@@ -1,0 +1,39 @@
+{
+  "schema": "aideos.render/6",
+  "film": {
+    "id": "native-effects",
+    "fps": 30,
+    "durationFrames": 90
+  },
+  "scene": {
+    "width": 320,
+    "height": 180
+  },
+  "formats": {
+    "long": {
+      "width": 320,
+      "height": 180
+    }
+  },
+  "background": "#143454",
+  "assets": [],
+  "stage": [],
+  "overlay": [],
+  "audio": [],
+  "particles": [
+    {
+      "seed": 924,
+      "count": 24,
+      "startFrame": 0,
+      "lifetimeFrames": 50,
+      "x": 160,
+      "y": 115,
+      "velocityX": 0,
+      "velocityY": -2,
+      "spread": 1.6,
+      "gravity": 0.06,
+      "radius": 4,
+      "color": "#F5D45A"
+    }
+  ]
+}
