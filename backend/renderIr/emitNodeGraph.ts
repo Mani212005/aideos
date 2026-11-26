@@ -143,18 +143,24 @@ function familyName(family: "sans" | "mono"): string {
   return family === "sans" ? "Geist" : "JetBrains Mono";
 }
 
-/** Breaks text into lines no wider than `width` at spaces, greedily, as a CSS block does (a word wider than the line overflows it). */
+/** Breaks text into lines no wider than `width` at spaces, greedily, as a CSS block does (a word wider than the line overflows it). Each word and the space are measured on their own, so the runs asked for never depend on where lines break. */
 function wrap(text: string, width: number, measure: (s: string) => number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
+  const space = words.length > 1 ? measure(" ") : 0;
+  const widths = words.map((w) => measure(w));
   const lines: string[] = [];
   let line = "";
-  for (const w of words) {
-    const candidate = line ? `${line} ${w}` : w;
-    if (line && measure(candidate) > width) {
+  let lineW = 0;
+  words.forEach((w, i) => {
+    if (line && lineW + space + widths[i] > width) {
       lines.push(line);
       line = w;
-    } else line = candidate;
-  }
+      lineW = widths[i];
+    } else {
+      lineW = line ? lineW + space + widths[i] : widths[i];
+      line = line ? `${line} ${w}` : w;
+    }
+  });
   if (line) lines.push(line);
   return lines;
 }
