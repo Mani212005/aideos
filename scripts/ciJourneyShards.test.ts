@@ -19,7 +19,8 @@ import {
   planJourneyShard,
   planShard,
 } from "./ciJourneyShards";
-import { JOBS, parseArgs } from "./ci";
+import { JOBS, TOOLCHAIN, parseArgs } from "./ci";
+import { testCommand } from "./toolchain";
 
 const ROOT = path.resolve(__dirname, "..");
 const SHARDS = 3;
@@ -122,7 +123,7 @@ test("a sharded journeys job runs only its files and its smoke share; an empty s
   const plans = Array.from({ length: SHARDS }, (_, i) => planJourneyShard({ index: i + 1, total: SHARDS }, ROOT));
   for (const plan of plans) {
     const sharded = tests.forShard!(plan);
-    assert.deepEqual(sharded.cmd.slice(sharded.cmd.indexOf("--test-concurrency=1") + 1), plan.journeyFiles);
+    assert.deepEqual(sharded.cmd, testCommand(TOOLCHAIN, plan.journeyFiles), "a shard runs exactly its own files with the active toolchain's test command");
     assert.equal(sharded.todoCases, true, "unfinished journey cases must still fail a shard");
     assert.equal(sharded.skip?.() ?? null, null);
     assert.equal(smoke.forShard!(plan).skip?.() == null, plan.runsSmoke);
@@ -149,8 +150,12 @@ test("ci.yml runs the journeys as matrix shards 1..N derived from the matrix, wi
   assert.deepEqual(shards, shards.map((_, i) => i + 1), "the matrix must be exactly 1..N so no shard index is missing or repeated");
   assert.equal(journeys.strategy?.["fail-fast"], false, "a failing shard must not cancel the others");
   assert.equal(journeys["timeout-minutes"], 30, "the journeys timeout is unchanged");
-  const run = journeys.steps?.find((s) => s.name === "Journeys")?.run;
-  assert.equal(run, "npm run ci -- journeys --shard ${{ matrix.shard }}/${{ strategy.job-total }}", "the shard total must come from the matrix itself");
+  const run = journeys.steps?.find((s) => s.name === "Journeys")?.run ?? "";
+  const lines = run.split("\n").map((line) => line.trim());
+  // Both toolchain forms (scripts/toolchain.ts) must take the shard index and total from the matrix itself.
+  for (const form of ["npm run ci -- journeys", "bun scripts/ci.ts journeys"]) {
+    assert.ok(lines.includes(`${form} --shard \${{ matrix.shard }}/\${{ strategy.job-total }}`), `the ${form.split(" ")[0]} form must take the shard total from the matrix itself`);
+  }
   const upload = journeys.steps?.find((s) => s.name === "Keep failing frames and reports");
   assert.equal(upload?.with?.name, "journeys-evidence-${{ matrix.shard }}", "each shard uploads under its own artifact name");
   assert.match(journeys.name ?? "", /\$\{\{ matrix\.shard \}\}/, "each leg shows its shard in the job name");

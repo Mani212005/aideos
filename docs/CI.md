@@ -20,6 +20,9 @@ npm run ci -- journeys --shard 2/3   # one third of the journeys, exactly what C
 A job runs all of its steps even after one fails, then prints a timing table (and writes it to the
 GitHub job summary), so one run reports every problem.
 
+Every step has an npm form (the default) and a bun form; `AIDEOS_TOOLCHAIN=bun bun scripts/ci.ts <job>`
+runs the bun form. See [Toolchain switch (npm or bun)](#toolchain-switch-npm-or-bun).
+
 ## Jobs
 
 | Job | Steps | Runs |
@@ -95,7 +98,8 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
 ## Setup that every job shares
 
 * Every workflow job uses Node 22 and installs through the `.github/actions/install-dependencies` composite
-  action. It restores `node_modules` and `editor/node_modules` from one cache keyed on the OS, the CPU, the
+  action (on the bun path it also installs the Bun of `.bun-version` and runs `bun install`, see
+  [Toolchain switch (npm or bun)](#toolchain-switch-npm-or-bun)). It restores `node_modules` and `editor/node_modules` from one cache keyed on the OS, the CPU, the
   exact Node version, both `package.json` files, both lockfiles and `.npmrc`, then runs only
   `npm run ensure:generated`. On a miss it runs `npm ci` (npm cache keyed on both lockfiles) and saves the
   cache right after the install, before any step writes into `node_modules`. Why: the `npm ci` step took 39 to
@@ -148,6 +152,72 @@ and nowhere else. `scripts/ciJourneyShards.ts` plans the split and is the single
 * Failing frames, reports and studio screenshots land under `.ci-artifacts/`. Artifact uploads use
   `include-hidden-files: true` so `.ci-artifacts` directories are uploaded reliably. The journeys artifact
   uploads on failure, one artifact per shard (`journeys-evidence-1` to `journeys-evidence-3`); legacy evidence and the nightly budget report upload on every run.
+
+## Toolchain switch (npm or bun)
+
+`AIDEOS_TOOLCHAIN` (read only by `scripts/toolchain.ts`) picks the JavaScript toolchain of every CI step.
+Unset or `npm` is the default path and is exactly what ran before the switch existed. `bun` is the full Bun
+path. Any other value fails the run.
+
+| Where | Flip to bun | Restore npm |
+| --- | --- | --- |
+| GitHub CI, every run | repository variable `AIDEOS_TOOLCHAIN=bun` (Settings, Secrets and variables, Actions, Variables) | delete the variable or set it to `npm` |
+| GitHub CI, one run | Actions, CI, Run workflow, `toolchain: bun` | the input defaults to `npm` |
+| A laptop | `AIDEOS_TOOLCHAIN=bun bun scripts/ci.ts <job>` | `npm run ci -- <job>` |
+
+What the bun path changes, step by step:
+
+* **Install.** `oven-sh/setup-bun` installs the Bun of `.bun-version`, then `bun install --frozen-lockfile
+  --ignore-scripts` (root, then `--cwd editor`) and `bun scripts/ensure_generated.ts`. Bun reads the same
+  `package-lock.json` files; `bunfig.toml` stops it from writing a `bun.lock`, so there is one lockfile and
+  nothing can drift. `--ignore-scripts` skips the root `postinstall` (it calls npm; its two commands run as
+  above) and dependency install scripts, which bun does not trust anyway (`onnxruntime-node`, `protobufjs`,
+  `@google/genai`; none is needed, and `.npmrc` is not read by bun). The installed tree has the same package
+  versions as npm's except npm's nested `typescript@5.7.3` under `@remotion/eslint-config-flat` and the
+  optional `@emnapi/runtime`, which bun leaves out. node_modules is cached under its own key (`bun-node-modules-...`).
+* **Scripts.** Every `npx tsx <file>` and `npm run <script>` step runs `bun <file>` on the Bun runtime;
+  eslint, `tsc -b` and `vite build` run through `bun x --bun --no-install`. The editor build is two steps on
+  this path (`tsc -b`, then `vite build`) so no npm pre-hook runs, and the legacy job runs
+  `ensure_generated` as its own step where npm runs the `test:legacy` pre-hook. `bunfig.toml` turns off
+  bun's automatic `.env` loading (Node never loads it; the CLI loads its own) and its auto-install of
+  missing packages.
+* **Tests.** `bun test` is not a drop-in for `node --test`, so the bun path runs every test command through
+  `scripts/bunTest.ts`. It expands the same globs (`backend/**/*.test.ts` and `scripts/**/*.test.ts`, the
+  journey and golden globs), sorted, and runs **`bun test --timeout=0 --preload
+  backend/testSupport/bunTestEnv.ts --preload backend/testSupport/fixtureVideosDir.ts --reporter=junit
+  <file>` once per file, one file at a time**, each in its own process, as `node --test
+  --test-concurrency=1` does. It prints bun's own output, a per-file line and a summary (`# tests`, `# pass`,
+  `# fail`, `# skipped`, `# todo`, failed files), and writes the TODO and skipped names CI reports (the
+  `ciTodoReporter.cjs` JSON). A file fails when its process exits non-zero, writes no JUnit report or
+  reports a failure.
+
+Where `bun test` differs from `node --test`, and what the bun path does about it:
+
+| `bun test` by default | `node --test` | bun path |
+| --- | --- | --- |
+| every file in one process | one process per file | one `bun test` process per file |
+| 5 s per-test timeout | no timeout | `--timeout=0` (no timeout) |
+| no `NODE_TEST_CONTEXT` | `NODE_TEST_CONTEXT=child-v8` in each file process; production code reads it to keep agents, the vision judge, tmux and the Jev device caller off | `bunTestEnv.ts` sets it (after loading `node:test`, which would otherwise switch bun to its child event stream). Without it `pipeline.test.ts` took 395 s instead of 34 s |
+| `NODE_ENV=test`, inherited by children | `NODE_ENV` untouched | `bunTestEnv.ts` puts back the runner's own value |
+| loads `.env`, `.env.test` | loads nothing | `env = false` in `bunfig.toml` |
+| ignores `NODE_OPTIONS` | children get the fake voice service through `NODE_OPTIONS` | `voiceOfChoiceChildEnv` also sets `BUN_OPTIONS=--preload <fakeVcdPreload.ts>` |
+| a `todo` test's body never runs | it runs and its result is ignored | the same outcome: any todo fails CI |
+
+`process.execPath` is `bun` inside a bun test, so a test that spawns `process.execPath --import tsx
+backend/cli.ts` runs the CLI on Bun too.
+
+Measured on the Linux fleet machine (12 cores, shared; load 3.5 to 11), same commit, one run each: the unit
+suite took 594 s on `node --test` (1792 tests reported: 1791 pass, 1 skipped, 0 fail) and 492 s on the bun
+path (1793 tests: 1792 pass, 1 skipped, 0 fail). The per-test name sets are identical apart from
+`runStep reports failed, passed and skipped honestly...` in `scripts/ci.test.ts`: Node ran it but never
+received its result, because the next test replaced `process.stdout.write`, the channel a `node --test` file
+process reports through. That test now passes its writes through, and Node counts all 18 tests of the file.
+The CI before and after numbers are in the pull request that added the switch.
+
+What stays on npm on both paths: `npm run <script>` for contributors, the `nightly` and `update-goldens`
+workflows (goldens are made on the default path), `Dockerfile`, `render.yaml`, `vercel.json` and
+`scripts/release.ts`. `.no-mistakes.yaml` runs `npm run ci -- static`, so it follows `AIDEOS_TOOLCHAIN`
+like any other `npm run ci`.
 
 ## Changed files (shadow mode)
 
