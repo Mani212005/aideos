@@ -1,5 +1,5 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), Phase 2 (its steps; P2.1 draws the SVG filter subset of glows and drop shadows, with its parity), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
@@ -24,6 +24,7 @@ adapter in `backend/nativeRenderer.ts` hands it an IR path, a package directory 
 | Frame evaluator (tracks, easing, camera spline, spring, element states, rail, end card) | `native/aideos-render/src/eval/mod.rs`, `track.rs`, `spring.rs` |
 | Kinetic caption phrases (port of `captionPhrases.ts`) | `native/aideos-render/src/eval/captions.rs` |
 | Retained SVG model and parser | `native/aideos-render/src/svg/mod.rs`, `color.rs` |
+| SVG filter subset: the parsed filter (`svg/filter.rs`) and its Skia image filter (`raster/filter.rs`) | `native/aideos-render/src/svg/filter.rs`, `native/aideos-render/src/raster/filter.rs` |
 | Raster: stage and overlay, SVG drawing, chrome (rail, captions, end card), fonts | `native/aideos-render/src/raster/` |
 | Three stage rasterizer (graph pose, face painting, triangle setup, tile raster) | `native/aideos-render/src/raster/stage3d/` (`pose.rs`, `face.rs`, `setup.rs`, `tiles.rs`) |
 | Public `Renderer` (asset loading, checks, picture decode and pin check, CPU render, PNG) | `native/aideos-render/src/renderer.rs`, `src/sha256.rs` |
@@ -167,12 +168,31 @@ caps, joins, miter limit, dash array and offset, fill and clip rule, `color`/`cu
 inherited visibility, font family, size and weight, text anchor, letter spacing), `transform` lists, CSS colours
 (hex, `rgb()`/`rgba()`, named). `title`, `desc` and `metadata` are skipped.
 
+**Filters (P2.1).** The glow and drop-shadow subset of SVG filters is drawn: `filter="url(#id)"` on any element,
+and a `filter` with `feGaussianBlur` (one or two standard deviations, `edgeMode="none"`), `feOffset`, `feFlood`
+(`flood-color`, `flood-opacity`), `feComposite` (`over`, `in`, `out`, `atop`, `xor`, `arithmetic`) and `feMerge`, with the
+`SourceGraphic` and `SourceAlpha` inputs, named results, `color-interpolation-filters` (`linearRGB`, the initial
+value, or `sRGB`; inherited from the filter's ancestors) and a region in bounding-box units (the default
+-10%/-10%/120%/120%) or user units. It is drawn as Chrome's Blink builds it: the element (a group with its children,
+a shape, or a text run) draws into a layer, SourceGraphic is that layer cropped to the region, every primitive is
+cropped to the region, each input is converted into the primitive's colour space at 8 bits (as Chrome does, so a
+dark gradient under a linearRGB filter posterises the same way), the last result is converted back to sRGB, and
+the element's opacity applies after the filter. The region is resolved against the element's geometric bounding box
+in its own space (the fill geometry, a group's the union of its children's), so a straight horizontal line under a
+bounding-box filter has an empty region and draws nothing, exactly as in Chrome. Refused with the feature named:
+every other primitive (`feColorMatrix`, `feBlend`, `feTurbulence`, lighting, ...), primitive subregions
+(`x`/`y`/`width`/`height` on a primitive), `primitiveUnits="objectBoundingBox"`, a filter `href`, `edgeMode` other
+than `none`, the `BackgroundImage`, `BackgroundAlpha`, `FillPaint` and `StrokePaint` inputs, a negative deviation, a
+user-space region that leaves a side to the viewport, CSS filter functions (`filter="blur(4px)"`), a reference to a
+missing filter, and a bounding-box filter on text (its box depends on the glyphs; a user-space region is drawn).
+Parity with Remotion is in [P2.1 parity](#p21-svg-filters-glow-and-drop-shadow).
+
 Rendering attributes whose behavior is not implemented are **refused at load with the attribute named**,
 including `vector-effect`, `paint-order`, `mix-blend-mode`, `isolation`, `transform-origin`,
 `transform-box`, `shape-rendering`, `text-rendering`, unsupported baseline and font style properties,
 `text-decoration`, `writing-mode` and `direction`. Inert metadata attributes remain ignored.
 
-Anything else is **refused at load with the element or attribute named**: filters, masks, markers, `use`,
+Anything else is **refused at load with the element or attribute named**: filters outside the subset above, masks, markers, `use`,
 `image`, `pattern`, `symbol`, `tspan`, SMIL, stylesheets, percentage geometry. Silently dropping part of an
 asset would render a wrong frame with no sign of it. The loader also refuses an asset whose IR
 `elementIds` name an element the artwork does not contain, a missing file, and a path that resolves outside
@@ -633,6 +653,48 @@ against Remotion at every one of those golden frames (lowest 0.99833, bar 0.995)
 native journeys need the release binary: they skip when it is not built, and fail when `CI=true` or
 `AIDEOS_NATIVE_TESTS_REQUIRED=1`.
 
+## Phase 2 (node-graph films and the rest)
+
+Phase 2 of the native renderer plan moves what is still on Remotion: node-graph films, the other primitives, devices
+and the inset stage, and imported footage. It lands in small steps, each drawn exactly or refused, with Remotion as
+the fallback for everything not yet native:
+
+| Step | What | State |
+| --- | --- | --- |
+| P2.1 | the SVG filter subset of glows and drop shadows (above), which the node-graph canvas uses for its live edges (`CanvasGraph.tsx`, `neonGlow`) and onto which a card's CSS `box-shadow` lowers; scene artwork with such a filter, refused by the loader before and so rendered on Remotion, is now drawn natively | done |
+| P2.2 | the node-graph canvas in the emitter, flat camera: `CanvasGraph` lowered to generated SVG (cards as rounded rects with their gradient, edges as paths with the P2.1 glow) with the camera from `camAt`, node arrival and activeness as element tracks; needs IR element tracks the IR lacks (a colour crossfade for borders and labels, a dash offset for the travelling packets) and the cards' `box-shadow` and `backdrop-filter` | next |
+| P2.3 | the node-graph camera angles other than `flat` (`getCameraPerspective`: CSS 3D perspective), a 4 x 4 perspective transform on the stage | planned |
+| P2.4 | the textured themes (`paper-fibers` turbulence, `blueprint-grid` and `subtle-dots` patterns) | planned |
+| P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), several blocks per shot, panels other than `frame` | planned |
+| P2.6 | devices and the inset stage | planned |
+| P2.7 | imported footage and overlay clips (ffmpeg decode with accurate seek) | planned |
+
+The paper-rip transition every node-graph film names by default is a retired no-op (`PaperRip.tsx`), so it needs no
+native work. The editor preview (WASM) and the Node addon are the later Remotion-removal step, not Phase 2 here.
+
+### P2.1 SVG filters: glow and drop shadow
+
+Measured on the Linux laptop against Remotion's own Chrome (its pinned `chrome-headless-shell` with the `swangle` GL
+flags the journeys use), whole 1920 x 1080 frames, SSIM by ffmpeg:
+
+| Artwork | SSIM | Same artwork without its filters (the anti-aliasing floor) |
+| --- | --- | --- |
+| The node-graph edge glow (`neonGlow`) on curved, dashed and straight edges | 0.99965 | 0.99996 |
+| Drop shadows and an accent glow on cards (translucent gradient fill, group opacity, scaled, rotated) | 0.99844 | 0.99982 |
+| The same two at a 2.2 camera zoom | 0.99979 and 0.99502 | 0.99995 and 0.99931 |
+| Saturated colour blocks blurred in linearRGB and sRGB, an anisotropic blur, arithmetic and xor composites | 0.99631 | 0.99988 |
+| A blur under its own `clip-path` and under an ancestor's (the filter runs before the clip, as in Chrome) | 0.99981 | - |
+
+The blur is Skia's CPU Gaussian with the standard deviation as sigma and transparent edges; Remotion's Chrome blurs on
+its GPU raster path, so a blur edge differs by at most 7 levels (sigma 2) and 2 to 5 levels at larger sigmas,
+measured on a white bar over black; a filter layer in half float changed nothing, so the difference is the kernel,
+not precision. Inside a dark card under a linearRGB filter both renderers posterise the same way (Chrome converts at
+8 bits too); what differs there is where the gradient's dither crosses a level. `backend/journeys/svg_filters.journey.ts`
+gives a copy of the picture fixture the edge glow and a shadowed card, checks the renderer choice draws it natively,
+and gates three frames (long 135 and 285, reel 285) at the stage SSIM bar of 0.995 against Remotion: native measured
+0.99752 to 0.99764, and the same frames drawn without the filters 0.99195 to 0.99259, so the gate fails if the filters
+stop being drawn.
+
 ## The renderer flag
 
 Every render job chooses its renderer through `createSelectedRenderer` (`backend/rendererSelection.ts`): the
@@ -678,7 +740,8 @@ as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-g
 
 ## Not yet native
 
-Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2), GPU encoding of
+Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2; its first step, P2.1,
+draws the SVG filter subset of glows and drop shadows, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and nothing of the Three stage any more: the cel stage with any number of performers is carried by
 `aideos.render/2` since P4.1 and drawn since P4.2 and P4.3, and dots-v1 is carried and drawn since P4.4. Pictures are

@@ -1,8 +1,9 @@
-//! File Description: The retained SVG model of a scene asset. An asset is parsed once into a tree keyed by element id (shapes, groups, single-run text) with its presentation style, transforms, gradients and clip paths; each frame then draws that tree with its element states (crate::raster::svg). The supported subset is exactly what static scene artwork uses; anything outside it (filters, masks, `use`, images, patterns, markers, `tspan`, SMIL, stylesheets) is refused with a message naming it, because silently dropping part of an asset renders a wrong frame with no sign of it. Like SceneView, the root `<svg>` element's own attributes and viewBox are not drawn: its children are placed in the asset's own coordinates.
+//! File Description: The retained SVG model of a scene asset. An asset is parsed once into a tree keyed by element id (shapes, groups, single-run text) with its presentation style, transforms, gradients, clip paths and filters (the glow and drop-shadow subset, parsed in `filter.rs`); each frame then draws that tree with its element states (crate::raster::svg). The supported subset is exactly what static scene artwork and the node-graph glow use; anything outside it (other filter primitives, masks, `use`, images, patterns, markers, `tspan`, SMIL, stylesheets) is refused with a message naming it, because silently dropping part of an asset renders a wrong frame with no sign of it. Like SceneView, the root `<svg>` element's own attributes and viewBox are not drawn: its children are placed in the asset's own coordinates.
 //! Inputs and outputs: SVG source text -> `SvgDocument` (or `SvgError`).
-//! Used by: crate::renderer (asset loading) and crate::raster::svg (drawing).
+//! Used by: crate::renderer (asset loading), crate::raster::svg (drawing) and crate::raster::filter (filters).
 
 pub mod color;
+pub mod filter;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -10,6 +11,7 @@ use std::fmt;
 use skia_safe::{Matrix, Path, PathFillType, PathOp, Point, RRect, Rect};
 
 use self::color::{parse_color, Rgba};
+use self::filter::{parse_filter, Filter};
 
 /// Why an SVG asset could not be loaded.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -308,6 +310,8 @@ pub struct Element {
     pub opacity: f64,
     /// Id of a clipPath definition.
     pub clip_path: Option<String>,
+    /// Id of a filter definition.
+    pub filter: Option<String>,
     /// `display="none"`.
     pub hidden: bool,
     pub children: Vec<Element>,
@@ -364,6 +368,8 @@ pub struct SvgDocument {
     pub gradients: BTreeMap<String, Gradient>,
     /// Clip paths, already combined into one path in the clipped element's user space.
     pub clip_paths: BTreeMap<String, Path>,
+    /// Filter definitions, by id.
+    pub filters: BTreeMap<String, Filter>,
     /// Every element id in the document.
     pub ids: BTreeSet<String>,
 }
@@ -373,7 +379,6 @@ const IGNORED: &[&str] = &["title", "desc", "metadata"];
 
 /// Attributes that change rendering in ways this renderer does not implement.
 const UNSUPPORTED_ATTRS: &[&str] = &[
-    "filter",
     "mask",
     "marker-start",
     "marker-mid",
@@ -770,6 +775,22 @@ fn clip_ref(attrs: &BTreeMap<String, String>) -> Result<Option<String>, SvgError
     }
 }
 
+/// Reads `filter="url(#id)"` into the id; CSS filter functions such as `blur()` are refused.
+fn filter_ref(attrs: &BTreeMap<String, String>) -> Result<Option<String>, SvgError> {
+    match attrs.get("filter").map(|s| s.trim()) {
+        None | Some("none") => Ok(None),
+        Some(v) => match v.strip_prefix("url(") {
+            Some(_) => match paint(v, "filter")? {
+                Paint::Url(id) => Ok(Some(id)),
+                _ => err(format!("filter: {v:?} is not a url(#id) reference")),
+            },
+            None => err(format!(
+                "filter: {v:?} is not supported (only a url(#id) reference to a <filter> is)"
+            )),
+        },
+    }
+}
+
 /// Parses `points` of a polyline or polygon.
 fn points(attrs: &BTreeMap<String, String>) -> Result<Vec<(f64, f64)>, SvgError> {
     let nums = number_list(
@@ -854,6 +875,7 @@ fn collapse_whitespace(text: &str) -> String {
 #[derive(Default)]
 struct Parse {
     gradients: BTreeMap<String, RawGradient>,
+    filters: BTreeMap<String, Filter>,
     clip_nodes: Vec<(String, Matrix, Style, Vec<Element>)>,
     ids: BTreeSet<String>,
 }
@@ -903,6 +925,19 @@ impl Parse {
                 let Some(id) = id else { return Ok(None) };
                 let g = parse_gradient(node, tag == "linearGradient")?;
                 self.gradients.insert(id, g);
+                return Ok(None);
+            }
+            "filter" => {
+                // Primitive ids are element ids of the document too (the emitter lists every id an asset has).
+                for d in node.descendants().skip(1).filter(|d| d.is_element()) {
+                    if let Some(pid) = d.attribute("id").map(str::trim).filter(|v| !v.is_empty()) {
+                        self.record_id(pid)?;
+                    }
+                }
+                let f = parse_filter(node)?;
+                if let Some(id) = id {
+                    self.filters.insert(id, f);
+                }
                 return Ok(None);
             }
             "clipPath" => {
@@ -968,6 +1003,7 @@ impl Parse {
             transform,
             opacity,
             clip_path: clip_ref(&attrs)?,
+            filter: filter_ref(&attrs)?,
             hidden: attrs.get("display").is_some_and(|d| d.trim() == "none"),
             children,
         }))
@@ -1042,13 +1078,19 @@ pub fn parse(source: &str) -> Result<SvgDocument, SvgError> {
         elements,
         gradients,
         clip_paths,
+        filters: p.filters,
         ids: p.ids,
     };
     check_references(&svg_doc.elements, &svg_doc)?;
     Ok(svg_doc)
 }
 
-/// Refuses a fill, stroke or clip-path that names a definition the document does not have.
+/// Whether an element is, or contains, a text run.
+fn contains_text(e: &Element) -> bool {
+    matches!(e.kind, Kind::Text(_)) || e.children.iter().any(contains_text)
+}
+
+/// Refuses a fill, stroke, clip-path or filter that names a definition the document does not have.
 fn check_references(elements: &[Element], doc: &SvgDocument) -> Result<(), SvgError> {
     for e in elements {
         for p in [&e.style.fill, &e.style.stroke].into_iter().flatten() {
@@ -1061,6 +1103,17 @@ fn check_references(elements: &[Element], doc: &SvgDocument) -> Result<(), SvgEr
         if let Some(id) = &e.clip_path {
             if !doc.clip_paths.contains_key(id) {
                 return err(format!("clip-path references unknown clipPath {id:?}"));
+            }
+        }
+        if let Some(id) = &e.filter {
+            let Some(f) = doc.filters.get(id) else {
+                return err(format!("filter references unknown filter {id:?}"));
+            };
+            // A bounding-box region needs the element's geometry; a text run's box depends on its glyphs.
+            if f.region.bbox_units && contains_text(e) {
+                return err(format!(
+                    "filter {id:?}: an objectBoundingBox filter on text is not supported (use filterUnits=\"userSpaceOnUse\")"
+                ));
             }
         }
         check_references(&e.children, doc)?;
