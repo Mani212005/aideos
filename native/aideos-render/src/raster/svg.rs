@@ -1,4 +1,4 @@
-//! File Description: Draws a retained SVG asset with one frame's element states, matching the browser's rendering of the same markup in src/dl/scene/svgReact.tsx: the animated transform is appended to the authored one (translate, then rotate and scale about the origin), a driven opacity replaces the authored one, `drawOn` dashes a stroke over its own length (inherited by the strokeable shapes inside a group), and line endpoint tracks move a line; `aideos.render/5` colour tracks replace an element's fill or stroke paint and a dash offset track its `stroke-dashoffset`, which its children inherit. An element with a `filter` draws into a layer whose image filter (crate::raster::filter) runs over the region resolved against its geometric bounding box, with its opacity applied after the filter as in Chrome. A compositing layer is otherwise used only where the result needs one: a group below full opacity, or a shape with both a fill and a stroke below full opacity.
+//! File Description: Draws a retained SVG asset with one frame's element states, matching the browser's rendering of the same markup in src/dl/scene/svgReact.tsx: the animated transform is appended to the authored one (translate, then rotate and scale about the origin), a driven opacity replaces the authored one, `drawOn` dashes a stroke over its own length (inherited by the strokeable shapes inside a group), and line endpoint tracks move a line; `aideos.render/5` colour tracks replace an element's fill or stroke paint and a dash offset track its `stroke-dashoffset`, which its children inherit. An element with a `filter` draws into a layer whose image filter (crate::raster::filter) runs over the region resolved against its geometric bounding box, with its opacity applied after the filter as in Chrome. A compositing layer is otherwise used only where the result needs one: a group below full opacity, or a shape with both a fill and a stroke below full opacity; every layer is restored with rounding, as Chrome's GPU raster composites it.
 //! Inputs and outputs: a Skia canvas positioned in the asset's coordinate space, an `SvgDocument`, element states and the fonts -> pixels on the canvas.
 //! Used by: crate::raster (stage drawing).
 
@@ -109,9 +109,8 @@ fn draw_element(
             if let Some(image_filter) = filter_region(f, element_bbox(draw, e, state))
                 .and_then(|region| filter::build(f, region))
             {
-                let mut paint = SkPaint::default();
+                let mut paint = super::rounding_layer_paint(opacity as f32);
                 paint.set_image_filter(image_filter);
-                paint.set_alpha_f(opacity as f32);
                 canvas.save_layer(&SaveLayerRec::default().paint(&paint));
                 draw_content(canvas, draw, e, &style, state, 1.0, draw_on);
                 canvas.restore();
@@ -185,7 +184,7 @@ fn draw_content(
         Kind::Group => {
             let layered = opacity < 1.0;
             if layered {
-                canvas.save_layer_alpha_f(None, opacity as f32);
+                canvas.save_layer(&SaveLayerRec::default().paint(&super::rounding_layer_paint(opacity as f32)));
             }
             for child in &e.children {
                 draw_element(canvas, draw, child, style, draw_on);
@@ -346,7 +345,7 @@ fn draw_shape(
     let layered = opacity < 1.0 && has_fill && has_stroke;
     let paint_alpha = if layered { 1.0 } else { opacity };
     if layered {
-        canvas.save_layer_alpha_f(None, opacity as f32);
+        canvas.save_layer(&SaveLayerRec::default().paint(&super::rounding_layer_paint(opacity as f32)));
     }
     if has_fill {
         if let Some(paint) = make_paint(

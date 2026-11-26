@@ -60,7 +60,7 @@
       "frame": 2773,
       "width": 480,
       "height": 270,
-      "bytes": 16327
+      "bytes": 16301
     },
     {
       "name": "frames/still-talking/reel-1848.png",
@@ -69,7 +69,7 @@
       "frame": 1848,
       "width": 270,
       "height": 480,
-      "bytes": 23601
+      "bytes": 23602
     },
     {
       "name": "frames/iona-receive/long-30.png",
@@ -96,7 +96,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 14638
+      "bytes": 14503
     },
     {
       "name": "frames/iona-receive/long-285.png",
@@ -150,7 +150,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 13520
+      "bytes": 13374
     },
     {
       "name": "frames/pixels-stage-pip/long-285.png",
@@ -204,7 +204,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 13227
+      "bytes": 13099
     },
     {
       "name": "frames/pixels-stage-marlo/long-285.png",
@@ -258,7 +258,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 12236
+      "bytes": 12101
     },
     {
       "name": "frames/journey-three-characters/long-285.png",
@@ -312,7 +312,7 @@
       "frame": 180,
       "width": 480,
       "height": 270,
-      "bytes": 20498
+      "bytes": 20365
     },
     {
       "name": "frames/journey-j3-j4-dots/long-285.png",
@@ -366,7 +366,7 @@
       "frame": 225,
       "width": 480,
       "height": 270,
-      "bytes": 29462
+      "bytes": 29464
     },
     {
       "name": "frames/pictures-stage/long-285.png",
