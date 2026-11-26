@@ -1289,13 +1289,19 @@ test("hero label follows an explicit top caption", async () => {
 test("review phrase measurement matches rendered word widths", async () => {
   const { findChromeBinary } = await import("./scene/renderStill");
   if (!findChromeBinary()) return;
-  const { measureCaptionWords } = await import("./review/captionMeasurements");
+  const { measureCaptionWords, measureCaptionWordsAsync } = await import(
+    "./review/captionMeasurements"
+  );
   const measured = measureCaptionWords(["MMMM", "iiii", "readable"], 45);
   assert.ok(measured.MMMM > measured.iiii * 3);
   assert.equal(
     measureCaptionWords(["readable"], 45).readable,
     measured.readable,
   );
+  const parityWords = ["RunnerParityWordQZ731", "DifferentWidthsQZ731"];
+  const asynchronous = await measureCaptionWordsAsync(parityWords, 47);
+  const synchronous = measureCaptionWords(parityWords, 47);
+  assert.deepEqual(asynchronous, synchronous);
 });
 
 // Owner decision: the retired reel default (0.5, 0.78) is not an owner choice and resolves to the reel safe default.
