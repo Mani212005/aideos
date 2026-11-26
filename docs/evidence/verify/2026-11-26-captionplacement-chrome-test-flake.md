@@ -28,12 +28,13 @@
 | --- | --- | --- |
 | `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/captionPlacement.test.ts` (before change) | PASS (exit 0) | 41/41 tests; 11.0 s. |
 | `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/captionPlacement.test.ts` (after change) | PASS (exit 0) | 41/41 tests; 15.6 s. |
+| Three sequential reruns of `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/captionPlacement.test.ts` | PASS (exit 0) | 41/41 each; 9.6 s, 14.4 s, and 11.3 s. Host load average was 3.67/4.03/3.06 before the run and 3.10/3.83/3.07 after, on the 12-core worker. |
 | `node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 backend/review/captionMeasurements.test.ts` | PASS (exit 0) | 2/2 real Chrome measurement cases, sync and async; 4.2 s. |
 | `git diff --check` | PASS (exit 0) | No whitespace errors. |
 
 ## Fix attempts
 
-- Attempts used: 1/3. Source inspection showed the async Chrome launch was not awaited before the synchronous launch; the first targeted rerun after removing the overlapping launch passed.
+- Attempts used: 1/3. Source inspection showed the async Chrome launch was not awaited before the synchronous launch; the first targeted rerun after removing the overlapping launch passed. Three additional sequential runs under the worker's ambient load also passed.
 
 ## Weak-test removals
 
