@@ -1,10 +1,10 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), Phase 2 (its steps; P2.1 draws the SVG filter subset of glows and drop shadows, with its parity; P2.2a carries colour and dash offset tracks in `aideos.render/5`), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), opt-in 2D effects (`aideos.render/4`: glyph tracks and the shutter), Phase 2 (its steps; P2.1 draws the SVG filter subset of glows and drop shadows, with its parity; P2.2a carries colour and dash offset tracks in `aideos.render/5`), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
 
-`aideos-render` evaluates a Render IR [`aideos.render/1`, `/2`, `/3` or `/5`](RENDER_IR.md) as a pure function of the frame
+`aideos-render` evaluates a Render IR [`aideos.render/1` through `/5`](RENDER_IR.md) as a pure function of the frame
 number and draws the frame with Skia. Skia's **CPU rasterizer is the deterministic reference**; an
 optional GPU path draws the same frame through OpenGL. There is no browser, no DOM and no HTML.
 
@@ -16,6 +16,14 @@ scene film into the IR. Every render job (pipeline final render, studio Export, 
 `aideos render` and `aideos reel`) draws a film natively when the emitter supports it in that format and renders
 every other film on Remotion as before (see [The renderer flag](#the-renderer-flag)). The crate knows nothing of the `RenderJob` state machine: the
 adapter in `backend/nativeRenderer.ts` hands it an IR path, a package directory and a format.
+
+## Opt-in 2D effects (`aideos.render/4`)
+
+The native renderer accepts per-glyph tracks and a 2D shutter (2 to 16 samples) in `/4`. Shaped glyph
+indices, sample placement, sharp chrome, and the explicit 3D and overlay-order restrictions are documented
+in [Render IR effects](RENDER_IR.md#effects-aideosrender4). The film emitter and editor do not yet write or
+preview those fields. Existing versions use the old integer frame path and keep their output unchanged.
+SkSL transitions and closed-form particles remain future work.
 
 ## Where things live
 
@@ -103,8 +111,8 @@ then its decoded image fills its box (see [Pictures](#pictures-the-illustrated-s
 
 ### Evaluation
 
-Every value is a pure function of `(IR, format, frame)`: integer frames, f64 maths, no clock, nothing
-carried between frames. Track semantics are the IR's (hold before the first keyframe and after the last,
+Every value is a pure function of `(IR, format, frame)`: integer delivered frames, f64 maths, no clock, nothing
+carried between frames. With a shutter, 2D tracks also sample fractional frame times. Track semantics are the IR's (hold before the first keyframe and after the last,
 the earlier keyframe's ease shapes a segment). The curves are the project's own, ported and checked against
 the TypeScript on the same inputs (`tests/evaluator.rs`):
 

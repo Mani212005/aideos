@@ -548,6 +548,26 @@
         ],
         "additionalProperties": false
       }
+    },
+    "shutter": {
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 16
+        },
+        "angle": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 360
+        }
+      },
+      "required": [
+        "samples",
+        "angle"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -1244,6 +1264,68 @@
                 }
               },
               "additionalProperties": false
+            },
+            "glyphTracks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "glyph": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 26000000
+                  },
+                  "property": {
+                    "type": "string",
+                    "enum": [
+                      "x",
+                      "y",
+                      "scale",
+                      "rotation",
+                      "opacity"
+                    ]
+                  },
+                  "keyframes": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "frame": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 26000000
+                        },
+                        "value": {
+                          "type": "number"
+                        },
+                        "ease": {
+                          "type": "string",
+                          "enum": [
+                            "linear",
+                            "hold",
+                            "expoIn",
+                            "expoOut",
+                            "expoInOut",
+                            "spline"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "frame",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "glyph",
+                  "property",
+                  "keyframes"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "required": [

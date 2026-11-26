@@ -1,5 +1,5 @@
 //! File Description: Keyframe track evaluation for the Render IR: the project's easing curves (the same cubic beziers as `applySvgEasing` in src/dl/scene/svgAnimation.ts), the monotone cubic `spline` the scene camera uses (src/dl/scene/cameraTrack.ts with src/dl/motion/spline.ts), and the 4-decimal quantization the scene compiler applies to element state. Every value is a pure function of the keyframes and the frame number.
-//! Inputs and outputs: keyframes, a frame number and the film length -> one f64 value.
+//! Inputs and outputs: keyframes, an integer or fractional frame time and the film length -> one f64 value.
 //! Used by: crate::eval (camera, node tracks, element tracks, end card and caption timing).
 
 use aideos_render_ir::types::{Ease, Keyframe};
@@ -180,18 +180,23 @@ fn spline_knots(keyframes: &[Keyframe], duration_frames: u32) -> Vec<Knot> {
 
 /// The value of a track at a frame: hold the first value before it, the last after it, and ease each segment by its first keyframe.
 pub fn sample(keyframes: &[Keyframe], frame: u32, duration_frames: u32) -> f64 {
+    sample_at(keyframes, f64::from(frame), duration_frames)
+}
+
+/// Evaluates the same track at fractional frame time for shutter samples.
+pub fn sample_at(keyframes: &[Keyframe], frame: f64, duration_frames: u32) -> f64 {
     let (Some(first), Some(last)) = (keyframes.first(), keyframes.last()) else {
         return 0.0;
     };
-    if keyframes.len() == 1 || frame <= first.frame.0 {
+    if keyframes.len() == 1 || frame <= f64::from(first.frame.0) {
         return first.value;
     }
-    if frame >= last.frame.0 {
+    if frame >= f64::from(last.frame.0) {
         return last.value;
     }
     let next = keyframes
         .iter()
-        .position(|k| k.frame.0 > frame)
+        .position(|k| f64::from(k.frame.0) > frame)
         .unwrap_or(keyframes.len() - 1);
     let (k0, k1) = (&keyframes[next - 1], &keyframes[next]);
     // The loader guarantees an ease on every keyframe but the last; expoOut mirrors the TypeScript default.
@@ -202,12 +207,12 @@ pub fn sample(keyframes: &[Keyframe], frame: u32, duration_frames: u32) -> f64 {
         }
         let span = f64::from(duration_frames.saturating_sub(1));
         let t = if span > 0.0 {
-            f64::from(frame) / span
+            frame / span
         } else {
             0.0
         };
         return monotone_spline(&spline_knots(keyframes, duration_frames), t);
     }
-    let t = f64::from(frame - k0.frame.0) / f64::from(k1.frame.0 - k0.frame.0);
+    let t = (frame - f64::from(k0.frame.0)) / f64::from(k1.frame.0 - k0.frame.0);
     k0.value + (k1.value - k0.value) * apply_ease(ease, t)
 }

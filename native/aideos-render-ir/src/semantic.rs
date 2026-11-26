@@ -72,6 +72,7 @@ struct Checker<'a> {
     assets: HashMap<&'a str, &'a Asset>,
     ids: HashSet<&'a str>,
     stage3d_count: usize,
+    shutter: bool,
 }
 
 impl<'a> Checker<'a> {
@@ -178,6 +179,12 @@ impl<'a> Checker<'a> {
                 };
                 self.add("node_not_allowed", at(&p, &[&"kind"]), message);
             }
+            if self.shutter && matches!(node, Node::Stage3d(_)) {
+                self.add("shutter_not_supported", at(&p, &[&"kind"]), "the 2D shutter does not sample stage3d".into());
+            }
+            if self.shutter && !top && matches!(node, Node::Captions(_) | Node::Rail(_) | Node::EndCard(_)) {
+                self.add("shutter_not_supported", at(&p, &[&"kind"]), "chrome must be top-level when the 2D shutter is enabled".into());
+            }
             if let Some(v) = node.visible() {
                 self.check_span(at(&p, &[&"visible"]), v.from_frame.0, v.to_frame.0);
             }
@@ -217,6 +224,19 @@ impl<'a> Checker<'a> {
                     self.need_asset(at(&p, &[&"font"]), &n.font, "font");
                     self.check_node_tracks(&p, &n.tracks);
                     self.check_formats(&at(&p, &[&"placement"]), &n.placement);
+                    let mut seen = HashSet::new();
+                    for (i, track) in n.glyph_tracks.iter().flatten().enumerate() {
+                        let tp = at(&p, &[&"glyphTracks", &i]);
+                        if !seen.insert((track.glyph.0, track.property)) {
+                            self.add("duplicate_track", tp.clone(), format!("glyph {} property {:?} is driven by two tracks", track.glyph.0, track.property));
+                        }
+                        let range = match track.property {
+                            GlyphProperty::Opacity => Some(UNIT),
+                            GlyphProperty::Scale => Some(POSITIVE),
+                            _ => None,
+                        };
+                        self.check_keyframes(&at(&tp, &[&"keyframes"]), &track.keyframes, range);
+                    }
                 }
                 Node::Rail(n) => {
                     self.need_asset(at(&p, &[&"font"]), &n.font, "font");
@@ -519,6 +539,7 @@ pub fn check(ir: &RenderIr) -> Vec<Issue> {
         assets: HashMap::new(),
         ids: HashSet::new(),
         stage3d_count: 0,
+        shutter: ir.shutter.is_some(),
     };
     if !c.declared_long && !c.declared_reel {
         c.add("no_formats", "/formats".into(), "declare at least one of long or reel".into());
@@ -571,6 +592,16 @@ pub fn check(ir: &RenderIr) -> Vec<Issue> {
         }
     }
 
+    if ir.shutter.is_some() {
+        let mut chrome_seen = false;
+        for (i, node) in ir.overlay.iter().enumerate() {
+            let chrome = matches!(node, Node::Rail(_) | Node::Captions(_) | Node::EndCard(_));
+            if chrome_seen && !chrome {
+                c.add("shutter_not_supported", at("/overlay", &[&i, &"kind"]), "2D content must precede chrome when the 2D shutter is enabled".into());
+            }
+            chrome_seen |= chrome;
+        }
+    }
     c.walk(&ir.stage, "/stage", Space::Stage, true);
     c.walk(&ir.overlay, "/overlay", Space::Overlay, true);
 

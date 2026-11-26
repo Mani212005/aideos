@@ -1,5 +1,5 @@
 //! File Description: The frame evaluator: resolves everything a frame depends on from the Render IR as a pure function of (IR, format, frame number), with no clocks and no state carried between frames, so frames can be evaluated in any order. It covers the camera, node and element tracks (with `aideos.render/5`'s colour tracks and dash offset), visibility, the chapter rail, the end card's entrances and press, and (in `captions`) the kinetic caption phrases.
-//! Inputs and outputs: a loaded `RenderIr`, a frame number and a format -> plain value structs (camera pose, transforms, element states, rail and end card state).
+//! Inputs and outputs: a loaded `RenderIr`, an integer or fractional frame time and a format -> plain value structs (camera pose, transforms, element states, rail and end card state).
 //! Used by: crate::raster (drawing), crate::renderer, and the evaluator tests in tests/evaluator.rs.
 
 pub mod captions;
@@ -15,7 +15,7 @@ use aideos_render_ir::types::{
 
 use crate::svg::color::{parse_color, Rgba};
 
-use self::track::{ease_expo_out, quantize, sample};
+use self::track::{ease_expo_out, quantize, sample_at};
 
 /// One of the two output formats a Render IR may declare.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -64,13 +64,18 @@ pub struct CameraPose {
 
 /// Evaluates the camera at a frame; without a camera the scene centre is held at zoom 1.
 pub fn camera(ir: &RenderIr, frame: u32) -> CameraPose {
+    camera_at(ir, f64::from(frame))
+}
+
+/// Resolves the camera at fractional frame time.
+pub fn camera_at(ir: &RenderIr, frame: f64) -> CameraPose {
     let dur = ir.film.duration_frames.0;
     match &ir.camera {
         Some(c) => CameraPose {
-            center_x: sample(&c.center_x, frame, dur),
-            center_y: sample(&c.center_y, frame, dur),
-            zoom: sample(&c.zoom, frame, dur),
-            rotation: sample(&c.rotation, frame, dur),
+            center_x: sample_at(&c.center_x, frame, dur),
+            center_y: sample_at(&c.center_y, frame, dur),
+            zoom: sample_at(&c.zoom, frame, dur),
+            rotation: sample_at(&c.rotation, frame, dur),
         },
         None => CameraPose {
             center_x: f64::from(ir.scene.width.0) / 2.0,
@@ -107,7 +112,12 @@ pub fn project(
 
 /// Whether a node with this visibility span is drawn at a frame (half-open span; absent means always).
 pub fn is_visible(visible: Option<&Visible>, frame: u32) -> bool {
-    visible.is_none_or(|v| frame >= v.from_frame.0 && frame < v.to_frame.0)
+    is_visible_at(visible, f64::from(frame))
+}
+
+/// Checks a half-open visibility span at fractional frame time.
+pub fn is_visible_at(visible: Option<&Visible>, frame: f64) -> bool {
+    visible.is_none_or(|v| frame >= f64::from(v.from_frame.0) && frame < f64::from(v.to_frame.0))
 }
 
 /// A node's resolved placement: translation, scale (uniform, times a per-axis factor), rotation in degrees and opacity.
@@ -128,21 +138,21 @@ pub struct NodeTransform {
 fn node_track_value(
     tracks: &[NodeTrack],
     property: NodeProperty,
-    frame: u32,
+    frame: f64,
     dur: u32,
 ) -> Option<f64> {
     tracks
         .iter()
         .find(|t| t.property == property)
-        .map(|t| sample(&t.keyframes, frame, dur))
+        .map(|t| sample_at(&t.keyframes, frame, dur))
 }
 
 /// Resolves a placed node (svg or group): a track replaces its static field; opacity multiplies the static opacity.
-pub fn placed_transform(
+pub fn placed_transform_at(
     base: NodeTransform,
     static_opacity: Option<f64>,
     tracks: &[NodeTrack],
-    frame: u32,
+    frame: f64,
     dur: u32,
 ) -> NodeTransform {
     let pick = |p: NodeProperty, fallback: f64| {
@@ -160,10 +170,10 @@ pub fn placed_transform(
 }
 
 /// Resolves a boxed overlay node (rect or text): tracks are an offset, a scale and a rotation about the box centre.
-pub fn boxed_transform(
+pub fn boxed_transform_at(
     static_opacity: Option<f64>,
     tracks: &[NodeTrack],
-    frame: u32,
+    frame: f64,
     dur: u32,
 ) -> NodeTransform {
     let identity = NodeTransform {
@@ -175,7 +185,17 @@ pub fn boxed_transform(
         rotation: 0.0,
         opacity: 1.0,
     };
-    placed_transform(identity, static_opacity, tracks, frame, dur)
+    placed_transform_at(identity, static_opacity, tracks, frame, dur)
+}
+
+/// Resolves a placed node at an integer frame.
+pub fn placed_transform(base: NodeTransform, opacity: Option<f64>, tracks: &[NodeTrack], frame: u32, dur: u32) -> NodeTransform {
+    placed_transform_at(base, opacity, tracks, f64::from(frame), dur)
+}
+
+/// Resolves a boxed node at an integer frame.
+pub fn boxed_transform(opacity: Option<f64>, tracks: &[NodeTrack], frame: u32, dur: u32) -> NodeTransform {
+    boxed_transform_at(opacity, tracks, f64::from(frame), dur)
 }
 
 /// The animated state of one element inside an SVG asset at a frame.
@@ -227,8 +247,8 @@ impl Default for ElementState {
 }
 
 /// Samples one element track and quantizes it like the scene compiler (opacity and drawOn clamped to [0, 1]).
-fn element_value(track: &ElementTrack, frame: u32, dur: u32) -> f64 {
-    let v = sample(&track.keyframes, frame, dur);
+fn element_value(track: &ElementTrack, frame: f64, dur: u32) -> f64 {
+    let v = sample_at(&track.keyframes, frame, dur);
     match track.property {
         ElementProperty::Opacity | ElementProperty::DrawOn => quantize(v.clamp(0.0, 1.0)),
         _ => quantize(v),
@@ -237,8 +257,8 @@ fn element_value(track: &ElementTrack, frame: u32, dur: u32) -> f64 {
 
 /// Evaluates every element track of an SVG node at a frame, keyed by element id.
 /// `scale` sets both axes; a `scaleX` or `scaleY` track, when present, wins on its own axis.
-pub fn element_states(node: &SvgNode, frame: u32, dur: u32) -> BTreeMap<String, ElementState> {
-    let mut states = element_states_of(&node.element_tracks, frame, dur);
+pub fn element_states_at(node: &SvgNode, frame: f64, dur: u32) -> BTreeMap<String, ElementState> {
+    let mut states = element_states_of_at(&node.element_tracks, frame, dur);
     for track in node.color_tracks.iter().flatten() {
         let colour = sample_color(&track.keyframes, frame);
         let state = states.entry(track.target.clone()).or_default();
@@ -250,34 +270,35 @@ pub fn element_states(node: &SvgNode, frame: u32, dur: u32) -> BTreeMap<String, 
     states
 }
 
-/// Samples a colour track (`aideos.render/5`): held before the first and after the last keyframe; between two, held or
-/// each straight-alpha channel moved linearly (Remotion's `interpolateColors` mix, unrounded).
-pub fn sample_color(keyframes: &[ColorKeyframe], frame: u32) -> Rgba {
+/// Samples a colour track (`aideos.render/5`) at an integer or fractional frame time: held before the first and after the
+/// last keyframe; between two, held or each straight-alpha channel moved linearly (Remotion's `interpolateColors` mix,
+/// unrounded).
+pub fn sample_color(keyframes: &[ColorKeyframe], frame: f64) -> Rgba {
     let colour = |k: &ColorKeyframe| parse_color(&k.color).unwrap_or(Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 });
     let (Some(first), Some(last)) = (keyframes.first(), keyframes.last()) else {
         return Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
     };
-    if keyframes.len() == 1 || frame <= first.frame.0 {
+    if keyframes.len() == 1 || frame <= f64::from(first.frame.0) {
         return colour(first);
     }
-    if frame >= last.frame.0 {
+    if frame >= f64::from(last.frame.0) {
         return colour(last);
     }
-    let next = keyframes.iter().position(|k| k.frame.0 > frame).unwrap_or(keyframes.len() - 1);
+    let next = keyframes.iter().position(|k| f64::from(k.frame.0) > frame).unwrap_or(keyframes.len() - 1);
     let (k0, k1) = (&keyframes[next - 1], &keyframes[next]);
     let (c0, c1) = (colour(k0), colour(k1));
     if k0.ease != Some(ColorEase::Linear) {
         return c0;
     }
-    let t = (f64::from(frame - k0.frame.0) / f64::from(k1.frame.0 - k0.frame.0)) as f32;
+    let t = ((frame - f64::from(k0.frame.0)) / f64::from(k1.frame.0 - k0.frame.0)) as f32;
     let mix = |a: f32, b: f32| a + (b - a) * t;
     Rgba { r: mix(c0.r, c1.r), g: mix(c0.g, c1.g), b: mix(c0.b, c1.b), a: mix(c0.a, c1.a) }
 }
 
 /// Evaluates a list of element tracks (an svg node's, or an image node's tracks on its one element) at a frame, keyed by element id.
-pub fn element_states_of(
+pub fn element_states_of_at(
     element_tracks: &[ElementTrack],
-    frame: u32,
+    frame: f64,
     dur: u32,
 ) -> BTreeMap<String, ElementState> {
     let mut states: BTreeMap<String, ElementState> = BTreeMap::new();
@@ -314,6 +335,16 @@ pub fn element_states_of(
         }
     }
     states
+}
+
+/// Resolves the tracks of an SVG node at an integer frame.
+pub fn element_states(node: &SvgNode, frame: u32, dur: u32) -> BTreeMap<String, ElementState> {
+    element_states_at(node, f64::from(frame), dur)
+}
+
+/// Resolves element tracks at an integer frame.
+pub fn element_states_of(tracks: &[ElementTrack], frame: u32, dur: u32) -> BTreeMap<String, ElementState> {
+    element_states_of_at(tracks, f64::from(frame), dur)
 }
 
 /// The chapter rail at one frame.

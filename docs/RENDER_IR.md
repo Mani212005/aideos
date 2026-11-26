@@ -1,8 +1,8 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1`, its superset `aideos.render/2` (the Three stage), that one's superset `aideos.render/3` (pictures) and its superset `aideos.render/5` (colour and dash offset tracks): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
+File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/5` (Three stage, pictures, 2D effects, colour and dash offset tracks): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
-# Render IR (`aideos.render/1`, `aideos.render/2`, `aideos.render/3`, `aideos.render/5`)
+# Render IR (`aideos.render/1` through `aideos.render/5`)
 
 The Render IR is the document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
@@ -29,10 +29,12 @@ Phase 1 of the illustrated stage added `aideos.render/3`: a strict superset of `
 node, a pinned picture placed on the stage (see [Pictures](#pictures-aideosrender3)). A film with no picture is
 still written as `/1` (or `/2` with a Three stage), byte for byte what it was before.
 
-P2.2a of Phase 2 added `aideos.render/5`: a strict superset of `/3` that adds colour tracks and the `dashOffset`
+`aideos.render/4` adds opt-in native glyph tracks and a 2D shutter. Existing emitters still write their
+previous version; no editor or preview integration is provided in this slice. See [Effects](#effects-aideosrender4).
+
+P2.2a of Phase 2 added `aideos.render/5`: a strict superset of `/4` that adds colour tracks and the `dashOffset`
 element track on svg nodes, what the node-graph canvas animates (see [Colour and dash offset](#colour-and-dash-offset-aideosrender5)).
-No emitter writes `/5` yet: every film is written as before. `/4` is the per-glyph text and 2D shutter version, built in parallel;
-until it lands this build reads `/1`, `/2`, `/3` and `/5`, and when it does `/5` also carries everything `/4` adds.
+No emitter writes `/5` yet: every film is written as before.
 
 ## Where things live
 
@@ -41,7 +43,7 @@ until it lands this build reads `/1`, `/2`, `/3` and `/5`, and when it does `/5`
 | Structural contract (zod, the single source, every version) | `backend/renderIr/schema.ts` |
 | TypeScript load, version gate and cross-reference rules | `backend/renderIr/validate.ts` |
 | JSON Schema generator | `backend/renderIr/jsonSchema.ts`, `scripts/render_ir_schema.ts` |
-| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json`, `aideos.render.3.schema.json`, `aideos.render.5.schema.json` |
+| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json`, `aideos.render.3.schema.json`, `aideos.render.4.schema.json`, `aideos.render.5.schema.json` |
 | Rust workspace and loader crate | `native/Cargo.toml`, `native/aideos-render-ir/` |
 | Mesh file codec (triangle, points and lines parts) | `backend/renderIr/mesh.ts` (write and read), `native/aideos-render-ir/src/mesh.rs` (read) |
 | Stage3d emitter and reference pose | `backend/renderIr/emitStage3d.ts`, `backend/renderIr/stage3d.ts` |
@@ -54,20 +56,19 @@ until it lands this build reads `/1`, `/2`, `/3` and `/5`, and when it does `/5`
 
 ## Versioning and rejection
 
-A document starts with `"schema": "aideos.render/1"`, `"schema": "aideos.render/2"`, `"schema": "aideos.render/3"` or
-`"schema": "aideos.render/5"`.
+A document starts with a supported `schema` from `aideos.render/1` through `aideos.render/5`.
 The loader reads that field first:
 
 1. Not JSON: refused as `not_json`.
 2. Not an object, or no string `schema` field: refused as `invalid_document` with a `schema` issue.
-3. A string other than exactly `aideos.render/1`, `aideos.render/2`, `aideos.render/3` or `aideos.render/5` (including
-   `aideos.render/6`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the string
-   found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/5`),
+3. A string other than exactly `aideos.render/1`, `aideos.render/2`, `aideos.render/3`, `aideos.render/4` or `aideos.render/5`
+   (including `aideos.render/6`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the
+   string found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5`),
    **before** the rest of the document is read, because a later version may have a different shape.
 4. Right version, wrong shape (a missing or unknown field, a wrong type, a bad colour, a frame that is
    not a whole number): refused as `invalid_document`, every issue listed. Each version is checked against
    its own schema, so a `/1` document that uses a `stage3d` node or a `mesh` asset, a `/2` document that uses
-   an `image` node, or a `/3` document that uses `colorTracks` or a `dashOffset` track, is refused here.
+   an `image` node, or a `/3` or `/4` document that uses `colorTracks` or a `dashOffset` track, is refused here.
 5. Right shape, broken references or ranges: refused as `invalid_document`, every issue listed.
 
 The shape is closed: an unknown field is an error, never ignored. There are no defaults in the wire
@@ -149,6 +150,28 @@ and the mixer reads them on the film clock. The gain is held before the first an
 particles, footage clips, Lottie, 3D and the Three-stage character films. They arrive with the phases
 that need them, as a new version. `/2` carries the Three stage; the native renderer draws it in the cel treatment with any number of performers
 (P4.2 one performer, P4.3 several), and the dots-v1 films keep rendering through Remotion until P4.4.
+
+## Effects (`aideos.render/4`)
+
+`/4` extends `/3` without changing any prior schema. A text node may carry `glyphTracks`, each with a
+zero-based `glyph`, a `property` (`x`, `y`, `scale`, `rotation`, or `opacity`) and `keyframes` using the
+usual track rules. Glyph indices refer to the Skia-shaped glyphs in laid-out paint order for each format,
+including spaces and ligatures, not Unicode characters or grapheme clusters. The native loader refuses
+an index absent in either declared format. Wrapping, shaping and font changes can change indices: authors
+must check both formats. Position is in output pixels, rotation in degrees, and scale and rotation are
+about the glyph origin. Tracks do not change layout or the advances of neighbouring glyphs. An untracked
+glyph keeps its shaped position; opacity defaults to one. Duplicate properties on one glyph are refused.
+
+Optional `shutter: { samples, angle }` enables 2D motion blur for the film. Samples is an integer from
+2 to 16; angle is greater than zero and at most 360 degrees. The raster averages equally weighted,
+evenly spaced sample centres over `angle / 360` of a frame, centred on the delivered frame and clamped
+inside the film. Camera, visibility, 2D node, element and glyph tracks use fractional frame time. The
+accumulator averages premultiplied channels; captions, rail and end card are drawn once at the delivered
+frame after the accumulation. To preserve stacking and sharp chrome, chrome must be top-level and follow
+all other overlay nodes when shutter is present. A document with both a shutter and `stage3d` is refused:
+the existing 3D pose samples are integer only. These restrictions are checked by both loaders. Fonts and
+shaping are resolved by the renderer, so nonexistent glyph indices are refused at native load, not by the
+structural IR loader. Omitting the additions preserves the existing frame path.
 
 ## The Three stage (`aideos.render/2`)
 
@@ -381,7 +404,7 @@ one with node and element tracks) beside an SVG label. `invalid/*.json` are shor
 each; the `stage3d-*` ones cover a `/1` document carrying `/2` additions, broken references, sample counts and
 ranges, placement, and shapes only `/2` knows; `image-in-version-2.json` is a `/2` document carrying the `/3` node
 and `image-references.json` breaks every image rule once. `valid/color-and-dash.json` is the `/5` example (linear and hold
-colour segments on a stroke and a fill, a dash offset track); `v3-dash-offset.json` and `v3-color-tracks.json` are `/3`
+colour segments on a stroke and a fill, a dash offset track); `v3-dash-offset.json`, `v3-color-tracks.json` and `v4-color-and-dash.json` are `/3` and `/4`
 documents carrying the `/5` additions, and `color-tracks.json` breaks every colour track rule once.
 
 `fixtures/expectations.json` states the verdict for every file. Both test suites assert the same

@@ -403,6 +403,27 @@ fn formats_parse_by_their_wire_names() {
     assert_eq!(Format::parse("wide"), None);
 }
 
+/// Checks fractional samples retain integer results and stay bounded for seeded linear tracks.
+#[test]
+fn fractional_sampling_preserves_integer_values_and_linear_bounds() {
+    use aideos_render::eval::track::sample_at;
+    let mut seed = 0x8f13_72a5_u32;
+    for _ in 0..256 {
+        seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+        let first = f64::from(seed % 2000) / 10.0 - 100.0;
+        seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+        let last = f64::from(seed % 2000) / 10.0 - 100.0;
+        let keys = [kf(2, first, Some(Ease::Linear)), kf(18, last, None)];
+        for frame in 0..=20 {
+            assert_eq!(sample_at(&keys, f64::from(frame), 21), sample(&keys, frame, 21));
+            let fractional = sample_at(&keys, f64::from(frame) + 0.375, 21);
+            assert!(fractional >= first.min(last) - 1e-10 && fractional <= first.max(last) + 1e-10);
+        }
+        let midpoint = sample_at(&keys, 10.0, 21);
+        assert_near(midpoint, (first + last) / 2.0, 1e-10, "linear midpoint");
+    }
+}
+
 /// Checks `aideos.render/5` colour tracks and the dash offset: a linear segment mixes each straight-alpha channel as
 /// Remotion's `interpolateColors` does (it then rounds each channel; the IR keeps the exact mix), a hold segment keeps the
 /// earlier colour, the ends hold, and a dash offset track sets the element's `stroke-dashoffset`.

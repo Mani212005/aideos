@@ -9,7 +9,10 @@
     "valid/mirrored-element.json",
     "valid/stage3d-dots.json",
     "valid/stage3d-minimal.json",
-    "valid/tiny-scene.json"
+    "valid/tiny-scene.json",
+    "valid/effects-empty.json",
+    "valid/effects-type.json",
+    "valid/effects-nested-type.json"
   ],
   "invalid": {
     "invalid/bad-colour.json": {
@@ -477,6 +480,75 @@
         }
       ]
     },
+    "invalid/effects-duplicate.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "duplicate_track",
+          "path": "/overlay/0/glyphTracks/1"
+        }
+      ]
+    },
+    "invalid/effects-old-version.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/effects-opacity.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "value_out_of_range",
+          "path": "/overlay/0/glyphTracks/0/keyframes/0/value"
+        }
+      ]
+    },
+    "invalid/effects-chrome-order.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "shutter_not_supported",
+          "path": "/overlay/1/kind"
+        }
+      ]
+    },
+    "invalid/effects-nested-chrome.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "shutter_not_supported",
+          "path": "/overlay/1/children/0/kind"
+        }
+      ]
+    },
+    "invalid/effects-stage3d.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "shutter_not_supported",
+          "path": "/stage/1/kind"
+        }
+      ]
+    },
+    "invalid/effects-angle.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/effects-samples.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
     "invalid/v3-dash-offset.json": {
       "kind": "invalid_document",
       "issues": [
@@ -519,6 +591,14 @@
         {
           "code": "frame_out_of_range",
           "path": "/stage/0/colorTracks/2/keyframes/1/frame"
+        }
+      ]
+    },
+    "invalid/v4-color-and-dash.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
         }
       ]
     }
