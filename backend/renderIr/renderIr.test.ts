@@ -44,7 +44,7 @@ test("invalid fixtures are refused with the verdict the Rust loader also gives",
     assert.equal(result.error.kind, want.kind, rel);
     if (want.kind === "unsupported_version" && result.error.kind === "unsupported_version") {
       assert.equal(result.error.found, want.found, rel);
-      assert.equal(result.error.supported, "aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6, aideos.render/7");
+      assert.equal(result.error.supported, "aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6, aideos.render/7, aideos.render/8");
     }
     if (want.kind === "invalid_document" && result.error.kind === "invalid_document") {
       const structural = want.issues.every((i) => i.path === undefined);

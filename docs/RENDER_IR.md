@@ -1,8 +1,8 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/7` (Three stage, pictures, 2D effects, colour and dash offset tracks, native transitions and particles, the underlay): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, the `/6` transition and particles, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
+File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/8` (Three stage, pictures, 2D effects, colour and dash offset tracks, native transitions and particles, the underlay, svg nodes in the overlay): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, the `/6` transition and particles, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
-# Render IR (`aideos.render/1` through `aideos.render/7`)
+# Render IR (`aideos.render/1` through `aideos.render/8`)
 
 The Render IR is the document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
@@ -45,6 +45,10 @@ P2.4a of Phase 2 added `aideos.render/7`: a strict superset of `/6` that adds th
 between the background and the stage. The emitter writes `/7` only for a node-graph or vector scene film whose theme has a texture it lowers there
 (the `blueprint-grid` and `subtle-dots` patterns, and since P2.4b the `paper-fibers` grain, which Chrome draws as a flat darkening; vector scene films since P2.4c; a Three stage or character film on a textured theme is refused until it is measured); every other film is written as before. See [The underlay](#the-underlay-aideosrender7).
 
+P2.8a of Phase 2 added `aideos.render/8`: a strict superset of `/7` with the same structure, whose overlay may also hold
+`svg` nodes (a device drawn in a card, such as a Plot). The emitter writes `/8` only for a film whose card draws such a
+device; every other film is written as before. See [Svg nodes in the overlay](#svg-nodes-in-the-overlay-aideosrender8).
+
 ## Where things live
 
 | Piece | Path |
@@ -67,19 +71,19 @@ between the background and the stage. The emitter writes `/7` only for a node-gr
 
 ## Versioning and rejection
 
-A document starts with a supported `schema` from `aideos.render/1` through `aideos.render/7`.
+A document starts with a supported `schema` from `aideos.render/1` through `aideos.render/8`.
 The loader reads that field first:
 
 1. Not JSON: refused as `not_json`.
 2. Not an object, or no string `schema` field: refused as `invalid_document` with a `schema` issue.
-3. A string other than exactly `aideos.render/1`, `aideos.render/2`, `aideos.render/3`, `aideos.render/4`, `aideos.render/5`, `aideos.render/6` or `aideos.render/7`
-   (including `aideos.render/8`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the
-   string found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6, aideos.render/7`),
+3. A string other than exactly `aideos.render/1`, `aideos.render/2`, `aideos.render/3`, `aideos.render/4`, `aideos.render/5`, `aideos.render/6`, `aideos.render/7` or `aideos.render/8`
+   (including `aideos.render/9`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the
+   string found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6, aideos.render/7, aideos.render/8`),
    **before** the rest of the document is read, because a later version may have a different shape.
 4. Right version, wrong shape (a missing or unknown field, a wrong type, a bad colour, a frame that is
    not a whole number): refused as `invalid_document`, every issue listed. Each version is checked against
    its own schema, so a `/1` document that uses a `stage3d` node or a `mesh` asset, a `/2` document that uses
-   an `image` node, a `/3` or `/4` document that uses `colorTracks` or a `dashOffset` track, or a document before `/7` with an `underlay`, is refused here.
+   an `image` node, a `/3` or `/4` document that uses `colorTracks` or a `dashOffset` track, or a document before `/7` with an `underlay`, is refused here (an svg node in the overlay of a document before `/8` is refused at step 5).
 5. Right shape, broken references or ranges: refused as `invalid_document`, every issue listed.
 
 The shape is closed: an unknown field is an error, never ignored. There are no defaults in the wire
@@ -466,3 +470,18 @@ and `subtle-dots` patterns and the `paper-fibers` grain (a flat darkening in Chr
 texture is a frame-sized SVG asset (`visuals/theme-texture.svg`) inside a group whose `scale`, `x` and `y` tracks are the
 end card's push about the frame centre, at the texture layer's opacity. Fixtures: `valid/underlay.json`,
 `invalid/v6-underlay.json` (the field in `/6`), `invalid/underlay-space.json` (a `rect` in the underlay).
+
+## Svg nodes in the overlay (`aideos.render/8`)
+
+`/8` has `/7`'s structure (the overlay list already takes `/5` nodes, and the `underlay` list is present, empty when there is
+no texture); what changes is the cross-reference rule: the overlay may also hold `svg` nodes, drawn in frame space (render
+pixels, no camera) where they sit in the overlay's order, with their node and element tracks (`dashOffset` included). An
+`image` or `stage3d` node there is still refused. In a document before `/8` an svg node in the overlay is refused as
+`node_not_allowed` at its `kind`.
+
+The emitter uses it for a device drawn in a card: a Plot (P2.8a, `backend/renderIr/emitPlot.ts`) is a generated SVG asset in
+the plot's own units, placed by the svg node's `x`, `y` and `scale` as `preserveAspectRatio` meet places it, its content
+clipped to the svg element's box (a `clipPath` in the asset, as Chrome clips an svg element), its line drawn on by a
+`dashOffset` track and its dot moved by `translateX` and `translateY` tracks. Fixtures: `valid/overlay-svg.json` (a group in
+the overlay holding an svg node with a dash offset track), `invalid/v7-overlay-svg.json` (the same overlay in `/7`), and
+`invalid/unsupported-version.json`, whose example moved from `/8` to `/9`.

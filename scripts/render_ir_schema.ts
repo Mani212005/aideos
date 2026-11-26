@@ -1,6 +1,6 @@
 /**
  * File Description: Writes (or with --check verifies) the committed JSON Schemas of every Render IR version, so the Rust loader's embedded schemas are always the ones the zod source describes.
- * Inputs and outputs: optional --check flag -> rewrites native/aideos-render-ir/schema/aideos.render.{1,2,3,4,5,6,7}.schema.json, or exits 1 when any is out of date.
+ * Inputs and outputs: optional --check flag -> rewrites native/aideos-render-ir/schema/aideos.render.{1,2,3,4,5,6,7,8}.schema.json, or exits 1 when any is out of date.
  * Used by: npm run render-ir:schema, backend/renderIr/renderIr.test.ts.
  */
 
@@ -8,11 +8,11 @@ import { callerWorkingDirectory } from "../backend/paths";
 
 import fs from "node:fs";
 import path from "node:path";
-import { RENDER_IR_SCHEMA_EFFECTS_PATH, renderIrJsonSchemaEffectsText, RENDER_IR_SCHEMA_V7_PATH, renderIrJsonSchemaV7Text, RENDER_IR_SCHEMA_PATH, RENDER_IR_SCHEMA_V2_PATH, RENDER_IR_SCHEMA_V3_PATH, RENDER_IR_SCHEMA_V4_PATH, RENDER_IR_SCHEMA_V5_PATH, renderIrJsonSchemaText, renderIrJsonSchemaV2Text, renderIrJsonSchemaV3Text, renderIrJsonSchemaV4Text, renderIrJsonSchemaV5Text } from "../backend/renderIr/jsonSchema";
+import { RENDER_IR_SCHEMA_EFFECTS_PATH, renderIrJsonSchemaEffectsText, RENDER_IR_SCHEMA_V7_PATH, renderIrJsonSchemaV7Text, RENDER_IR_SCHEMA_V8_PATH, renderIrJsonSchemaV8Text, RENDER_IR_SCHEMA_PATH, RENDER_IR_SCHEMA_V2_PATH, RENDER_IR_SCHEMA_V3_PATH, RENDER_IR_SCHEMA_V4_PATH, RENDER_IR_SCHEMA_V5_PATH, renderIrJsonSchemaText, renderIrJsonSchemaV2Text, renderIrJsonSchemaV3Text, renderIrJsonSchemaV4Text, renderIrJsonSchemaV5Text } from "../backend/renderIr/jsonSchema";
 
 // Writes each schema file, or compares them when asked to check.
 function main(): void {
-  const files: Array<[string, string]> = [[RENDER_IR_SCHEMA_PATH, renderIrJsonSchemaText()], [RENDER_IR_SCHEMA_V2_PATH, renderIrJsonSchemaV2Text()], [RENDER_IR_SCHEMA_V3_PATH, renderIrJsonSchemaV3Text()], [RENDER_IR_SCHEMA_V4_PATH, renderIrJsonSchemaV4Text()], [RENDER_IR_SCHEMA_V5_PATH, renderIrJsonSchemaV5Text()], [RENDER_IR_SCHEMA_EFFECTS_PATH, renderIrJsonSchemaEffectsText()], [RENDER_IR_SCHEMA_V7_PATH, renderIrJsonSchemaV7Text()]];
+  const files: Array<[string, string]> = [[RENDER_IR_SCHEMA_PATH, renderIrJsonSchemaText()], [RENDER_IR_SCHEMA_V2_PATH, renderIrJsonSchemaV2Text()], [RENDER_IR_SCHEMA_V3_PATH, renderIrJsonSchemaV3Text()], [RENDER_IR_SCHEMA_V4_PATH, renderIrJsonSchemaV4Text()], [RENDER_IR_SCHEMA_V5_PATH, renderIrJsonSchemaV5Text()], [RENDER_IR_SCHEMA_EFFECTS_PATH, renderIrJsonSchemaEffectsText()], [RENDER_IR_SCHEMA_V7_PATH, renderIrJsonSchemaV7Text()], [RENDER_IR_SCHEMA_V8_PATH, renderIrJsonSchemaV8Text()]];
   if (process.argv.includes("--check")) {
     const stale = files.filter(([file, wanted]) => (fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "") !== wanted);
     if (stale.length) {

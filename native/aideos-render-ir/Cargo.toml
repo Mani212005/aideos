@@ -1,9 +1,9 @@
-# File Description: Manifest of the Render IR loader crate: serde types for `aideos.render/1` to `/7`, the embedded JSON Schemas, the cross-reference rules and the binary mesh file reader.
+# File Description: Manifest of the Render IR loader crate: serde types for `aideos.render/1` to `/8`, the embedded JSON Schemas, the cross-reference rules and the binary mesh file reader.
 # Inputs and outputs: none -> the aideos-render-ir library.
 # Used by: the native renderer crates (R2 and later), native/Cargo.toml.
 [package]
 name = "aideos-render-ir"
-description = "Loader and validator for the aideos.render/1 to /7 Render IR"
+description = "Loader and validator for the aideos.render/1 to /8 Render IR"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

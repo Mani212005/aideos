@@ -4,7 +4,7 @@
  * Used by: backend/renderIr/emit.ts (checks every emitted document), backend/renderIr/renderIr.test.ts, backend/renderIr/stage3d.test.ts.
  */
 
-import { RENDER_IR_VERSION_5, RENDER_IR_VERSION_7, renderIrSchemaEffects, renderIrSchemaV7, IMAGE_ELEMENT_PROPERTIES, RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, type Asset, type FormatName, type Node, type RenderIr, type Stage3dNode } from "./schema";
+import { RENDER_IR_VERSION_5, RENDER_IR_VERSION_7, RENDER_IR_VERSION_8, renderIrSchemaEffects, renderIrSchemaV7, renderIrSchemaV8, IMAGE_ELEMENT_PROPERTIES, RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSIONS, renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, type Asset, type FormatName, type Node, type RenderIr, type Stage3dNode } from "./schema";
 
 /** The versions this build reads, as the `supported` text of an unsupported_version failure. */
 export const SUPPORTED_VERSIONS_TEXT = RENDER_IR_VERSIONS.join(", ");
@@ -59,7 +59,7 @@ export function validateRenderIr(value: unknown): LoadResult {
     return { ok: false, error: { kind: "unsupported_version", found, supported: SUPPORTED_VERSIONS_TEXT } };
   }
   // Each version is checked against its own shape, so an older document cannot carry a later version's addition.
-  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : found === RENDER_IR_VERSION_2 ? renderIrSchemaV2 : found === RENDER_IR_VERSION_3 ? renderIrSchemaV3 : found === RENDER_IR_VERSION_4 ? renderIrSchemaV4 : found === RENDER_IR_VERSION_5 ? renderIrSchemaV5 : found === RENDER_IR_VERSION_7 ? renderIrSchemaV7 : renderIrSchemaEffects).safeParse(value);
+  const parsed = (found === RENDER_IR_VERSION ? renderIrSchema : found === RENDER_IR_VERSION_2 ? renderIrSchemaV2 : found === RENDER_IR_VERSION_3 ? renderIrSchemaV3 : found === RENDER_IR_VERSION_4 ? renderIrSchemaV4 : found === RENDER_IR_VERSION_5 ? renderIrSchemaV5 : found === RENDER_IR_VERSION_7 ? renderIrSchemaV7 : found === RENDER_IR_VERSION_8 ? renderIrSchemaV8 : renderIrSchemaEffects).safeParse(value);
   if (!parsed.success) {
     return invalid(parsed.error.issues.map((i) => ({
       code: "schema",
@@ -176,7 +176,9 @@ export function checkSemantics(ir: RenderIr): Issue[] {
       if (ids.has(node.id)) add("duplicate_node_id", at(p, "id"), `node id ${node.id} is already used`);
       ids.add(node.id);
       // The underlay holds what the stage holds except the Three stage: svg, image and group nodes, drawn in frame space.
-      const allowed = node.kind === "stage3d" ? space === "stage" && top : space !== "overlay" ? node.kind === "svg" || node.kind === "image" || node.kind === "group" : node.kind !== "svg" && node.kind !== "image";
+      // The overlay holds the 2D overlay kinds, and from `/8` svg nodes too.
+      const overlaySvg = ir.schema === RENDER_IR_VERSION_8 && node.kind === "svg";
+      const allowed = node.kind === "stage3d" ? space === "stage" && top : space !== "overlay" ? node.kind === "svg" || node.kind === "image" || node.kind === "group" : overlaySvg || (node.kind !== "svg" && node.kind !== "image");
       if (!allowed) add("node_not_allowed", at(p, "kind"), node.kind === "stage3d" ? "a stage3d node is drawn only at the top of the stage" : `a ${node.kind} node cannot be drawn in the ${space}`);
       if (ir.shutter && node.kind === "stage3d") add("shutter_not_supported", at(p, "kind"), "the 2D shutter does not sample stage3d");
       if (ir.shutter && !top && (node.kind === "captions" || node.kind === "rail" || node.kind === "endCard")) add("shutter_not_supported", at(p, "kind"), "chrome must be top-level when the 2D shutter is enabled");

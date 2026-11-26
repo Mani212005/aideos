@@ -281,12 +281,13 @@ test("a film the native renderer cannot draw is refused with every reason", () =
     subtitles: true,
     voiceover: { src: "videos/native-probe/voiceover.wav", volume: 1, words: [] },
     music: { src: "videos/native-probe/music.mp3", volume: 0.5 },
-    shots: [{ ...base.shots[0], stage: "inset", blocks: [{ c: "Plot", points: [[0, 0], [1, 1]] }] }, ...base.shots.slice(1)],
+    // MatrixGrid stays refused (it sets an italic serif the native renderer does not vendor); Plot is drawn since P2.8a.
+    shots: [{ ...base.shots[0], stage: "inset", blocks: [{ c: "MatrixGrid", values: [[0.1, 0.9], [0.5, 0.2]], sweep: "row" }] }, ...base.shots.slice(1)],
   });
   const reasons = nativeSupport(unsupported, "long");
   assert.ok(reasons.some((r) => r.includes("music")), reasons.join("\n"));
   assert.ok(reasons.some((r) => r.includes('stage "inset"')), reasons.join("\n"));
-  assert.ok(reasons.some((r) => r.includes("Plot blocks")), reasons.join("\n"));
+  assert.ok(reasons.some((r) => r.includes("MatrixGrid blocks")), reasons.join("\n"));
   assert.throws(
     () => emitRenderIr({ film: unsupported, format: "long", svgSources: NATIVE_SVG_SOURCES, measure: fakeMeasurer(), resolvePath: (p) => p }),
     (e: unknown) => e instanceof NativeUnsupportedError && e.reasons.length === reasons.length,

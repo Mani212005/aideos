@@ -1,5 +1,5 @@
 /**
- * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) the strict superset `aideos.render/3` (adds a pinned picture), `aideos.render/4` (adds opt-in glyph tracks and a 2D shutter) its strict superset `aideos.render/5` (adds colour tracks and a stroke dash offset track on SVG elements, for the node-graph canvas of native Phase 2) its strict superset `aideos.render/6` (adds a native-only transition and seeded particle emitters) and its strict superset `aideos.render/7` (adds the `underlay`, frame-space nodes drawn between the background and the stage, for the theme textures of native Phase 2). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
+ * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) the strict superset `aideos.render/3` (adds a pinned picture), `aideos.render/4` (adds opt-in glyph tracks and a 2D shutter) its strict superset `aideos.render/5` (adds colour tracks and a stroke dash offset track on SVG elements, for the node-graph canvas of native Phase 2) its strict superset `aideos.render/6` (adds a native-only transition and seeded particle emitters) its strict superset `aideos.render/7` (adds the `underlay`, frame-space nodes drawn between the background and the stage, for the theme textures of native Phase 2) and its strict superset `aideos.render/8` (svg nodes are allowed in the overlay, for the devices drawn in cards). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
  * Inputs and outputs: nothing at import time -> zod schemas and the TypeScript types inferred from them.
  * Used by: backend/renderIr/validate.ts, backend/renderIr/jsonSchema.ts, backend/renderIr/renderIr.test.ts.
  */
@@ -20,8 +20,10 @@ export const RENDER_IR_VERSION_4 = "aideos.render/4";
 export const RENDER_IR_VERSION_EFFECTS = "aideos.render/6";
 /** The seventh version, a strict superset of the sixth: adds the `underlay` (frame-space nodes under the stage; native Phase 2, P2.4a). */
 export const RENDER_IR_VERSION_7 = "aideos.render/7";
+/** The eighth version, a strict superset of the seventh: the overlay may also hold svg nodes (devices drawn in a card; native Phase 2, P2.8). */
+export const RENDER_IR_VERSION_8 = "aideos.render/8";
 /** Every version the loaders read; any other value is rejected before the rest of the document is read. */
-export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSION_5, RENDER_IR_VERSION_EFFECTS, RENDER_IR_VERSION_7] as const;
+export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSION_5, RENDER_IR_VERSION_EFFECTS, RENDER_IR_VERSION_7, RENDER_IR_VERSION_8] as const;
 export type RenderIrVersion = (typeof RENDER_IR_VERSIONS)[number];
 
 /** Largest frame index or count a document may carry (about 10 days at 30 fps), so integers stay exact. */
@@ -786,4 +788,13 @@ export const renderIrSchemaEffects = renderIrSchemaV5.extend({
 export const renderIrSchemaV7 = renderIrSchemaEffects.extend({
   schema: z.literal(RENDER_IR_VERSION_7),
   underlay: z.array(nodeSchemaV5),
+});
+
+/**
+ * The whole `/8` document: `/7`'s structure unchanged (its overlay list already takes `/5` nodes); what changes is the rule
+ * the validators apply, which now lets the overlay hold svg nodes, drawn in frame space above the stage (a device such as a
+ * plot drawn in a card). Image and stage3d nodes stay out of the overlay.
+ */
+export const renderIrSchemaV8 = renderIrSchemaV7.extend({
+  schema: z.literal(RENDER_IR_VERSION_8),
 });
