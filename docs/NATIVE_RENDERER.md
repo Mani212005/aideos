@@ -858,7 +858,9 @@ stage, with a block other than a headline, or with a `prompt` stays refused. So 
 and label column (the widest of the top label, the bottom label and the "n / n" counter, mono at the label size plus 0.14 em
 letter spacing) exceed the column, because Remotion then shrinks the stack, and one with a named bar whose label, a grid and
 its dimension (mono at 0.85 of the body size) exceed the bar's content width, because the text overflows or wraps; neither is
-measured against Remotion. A named LayerStack in an inset whose bars' minimum heights (28 px each with a 6 px gap) exceed
+measured against Remotion. So does a LayerStack of 10 or more bars (named layers, or `count`, default 32) whose top and
+bottom labels are both shorter than the widest counter text ("n / n"): its counter gains a digit at 10, so the label column
+width moves over the sweep and Remotion's centred stack shifts, which is not measured. A named LayerStack in an inset whose bars' minimum heights (28 px each with a 6 px gap) exceed
 the panel's content height (the region less the border and 3 grid of padding on each side) is refused, because Remotion's panel
 clips the overflow, and so is a named LayerStack under a headline on the frame stage (no producer, not measured); an
 anonymous `count` stack (3 px bars with 3 px gaps) stays native everywhere. `emit.test.ts` asserts each refusal by its reason.

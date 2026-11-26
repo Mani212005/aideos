@@ -524,7 +524,8 @@ function tokenStripTooWide(block: { caption?: string }, layout: DLLayout, format
 /**
  * Why a LayerStack cannot be laid out natively in its panel, or undefined: the stack plus the 2.5-grid gap and its label column
  * must fit the column (else Remotion shrinks the stack), and a named bar's label and dimension must fit one line in the bar
- * (else the text overflows or wraps). Neither is measured, so both are refused. Uses the mono advance, so it runs before any measuring.
+ * (else the text overflows or wraps), and the label column must keep one width over the sweep (a counter that gains a digit moves the
+ * centred stack). None is measured, so all are refused. Uses the mono advance, so it runs before any measuring.
  */
 function layerStackTooWide(block: { count?: number; bottomLabel?: string; topLabel?: string; layers?: Array<string | { label: string; dim?: string }> }, layout: DLLayout, format: NativeFormat, inset: boolean, captions: boolean): string | undefined {
   const { width, height } = FORMAT_SIZE[format];
@@ -538,6 +539,9 @@ function layerStackTooWide(block: { count?: number; bottomLabel?: string; topLab
   const labelColW = Math.max((block.topLabel ?? "").length, (block.bottomLabel ?? "").length, `${rows} / ${rows}`.length) * labelEm * labelSize;
   const needed = stackW + layout.grid * 2.5 + labelColW;
   if (needed > available) return `a LayerStack ${Math.round(needed)} px wide (stack, gap and label column) does not fit its ${Math.round(available)} px column, so Remotion shrinks it, which is not measured against Remotion yet`;
+  const counterLen = `${rows} / ${rows}`.length;
+  const widestLabel = Math.max((block.topLabel ?? "").toUpperCase().length, (block.bottomLabel ?? "").toUpperCase().length);
+  if (rows >= 10 && widestLabel < counterLen) return `a LayerStack of ${rows} bars has a label column whose width follows its "k / ${rows}" counter (k gains a digit at 10), so Remotion's centred stack shifts between steps, which is not measured against Remotion yet`;
   const barSize = layout.type("body").fontSize * 0.85;
   const barContentW = stackW - 2 - 3 * layout.grid;
   for (const layer of named) {

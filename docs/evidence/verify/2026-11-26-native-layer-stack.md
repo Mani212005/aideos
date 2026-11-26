@@ -50,7 +50,7 @@ P2.5b measured (pixel-snapped boxes, Blink's `line-height: normal`) and matched 
 
 ## Still refused (planned)
 
-- A LayerStack alone on the frame stage, under anything but a headline, or with a `prompt`; one whose stack, gap and label column do not fit the column (Remotion shrinks the stack); a named bar whose label and dimension do not fit one line in the bar; a named stack whose minimum bar heights exceed its inset's content height; a named stack under a headline on the frame stage; the other devices.
+- A LayerStack alone on the frame stage, under anything but a headline, or with a `prompt`; one whose stack, gap and label column do not fit the column (Remotion shrinks the stack); a named bar whose label and dimension do not fit one line in the bar; a stack of 10 or more bars whose top and bottom labels are shorter than the widest "n / n" counter (the label column width moves over the sweep); a named stack whose minimum bar heights exceed its inset's content height; a named stack under a headline on the frame stage; the other devices.
 
 ## Test changes
 
