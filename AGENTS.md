@@ -105,7 +105,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Ask Jev once per film, not once per beat. Use `prefetchShotVisualAnswers` and `prefetchPrimitiveAnswers`.
 - Gate each answer with `resolveShotVisual` or `resolvePrimitive` against the live state of the beat.
 - Never call `selectShotVisual` or `selectPrimitive` in a per-beat loop.
-- Run `npm run eval:visuals [-- --jev]` before you change a threshold, the criteria wording or the model.
+- Run `bun run eval:visuals [-- --jev]` before you change a threshold, the criteria wording or the model.
 - Add a labelled eval case only for a bad pick the captain identified. Use the captain's label.
 - `compileFilmFromScreenplayAsync` is the compile path. The design stage of `run.ts` uses it.
 - The Jev endpoint is text-only. It cannot judge rendered stills.
@@ -130,10 +130,10 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Never read or write a path under `videos/` directly.
 - Use `getVideosDir()`, `resolvePackageDir()` or `resolveRepoAssetPath()` from `backend/videoPackageLoader.ts`.
 - Or use `readFilm` and `writeFilm` from `backend/pipeline/filmStore.ts`.
-- Never let tests touch personal videos. `npm test` preloads `backend/testSupport/fixtureVideosDir.ts`.
+- Never let tests touch personal videos. `bun run test` preloads `backend/testSupport/fixtureVideosDir.ts`.
 - Add fixtures to `test_fixtures/`. Never copy a real video in.
 - Never hand-edit the generated shadows: `src/dl/films/<slug>.ts`, `src/dl/activeFilm.ts` and `src/dl/scene/assets/svgSources.generated.ts`.
-- `ensureGenerated` (`npm run ensure:generated`) rebuilds them.
+- `ensureGenerated` (`bun run ensure:generated`) rebuilds them.
 - Write films with `readFilm`, `writeFilm` and `wireFootageIntoFilm` from `backend/pipeline/filmStore.ts`. `editor/vite.config.ts` calls the same store.
 - `public/videos` is a tracked symlink to `../videos`.
 - Vite serves `/videos/*` through its own range-aware middleware. Use `staticFile('videos/<slug>/...')`.
@@ -167,7 +167,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - A film canvas is the node graph (`film.canvas`) or a vector scene (`film.scene`). Never use both.
 - Use one `Scene` for the whole film. Do not use one per shot.
 - Shots carry only the text cards that overlay the scene.
-- Run `npm run ensure:generated` when a `visuals/*.svg` changes.
+- Run `bun run ensure:generated` when a `visuals/*.svg` changes.
 - Compose a scene film on a square 1920 x 1920 scene space.
 - The centre 1080 square is the shared safe area.
 - Start each clip from the value that the previous clip left on that property. If not, the value snaps.
@@ -187,7 +187,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Author, check and draw characters with `characters/README.md` and `aideos character check|sheet`.
 - Read `docs/CHARACTER_ENGINE.md` for the architecture.
 - After a spec edit, re-stamp its hash with `--stamp`.
-- After you edit an engine file listed in `src/dl/scene/rigs/registry.ts`, run `npx tsx scripts/freeze_stage_resources.ts`.
+- After you edit an engine file listed in `src/dl/scene/rigs/registry.ts`, run `bunx tsx scripts/freeze_stage_resources.ts`.
 - Read `docs/THREE_STAGE_P0.md` for Three stage contracts, resource freezes, cue binding and stage review evidence.
 - Run rendering tests and fixture tests one after another. Both rewrite the generated active-film module.
 - Detail: `src/dl/scene/README.md`, section "Scene engine and scene film rules (moved from AGENTS.md)".
@@ -195,7 +195,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 ## Design check and design build
 
 - Run `aideos design check <film...>` on every film design. It is the single gate.
-- Use `npm run design:check -- <film> [--all] [--stills] [--json]` for the npm form.
+- Use `bun run design:check -- <film> [--all] [--stills] [--json]` for the npm form.
 - When the user chose the project theme (`theme.accentChosen`), keep that accent as the only accent.
 - Leave `easing` off camera keyframes.
 - Bespoke designs are data: `videos/<id>/design/design.json` plus SVGs in `visuals/`.
@@ -270,9 +270,9 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Put on-disk source checks in `backend/timeline/layerAssetCheck.ts`.
 - Keep `backend/timeline/voiceover_engine.ts` free of Node built-ins.
 - Put ffmpeg waveform code in `backend/timeline/waveform.ts`.
-- `npm test` finds every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob.
+- `bun run test` finds every `backend/**/*.test.ts` and `scripts/**/*.test.ts` by glob.
 - `scripts/check_tests_wired.ts` fails for a test file that no script runs.
-- CI runs `npm run smoke:studio`. It fails on a blank page, an uncaught exception, a `console.error` or a Vite client error.
+- CI runs `bun run smoke:studio`. It fails on a blank page, an uncaught exception, a `console.error` or a Vite client error.
 - `AIDEOS_SMOKE_REQUIRED=1` makes a missing Chrome a failure.
 - Detail: `docs/DESIGN.md`, section "Editor rules detail (moved from AGENTS.md)", and `docs/CI.md`.
 
@@ -290,7 +290,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Never add a second concurrent agent per owner without a routing design. Tasks must not run twice.
 - Keep the studio stage in the URL hash.
 - `buildSvgSources` rewrites the generated index only when artwork changed.
-- Keep backend code valid for `npm --prefix editor run build` (`tsc -b` over `editor/tsconfig.node.json`).
+- Keep backend code valid for `bun run --cwd editor build` (`tsc -b` over `editor/tsconfig.node.json`).
 - That build forbids constructor parameter properties, enums, namespaces and extensionless dynamic `import()` in backend code.
 - `tsc --noEmit -p editor` alone does not catch these. The lint gate includes the build.
 - Write asset `svgSource` paths repo-relative. The Node resolvers fall back to the repo root.
@@ -301,7 +301,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Take camera and carry-over from film data and element identity. Never take them from pixels.
 - Mark a criterion with missing inputs `skipped`. Never mark it a pass.
 - Keep every threshold in `backend/review/thresholds.ts`.
-- Re-run `npm run calibrate:review` after you change a threshold.
+- Re-run `bun run calibrate:review` after you change a threshold.
 - Review a character film in the own crop of each output. `backend/review/stageTruth.ts` is the one per-output summary.
 - Run `aideos all-check <slug>` for the whole review in your own agent session.
 - Take pass or fail only from the tool-written records in `videos/<slug>/all-check/`. Never score or write them yourself.
