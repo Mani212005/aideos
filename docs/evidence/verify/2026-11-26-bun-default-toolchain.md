@@ -37,7 +37,27 @@ Fleet Linux machine, 12 cores, shared with other workers (one-minute load 4 to 1
 | `AIDEOS_TOOLCHAIN=npm npx tsx scripts/ci.ts static` on the bun tree | PASS (exit 0) | the npm editor build runs the new `prebuild` hook |
 | `bun scripts/bunTest.ts scripts/ci.test.ts scripts/ciJourneyShards.test.ts scripts/bunTest.test.ts scripts/check_headers.test.ts` and the first two on `node --test` with `AIDEOS_TOOLCHAIN=npm` | PASS | 43 of 43 and 29 of 29 |
 
-CI wall time on two runs each of `toolchain: bun` and `toolchain: npm` (manual `workflow_dispatch`) is recorded in the pull request, since the runs need the pushed branch.
+After the pipeline's fix rounds (`scripts/run.mjs`, `scripts/runTests.ts`, the runner picking the default toolchain, `bin/aideos` back on `npm test` and `npm run lint`) and the merge of `origin/main` (Render IR /6, #318, #319):
+
+| Command | Result | Notes / artifacts |
+| --- | --- | --- |
+| `AIDEOS_TOOLCHAIN=npm node --import tsx --import ./backend/testSupport/fixtureVideosDir.ts --test --test-concurrency=1 --test-reporter=tap "backend/**/*.test.ts" "scripts/**/*.test.ts"` | PASS (exit 0) | 7:58 wall; 1803 tests, 1802 pass, 1 skipped, 0 fail |
+| `bun run test --junit-dir=<dir>` | PASS (exit 0) | 5:55 wall; 180 files, 1803 tests, 1802 pass, 1 skipped, 0 fail |
+| test name comparison | PASS | identical names (only the TAP line of the `sceneKit/parts` describe block differs, as before) |
+| `bun scripts/ci.ts static` and `AIDEOS_TOOLCHAIN=npm npx tsx scripts/ci.ts static` | PASS (exit 0) | every step passed on both |
+| `backend/aideosLauncher.test.ts`, `backend/aideosLauncherMenuFirst.test.ts`, `scripts/ci.test.ts` with no bun on PATH (`AIDEOS_TOOLCHAIN=npm`) and through `scripts/bunTest.ts` with bun on PATH | PASS | 37 of 37 each way |
+
+CI wall time on GitHub-hosted `ubuntu-24.04` runners (manual `workflow_dispatch`, head `3b6f0b0d`, before the merge of `origin/main`, which brings in only main's changes), one run at a time; runner load is not observable on hosted runners:
+
+| Run | Toolchain | Result | Run span | unit job | unit tests step | slowest journeys shard |
+| --- | --- | --- | --- | --- | --- | --- |
+| 45767350502 | npm | failure: apt mirror timeout in journeys shard 2 before any repo code | 11.2 min | 11.1 min | 9.7 min | 9.4 min |
+| 45768671587 | bun | success | 9.4 min | 9.3 min | 7.8 min | 8.0 min |
+| 45769889770 | npm | success | 13.2 min | 13.1 min | 9.9 min | 11.9 min |
+| 45771502896 | bun | failure: apt mirror timeout in journeys shard 1 before any repo code | 11.8 min | 11.7 min | 8.2 min | 7.5 min |
+| 45750211080, 45746587615 (main, npm default) | npm | success | 11.2, 11.5 min | 11.1, 11.3 min | 10.1, 9.7 min | 8.7, 8.3 min |
+
+`static`, `unit` and `legacy` passed in every run. On head `c17d9048` two earlier npm dispatch runs failed in `unit` (`backend/aideosLauncher.test.ts`: `bin/aideos` called bun unconditionally); the pipeline fixed that before this head.
 
 ## Fix attempts
 
