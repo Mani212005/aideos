@@ -17,7 +17,7 @@ import { prepareSoundtrack } from "./soundtrack";
 import { THRESHOLDS as T } from "./review/thresholds";
 import { normalizeFilmSoundtrack, parseFilm } from "../src/dl/schema";
 import { effectGain, soundtrackItem } from "../src/dl/audio/sectionMixer";
-import { resolvePackageDir } from "../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "./videoPackageLoader";
 
 // Writes a mono 48 kHz tone, optionally gated by an ffmpeg expression and normalized to a loudness.
 function tone(file: string, frequency: number, duration: number, options: { gate?: string; lufs?: number; amplitude?: number } = {}): void {

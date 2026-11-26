@@ -10,7 +10,7 @@ import React from "react";
 import { AbsoluteFill, Freeze, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig, Img, staticFile, Sequence } from "remotion";
 import { accentAt, useLayout, useTokens, BACKGROUND_THEMES, resolveFont, ThemeContext, MONO, SANS } from "./tokens";
 import { SUBTITLE_FONT_RATIO, getFullScreenHeroLayout, getInsetRegion, getStageCardRect, heroScrimGradient } from "./fullScreenHeroLayout";
-import { DRIFT, easeExpo, frames, MS } from "./motion";
+import { DRIFT, easeExpo, frames, MotionContext, MS } from "./motion";
 import { AccentContext, useAccent } from "./accent";
 import { BlockView } from "./Block";
 import { CanvasGraph } from "./CanvasGraph";
@@ -161,6 +161,7 @@ const OverlayText: React.FC<{ payload: TextPayload; durationInFrames: number }> 
  */
 const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
   const { width: compWidth, height: compHeight } = useVideoConfig();
+  const frame = useCurrentFrame();
 
   if (!film.overlayClips || film.overlayClips.length === 0) return null;
 
@@ -191,6 +192,7 @@ const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
 
         return (
           <Sequence key={oc.id} from={Math.round(oc.position * fps)} durationInFrames={durationInFrames}>
+            <MotionContext.Provider value={{ frame: frame - Math.round(oc.position * fps), fps }}>
             <div
               style={{
                 position: "absolute",
@@ -220,6 +222,7 @@ const OverlayLayer: React.FC<{ film: Film; fps: number }> = ({ film, fps }) => {
                 />
               )}
             </div>
+            </MotionContext.Provider>
           </Sequence>
         );
       })}
@@ -592,8 +595,11 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const captionPlacementAt = React.useCallback((startFrame: number) =>
     resolveCaptionPlacement(film, captionFormat, shotAt(timeline, startFrame)?.shot.id),
   [film, captionFormat, timeline]);
-  const captionPhrases = React.useMemo(() => captionWords ? buildCaptionPhrases({
-    words: captionWords,
+  const subtitleWords = React.useMemo(() => film.subtitles === false
+    ? captionWords ?? [] : [...(captionWords ?? []), ...delivery.cardWords],
+  [film.subtitles, captionWords, delivery.cardWords]);
+  const captionPhrases = React.useMemo(() => buildCaptionPhrases({
+    words: subtitleWords,
     fps,
     width,
     format: captionFormat,
@@ -602,12 +608,10 @@ export const FilmView: React.FC<FilmViewProps> = ({
     measure: (text) => typeof (globalThis as { document?: unknown }).document === "undefined"
       ? Number.NaN
       : measureText({ text, fontFamily: SANS, fontSize: captionFontSize, fontWeight: 700 }).width,
-  }) : [], [captionWords, fps, width, captionFormat, captionFontSize, captionPlacementAt]);
+  }), [subtitleWords, fps, width, captionFormat, captionFontSize, captionPlacementAt]);
   const activeCaptionPhrase = captionPhraseAtFrame(captionPhrases, frame);
   const captionContextPlacement = captionPlacementAt(activeCaptionPhrase?.startFrame ?? frame);
   const cam = camAt(film, timeline, frame, { width, height });
-  const subtitleWords =
-    film.subtitles === false ? captionWords ?? [] : [...(captionWords ?? []), ...delivery.cardWords];
 
 
   // The whole composition drifts 100 -> 104% across a held shot; the diagram
@@ -655,6 +659,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
   const hasVideoBase = Boolean(film.videoClips && film.videoClips.length > 0);
 
   return (
+    <MotionContext.Provider value={{ frame: rawFrame, fps }}>
     <ThemeContext.Provider value={bgTheme}>
       <CaptionRegionContext.Provider value={film.subtitles !== false && film.captions !== "off" ? captionCardRect(width < height ? "reel" : "long", width, height, captionContextPlacement) : undefined}>
         <AccentContext.Provider value={accent}>
@@ -671,6 +676,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           }}
         >
         <Freeze frame={frame} active={inCard}>
+        <MotionContext.Provider value={{ frame, fps }}>
         <AbsoluteFill style={{ transform: `scale(${holdScale})` }}>
         {/* Paper & Texture Library Filter Shaders. Skipped over an imported video: a paper grain
             or blueprint grid is a treatment for the generated canvas look, not something that
@@ -745,6 +751,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
           <PaperRip active={isTransitioning} progress={transitionProgress} frame={frame} />
         )}
         </AbsoluteFill>
+        </MotionContext.Provider>
         </Freeze>
         {/* Burned-in subtitles previously reel-only, now default across formats */}
         {/* Shared Soundtrack */}
@@ -762,6 +769,7 @@ export const FilmView: React.FC<FilmViewProps> = ({
         {film.subtitles !== false && film.captions !== "off" && subtitleWords.length > 0 ? (
           <KineticSubtitles
             words={subtitleWords}
+            phrases={captionPhrases}
             fontSize={Math.round(Math.min(width, height) * SUBTITLE_FONT_RATIO)}
             highlightColor={accent}
             placementAt={captionPlacementAt}
@@ -779,5 +787,6 @@ export const FilmView: React.FC<FilmViewProps> = ({
     </AccentContext.Provider>
     </CaptionRegionContext.Provider>
   </ThemeContext.Provider>
+  </MotionContext.Provider>
 );
 };

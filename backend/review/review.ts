@@ -14,7 +14,7 @@ import type { Film } from "../../src/dl/schema";
 import { measureMusicUnderVoice } from "./music";
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { evaluateCriteria } from "./criteria";
 import type { PacingProfileName } from "./thresholds";
 import { detectSilences, extractStill, measureLoudness } from "./media";

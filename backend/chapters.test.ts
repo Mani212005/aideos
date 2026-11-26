@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import type { Film } from "../src/dl/schema";
-import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { getVideosDir } from "./videoPackageLoader";
 import {
   computeFilmChapters,
   formatChapterTimestamp,

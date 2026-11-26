@@ -93,7 +93,7 @@ on real reels before changing a value.
 Criterion 9 reviews every format at the [house pace](GOOD_VIDEO.md#house-pace) (the captain's 2026-11-21
 decision): 145 to 215 words per minute, a mean beat of at most 10 s (shorter is fine and is the intent), no pause
 over 0.6 s and no story hold over 2.5 s. The window is 1.2x the 120 to 180 wpm it replaced. The numbers come from
-`backend/pacingProfile.ts`, not from the calibration videos.
+`src/dl/pacingProfile.ts`, not from the calibration videos.
 
 ### Reel pacing profile (opt-in)
 

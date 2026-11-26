@@ -6,7 +6,7 @@
 
 import fs from "node:fs";
 import type { RasterSource } from "../../src/dl/scene/types";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 import { decodePng, sha256Hex, type RgbaImage } from "./png";
 
 /** A pixel at or below this alpha (0 to 255) is cut-out background, outside a picture's visible bounds. */

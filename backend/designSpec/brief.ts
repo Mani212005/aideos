@@ -15,8 +15,8 @@ import { boundTheme, boundThemeName, filmAccent } from "../../src/projectTheme";
 import { LOCKED_PALETTE, MAX_CAMERA_PAN_ACCEL_WIDTHS, MAX_CAMERA_ZOOM_STEP } from "../designCheck/designCheck";
 import { designDir, readCheckedLookPlan } from "./build";
 import { RUBRIC_SUMMARY } from "../goodVideoRubric";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
-import { HOUSE_PACE } from "../pacingProfile";
+import { resolvePackageDir } from "../videoPackageLoader";
+import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 import { formatDurationSec } from "../formatDurationSec";
 import {
   getInsetRegion,

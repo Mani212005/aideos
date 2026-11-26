@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { validateLayeredFilm } from "../../src/dl/validateLayeredFilm";
 import { convertFilmToLayeredFilm } from "../../src/dl/convertFilm";
-import { getProjectRoot, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { getProjectRoot, resolveRepoAssetPath } from "../videoPackageLoader";
 import type { LayeredFilm } from "../../src/dl/layeredSchema";
 import type { Film } from "../../src/dl/schema";
 

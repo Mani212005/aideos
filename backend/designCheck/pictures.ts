@@ -14,14 +14,14 @@ import { buildTimeline } from "../../src/dl/camera";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
 import { elementOpacity, VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
 import { BACKGROUND_THEMES, PALETTE } from "../../src/dl/tokens";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 import type { RgbaImage } from "../pictures/png";
 import { ALPHA_FLOOR, loadPicture } from "../pictures/bounds";
 import { promptProblems } from "../pictures/policy";
 import type { PictureRecord } from "../pictures/cache";
 import { parseTsv, toPgm } from "../review/ocr";
 import { apply, IDENTITY, leafBounds, multiply, NON_DRAWING_TAGS, parseTransform, rotation, scaling, styleValue, translation, type Affine, type Box } from "./svgBounds";
-import type { DesignFinding } from "./designCheck";
+import type { DesignFinding } from "./types";
 import { sceneToFrame, stateMatrix } from "./insetRegion";
 import { spawnSyncBounded } from "../proc";
 
@@ -59,14 +59,8 @@ export const PICTURE_THRESHOLDS = {
   compositionSampleSec: 0.5,
 } as const;
 
-/** One word an OCR reader found in a picture. */
-export interface PictureWord {
-  text: string;
-  conf: number;
-}
-
-/** Reads the words in a picture composited over the canvas (grey levels, rows top to bottom). */
-export type PictureOcr = (gray: Uint8Array, width: number, height: number) => PictureWord[] | { unavailable: string };
+import type { PictureWord, PictureOcr } from "./types";
+export type { PictureWord, PictureOcr } from "./types";
 
 /** The record file kept beside a picture (`<fingerprint>.json` beside `<fingerprint>.png`). */
 function recordPath(raster: RasterSource): string {

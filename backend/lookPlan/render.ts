@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { type LookPerformance, type LookPlan, parseLookPlan } from "./schema";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { availableCharacters } from "./brief";
 import { formatDurationSec } from "../formatDurationSec";
 

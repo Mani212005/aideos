@@ -618,18 +618,9 @@ export async function selectPrimitive(
 }
 
 /** Closed set of shot-level visual strategies the compile path can render as schema-valid blocks. */
-export const SHOT_VISUALS = [
-  "Text",
-  "StatCounter",
-  "TokenStrip",
-  "Plot",
-  "MatrixGrid",
-  "Distribution",
-  "LayerStack",
-  "ScaleBar",
-] as const;
-
-export type ShotVisual = (typeof SHOT_VISUALS)[number];
+import { SHOT_VISUALS, type ShotVisual } from "./shotVisualTypes";
+export { SHOT_VISUALS } from "./shotVisualTypes";
+export type { ShotVisual } from "./shotVisualTypes";
 
 /** Device visuals that demand higher confidence because they assert data the narration must carry. */
 export const SHOT_COMPLEX_VISUALS: readonly ShotVisual[] = [

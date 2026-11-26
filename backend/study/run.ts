@@ -10,7 +10,7 @@ import { callerWorkingDirectory, REPO_ROOT as repositoryRoot } from "../paths";
 
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { formatBible, formatSeed } from "./format";
 import { buildSeed } from "./seed";
 import { isRemoteReference, studyReference, type StudyDeps } from "./study";

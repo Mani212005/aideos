@@ -11,7 +11,7 @@ import { lastSectionHeadroomFrames, lastSectionTrimFrames, soundtrackItemSrc } f
 import { FPS } from "../sceneKit";
 import { effectFamily, getVisualEventFrames } from "../designSpec/soundtrack";
 import type { Film } from "../../src/dl/schema";
-import type { DesignCheckContext, DesignFinding } from "./designCheck";
+import type { DesignCheckContext, DesignFinding } from "./types";
 
 // Enforces standard-layer soundtrack rules for audio library usage, timing, density, and chapter alignment (Decision D6).
 export function checkSoundtrack(film: Film, findings: DesignFinding[], context: DesignCheckContext = {}): void {

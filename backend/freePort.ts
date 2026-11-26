@@ -2,7 +2,7 @@
  * File Description: Asks the operating system for a free TCP port on localhost, for a child process (headless
  * Chrome, the editor dev server) that must listen on a port nobody else holds.
  * Inputs and outputs: none -> a promise of a free port number on 127.0.0.1.
- * Used by: backend/characters/browser.ts, scripts/studioDriver.ts.
+ * Used by: backend/characters/browser.ts, backend/testSupport/studioDriver.ts.
  */
 
 import net from "node:net";

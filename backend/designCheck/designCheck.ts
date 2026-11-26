@@ -38,10 +38,10 @@ import {
   CAMERA_ZOOM_STEP_CEILING,
 } from "../../src/dl/scene/cameraTrack";
 import { parseSvgDocument, walkSvgNodes } from "../../src/dl/scene/svgDocument";
-import { validateSceneWithNodeAssets } from "../../src/dl/scene/validateSceneNode";
+import { validateSceneWithNodeAssets } from "../scene/validateSceneNode";
 import { narrationSupportsVisual, numbersIn } from "../shotVisualCues";
 import type { ShotVisual } from "../jev";
-import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir, resolveRepoAssetPath } from "../videoPackageLoader";
 import { checkInsetRegions, prepareSvgProjection } from "./insetRegion";
 import { safeParseLookPlan, type LookPlan } from "../lookPlan/schema";
 import { matchCameraPose } from "../lookPlan/contract";
@@ -51,70 +51,13 @@ import type { TimedWord } from "../pcm";
 import { resolveCue } from "../designSpec/cues";
 import { checkThreeStage } from "./threeStage";
 import { checkSoundtrack } from "./soundtrack";
-import { checkPictures, type PictureOcr } from "./pictures";
+import { checkPictures } from "./pictures";
 import { checkPictureComposition } from "./pictureComposition";
-import type { AudioLibrary } from "../audioLibrary/schema";
 import { otherVoiceOverrideActive, voiceOfChoiceFinding } from "../voiceOfChoice";
 
 /** The standard layer rules a finding can belong to. */
-export type DesignRule =
-  | "stage-hold"
-  | "caption-placement"
-  | "schema"
-  | "scene"
-  | "camera"
-  | "static-art"
-  | "palette"
-  | "accent"
-  | "typography"
-  | "continuity"
-  | "origin"
-  | "audio-lock"
-  | "honest-data"
-  | "safe-area"
-  | "inset"
-  | "carry-over"
-  | "occlusion"
-  | "soundtrack"
-  | "look"
-  | "provenance"
-  | "picture-text"
-  | "contrast"
-  | "resolution"
-  | "callout-anchor"
-  | "picture-cover"
-  | "voice-of-choice";
-
-/** One problem found in a film's design. Errors block shipping; warnings are worth a look. */
-export interface DesignFinding {
-  rule: DesignRule;
-  severity: "error" | "warning";
-  where: string;
-  message: string;
-}
-
-/** The result of checking one film. */
-export interface DesignReport {
-  filmId: string;
-  ok: boolean;
-  findings: DesignFinding[];
-  stats: { shots: number; assets: number; clips: number };
-}
-
-/** Optional approved look data used to check authored camera and carry-over intent. */
-export interface DesignCheckContext {
-  formats?: ReadonlyArray<"long" | "reel">;
-  collapsedClips?: Array<{ asset: string; clipId: string; shotId: string; frame: number }>;
-  lookPlan?: LookPlan;
-  cameraTargets?: Array<{ frame: number; focus?: string; authoredFocus?: string }>;
-  library?: AudioLibrary;
-  /** Reads words in a picture for the no-text rule; tesseract by default. */
-  pictureOcr?: PictureOcr;
-  /** What the package recorded about its narrator (narration.json), for the voice-of-choice rule; absent when there is no narration yet. */
-  narration?: { ttsBackend?: unknown } | null;
-  /** True when the run is explicitly allowed to keep a narrator other than the voice of choice (the captain's word). */
-  allowOtherVoice?: boolean;
-}
+import type { DesignFinding, DesignReport, DesignCheckContext } from "./types";
+export type { DesignRule, DesignFinding, DesignReport, DesignCheckContext } from "./types";
 
 /** The locked design-system palette (src/dl/README.md); a film may add its own accent. */
 export const LOCKED_PALETTE = ["#0A0A0B", "#F5F5F5", "#8A8A8E", "#635BFF", "#101013"] as const;

@@ -7,7 +7,7 @@
 import { z } from "zod";
 import { sceneSchema } from "./scene/schema";
 import { MAX_HOLD_PUSH, MIN_HOLD_PUSH } from "./holdPush";
-import { NARRATION_RATE, minFilmSecAt } from "../../backend/pacingProfile";
+import { NARRATION_RATE, minFilmSecAt } from "./pacingProfile";
 
 /**
  * ---------------------------------------------------------------------------

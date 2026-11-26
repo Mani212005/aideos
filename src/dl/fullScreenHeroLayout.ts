@@ -6,8 +6,8 @@
  * Used by: Film, devices, KineticSubtitles, tokens, stage design checks and layout tests.
  */
 
-import type { CaptionRect } from "./captionPlacement";
-import type { Format } from "./tokens";
+export type Format = "reel" | "long";
+export type CaptionRect = { x: number; y: number; w: number; h: number };
 import { projectStagePoint, SAFE_SQUARE, SCENE_SIZE, stageViewport, type SceneRect, type StageCameraPose } from "./scene/projection";
 
 /**

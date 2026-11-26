@@ -12,7 +12,7 @@ import { z } from "zod";
 import { stageTreatmentSchema, treatmentSpanSchema } from "./materials/treatment";
 import { castSchema, performanceSchema } from "./stageContract";
 import { MAX_HOLD_PUSH, MIN_HOLD_PUSH } from "../holdPush";
-import { SVG_ANIMATABLE_PROPERTIES, SVG_EASINGS } from "./svgAnimation";
+import { SVG_ANIMATABLE_PROPERTIES, SVG_EASINGS } from "./animationProperties";
 
 export const vec2Schema = z.object({ x: z.number(), y: z.number() });
 

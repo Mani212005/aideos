@@ -51,7 +51,7 @@ for (const outcome of ["success", "failure", "missing-output"] as const) {
       },
     };
     // Keep output isolated from the committed example package.
-    const { resolvePackageDir, getVideosDir } = await import("../../src/dl/videoPackageLoader");
+    const { resolvePackageDir, getVideosDir } = await import("../videoPackageLoader");
     const target = path.join(getVideosDir(), "hello-scene");
     fs.cpSync(resolvePackageDir("hello-scene"), target, { recursive: true });
     // The review entry point now shares the delivery gate, so give the synthetic fixture both required lanes.

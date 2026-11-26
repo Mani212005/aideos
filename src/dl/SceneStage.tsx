@@ -14,11 +14,11 @@ import { AbsoluteFill, staticFile } from "remotion";
 import { SceneClip } from "./scene/SceneClip";
 import { SVG_SOURCES } from "./scene/assets/svgSources.generated";
 import type { FilmScene } from "./schema";
-import { ThreeStage } from "./scene/ThreeStage";
+import { ThreeStage, type TestStageVisibility } from "./scene/ThreeStage";
+export type { TestStageVisibility } from "./scene/ThreeStage";
 import { stageViewport } from "./scene/projection";
 import { validateStageSvgResources } from "./scene/validateStage";
 
-export interface TestStageVisibility { character?: string; prop?: string }
 
 /**
  * The strip each format takes through the square stage, as a fraction of the square's height.

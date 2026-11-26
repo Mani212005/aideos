@@ -18,7 +18,7 @@ import { buildDesign, designDir, formatBuildStatus, readDesignStatus, readChecke
 import { closeBuildRequest, fileDigest, openBuildRequest } from "./buildRecord";
 import { renderDesignBrief, writeDesignBrief } from "./brief";
 import { judgeAndRepair, type JudgeOptions, type JudgeResult } from "../visionJudge/judge";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { availableCharacters, renderLookBrief, writeLookBrief, writeLookMd, type LookPlan } from "../lookPlan";
 import type { DesignMode } from "../pipeline/types";
 import { prepareDefaultSoundtrack } from "../defaultSoundtrack";

@@ -14,7 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { generationCaller, generationCallerOrNull, loadAideosConfig, NoGenerationModelError, reviewerModel } from "../aideosConfig";
 import { designFilm, planFilmLook, serverDesignCaller } from "../designSpec/designer";
 import {

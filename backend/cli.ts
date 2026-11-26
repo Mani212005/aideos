@@ -12,7 +12,7 @@ import path from "path";
 import { execFileSyncBounded } from "./proc";
 import dotenv from "dotenv";
 import type { Film } from "../src/dl/schema";
-import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { getVideosDir } from "./videoPackageLoader";
 import { produceAudioPipeline, buildFilmFromAudioResult } from "./audio";
 import { createEngine } from "./engine";
 import { runProduction } from "./pipeline/run";

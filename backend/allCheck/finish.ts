@@ -15,7 +15,7 @@ import { REPO_ROOT as repositoryRoot } from "../paths";
 import { formatScore } from "../geminiReview/verdictPolicy";
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { formatInputs, reelForRender } from "../reelCut/store";
 import { backupPath, rankRecord, rollbackFilm, strayFiles } from "./best";
 import { isReviewedFilm } from "../filmAcceptance/machine";

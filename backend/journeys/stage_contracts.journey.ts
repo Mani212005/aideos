@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { BoxGeometry, Color, Mesh, MeshBasicMaterial, OrthographicCamera, PlaneGeometry, ShaderMaterial, Vector3 } from "three";
-import { resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir, resolveRepoAssetPath } from "../videoPackageLoader";
 import { parseFilm } from "../../src/dl/schema";
 import { designSpecSchema, stageDesignSchema } from "../designSpec/spec";
 import { compileDesign } from "../designSpec/compile";

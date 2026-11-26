@@ -15,7 +15,7 @@ import { REPO_ROOT as repositoryRoot } from "../paths";
 import fs from "fs";
 import path from "path";
 import { dropLegacyFilmBlocks, type Film } from "../../src/dl/schema";
-import { getVideosDir, listVideoPackages, resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir, listVideoPackages, resolvePackageDir } from "../videoPackageLoader";
 import { buildSvgSources } from "../scene/buildSvgSources";
 import { deliveryTimeline, DELIVERY_CONFIG } from "../../src/dl/delivery";
 

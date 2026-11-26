@@ -128,7 +128,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Each video is a package under `videos/<slug>/`. The whole `videos/` tree is gitignored. `AIDEOS_VIDEOS_DIR` moves it.
 - Only `examples/hello-scene/` ships.
 - Never read or write a path under `videos/` directly.
-- Use `getVideosDir()`, `resolvePackageDir()` or `resolveRepoAssetPath()` from `src/dl/videoPackageLoader.ts`.
+- Use `getVideosDir()`, `resolvePackageDir()` or `resolveRepoAssetPath()` from `backend/videoPackageLoader.ts`.
 - Or use `readFilm` and `writeFilm` from `backend/pipeline/filmStore.ts`.
 - Never let tests touch personal videos. `npm test` preloads `backend/testSupport/fixtureVideosDir.ts`.
 - Add fixtures to `test_fixtures/`. Never copy a real video in.
@@ -162,7 +162,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 - Read `src/dl/scene/README.md` before you touch `src/dl/scene/**`.
 - Keep `src/dl/scene/**` free of Node imports. Remotion bundles it.
 - `SceneView` takes asset source text as a prop. It never reads disk.
-- The Node-only modules are `src/dl/scene/validateSceneNode.ts` and `backend/scene/loadSceneAssets.ts`.
+- The Node-only modules are `backend/scene/validateSceneNode.ts` and `backend/scene/loadSceneAssets.ts`.
 - Rasterize review stills with `backend/scene/renderStill.ts` (headless Chrome). Never use `qlmanage`.
 - A film canvas is the node graph (`film.canvas`) or a vector scene (`film.scene`). Never use both.
 - Use one `Scene` for the whole film. Do not use one per shot.

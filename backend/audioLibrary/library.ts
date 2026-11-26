@@ -11,7 +11,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { getProjectRoot, getAudioLibraryCacheDir } from "../../src/dl/videoPackageLoader";
+import { getProjectRoot, getAudioLibraryCacheDir } from "../videoPackageLoader";
 import { overrideSoundtrackLibrary } from "../../src/dl/audio/sectionMixer";
 import { audioItemIdSchema, parseAudioLibrary, type AudioItem, type AudioLibrary } from "./schema";
 import { fetchWithin, HttpDeadlineError, HTTP_DEADLINES, readWithin, startDeadline, type NowFn } from "../httpDeadline";

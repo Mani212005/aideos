@@ -9,7 +9,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { ensureGenerated } from "../pipeline/generatedFiles";
 import { allCheckDir, AllCheckError, type CheckFormat, type FormatRoundRecord } from "./types";
 import { spawnSyncBounded } from "../proc";

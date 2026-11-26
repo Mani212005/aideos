@@ -28,7 +28,7 @@ import { pacedVoiceKey, synthesizeLines } from "./voiceLines";
 import { takesVoiceKey, withTakes, type TakeChoice, type TakeSelector, type TakeSynthesizer } from "./narrationTakes";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import type { VcdLanguagePreference } from "./vcdClient";
-import { HOUSE_PACE } from "./pacingProfile";
+import { HOUSE_PACE } from "../src/dl/pacingProfile";
 import * as fsSync from "fs";
 import {
   assembleSegments,
@@ -104,7 +104,7 @@ export interface ProduceAudioOptions {
   /**
    * Narration speed for a synthesizer with no speaking-rate setting of its own (the cloned voice, say, Google,
    * the tone placeholder), applied to every line by a pitch-preserving time-stretch before the line is cached.
-   * Defaults to the house rate (backend/pacingProfile.ts); 1 leaves the audio as the synthesizer spoke it.
+   * Defaults to the house rate (src/dl/pacingProfile.ts); 1 leaves the audio as the synthesizer spoke it.
    * A synthesizer that sets its own pace (Kokoro, through `speed`) is never stretched.
    */
   narrationRate?: number;
@@ -572,7 +572,7 @@ export function buildCaptionsVtt(words: WordInfo[]): string {
 
 import { buildBriefFromSegmentFallback } from "./ideation/segmentSync";
 import { generateRelationshipAwareCanvas, type ConceptEntity } from "./ideation/graphLayout";
-import { getVideosDir } from "../src/dl/videoPackageLoader";
+import { getVideosDir } from "./videoPackageLoader";
 import { execFileSyncBounded } from "./proc";
 
 export { buildAtempoFilter };

@@ -12,7 +12,7 @@ import { environment } from "../env";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { getVideosDir, resolvePackageDir, resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { getVideosDir, resolvePackageDir, resolveRepoAssetPath } from "../videoPackageLoader";
 import type { AgentName } from "./types";
 import { herdrSocket, realHerdr, type HerdrRun } from "./herdr";
 

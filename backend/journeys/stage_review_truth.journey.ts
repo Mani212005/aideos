@@ -8,7 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { designSpecSchema } from "../designSpec/spec";
 import { bindReceiveSpan } from "../performance/bindReceive";

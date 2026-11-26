@@ -166,7 +166,7 @@ async function acceptance(source: string, evidence: string, context: AcceptanceC
     production: {
       inputs: () => productionInputs(source, environment()),
       run: async () => {
-        const { getVideosDir } = await import("../src/dl/videoPackageLoader");
+        const { getVideosDir } = await import("../backend/videoPackageLoader");
         const { parseFilm } = await import("../src/dl/schema");
         const { runProduction } = await import("../backend/pipeline/run");
         const { readFilm } = await import("../backend/pipeline/filmStore");
@@ -281,7 +281,7 @@ async function setup(options: { path: string; binDir: string; apply?: boolean; d
   for (const name of ["videos", "data"]) fs.mkdirSync(path.join(dir, name), { recursive: true });
   run("npm", ["ci"], dir, isolatedEnv(dir, path.join(dir, "videos")));
   git(dir, ["config", "--local", "aideos.updatingPath", ROOT]);
-  const { getVideosDir } = await import("../src/dl/videoPackageLoader");
+  const { getVideosDir } = await import("../backend/videoPackageLoader");
   git(dir, ["config", "--local", "aideos.sourceVideos", getVideosDir()]);
   git(ROOT, ["config", "--local", "aideos.stablePath", dir]);
   fs.mkdirSync(binDir, { recursive: true });
@@ -293,7 +293,7 @@ async function copyFilm(slug: string, options: { overwrite?: boolean; dryRun?: b
   requireThat(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug), "Film slug must contain lowercase letters, digits and single hyphens.");
   const sourceVideos = setting(ROOT, "sourceVideos");
   requireThat(sourceVideos && setting(ROOT, "updatingPath"), "Run copy-film from a clone created by release:setup.");
-  const { getVideosDir } = await import("../src/dl/videoPackageLoader");
+  const { getVideosDir } = await import("../backend/videoPackageLoader");
   const source = path.join(sourceVideos, slug);
   const target = path.join(getVideosDir(), slug);
   requireThat(fs.realpathSync(sourceVideos) !== fs.realpathSync(getVideosDir()), "Source and stable videos must differ.");

@@ -22,7 +22,7 @@ import { encodePng } from "../pictures/png";
 import { buildReel } from "../reelCut/build";
 import { picturePackage, stretchPastReelCap, writePictureCut } from "../testSupport/pictureReelCut";
 import { offPalettePicture } from "../testSupport/pictureFixtures";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import type { Renderer } from "../renderJob";
 import type { NativeFormat } from "../renderIr/emit";
 import type { Film } from "../../src/dl/schema";

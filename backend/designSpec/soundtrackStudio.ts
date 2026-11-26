@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { filmSchema, type Film } from "../../src/dl/schema";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { fetchAudioItem, loadAudioLibrary, verifyAudioItem } from "../audioLibrary/library";
 import { checkSoundtrack } from "../designCheck/soundtrack";
 import type { DesignFinding } from "../designCheck/designCheck";

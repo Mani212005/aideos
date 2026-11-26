@@ -9,7 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { startEditor } from "../scripts/studioDriver";
+import { startEditor } from "./testSupport/studioDriver";
 import { FILMS_DIR, readActiveFilmSource, restoreActiveFilmSource } from "./pipeline/filmStore";
 import { encodeWav } from "./pcm";
 

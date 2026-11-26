@@ -9,9 +9,9 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { journey, REPO_ROOT } from "./harness";
 import { findChromeBinary } from "../scene/renderStill";
-import { startEditor, StudioPage } from "../../scripts/studioDriver";
+import { startEditor, StudioPage } from "../testSupport/studioDriver";
 import { writeFilm, packageDir } from "../pipeline/filmStore";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import type { Film } from "../../src/dl/schema";
 
 const SLUG = "journey-legacy-sfx-preview";

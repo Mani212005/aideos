@@ -5,7 +5,7 @@
  * moved by placement, scale, rotation and opacity clips only).
  * 100% pure TypeScript validator with zero Node runtime dependencies.
  * Inputs and outputs: Scene data object -> validation diagnostics and errors.
- * Used by: src/dl/scene/validateSceneNode.ts, backend/scene/scene.test.ts.
+ * Used by: backend/scene/validateSceneNode.ts, backend/scene/scene.test.ts.
  */
 
 import type { Scene, EnvironmentAsset, Track } from "./types";

@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { journey, probeVideo } from "./harness";
 import { produceIona } from "./ionaFilm";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { parseFilm } from "../../src/dl/schema";
 import { parseLookPlan } from "../lookPlan/schema";
 import { readFilmFacts } from "../review/source";

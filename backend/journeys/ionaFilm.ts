@@ -9,7 +9,7 @@ import path from "node:path";
 import { runProduction } from "../pipeline/run";
 import { buildDesign } from "../designSpec/build";
 import { readFilm } from "../pipeline/filmStore";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import type { ProductionRequest, ProductionResult } from "../pipeline/types";
 import { installVoiceOfChoiceForTests } from "../testSupport/fakeVcd";
 

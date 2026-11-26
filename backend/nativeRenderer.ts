@@ -11,7 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { loadSceneAssets } from "./scene/loadSceneAssets";
-import { resolveRepoAssetPath } from "../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "./videoPackageLoader";
 import type { Film } from "../src/dl/schema";
 import { emitRenderIr, type EmitResult, type MeasureReport, type MeasureRequest, type NativeFormat } from "./renderIr/emit";
 import { runRenderCommand, RENDER_RESERVE_BYTES, type RenderProcessDeps } from "./renderProcess";

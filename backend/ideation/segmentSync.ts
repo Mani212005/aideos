@@ -5,7 +5,7 @@
  * Used by: backend/sync.test.ts, backend/ideation/visualSelector.ts.
  */
 import type { Block } from "../../src/dl/schema";
-import type { SegmentAudioInfo } from "../audio";
+import type { SegmentAudioInfo } from "../pcm";
 import {
   selectShotVisualIntent,
   selectVisualIntentFallback,

@@ -13,7 +13,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import type { GeminiReviewReport, PairwiseRunReport } from "../geminiReview";
 import type { ReviewReport } from "../review/types";
 import { agentPrompt, buildAgentCommand, resolveAgent } from "./agent";

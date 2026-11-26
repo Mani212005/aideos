@@ -20,7 +20,7 @@ import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { rigFromCharacter } from "../../src/dl/characters/rig";
 import { fitReceiveSpan } from "../performance/bindReceive";
 import { loadSpec } from "../testSupport/characters";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { designSpecSchema } from "../designSpec/spec";
 import { compileDesign } from "../designSpec/compile";
 import { resolveDesignCharacters } from "../designSpec/build";

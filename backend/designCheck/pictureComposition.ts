@@ -13,12 +13,12 @@ import type { CompiledEntity, CompiledScene } from "../../src/dl/scene/compile";
 import { buildTimeline } from "../../src/dl/camera";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
 import { elementOpacity, VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 import { pictureLocalBox } from "../pictures/bounds";
 import { apply, IDENTITY, leafBounds, multiply, NON_DRAWING_TAGS, numbers, parseTransform, pathPoints, styleValue, type Affine, type Box } from "./svgBounds";
 import { sceneToFrame, stateMatrix } from "./insetRegion";
 import { canvasChannels, channels, composite, contrastRatio, drawnPictures, invert, placement, PICTURE_THRESHOLDS, relativeLuminance, type DrawnPicture } from "./pictures";
-import type { DesignFinding } from "./designCheck";
+import type { DesignFinding } from "./types";
 
 /** The attribute that marks an SVG group as a callout of one picture; its value is the picture's asset id. */
 export const CALLOUT_ATTR = "data-callout";

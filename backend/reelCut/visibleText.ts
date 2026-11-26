@@ -7,7 +7,7 @@ import fs from "node:fs";
 import type { Film } from "../../src/dl/schema";
 import { buildTimeline } from "../../src/dl/camera";
 import { parseSvgDocument, type SvgNode } from "../../src/dl/scene/svgDocument";
-import { resolveRepoAssetPath } from "../../src/dl/videoPackageLoader";
+import { resolveRepoAssetPath } from "../videoPackageLoader";
 import { prepareSvgProjection } from "../designCheck/insetRegion";
 
 // Reads the text-bearing nodes with the same ancestor naming the geometry projector uses.

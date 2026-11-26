@@ -12,7 +12,7 @@ import { runProduction, designFilesFingerprint, lookPlanFingerprint } from "../p
 import { readFilm } from "../pipeline/filmStore";
 import { buildDesign } from "../designSpec/build";
 import { journeyRequest, writeIonaDesign } from "../journeys/ionaFilm";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { characterHash } from "../../src/dl/characters/hash";
 import { characterSpecSchema } from "../../src/dl/characters/schema";
 import { rawSpec } from "../testSupport/characters";

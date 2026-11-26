@@ -12,7 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { formatReviewSummary, reviewVideo as geminiReviewVideo, type GeminiReviewReport, type PairwiseRunReport } from "../geminiReview";
 import { RUBRIC_CRITERIA } from "../geminiReview/rubric";
 import type { AgyRunner } from "../geminiReview/types";

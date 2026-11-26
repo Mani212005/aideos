@@ -6,7 +6,7 @@
  */
 
 import type { CriterionEvaluation } from "./types";
-import { HOUSE_PACE } from "../pacingProfile";
+import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 
 export interface RubricCriterionDefinition {
   name: string;

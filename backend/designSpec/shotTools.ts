@@ -12,7 +12,7 @@ import { DEFAULT_FPS } from "../../src/dl/defaults";
 import type { Film } from "../../src/dl/schema";
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { parseLookPlan, type LookPlan } from "../lookPlan/schema";
 import { readVisualChoices, type VisualChoice } from "../pipeline/visualChoices";
 import { dispatchTask } from "../agentBridge/dispatcher";

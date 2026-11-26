@@ -4,7 +4,7 @@
  * with one voice (as the synthesizer spoke it, and re-paced by the pitch-preserving timeStretch at the house rate),
  * transcribes both takes with local openai-whisper (scripts/intelligibility/transcribe_wer.py) and compares how
  * many script words each take has misheard. Run it again whenever the voice, a synthesizer's default speed, the house
- * narration rate (backend/pacingProfile.ts) or timeStretch (backend/pcm.ts) changes. The audio goes to a temporary
+ * narration rate (src/dl/pacingProfile.ts) or timeStretch (backend/pcm.ts) changes. The audio goes to a temporary
  * directory outside the repo and is deleted afterwards unless --keep is given; nothing is uploaded.
  * Exit codes: 0 when the stretched take is no less clear than the spoken one within MAX_STRETCH_MISHEARD_LOSS, 1 when it
  * is not, 2 when the round trip cannot run (no synthesizer, no python, no speech-to-text engine).
@@ -23,7 +23,7 @@ import { spawnSyncBounded } from "../../backend/proc";
 import { parseArgs } from "node:util";
 import { produceAudioPipeline, type ProduceAudioResult } from "../../backend/audio";
 import { createTtsBackend, type TtsBackend, type TtsBackendName } from "../../backend/tts";
-import { HOUSE_PACE } from "../../backend/pacingProfile";
+import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 import { wordsPerMinute } from "../../backend/review/speech";
 
 /** The committed fixture whose shot lines are the round-trip script (the one the 2026-11-21 evidence measured). */

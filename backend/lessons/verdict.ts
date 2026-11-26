@@ -6,7 +6,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { hashFileOrNull } from "../filmAcceptance/store";
 import { FILM_ID } from "../pipeline/generatedFiles";
 

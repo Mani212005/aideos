@@ -4,13 +4,13 @@
  * table in the review README), not guessed. Change a value only by re-running the calibration and
  * keeping the recorded reference ordering. The pace numbers (pacing.deadAirMaxSec, the pacing wpm window,
  * pacing.meanBeatMaxSec, camera.movePerSec and the story hold) are the exception: they come from the house pacing
- * profile (backend/pacingProfile.ts), the captain's 2026-11-21 pace decision, not from calibration.
+ * profile (src/dl/pacingProfile.ts), the captain's 2026-11-21 pace decision, not from calibration.
  * Inputs and outputs: none -> calibrated threshold constants for review criteria.
  * Used by: backend/review/criteria.ts.
  */
 
 import { STORY_HOLD_MAX_SEC } from "../stageTimeline";
-import { HOUSE_PACE } from "../pacingProfile";
+import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 import { VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
 import { REEL_CAPTION_SAFE_ZONE } from "../../src/dl/fullScreenHeroLayout";
 

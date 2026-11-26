@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { addPicture } from "./cli";
 import { archivedPictureFiles, pictureFingerprint, pictureFiles, requestFor, type DeclaredPictures } from "./cache";
 import { encodePng, sha256Hex } from "./png";

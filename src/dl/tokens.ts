@@ -253,7 +253,8 @@ export const accentAt = (hex: string, alpha: number) => `rgba(${channels(hex)}, 
  * There are exactly two deliverables and they are the same film. `reel` is a
  * narrower camera on the canvas, not a redesign of it (§06 rule 05).
  */
-export type Format = "reel" | "long";
+import type { Format } from "./fullScreenHeroLayout";
+export type { Format } from "./fullScreenHeroLayout";
 
 export type TypeToken = "display" | "headline" | "subhead" | "body" | "caption";
 

@@ -9,7 +9,7 @@
  * Used by: backend/audio.ts, backend/tts.ts, backend/pipeline/design.ts, editor/vite.config.ts; TimedWord by the design compile, review, reel cut and end card modules.
  */
 
-import { HOUSE_PACE } from "./pacingProfile";
+import { HOUSE_PACE } from "../src/dl/pacingProfile";
 
 /** One synthesized piece of narration and the text it speaks. */
 export interface PcmChunk {
@@ -229,7 +229,7 @@ export interface AssembleOptions {
 }
 
 // Decision D4: narration breath at chapter cuts so music changes can land in a pause instead of under speech,
-// shortened with every other timeline silence by the 2026-11-21 house pace (backend/pacingProfile.ts).
+// shortened with every other timeline silence by the 2026-11-21 house pace (src/dl/pacingProfile.ts).
 export const CHAPTER_BREATH_GAP_MS = HOUSE_PACE.chapterGapMs;
 
 /** The defaults the production pipeline runs with: the house pace's silences between lines and chunks. */

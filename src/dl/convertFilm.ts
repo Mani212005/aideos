@@ -24,7 +24,7 @@ import type {
   AudioPayload,
   VideoPayload,
 } from "./layeredSchema";
-import { computeShotStartTimes } from "../../backend/timeline/timeline";
+import { computeShotStartTimes } from "./shotTiming";
 import { generateWordsFromFilm } from "./captionsParser";
 import { DEFAULT_PROJECT_ACCENT } from "../projectTheme";
 

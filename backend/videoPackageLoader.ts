@@ -7,12 +7,12 @@
  * Used by: backend/pipeline/filmStore.ts, editor/vite.config.ts, backend/pipeline/run.ts.
  */
 
-import { environment } from "../../backend/env";
-import { callerWorkingDirectory } from "../../backend/paths";
+import { environment } from "./env";
+import { callerWorkingDirectory } from "./paths";
 
 import fs from "node:fs";
 import path from "node:path";
-import type { Film } from "./schema";
+import type { Film } from "../src/dl/schema";
 
 export interface VideoPackage {
   slug: string;
@@ -39,7 +39,7 @@ export function getProjectRoot(): string {
     cur = parent;
   }
   if (typeof __dirname !== "undefined") {
-    const candidate = path.resolve(__dirname, "../..");
+    const candidate = path.resolve(__dirname, "..");
     if (fs.existsSync(path.join(candidate, "src", "dl"))) {
       return candidate;
     }

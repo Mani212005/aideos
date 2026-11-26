@@ -10,7 +10,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { getExamplesDir, getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getExamplesDir, getVideosDir } from "../videoPackageLoader";
 
 /** Repo root, resolved from this file's own location. */
 function projectRoot(): string {

@@ -4,7 +4,8 @@
  * Used by: src/dl/camera.ts, src/dl/Film.tsx, src/dl/Block.tsx, and dl visual primitives.
  */
 
-import { Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { createContext, useContext } from "react";
+import { Easing, interpolate } from "remotion";
 
 /**
  * ---------------------------------------------------------------------------
@@ -50,6 +51,12 @@ export const frames = (milliseconds: number, fps: number) =>
 
 export type Entrance = { opacity: number; transform: string };
 
+/** Frame and rate for motion primitives, with a stable still outside a composition. */
+export const MotionContext = createContext({ frame: 30, fps: 30 });
+
+// Reads the composition timing supplied by FilmView, or the static preview default.
+export const useMotionTiming = () => useContext(MotionContext);
+
 /**
  * The one entrance in the system: invisible, sitting 12px low, fading up into
  * place over 400ms on the curve. Never a slide across the screen - horizontal
@@ -64,16 +71,7 @@ export const useEntrance = (
   index = 0,
   risePx = RISE,
 ): Entrance => {
-  let frame = 30;
-  let fps = 30;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    frame = useCurrentFrame();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    fps = useVideoConfig().fps;
-  } catch {
-    // Fallback in unit test environment
-  }
+  const { frame, fps } = useMotionTiming();
   const from = startFrame + frames(MS.stagger * index, fps);
   const p = interpolate(frame, [from, from + frames(MS.enter, fps)], [0, 1], {
     extrapolateLeft: "clamp",
@@ -93,16 +91,7 @@ export const useProgress = (
   durationMs: number,
   delayMs = 0,
 ): number => {
-  let frame = 30;
-  let fps = 30;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    frame = useCurrentFrame();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    fps = useVideoConfig().fps;
-  } catch {
-    // Fallback in unit test environment
-  }
+  const { frame, fps } = useMotionTiming();
   const from = startFrame + frames(delayMs, fps);
   return interpolate(frame, [from, from + frames(durationMs, fps)], [0, 1], {
     extrapolateLeft: "clamp",

@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { filmSchema, filmSchemaAtPace, type Film } from "../src/dl/schema";
-import { HOUSE_PACE, minFilmSecAt } from "./pacingProfile";
+import { HOUSE_PACE, minFilmSecAt } from "../src/dl/pacingProfile";
 import { estimateNarrationSeconds } from "./scriptIntake";
 import { newProjectFilmTheme } from "../src/projectTheme";
 

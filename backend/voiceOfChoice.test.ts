@@ -15,7 +15,7 @@ import path from "node:path";
 import test from "node:test";
 import { TEST_VIDEOS_DIR } from "./testSupport/fixtureVideosDir";
 import { FAKE_OWNER_BACKEND_NAME, FAKE_OWNER_VOICE_ID, FAKE_OWNER_VOICE_NAME, voiceOfChoiceChildEnv } from "./testSupport/fakeVcd";
-import { startEditor } from "../scripts/studioDriver";
+import { startEditor } from "./testSupport/studioDriver";
 import { checkFilmDesign, checkFilmDesignById } from "./designCheck/designCheck";
 import { PCM_SAMPLE_RATE, createTtsBackend } from "./tts";
 import { resolveVcdVoiceId, synthesizeWithVcd, VcdUnavailableError } from "./vcdClient";

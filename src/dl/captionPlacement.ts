@@ -48,7 +48,8 @@ export const REEL_ACTION_ZONE = {
   x: REEL_CAPTION_SAFE_ZONE.right,
   y: REEL_CAPTION_SAFE_ZONE.top,
 };
-export type CaptionRect = { x: number; y: number; w: number; h: number };
+import type { CaptionRect } from "./fullScreenHeroLayout";
+export type { CaptionRect } from "./fullScreenHeroLayout";
 export { captionCardHeight };
 // Returns the default caption placement for a format.
 export function defaultCaptionPlacement(format: CaptionFormat = "long"): CaptionPlacement {

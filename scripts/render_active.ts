@@ -8,7 +8,7 @@ import { REPO_ROOT as repositoryRoot } from "../backend/paths";
 
 import path from "node:path";
 import { ensureGenerated } from "../backend/pipeline/generatedFiles";
-import { resolvePackageDir } from "../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../backend/videoPackageLoader";
 import { readFilm } from "../backend/pipeline/filmStore";
 import { writeDescriptionCredits } from "../backend/masterAudio";
 import { reelForRender } from "../backend/reelCut/store";

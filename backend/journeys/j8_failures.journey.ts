@@ -14,7 +14,7 @@ import { buildDesign } from "../designSpec/build";
 import { checkLookPlanById } from "../lookPlan/check";
 import { checkCharacterFile } from "../characters/cli";
 import { CHARACTER_FILES } from "../testSupport/characters";
-import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { getVideosDir } from "../videoPackageLoader";
 import { createReceiveAction } from "../../src/dl/performance/receive";
 import { createPerformanceEvaluator } from "../../src/dl/performance/evaluate";
 import { critiquePerformance } from "../../src/dl/performance/critique";

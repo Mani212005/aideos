@@ -9,12 +9,12 @@
  */
 
 import fs from "fs";
-import { validateScene as pureValidateScene, type ValidationResult } from "./validateScene";
-import type { EnvironmentAsset, Scene } from "./types";
-import { collectSvgElementIds, parseSvgDocument } from "./svgDocument";
+import { validateScene as pureValidateScene, type ValidationResult } from "../../src/dl/scene/validateScene";
+import type { EnvironmentAsset, Scene } from "../../src/dl/scene/types";
+import { collectSvgElementIds, parseSvgDocument } from "../../src/dl/scene/svgDocument";
 import { resolveRepoAssetPath } from "../videoPackageLoader";
-import { validateStageResources } from "../../../backend/performance/resources";
-import { rasterFileProblems } from "../../../backend/pictures/png";
+import { validateStageResources } from "../performance/resources";
+import { rasterFileProblems } from "../pictures/png";
 
 /**
  * Resolves an asset svgSource: absolute, relative to the working directory, or relative to the

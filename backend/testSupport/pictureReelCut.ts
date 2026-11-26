@@ -6,7 +6,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import type { Film } from "../../src/dl/schema";
 import { buildCaptionsVtt, type ProduceAudioResult } from "../audio";
 import { buildDesign } from "../designSpec/build";

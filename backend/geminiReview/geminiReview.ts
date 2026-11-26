@@ -18,7 +18,7 @@ import { reviewerModel } from "../aideosConfig";
 import { cleanModelJsonResponse } from "../modelReply";
 import { probeVideo } from "../media/probe";
 import { formatDurationSec } from "../formatDurationSec";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { extractDeterministicFacts } from "./facts";
 import { runAgyProcess } from "./agyProcess";
 import { errorMessage } from "../fsErrors";

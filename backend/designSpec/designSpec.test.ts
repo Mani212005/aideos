@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { TEST_VIDEOS_DIR } from "../testSupport/fixtureVideosDir";
-import { resolvePackageDir } from "../../src/dl/videoPackageLoader";
+import { resolvePackageDir } from "../videoPackageLoader";
 import { parseFilm } from "../../src/dl/schema";
 import { Timeline, createCues } from "../sceneKit";
 import { checkFilmDesign } from "../designCheck/designCheck";

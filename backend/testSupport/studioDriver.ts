@@ -4,15 +4,15 @@
  * Used by: scripts/smoke_studio.ts and backend/journeys/j3_studio_edit.journey.ts (AI edit apply, new project, script save, reload, script input gating).
  */
 
-import { environment } from "../backend/env";
-import { REPO_ROOT as repositoryRoot } from "../backend/paths";
+import { environment } from "../env";
+import { REPO_ROOT as repositoryRoot } from "../paths";
 
 import { spawn, type ChildProcess } from "node:child_process";
-import { spawnSyncBounded } from "../backend/proc";
+import { spawnSyncBounded } from "../proc";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { freePort } from "../backend/freePort";
+import { freePort } from "../freePort";
 
 const ROOT = repositoryRoot;
 const EDITOR_DIR = path.join(ROOT, "editor");
