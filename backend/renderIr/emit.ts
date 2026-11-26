@@ -35,6 +35,7 @@ import { cssColor, hexAlpha, linearKeyframes, rgbHex } from "./irValues";
 import { prettyLines, type WordPosition } from "./bodyWrap";
 import { plotAsset, PLOT_HEIGHT, PLOT_WIDTH, type PlotBlock } from "./emitPlot";
 import { scaleBarAsset, SCALE_BAR_HEIGHT, SCALE_BAR_WIDTH, type ScaleBarBlock } from "./emitScaleBar";
+import { attentionArcsAsset, ATTENTION_ARCS_HEIGHT, ATTENTION_ARCS_WIDTH, type AttentionArcsBlock } from "./emitAttentionArcs";
 
 export { cssColor, hexAlpha, linearKeyframes };
 import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
@@ -118,7 +119,7 @@ export class NativeUnsupportedError extends Error {
 }
 
 /** Block kinds the emitter lays out (the text cards of Phase 1). */
-const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip", "LayerStack", "Plot", "ScaleBar"]);
+const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip", "LayerStack", "Plot", "ScaleBar", "AttentionArcs"]);
 /** The shared IR identifier rule applied to generated asset and node identifiers. */
 const IR_ID = new RegExp(ID_PATTERN);
 
@@ -197,18 +198,25 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       // the first shot, or a shot that opens on a camera move.
       if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
       if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
-      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip" && b.c !== "LayerStack" && b.c !== "Plot" && b.c !== "ScaleBar")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter, a TokenStrip, a LayerStack, a Plot or a ScaleBar natively`);
+      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip" && b.c !== "LayerStack" && b.c !== "Plot" && b.c !== "ScaleBar" && b.c !== "AttentionArcs")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter, a TokenStrip, a LayerStack, a Plot, a ScaleBar or an AttentionArcs natively`);
     } else if (shot.stage !== "frame") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
     // P2.5a and P2.5b: the measured columns are the compiler's text card (a headline then its support copy, design.ts
     // `buildTextBlocks`) and its device card (a headline then a TokenStrip, `buildBlocksForShotVisual`).
-    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot" || shot.blocks[1].c === "ScaleBar");
-    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body, a TokenStrip, a LayerStack, a Plot or a ScaleBar is)`);
+    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot" || shot.blocks[1].c === "ScaleBar" || shot.blocks[1].c === "AttentionArcs");
+    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body, a TokenStrip, a LayerStack, a Plot, a ScaleBar or an AttentionArcs is)`);
+    if (shot.blocks.length === 1 && shot.blocks[0].c === "AttentionArcs" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: an AttentionArcs on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "ScaleBar" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a ScaleBar on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "Plot" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a Plot on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "LayerStack" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a LayerStack on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.some((b) => b.c === "LayerStack" && b.prompt !== undefined)) reasons.push(`shot ${shot.id}: a LayerStack prompt is not measured against Remotion yet`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "Body") reasons.push(`shot ${shot.id}: a Body block on its own is not measured against Remotion yet (only under a TextReveal)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "TokenStrip" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a TokenStrip on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
+    // An AttentionArcs note is a label-style line like a TokenStrip caption: one that would wrap is not measured.
+    const arcs = shot.blocks.find((b) => b.c === "AttentionArcs");
+    if (arcs?.c === "AttentionArcs" && arcs.note && FORMAT_SIZE[format]) {
+      const wide = tokenStripTooWide({ caption: arcs.note }, layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme), format, shot.stage === "inset", film.subtitles !== false && film.captions !== "off");
+      if (wide) reasons.push(`shot ${shot.id}: ${wide.replace("a TokenStrip caption", "an AttentionArcs note")}`);
+    }
     const strip = shot.blocks.find((b) => b.c === "TokenStrip");
     if (strip?.c === "TokenStrip" && FORMAT_SIZE[format]) {
       const wide = tokenStripTooWide(strip, layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme), format, shot.stage === "inset", film.subtitles !== false && film.captions !== "off");
@@ -574,6 +582,35 @@ function plotNodes(ctx: LayoutCtx, id: string, block: PlotBlock, start: number, 
   const progress = (f: number) => progressAt(f, from, frames(2600, ctx.fps));
   const colours = { grid: ctx.tokens.rule(0.6), axes: ctx.tokens.rule(2), accent: ctx.accent, label: ctx.tokens.faint, font: "JetBrains Mono" };
   return svgDeviceNode(ctx, id, from, fit, plotAsset(block, colours, progress, span.from, span.to, fit.viewport));
+}
+
+/**
+ * Lays out an AttentionArcs (devices.tsx `AttentionArcs`, P2.8c) in `box`, the height its column leaves it (`flex: 1`): a
+ * column of its SVG (560 x 240 units, `flex: 1`, fitted as `preserveAspectRatio` meet) and, a grid below, its optional note in
+ * the label style. Its arcs draw on with the shot's sweep (devices.tsx `useSweep`). The asset is generated here
+ * (backend/renderIr/emitAttentionArcs.ts); the block enters as one.
+ */
+function attentionArcsNodes(ctx: LayoutCtx, id: string, block: AttentionArcsBlock, start: number, index: number, box: { x: number; y: number; w: number; h: number }, duration: number, span: { from: number; to: number }): Node {
+  const g = ctx.layout.grid;
+  const labelSize = Number(ctx.layout.label().fontSize);
+  const font = monoId(400);
+  const labelLineH = blinkNormalLineHeight(ctx.metrics(font, labelSize));
+  const svgH = box.h - (block.note ? g + labelLineH : 0);
+  const fit = meetFit({ x: box.x, y: box.y, w: box.w, h: svgH }, ATTENTION_ARCS_WIDTH, ATTENTION_ARCS_HEIGHT);
+  const from = start + frames(MS.stagger * index, ctx.fps);
+  const sweepFrom = start + frames(MS.enter, ctx.fps);
+  const sweepSpan = Math.max(1, duration - frames(MS.enter + MS.move, ctx.fps));
+  const sweep = (f: number) => Math.max(0, Math.min(1, (f - sweepFrom) / sweepSpan));
+  const colours = { rule: ctx.tokens.rule(), ruleStrong: ctx.tokens.rule(2.2), accent: ctx.accent, muted: rgbHex(ctx.tokens.muted), font: "JetBrains Mono" };
+  const node = svgDeviceNode(ctx, id, from, fit, attentionArcsAsset(block, colours, sweep, span.from, span.to, fit.viewport));
+  if (block.note && node.kind === "group") {
+    const note = block.note.toUpperCase();
+    node.children.push({
+      kind: "text", id: `${id}-note`, text: note, font, color: rgbHex(ctx.tokens.muted), align: "left", lineHeight: labelLineH / labelSize, letterSpacing: 0.14, tracks: [],
+      placement: { [ctx.format]: { x: box.x, y: box.y + svgH + g, w: ctx.width_({ text: note, font, size: labelSize, letterSpacing: 0.14 * labelSize }) + labelSize, h: labelLineH, fontSize: labelSize } },
+    });
+  }
+  return node;
 }
 
 /** A ScaleBar's height in its column: `flex: 1` up to its 260 px `max-height`, never more than the column leaves. */
@@ -1129,10 +1166,15 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
     const column = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "ScaleBar") ? columnTops(ctx, shot.blocks[0], shot.blocks[1]) : undefined;
     // A LayerStack grows (`flex: 1`) into all the height its column leaves, so the column has no free space to centre: a
     // headline sits at the top and the stack fills the rest below the 2.5-grid gap.
-    const fillTop = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot") ? stageRect(ctx).y : undefined;
+    const fillTop = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot" || shot.blocks[1].c === "AttentionArcs") ? stageRect(ctx).y : undefined;
     shot.blocks.forEach((block, i) => {
       if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i, column?.[i] ?? fillTop));
-      else if (block.c === "ScaleBar") {
+      else if (block.c === "AttentionArcs") {
+        // AttentionArcs grows (`flex: 1`) into the height its column leaves, like a Plot.
+        const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
+        const above = fillTop !== undefined && shot.blocks[0].c === "TextReveal" ? textRevealLayout(ctx, shot.blocks[0]).blockH + ctx.layout.grid * 2.5 : 0;
+        content.push(attentionArcsNodes(ctx, `${id}-b${i}`, block, contentStart, i, { x: rect.x, y: rect.y + above, w: rect.w, h: rect.h - above }, t.to - t.from, span));
+      } else if (block.c === "ScaleBar") {
         // A ScaleBar grows up to its 260 px cap and the column centres it (with its headline, if any).
         const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
         const top = column ? column[i] : rect.y + (rect.h - scaleBarHeight(ctx, rect.h)) / 2;
