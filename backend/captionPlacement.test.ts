@@ -1302,9 +1302,8 @@ test("review phrase measurement matches rendered word widths", async () => {
   // Await the async Chrome launch first so launches never overlap, then reload the module so the sync
   // call starts with an empty measurement cache and measures independently instead of reading the async result.
   const asynchronous = await measureCaptionWordsAsync(parityWords, 47);
-  const modulePath = require.resolve("./review/captionMeasurements");
-  delete require.cache[modulePath];
-  const independent = require(modulePath) as typeof import("./review/captionMeasurements");
+  const freshSpecifier = `./review/captionMeasurements.ts?independent=${Date.now()}`;
+  const independent = (await import(freshSpecifier)) as typeof import("./review/captionMeasurements");
   assert.notEqual(independent.measureCaptionWords, measureCaptionWords);
   const synchronous = independent.measureCaptionWords(parityWords, 47);
   assert.deepEqual(asynchronous, synchronous);
