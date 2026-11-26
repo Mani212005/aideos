@@ -786,14 +786,14 @@ The render sizes the panel border-box (measured: its border box is exactly the r
 centres the counter in the region; treating it as content-box drew the counter 25 px low and the panel 2 px wide (0.987).
 The emitter draws the panel as two rects (the fill over the border box, the hairline on its band) and lays the
 StatCounter out in the column's content box (the region less the border and the padding on every side). It is drawn on a
-measured form only: a film with a scene, a shot that is not the first, whose move is `cut`, holding exactly one block, a
-StatCounter. Every other inset form is refused with a reason naming `stage "inset"`: an inset on the first shot, an inset with
-no block, an inset in a node-graph film (no scene), an inset that opens on a camera move, and an inset holding anything but a
-StatCounter (none of these is measured against Remotion yet). The journey `backend/journeys/inset_panel.journey.ts` asks
+measured form only: a film with a scene, holding exactly one block, a StatCounter. P2.6a measured it on a shot that is
+not the first and whose move is `cut`; [P2.6b](#p26b-the-inset-panel-on-a-camera-move) added the first shot and the camera
+move. Every other inset form is refused with a reason naming `stage "inset"`: an inset with no block, an inset in a
+node-graph film (no scene), and an inset holding anything but a StatCounter (none of these is measured against Remotion
+yet). The journey `backend/journeys/inset_panel.journey.ts` asks
 the renderer choice for both formats of `test_fixtures/packages/inset-stage` (native must be chosen) and compares 21 frames
 (the shot before, the counter shot counting and landed, the shot after and the end card) with Remotion's stills at 0.995,
 none left out. Every 15th frame of the delivered video, long and reel (59 frames): all at or above 0.995, lowest 0.99847.
-[P2.6b](#p26b-the-inset-panel-on-a-camera-move) since draws the first-shot and camera-move forms too.
 
 ### P2.6b the inset panel on a camera move
 
