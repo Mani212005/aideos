@@ -319,20 +319,27 @@ function insetFilm(change: (shot: Record<string, unknown>) => void, noScene = fa
   return out;
 }
 
-test("an inset panel is drawn natively only in the measured form, every other form is refused by name (P2.6a)", () => {
+test("an inset panel is drawn natively only in the measured forms, every other form is refused by name (P2.6a, P2.6b)", () => {
   assert.deepEqual(nativeSupport(insetFilm(() => {}), "long"), []);
   const first = nativeSceneFilm();
   const firstShots = first.shots.map((s) => ({ ...s })) as unknown as Record<string, unknown>[];
   firstShots[0].stage = "inset";
   firstShots[0].blocks = [{ c: "StatCounter", to: 22, label: "transmitter power", format: "plain", suffix: " watts" }];
   const firstReasons = nativeSupport({ ...first, shots: firstShots as unknown as typeof first.shots }, "long");
-  assert.ok(firstReasons.some((r) => r.includes('stage "inset"') && r.includes("first shot")), firstReasons.join("\n"));
+  // P2.6b measured the first-shot inset (drawn still, as a cut) behind the inset_panel journey: it is native.
+  assert.deepEqual(firstReasons, []);
   const emptyReasons = nativeSupport(insetFilm((s) => { s.blocks = []; }), "long");
   assert.ok(emptyReasons.some((r) => r.includes('stage "inset"') && r.includes("no block")), emptyReasons.join("\n"));
   const graphReasons = nativeSupport(insetFilm(() => {}, true), "long");
   assert.ok(graphReasons.some((r) => r.includes('stage "inset"') && r.includes("node-graph film")), graphReasons.join("\n"));
-  const moveReasons = nativeSupport(insetFilm((s) => { s.move = "pan"; }), "long");
-  assert.ok(moveReasons.some((r) => r.includes('stage "inset"') && r.includes('"pan" move')), moveReasons.join("\n"));
+  // P2.6b measured an inset that opens on a camera move (its open and close fade) behind the inset_panel journey: it is native.
+  // The probe's "closing" shot already opens on a pan (a pan shot cannot start the "Count" chapter): it takes the counter.
+  const moved = nativeSceneFilm();
+  const movedShots = moved.shots.map((s) => ({ ...s })) as unknown as Record<string, unknown>[];
+  movedShots[3] = { ...movedShots[3], stage: "inset", blocks: movedShots[2].blocks };
+  movedShots[2] = { ...movedShots[2], stage: "none", blocks: [] };
+  assert.equal(movedShots[3].move, "pan");
+  assert.deepEqual(nativeSupport({ ...moved, shots: movedShots as unknown as typeof moved.shots }, "long"), []);
 });
 
 test("picture animation support agrees with the emitted IR validator for every scene property", () => {

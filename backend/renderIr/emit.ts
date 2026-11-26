@@ -173,12 +173,11 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   if ((soundtrack.sections.length || soundtrack.sfx.length) && !usesSectionMixer(soundtrack)) reasons.push("path-only legacy soundtrack sections are not mixed natively (library soundtracks are)");
   for (const shot of film.shots) {
     if (shot.stage === "inset") {
-      // P2.6a: only the measured inset form is drawn: a scene film, a later shot on a cut, holding exactly one StatCounter.
+      // P2.6a and P2.6b: the measured inset forms are drawn: a scene film's inset holding exactly one StatCounter, on a cut,
+      // the first shot, or a shot that opens on a camera move.
       if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
-      if (film.shots[0] === shot) reasons.push(`shot ${shot.id}: a stage "inset" panel on the first shot is not measured against Remotion yet`);
       if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
       if (shot.blocks.some((b) => b.c !== "StatCounter")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter natively`);
-      if (shot.move !== "cut") reasons.push(`shot ${shot.id}: stage "inset" panels that open on a "${shot.move}" move are not drawn natively yet (their open and close animation is not measured)`);
     } else if (shot.stage !== "frame" && shot.stage !== "none") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
     if (shot.blocks.length > 1) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively`);
     for (const block of shot.blocks) {
@@ -356,6 +355,35 @@ function insetContentRect(ctx: LayoutCtx): { x: number; y: number; w: number; h:
   const pad = ctx.layout.grid * 3;
   return { x: r.x + 1 + pad, y: r.y + 1 + pad, w: r.w - 2 - 2 * pad, h: r.h - 2 - 2 * pad };
 }
+
+/**
+ * The open and close of an inset panel on a shot that is not a cut (Film.tsx `Stage`, P2.6b): the panel's opacity is
+ * `min(1, 1.4 * open) * (1 - close)`, `open` the ease-out-expo over the camera move from the shot's start and `close` the same
+ * ease over the shot's last 420 ms; its content column fades in linearly from 55% of the move to its end, and the blocks start
+ * their own entrance when that fade starts.
+ */
+function insetMotion(ctx: LayoutCtx, t: TimedShot): { panelTrack: ReturnType<typeof motionTrack>; contentTrack: ReturnType<typeof motionTrack>; contentStart: number } {
+  const openFrames = frames(MS.move, ctx.fps);
+  const closeFrames = frames(INSET_CLOSE_MS, ctx.fps);
+  const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+  const ease = (v: number) => EXPO(clamp01(v));
+  // Past the shot's last frame (the last shot, held under the end card) the panel stays as Film.tsx froze it.
+  const panel = (frame: number) => {
+    const f = Math.min(frame, t.to - 1);
+    return clamp01(ease((f - t.from) / openFrames) * 1.4) * (1 - clamp01(ease((f - (t.to - closeFrames)) / closeFrames)));
+  };
+  const fadeFrom = t.from + openFrames * 0.55;
+  const fadeTo = t.from + openFrames;
+  const contentIn = (f: number) => clamp01((f - fadeFrom) / (fadeTo - fadeFrom));
+  return {
+    panelTrack: motionTrack("opacity", panel, t.from, t.to),
+    contentTrack: motionTrack("opacity", contentIn, fadeFrom, fadeTo),
+    contentStart: t.from + Math.round(openFrames * 0.55),
+  };
+}
+
+/** Film.tsx's `CLOSE_MS`: how long a panel takes to fade out at the end of its shot. */
+const INSET_CLOSE_MS = 420;
 
 /** A shot's text-card box: the frame inside its margins (Film.tsx `Stage` for a `frame` stage). */
 function stageRect(ctx: LayoutCtx) {
@@ -553,11 +581,18 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
         placement: { [ctx.format]: { x: rect.x, y: rect.y + rect.h / 2 - 0.21 * rect.h, w: rect.w, h: 0.42 * rect.h } },
       },
     ] : [];
+    // Film.tsx draws a non-frame panel on a shot that is not a cut (and not the first) with its open and close fade, and its
+    // content later, fading in on its own (P2.6b); a cut or the first shot is drawn still.
+    const motion = inset && shot.move !== "cut" && t.index !== 0 ? insetMotion(ctx, t) : undefined;
+    const content: Node[] = [];
+    const contentStart = motion ? motion.contentStart : t.from;
     shot.blocks.forEach((block, i) => {
-      if (block.c === "TextReveal") children.push(...textRevealNodes(ctx, `${id}-b${i}`, block, t.from, i));
-      else if (block.c === "StatCounter") children.push(statCounterNodes(ctx, `${id}-b${i}`, block, t.from, i, span, inset ? insetContentRect(ctx) : stageRect(ctx)));
+      if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i));
+      else if (block.c === "StatCounter") content.push(statCounterNodes(ctx, `${id}-b${i}`, block, contentStart, i, span, inset ? insetContentRect(ctx) : stageRect(ctx)));
     });
-    cards.push({ kind: "group", id, visible: { fromFrame: span.from, toFrame: span.to }, x: 0, y: 0, scale: 1, rotation: 0, tracks: [], children });
+    if (motion) children.push({ kind: "group", id: `${id}-content`, x: 0, y: 0, scale: 1, rotation: 0, tracks: [motion.contentTrack], children: content });
+    else children.push(...content);
+    cards.push({ kind: "group", id, visible: { fromFrame: span.from, toFrame: span.to }, x: 0, y: 0, scale: 1, rotation: 0, tracks: motion ? [motion.panelTrack] : [], children });
   }
   return cards;
 }
