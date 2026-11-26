@@ -3,7 +3,7 @@
 # Verification Evidence: Native transitions and particles
 
 - **Date**: 2026-11-26
-- **Branch**: fm/aideos-type-effects-part2
+- **Branch**: fm/aideos-type-effects-part2-final
 - **Scope**: Export and Rendering feature map row, native IR loaders and CPU raster.
 - **Risk tier**: Medium. New versioned rendering paths and shader code; the existing path is unchanged when effects are absent.
 

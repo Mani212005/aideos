@@ -4211,6 +4211,6 @@
       ]
     }
   },
-  "$id": "urn:aideos:schema:aideos.render:6",
+  "$id": "urn:aideos:schema:render:6",
   "title": "aideos.render/6 (Render IR)"
 }

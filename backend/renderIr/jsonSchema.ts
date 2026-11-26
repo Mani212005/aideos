@@ -93,11 +93,16 @@ export function renderIrJsonSchemaV5Text(): string {
   return `${JSON.stringify(renderIrJsonSchemaV5(), null, 2)}\n`;
 }
 
-/** The committed native effects schema file. */
-export const RENDER_IR_SCHEMA_EFFECTS_PATH = path.resolve(__dirname, `../../native/aideos-render-ir/schema/${RENDER_IR_VERSION_EFFECTS.replace("/", ".")}.schema.json`);
+/** The committed `/6` schema file, shared with the Rust crate. */
+export const RENDER_IR_SCHEMA_EFFECTS_PATH = path.resolve(__dirname, "../../native/aideos-render-ir/schema/aideos.render.6.schema.json");
 
-/** Serializes the native effects schema. */
-export function renderIrJsonSchemaEffectsText(): string {
+/** Builds the JSON Schema of the `/6` Render IR from the zod source of truth. */
+export function renderIrJsonSchemaEffects(): Record<string, unknown> {
   const schema = z.toJSONSchema(renderIrSchemaEffects, { target: "draft-2020-12", io: "input", unrepresentable: "throw" }) as Record<string, unknown>;
-  return `${JSON.stringify({ ...schema, $id: `urn:aideos:schema:${RENDER_IR_VERSION_EFFECTS.replace("/", ":")}`, title: `${RENDER_IR_VERSION_EFFECTS} (Render IR)` }, null, 2)}\n`;
+  return { ...schema, $id: "urn:aideos:schema:render:6", title: `${RENDER_IR_VERSION_EFFECTS} (Render IR)` };
+}
+
+/** The canonical text of the `/6` schema file: two-space JSON with a trailing newline. */
+export function renderIrJsonSchemaEffectsText(): string {
+  return `${JSON.stringify(renderIrJsonSchemaEffects(), null, 2)}\n`;
 }
