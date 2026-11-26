@@ -178,7 +178,8 @@ What the bun path changes, step by step:
 * **Scripts.** Every `npx tsx <file>` and `npm run <script>` step runs `bun <file>` on the Bun runtime;
   eslint, `tsc -b` and `vite build` run through `bun x --bun --no-install`. The editor build is two steps on
   this path (`tsc -b`, then `vite build`) so no npm pre-hook runs, and the legacy job runs
-  `ensure_generated` as its own step where npm runs the `test:legacy` pre-hook. `bunfig.toml` turns off
+  `ensure_generated` as its own step where npm runs the `test:legacy` pre-hook (the journeys shard that runs
+  the studio smoke does the same where npm runs the `presmoke:studio` pre-hook). `bunfig.toml` turns off
   bun's automatic `.env` loading (Node never loads it; the CLI loads its own) and its auto-install of
   missing packages.
 * **Tests.** `bun test` is not a drop-in for `node --test`, so the bun path runs every test command through
