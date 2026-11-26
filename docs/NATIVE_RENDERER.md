@@ -1,5 +1,5 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), Phase 2 (its steps; P2.1 draws the SVG filter subset of glows and drop shadows, with its parity), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), Phase 2 (its steps; P2.1 draws the SVG filter subset of glows and drop shadows, with its parity; P2.2a carries colour and dash offset tracks in `aideos.render/5`), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
@@ -741,8 +741,8 @@ as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-g
 
 ## Not yet native
 
-Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2; its first step, P2.1,
-draws the SVG filter subset of glows and drop shadows, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
+Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2; its first steps, P2.1
+and P2.2a, draw the SVG filter subset of glows and drop shadows and the colour and dash offset tracks of `aideos.render/5`, which no emitter writes yet, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and nothing of the Three stage any more: the cel stage with any number of performers is carried by
 `aideos.render/2` since P4.1 and drawn since P4.2 and P4.3, and dots-v1 is carried and drawn since P4.4. Pictures are
