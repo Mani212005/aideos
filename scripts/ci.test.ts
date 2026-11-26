@@ -12,7 +12,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import YAML from "yaml";
 import { JOBS, PR_JOBS, TOOLCHAIN, jobsFor, knownGapNotices, notCoveredNotices, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
-import { testCommand } from "./toolchain";
+import { testCommand, withTapReporter } from "./toolchain";
 
 const ROOT = path.resolve(__dirname, "..");
 const scripts = (JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
@@ -56,13 +56,13 @@ function hasWritePermission(permissions: unknown): boolean {
   return Object.values(permissions).some((permission) => permission === "write");
 }
 
-/** Extracts job IDs from a step's run command string when it invokes npm run ci (or bun scripts/ci.ts on the bun path). */
+/** Extracts job IDs from a step's run command string when it invokes bun scripts/ci.ts (or npx tsx scripts/ci.ts on the npm path). */
 function extractCiJobIds(cmd: string): string[] {
   const ids: string[] = [];
   for (const line of cmd.split("\n")) {
     const trimmed = line.trim();
     if (trimmed.startsWith("#")) continue;
-    const match = trimmed.match(/^(?:npm run ci\b(?:\s+--)?|bun scripts\/ci\.ts)(?:\s+([^\n|&]+))?/);
+    const match = trimmed.match(/^(?:bun scripts\/ci\.ts|npx tsx scripts\/ci\.ts)(?:\s+([^\n|&]+))?/);
     if (match) {
       // `--shard <i>/<n>` (the value may hold `${{ ... }}` expressions with spaces) is not a job name.
       const args = (match[1] ?? "").trim().replace(/--shard\s+(?:\$\{\{.*?\}\}|[^\s$])+/g, "").split(/\s+/).filter((a) => a && !a.startsWith("-"));
@@ -72,6 +72,7 @@ function extractCiJobIds(cmd: string): string[] {
   return ids;
 }
 
+// npx tsx steps (the npm form of the bun steps) are checked for file existence too.
 test("every npm script a job runs exists in package.json, and every file a bun step runs exists", () => {
   for (const job of jobsFor("bun")) {
     for (const step of job.steps) {
@@ -81,6 +82,10 @@ test("every npm script a job runs exists in package.json, and every file a bun s
   }
   for (const job of jobsFor("npm")) {
     for (const step of job.steps) {
+      if (step.cmd[0] === "npx" && step.cmd[1] === "tsx") {
+        assert.ok(fs.existsSync(path.join(ROOT, step.cmd[2])), `${job.id} / ${step.name} runs "npx tsx ${step.cmd[2]}", which does not exist`);
+        continue;
+      }
       if (step.cmd[0] !== "npm") continue;
       const prefixed = step.cmd[1] === "--prefix";
       if (prefixed) continue;
@@ -95,6 +100,7 @@ test("the pull request set only names real jobs and nightly stays out of it", ()
   assert.ok(!PR_JOBS.includes("nightly"));
 });
 
+// The npm form of the CI entry point is now `npx tsx scripts/ci.ts <job>`; the bun form `bun scripts/ci.ts <job>` is accepted too.
 test("every workflow runs CI through `npm run ci -- <job>` with known jobs only", () => {
   assert.ok(workflows.length > 0, "expected at least one workflow under .github/workflows");
   const known = new Set(JOBS.map((j) => j.id));
@@ -483,4 +489,14 @@ test("decision D0: skipped tests report as NOT COVERED in notCoveredNotices and 
   assert.match(table, /NOT COVERED \(skipped\): 2: ocr: monospace counter, review: burned-in captions/);
   const notices = notCoveredNotices([stepResult]);
   assert.ok(notices.some((n) => n.includes("has 2 test(s) NOT COVERED: ocr: monospace counter, review: burned-in captions")));
+});
+
+// Owner decision: `npm run test:journeys` keeps printing TAP, as it did before the runner moved into scripts/runTests.ts.
+test("the TAP flag of test:journeys puts --test-reporter=tap before the files on the npm path and leaves the bun path alone", () => {
+  const files = ["backend/journeys/**/*.journey.ts"];
+  const npmCmd = withTapReporter(testCommand("npm", files));
+  assert.ok(npmCmd.includes("--test-reporter=tap"));
+  assert.deepEqual(npmCmd.slice(-files.length), files);
+  assert.ok(npmCmd.indexOf("--test-reporter=tap") < npmCmd.indexOf(files[0]));
+  assert.deepEqual(withTapReporter(testCommand("bun", files)), testCommand("bun", files));
 });

@@ -10,7 +10,7 @@ in git: your own videos live in `videos/` (gitignored) or wherever `AIDEOS_VIDEO
 - `film.json`: the manifest, a scene film on a square 1920 x 1920 scene space with three text shots.
 - `visuals/`: three static SVGs (backdrop, three nodes, a query dot) that the scene's clips animate by id.
 
-On a fresh clone `npm install` generates the files Remotion needs from this package, so
-`npm run studio` and `npm run editor` open it straight away.
-It also anchors `npm run smoke:studio`. Check it with `npm run design:check -- hello-scene`.
+On a fresh clone `bun install` generates the files Remotion needs from this package, so
+`bun run studio` and `bun run editor` open it straight away.
+It also anchors `bun run smoke:studio`. Check it with `bun run design:check -- hello-scene`.
 Copy the folder to `videos/<your-slug>/` (and change `id`) to start your own.

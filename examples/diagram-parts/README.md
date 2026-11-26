@@ -10,4 +10,4 @@ A scene film demonstrating ready-made diagram building blocks (graphs, layer pla
 - `visuals/scene.svg`: static scene artwork compiled from diagram primitives in `backend/sceneKit/parts/`.
 - `build.ts`: authoring script generating `visuals/scene.svg`.
 
-Run `npm run design:check -- diagram-parts` to validate against the design system rules.
+Run `bun run design:check -- diagram-parts` to validate against the design system rules.

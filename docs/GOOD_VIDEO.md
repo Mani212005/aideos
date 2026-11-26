@@ -138,7 +138,7 @@ the silences between lines all move together:
   `sample-explainer` fixture, word error rate against the script: before 9.8%, Kokoro 0.9 8.1%, WSOLA stretch 1.2x
   8.6%, ffmpeg `atempo` 1.2x reference 9.0%, Kokoro 1.05 6.8%; no content word misheard. See
   [the evidence log](evidence/verify/2026-11-21-faster-pacing-profile.md). Those numbers used sampled decoding and
-  move by up to 2.6 points between runs of the same wav. Re-run the round trip with `npm run intelligibility`
+  move by up to 2.6 points between runs of the same wav. Re-run the round trip with `bun run intelligibility`
   ([`scripts/intelligibility/round_trip.ts`](../scripts/intelligibility/round_trip.ts)) whenever the voice, a
   synthesizer's default speed, the house narration rate or `timeStretch` changes. It narrates the fixture with one
   voice as spoken and stretched to the house rate, transcribes both with openai-whisper `small` (the scene kit's

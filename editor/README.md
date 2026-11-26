@@ -47,11 +47,11 @@ The editor is one shell: a header (Films, Undo, Redo, Agent, Save, Export), a le
 
 ```bash
 # Start Vite dev server for the editor
-npm run dev
+bun run dev
 
 # Run oxlint across editor sources
-npm run lint
+bun run lint
 
 # Build production bundle with TypeScript typecheck
-npm run build
+bun run build
 ```

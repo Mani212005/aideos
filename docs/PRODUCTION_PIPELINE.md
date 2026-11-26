@@ -25,7 +25,7 @@ The same thing from a terminal (without `--final-export` the CLI stops after `as
 pass it only when the user explicitly asked for the final mp4s):
 
 ```bash
-npm run backend -- film \
+bun run backend -- film \
   --script-file videos/my-video/script.md \
   --title "My Video" \
   --slug my-video \
@@ -196,7 +196,7 @@ aideos reel build <slug> [--delivery inline|agent|server]
 
 # Run production through both output formats. The film CLI uses inline reel delivery by default
 # and stops at a draft after assemble; --final-export (only on the user's explicit ask) renders them.
-npm run backend -- film --script-file videos/<slug>/script.md \
+bun run backend -- film --script-file videos/<slug>/script.md \
   --title "<title>" --slug <slug> --formats long,reel --final-export
 
 # Review every rendered format, or request the Reel alone.
@@ -278,7 +278,7 @@ there is no screenplay yet, only an idea. It drafts one with an LLM briefed on
 model, and hands a passing draft to `runProduction` unchanged:
 
 ```bash
-npm run backend -- direct "Why attention scales quadratically" --broll --formats long,reel
+bun run backend -- direct "Why attention scales quadratically" --broll --formats long,reel
 ```
 
 `aideos direct "<prompt>"` does the same from the CLI launcher. Both stop at a draft after `assemble`;
@@ -338,7 +338,7 @@ Starting the voice service:
   never leave the Linux machine and are never committed.
 - Check it with `curl -s http://127.0.0.1:8740/v1/voices`, which lists the enrolled voice names and ids (no audio).
 
-Tests and CI have no voice service and no recordings. The `npm test` preload (`backend/testSupport/fixtureVideosDir.ts`)
+Tests and CI have no voice service and no recordings. The `bun run test` preload (`backend/testSupport/fixtureVideosDir.ts`)
 installs a deterministic fake of the service (`backend/testSupport/fakeVcd.ts`): it answers the same loopback API on
 the default address, reports the owner voice id and the real `vcd:<voice id>:<language>` backend name, so cache
 fingerprints and `narration.json` carry the real shapes, and returns a quiet tone sized from the word count, never
@@ -376,7 +376,7 @@ Rendering runs through `backend/engine/`; see `backend/engine/RUNBOOK.md` for th
 the loop before a full run:
 
 ```bash
-npm run backend -- engine-test "<prompt>" --engine ssh-wangp --seconds 5
+bun run backend -- engine-test "<prompt>" --engine ssh-wangp --seconds 5
 ```
 
 Look-planned films reserve the footage treatment until framed b-roll is supported; their stage stays visible.
@@ -387,7 +387,7 @@ than shipping a black tail.
 ## MCP server
 
 ```bash
-npm run backend -- mcp        # stdio transport
+bun run backend -- mcp        # stdio transport
 ```
 
 Tools:
@@ -467,7 +467,7 @@ and `placement` (`{x,y,w}` or `{preset:"top"|"middle"|"bottom"}`). Locked target
 
 - `backend/scriptIntake.ts` is the single source of truth for parsing/serializing Claude-style screenplays (`## timestamp - Title` headers, with a range or a single start timestamp such as `## 0:30 - The Problem`, never leaked into the chapter title, `[VISUAL]`/`[NARRATION]`/`[ON SCREEN]` tag blocks, plus legacy `VO:`/`Voiceover:`/`Narrator:` conventions), extracting zero-leakage spoken narration, deterministically converting a user's plain-text story (paragraphs plus `#Start`/`#Conclusion` style markers) into the internal tagged form via `plainTextToTaggedScript` (tagged scripts pass through unchanged, `[VISUAL]`/`[ON SCREEN]` slots start empty, and agents fill only those), and compiling sub-shots and animated primitive blocks (`TextReveal`, `StatCounter`, `CodeBlock`, `Card`, `Divider`, `IconLabel`, `ProgressBar`) for Remotion using TypeSafe Jev (`backend/jev.ts`) for semantic primitive selection with confidence gating and deterministic fallback.
 - Jev is asked once per film, not once per beat: `backend/jev.ts`'s `prefetchShotVisualAnswers`/`prefetchPrimitiveAnswers` send every beat in one batched request and `resolveShotVisual`/`resolvePrimitive` gate each answer against the beat's live state. Never call `selectShotVisual`/`selectPrimitive` in a per-beat loop; they remain the path for a single decision and for test mocks.
-- `npm run eval:visuals [-- --jev]` scores shot-visual choice on the labelled beats in `backend/eval/shot_visual_cases.json` (heuristic, raw Jev, and what ships after gating and grounding). Re-run it before changing a threshold, the criteria wording or the model, and add a labelled case only for a bad pick the captain identified, with his label.
+- `bun run eval:visuals [-- --jev]` scores shot-visual choice on the labelled beats in `backend/eval/shot_visual_cases.json` (heuristic, raw Jev, and what ships after gating and grounding). Re-run it before changing a threshold, the criteria wording or the model, and add a labelled case only for a bad pick the captain identified, with his label.
 - It has no Node-only imports, so `editor/src/components/ScriptEditor.tsx` (browser bundle), `editor/vite.config.ts` (dev server), and `backend/audio.ts` all import it directly instead of re-implementing screenplay parsing. Extend this module rather than adding another parser copy.
 
 ### Transcription and edit context
@@ -486,8 +486,8 @@ and `placement` (`{x,y,w}` or `{preset:"top"|"middle"|"bottom"}`). Locked target
 - `backend/audio.ts`'s `resolveAudioSourcePath` resolves candidates against both the caller's
   working directory (`callerWorkingDirectory()` in `backend/paths.ts`) and `REPO_ROOT` (also from
   `backend/paths.ts`, computed from the module location). The editor dev server is launched with
-  `cd editor && npm run dev`, so its working directory is `editor/`, not the repo root every other
-  caller (the pipeline CLI, `npm test`) runs from; a cwd-only lookup silently failed to find any
+  `cd editor && bun run dev`, so its working directory is `editor/`, not the repo root every other
+  caller (the pipeline CLI, `bun run test`) runs from; a cwd-only lookup silently failed to find any
   asset resolved from inside the editor (media upload playback, footage audio peaks, and now
   transcription) whenever the source was a relative path like `media/<file>`. Any new code that
   resolves a repo-relative asset path from within `editor/vite.config.ts` should reuse this helper
@@ -500,7 +500,7 @@ and `placement` (`{x,y,w}` or `{preset:"top"|"middle"|"bottom"}`). Locked target
 ### Production pipeline notes
 
 - `backend/pipeline/run.ts`'s `runProduction` is the one programmatic entry point from a script to finished mp4s (intake, narrate, look, design, reel, b-roll, assemble, render, verify), with typed progress, per-stage resume via `videos/<slug>/run-state.json`, and stage-tagged errors. `backend/mcp/server.ts` exposes the same thing as MCP tools over stdio. Both are documented in [docs/PRODUCTION_PIPELINE.md](PRODUCTION_PIPELINE.md); drive a film through `runProduction`.
-- `backend/pipeline/director.ts`'s `runDirector` is the auto-prompt entry point above `runProduction`: it drafts a screenplay from a raw prompt with an LLM briefed on [docs/DIRECTOR_GUIDE.md](DIRECTOR_GUIDE.md), validates the draft with `backend/scriptIntake.ts`'s own parser (retrying a rejected draft with the specific reason fed back), then hands a passing draft to `runProduction` unchanged. A user's plain-text story is converted deterministically by `plainTextToTaggedScript`, never reformatted by a model. `generateScreenplay` is the injection point tests use instead of a real model call; the real path always calls the model, so the plan is never a canned or templated screenplay. Reachable via `npm run backend -- direct "<prompt>"` or `aideos direct "<prompt>"`; like `aideos film` it stops at a draft after `assemble` unless `--final-export` is passed.
+- `backend/pipeline/director.ts`'s `runDirector` is the auto-prompt entry point above `runProduction`: it drafts a screenplay from a raw prompt with an LLM briefed on [docs/DIRECTOR_GUIDE.md](DIRECTOR_GUIDE.md), validates the draft with `backend/scriptIntake.ts`'s own parser (retrying a rejected draft with the specific reason fed back), then hands a passing draft to `runProduction` unchanged. A user's plain-text story is converted deterministically by `plainTextToTaggedScript`, never reformatted by a model. `generateScreenplay` is the injection point tests use instead of a real model call; the real path always calls the model, so the plan is never a canned or templated screenplay. Reachable via `bun run backend -- direct "<prompt>"` or `aideos direct "<prompt>"`; like `aideos film` it stops at a draft after `assemble` unless `--final-export` is passed.
 - The render stage's disk guard and its fixed PNG settings are documented in [docs/CI.md](CI.md).
 - Narration is assembled in the sample domain (`backend/pcm.ts`), never by concatenating encoded files: trim, boundary fade, exact gap insertion and peak normalization on Float32 samples. That is what keeps segment offsets exact and boundaries click-free, and `backend/voiceover_stutter.test.ts` holds each defect class closed. Speech synthesis backends live in `backend/tts.ts`; `vcd` (My voice) is the default, Kokoro is the explicit offline option, and Kokoro runs in a separate process (`backend/kokoroWorker.mjs`) because its voice-file resolution and ONNX thread pool both break under the TypeScript loader.
 - Components must read colour through `useTokens()` from `src/dl/tokens.ts`, not the module-level `PALETTE`/`rule()` constants: those are derived from the paper-white theme and paint near-black text on the dark canvases every film actually uses. `useLayout().label()` now resolves its muted colour from the rendering theme too, so mono labels are correct without each call site overriding `color`.
