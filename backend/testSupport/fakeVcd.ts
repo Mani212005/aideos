@@ -128,10 +128,17 @@ export function installVoiceOfChoiceForTests(env: NodeJS.ProcessEnv = process.en
 }
 
 // Returns an environment for a spawned child process that loads the fake voice service first, so the child narrates in the owner voice without a real service.
+// Node children read NODE_OPTIONS; bun children (the bun toolchain) ignore it and read BUN_OPTIONS, which splits on
+// whitespace and has no quoting, so under bun a checkout path with whitespace is refused rather than left unfaked.
 export function voiceOfChoiceChildEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
   const preload = path.join(__dirname, "fakeVcdPreload.ts");
   const options = [base.NODE_OPTIONS?.trim(), "--import tsx", `--import ${JSON.stringify(preload)}`].filter(Boolean).join(" ");
-  return { ...base, NODE_OPTIONS: options };
+  if (/\s/.test(preload)) {
+    if (process.versions.bun) throw new Error(`BUN_OPTIONS cannot carry a preload path with whitespace (${preload}); move the checkout to a path without spaces`);
+    return { ...base, NODE_OPTIONS: options };
+  }
+  const bunOptions = [base.BUN_OPTIONS?.trim(), `--preload ${preload}`].filter(Boolean).join(" ");
+  return { ...base, NODE_OPTIONS: options, BUN_OPTIONS: bunOptions };
 }
 
 // Replaces globalThis.fetch so requests for the default vcd address reach the fake and everything else passes through; safe to call repeatedly.

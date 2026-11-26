@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="bun test" tests="8" assertions="0" failures="2" skipped="4" time="0.030105571">
+  <testsuite name="kinds.test.mjs" file="kinds.test.mjs" tests="8" assertions="0" failures="2" skipped="4" time="0.027002965" hostname="fixture-host">
+    <testcase name="passes" classname="" time="0.001399" file="kinds.test.mjs" line="2" assertions="0" />
+    <testcase name="fails &lt;on&gt; purpose &amp; &quot;quoted&quot;" classname="" time="0.000705" file="kinds.test.mjs" line="3" assertions="0">
+      <failure type="AssertionError" message="expected failure">AssertionError: expected failure&#10;      at run (node:async_hooks:144:29)&#10;      at node:test:1445:26&#10;      at executeTestNode (node:test:1448:45)&#10;      at node:test:1591:20&#10;</failure>
+    </testcase>
+    <testcase name="skipped by option" classname="" time="0" file="kinds.test.mjs" line="4" assertions="0">
+      <skipped />
+    </testcase>
+    <testcase name="skipped by context" classname="" time="0.000096" file="kinds.test.mjs" line="5" assertions="0">
+      <skipped />
+    </testcase>
+    <testcase name="todo by option" classname="" time="0" file="kinds.test.mjs" line="6" assertions="0">
+      <skipped message="TODO" />
+    </testcase>
+    <testcase name="bare todo" classname="" time="0" file="kinds.test.mjs" line="7" assertions="0">
+      <skipped message="TODO" />
+    </testcase>
+    <testsuite name="suite" file="kinds.test.mjs" line="8" tests="2" assertions="0" failures="1" skipped="0" time="0" hostname="fixture-host">
+      <testcase name="nested passes" classname="suite" time="0.000112" file="kinds.test.mjs" line="8" assertions="0" />
+      <testcase name="nested fails" classname="suite" time="0.000132" file="kinds.test.mjs" line="8" assertions="0">
+        <failure type="AssertionError" message="inner">AssertionError: inner&#10;      at run (node:async_hooks:144:29)&#10;      at node:test:1445:26&#10;      at executeTestNode (node:test:1448:45)&#10;      at node:test:1591:20&#10;</failure>
+      </testcase>
+    </testsuite>
+  </testsuite>
+</testsuites>
