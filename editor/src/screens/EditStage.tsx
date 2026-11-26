@@ -30,7 +30,7 @@ import { CaptionObject, type CaptionTargetRect } from "../components/captions/Ca
 import { OnCanvasAiEditor } from "../components/OnCanvasAiEditor";
 import { ClipInspector } from "../components/ClipInspector";
 import { editCaptionWord, type CaptionWordEdit } from "../components/captions/captionWordEdit";
-import { FORMATS, type Format } from "../App";
+import { FORMATS, type Format } from "../formats";
 
 /** Bounds for the draggable split between the preview and the timeline. */
 const MIN_TIMELINE_PX = 160;

@@ -37,6 +37,7 @@ import { EditStage } from "./screens/EditStage";
 import { CheckStage } from "./screens/CheckStage";
 import { useExportJob } from "./state/useExportJob";
 import type { ExportJobSnapshot } from "../../backend/exportJobTypes";
+import type { Format } from "./formats";
 import { previewAccent } from "../../src/projectTheme";
 
 /**
@@ -45,13 +46,6 @@ import { previewAccent } from "../../src/projectTheme";
  * modules) as a source change and hot-reloads the whole page out from under the user.
  */
 const bundledFilmIds: string[] = [PLACEHOLDER_FILM.id];
-
-export const FORMATS = {
-  long: { width: 1920, height: 1080, label: "16:9" },
-  reel: { width: 1080, height: 1920, label: "9:16" },
-} as const;
-
-export type Format = keyof typeof FORMATS;
 
 type Stage = "script" | "look" | "cut" | "review";
 
