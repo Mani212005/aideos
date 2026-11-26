@@ -181,13 +181,21 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   const soundtrack = normalizeFilmSoundtrack(film);
   if ((soundtrack.sections.length || soundtrack.sfx.length) && !usesSectionMixer(soundtrack)) reasons.push("path-only legacy soundtrack sections are not mixed natively (library soundtracks are)");
   for (const shot of film.shots) {
+    if (shot.stage === "none") {
+      // P2.5e: Film.tsx's `Stage` draws nothing for a `none` stage, so its blocks never reach the frame (the screenplay
+      // compiler leaves primitive blocks on such shots). The one exception is a full-screen AnalogyInset hero played from a
+      // frames directory, which Film.tsx overlays on any stage; that and footage stay refused.
+      if (shot.blocks.some((b) => b.c === "AnalogyInset")) reasons.push(`shot ${shot.id}: AnalogyInset blocks are Phase 2`);
+      if (shot.needsFootage) reasons.push(`shot ${shot.id}: footage is Phase 2`);
+      continue;
+    }
     if (shot.stage === "inset") {
       // P2.6a and P2.6b: the measured inset forms are drawn: a scene film's inset holding exactly one StatCounter, on a cut,
       // the first shot, or a shot that opens on a camera move.
       if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
       if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
       if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip" && b.c !== "LayerStack")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter, a TokenStrip or a LayerStack natively`);
-    } else if (shot.stage !== "frame" && shot.stage !== "none") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
+    } else if (shot.stage !== "frame") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
     // P2.5a and P2.5b: the measured columns are the compiler's text card (a headline then its support copy, design.ts
     // `buildTextBlocks`) and its device card (a headline then a TokenStrip, `buildBlocksForShotVisual`).
     const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "LayerStack");

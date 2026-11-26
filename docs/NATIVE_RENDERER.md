@@ -386,7 +386,7 @@ Text is measured with `aideos-render measure`, so layout and drawing share one s
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
 music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter, TokenStrip or LayerStack in a film with a scene, P2.6a, P2.6b, P2.5b and P2.5c), more than one block per shot (except a `TextReveal` followed by a `Body`, a `TokenStrip` or a `LayerStack`, P2.5a to P2.5c) and blocks other than
-`TextReveal`, `StatCounter`, `Body`, `TokenStrip` and `LayerStack` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Those stay on Remotion until their phase.
+`TextReveal`, `StatCounter`, `Body`, `TokenStrip` and `LayerStack` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Blocks on a `none` stage are not drawn by `Film.tsx` and do not count (P2.5e), except an `AnalogyInset`. Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
 carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid
@@ -680,6 +680,7 @@ the fallback for everything not yet native:
 | P2.5b | the `TokenStrip` device, alone in an inset panel and under a headline on the frame stage (the compiler's device card), behind a parity journey ([P2.5b](#p25b-the-tokenstrip-device)) | done |
 | P2.5c | the `LayerStack` device, alone in an inset panel and under a headline on the frame stage, behind a parity journey ([P2.5c](#p25c-the-layerstack-device)) | done |
 | P2.5d | a `LayerStack` of 10 or more bars whose "k / n" counter gains a digit mid-sweep (the schema's default 32 bars), behind the same journey ([P2.5d](#p25d-the-layerstack-counter-gaining-a-digit)) | done |
+| P2.5e | blocks on a `none` stage (never drawn by `Film.tsx`) no longer refuse a film, behind the node-graph journey ([P2.5e](#p25e-blocks-on-a-none-stage)) | done |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), other block combinations, panels other than `frame` | planned |
 | P2.6a | the `inset` panel holding exactly one StatCounter on a cut shot that is not the first, in a film with a scene, behind a parity journey ([P2.6a](#p26a-the-inset-panel)) | done |
 | P2.6b | the `inset` panel on the first shot, and one that opens on a camera move (its open and close fade, its content's delayed fade and entrance), behind the same journey ([P2.6b](#p26b-the-inset-panel-on-a-camera-move)) | done |
@@ -877,6 +878,17 @@ the column are measured at Chrome's advance size (`CHROME_MONO_ADVANCE_SIZE`). T
 twelve bars with short labels, so its counter reaches 10 mid-shot (frame 426). Measured against Remotion (swangle), 142 frames
 over both formats (the P2.5c sweep plus every 2nd frame 430 to 470): all at or above 0.995, lowest 0.99840. The journey adds
 frames 426, 440 and 460.
+
+### P2.5e blocks on a none stage
+
+`Film.tsx`'s `Stage` returns nothing for a shot whose stage is `none`, so that shot's blocks never reach the frame; the
+screenplay compiler (`backend/scriptIntake.ts`) still leaves its primitive blocks (a CodeBlock, a ProgressBar, a Kicker and
+so on) on the first shot of every other segment, which it gives a `none` stage. `nativeSupport` no longer refuses a film for a
+block it would never draw. Two things on a `none` shot stay refused: an `AnalogyInset` (its full-screen hero played from a
+frames directory is overlaid by `Film.tsx` on any stage) and footage. The fixture `test_fixtures/packages/node-graph-quiet-blocks`
+is node-graph-flat with a CodeBlock, a ProgressBar, and a Kicker, Divider and IconLabel on its `none` shots. Measured against
+Remotion (swangle), every 15th frame of both formats through the end card (90 frames): all at or above 0.995, lowest 0.99541,
+as node-graph-flat itself measures. The journey `backend/journeys/node_graph_native.journey.ts` adds the fixture with 16 frames.
 
 ### P2.6a the inset panel
 
