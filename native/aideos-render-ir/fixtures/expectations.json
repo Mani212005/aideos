@@ -470,7 +470,7 @@
     },
     "invalid/unsupported-version.json": {
       "kind": "unsupported_version",
-      "found": "aideos.render/6"
+      "found": "aideos.render/7"
     },
     "invalid/wrong-type.json": {
       "kind": "invalid_document",

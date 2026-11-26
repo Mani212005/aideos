@@ -15,7 +15,7 @@ use aideos_render::{Format, Renderer};
 /// The usage text.
 const USAGE: &str = "usage: aideos-render <ir.json> --frame N [--format long|reel] [--package DIR] [--gpu] --out frame.png
 
-Renders one frame of an aideos.render Render IR (/1 to /5) to a PNG.
+Renders one frame of an aideos.render Render IR (/1 to /6) to a PNG.
   --frame N        frame number, 0 to durationFrames - 1
   --format F       long (16:9) or reel (9:16); defaults to long when declared, else reel
   --package DIR    directory asset paths resolve against; defaults to the IR file's directory

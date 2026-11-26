@@ -4,7 +4,7 @@ File Description: Reference for the native renderer `native/aideos-render` (R2 a
 
 # Native renderer (`native/aideos-render`)
 
-`aideos-render` evaluates a Render IR [`aideos.render/1` through `/5`](RENDER_IR.md) as a pure function of the frame
+`aideos-render` evaluates a Render IR [`aideos.render/1` through `/6`](RENDER_IR.md) as a pure function of the frame
 number and draws the frame with Skia. Skia's **CPU rasterizer is the deterministic reference**; an
 optional GPU path draws the same frame through OpenGL. There is no browser, no DOM and no HTML.
 
@@ -23,7 +23,7 @@ The native renderer accepts per-glyph tracks and a 2D shutter (2 to 16 samples) 
 indices, sample placement, sharp chrome, and the explicit 3D and overlay-order restrictions are documented
 in [Render IR effects](RENDER_IR.md#effects-aideosrender4). The film emitter and editor do not yet write or
 preview those fields. Existing versions use the old integer frame path and keep their output unchanged.
-SkSL transitions and closed-form particles remain future work.
+Version `/6` adds native-only SkSL fade and wipe transitions and seeded scene-space particles. See [Render IR effects](RENDER_IR.md#native-transitions-and-particles-aideosrender6).
 
 ## Where things live
 
@@ -374,7 +374,7 @@ differ per format.
 | The camera (`compileCameraTrack`, including the hold push) | per-frame linear keyframes, compressed to where the slope changes |
 | Asset-level Catmull-Rom tracks | per-frame keyframes from `compileScene` |
 | The end card's freeze and slow push (`Film.tsx`), a shot's drift | the stage holds the story's last frame; the push multiplies the camera zoom, and the text cards sit in one overlay group scaled about the frame centre |
-| `frame` shots' `TextReveal` | a scrim band (`gradient` rect), one `text` node per word laid out like the flex row (greedy wrap, rows centred, block centred in the stage margins) with the per-word entrance as per-frame `opacity` and `y` keyframes, the accent word's core and tail in their colours, and its underline as a rect whose `scaleX` and `x` keyframes draw it from the left |
+| `frame` shots' `TextReveal` | a scrim band (`gradient` rect), one `text` node per word laid out like the flex row (greedy wrap; rows start at the block's left, as TextReveal's `flex-start` row does, and the block, as wide as its content up to the stage, is centred in the stage margins, so a wrapped headline starts at the stage's left edge) with the per-word entrance as per-frame `opacity` and `y` keyframes, the accent word's core and tail in their colours, and its underline as a rect whose `scaleX` and `x` keyframes draw it from the left |
 | `StatCounter` | one group per value on screen (number, muted suffix baseline-aligned in the number's letter spacing, uppercase label), visible while that value shows, inside the block's entrance |
 | The rail | `rail` with the label in the muted colour, the bar in ink, chapters spanning their shots, `progressFrames` set to the story |
 | The end card | `endCard` with the `getEndCardLayout` geometry, the configured copy, `subscribePressFrame`, and the theme's surface, hairline, muted colour and faces |

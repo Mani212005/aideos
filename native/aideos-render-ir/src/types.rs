@@ -1,4 +1,4 @@
-//! File Description: The serde types of the Render IR (`aideos.render/1` through `/5`: `/4` adds glyph tracks and the 2D shutter, `/5` colour tracks and the dash offset element track on svg nodes), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
+//! File Description: The serde types of the Render IR (`aideos.render/1` through `/6`: `/4` adds glyph tracks and the 2D shutter, `/5` colour tracks and the dash offset element track on svg nodes, `/6` the native transition and particles), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
 //! Inputs and outputs: a JSON document that already passed the JSON Schema check -> a typed `RenderIr`; a `RenderIr` -> the same JSON again.
 //! Used by: crate::load, crate::semantic, and the native renderer crates that evaluate the IR.
 
@@ -49,6 +49,49 @@ pub struct RenderIr {
     pub audio: Vec<AudioClip>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shutter: Option<Shutter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transition: Option<Transition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub particles: Option<Vec<ParticleEmitter>>,
+}
+
+/// A solid-colour transition over the stage, leaving overlays sharp.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct Transition {
+    pub kind: TransitionKind,
+    pub direction: TransitionDirection,
+    pub start_frame: Whole,
+    pub duration_frames: Whole,
+    pub color: String,
+}
+
+/// Supported runtime shader transition shapes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TransitionKind { Fade, Wipe }
+
+/// Whether the stage is revealed or covered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TransitionDirection { In, Out }
+
+/// A bounded, deterministic stream of moving circles in scene coordinates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ParticleEmitter {
+    pub seed: Whole,
+    pub count: Whole,
+    pub start_frame: Whole,
+    pub lifetime_frames: Whole,
+    pub x: f64,
+    pub y: f64,
+    pub velocity_x: f64,
+    pub velocity_y: f64,
+    pub spread: f64,
+    pub gravity: f64,
+    pub radius: f64,
+    pub color: String,
 }
 
 /// Optional two-dimensional motion blur sampling for one delivered frame.
