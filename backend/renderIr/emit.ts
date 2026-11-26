@@ -162,8 +162,11 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   if (film.videoClips?.length) reasons.push("imported video clips are Phase 2");
   if (film.overlayClips?.length) reasons.push("standalone overlay clips are Phase 2");
   const theme = BACKGROUND_THEMES[film.theme?.background ?? "paper-white"] ?? BACKGROUND_THEMES["paper-white"];
-  // The blueprint grid and the dot matrix are lowered into the `/7` underlay (P2.4a); the paper grain (turbulence and lighting) is not yet.
+  // The blueprint grid and the dot matrix are lowered into the `/7` underlay for node-graph films only (P2.4a, measured on those); the paper grain (turbulence and lighting) is not yet.
   if (theme.gridType === "paper-fibers") reasons.push(`the ${theme.id} theme's ${theme.gridType} texture is not drawn natively`);
+  if (film.scene && (theme.gridType === "blueprint-grid" || theme.gridType === "subtle-dots")) {
+    reasons.push(`the ${theme.id} theme's ${theme.gridType} texture over a scene has not been measured against Remotion yet`);
+  }
   if (film.music || film.audio || film.sfx?.length || film.audioClips?.length) reasons.push("legacy music, effects and timeline audio clips are not mixed natively (library soundtracks are)");
   const soundtrack = normalizeFilmSoundtrack(film);
   if ((soundtrack.sections.length || soundtrack.sfx.length) && !usesSectionMixer(soundtrack)) reasons.push("path-only legacy soundtrack sections are not mixed natively (library soundtracks are)");
@@ -723,9 +726,9 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
     placement: { [format]: { x: 0.5, y: 0.5, w: width - 1, h: height - 1 } },
   });
 
-  // The theme texture under the canvas (Film.tsx draws it under the stage, pushed with it by the end card but not drifted), in the `/7` underlay.
+  // The theme texture under the canvas (Film.tsx draws it under the stage, pushed with it by the end card but not drifted), in the `/7` underlay; node-graph films only (nativeSupport refuses a textured scene film).
   const holdScale = (f: number) => (card && f >= card.from ? 1 + 0.01 * Math.min(1, (f - card.from) / Math.max(1, card.durationInFrames)) : 1);
-  const texture = film.videoClips?.length ? null : themeTexture(theme, width, height, holdScale, last);
+  const texture = film.videoClips?.length || film.scene ? null : themeTexture(theme, width, height, holdScale, last);
 
   const audio = resolveAudio(film, delivery);
   const ir: RenderIr = {

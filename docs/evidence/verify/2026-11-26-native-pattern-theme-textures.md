@@ -4,7 +4,7 @@
 
 - **Date**: 2026-11-26
 - **Branch / PR**: `fm/aideos-native-p24a-pattern-themes`
-- **Scope**: Render IR `aideos.render/7` (`underlay`: frame-space svg, image and group nodes between the background and the stage) in the zod schema, the validator, the generated JSON Schema, the Rust loader (types, version gate, semantic rules) and the renderer (underlay drawing, a top-level underlay group composited as a resampled layer); the emitter's theme texture (`backend/renderIr/emitThemeTexture.ts`) and `nativeSupport` (only `paper-fibers` is still refused); shared fixtures (`valid/underlay.json`, `invalid/v6-underlay.json`, `invalid/underlay-space.json`; the unsupported-version example moves from `/7` to `/8`); the fixtures `node-graph-blueprint` and `node-graph-dots`; the journey `theme_textures`; docs. Feature Map rows: Export & Rendering (native renderer, Render IR), Parity gates.
+- **Scope**: Render IR `aideos.render/7` (`underlay`: frame-space svg, image and group nodes between the background and the stage) in the zod schema, the validator, the generated JSON Schema, the Rust loader (types, version gate, semantic rules) and the renderer (underlay drawing, a top-level underlay group composited as a resampled layer); the emitter's theme texture (`backend/renderIr/emitThemeTexture.ts`) and `nativeSupport` (`paper-fibers` is refused for every film; the two patterns are lifted for node-graph films only, a film with a scene on those themes is refused as not measured); shared fixtures (`valid/underlay.json`, `invalid/v6-underlay.json`, `invalid/underlay-space.json`; the unsupported-version example moves from `/7` to `/8`); the fixtures `node-graph-blueprint` and `node-graph-dots`; the journey `theme_textures`; docs. Feature Map rows: Export & Rendering (native renderer, Render IR), Parity gates.
 - **Risk tier**: Medium (films on the `blueprint` and `dot-grid` themes now render natively in `auto`; every other film is emitted and drawn exactly as before).
 
 ## What was measured first
@@ -68,6 +68,7 @@ above. The dot-grid fixture also puts the node-graph's dark glass cards on a lig
   `invalid/underlay-space.json` (`node_not_allowed` at `/underlay/0/kind`).
 - New fixtures `test_fixtures/packages/node-graph-blueprint` and `node-graph-dots`, and the journey `theme_textures` (weight
   110 s in `scripts/ciJourneyShards.ts`).
+- `backend/renderIr/emit.test.ts`, added to the existing "a film the native renderer cannot draw is refused with every reason" test (Firstmate decision A): the native probe scene film on the blueprint theme is refused with the "texture over a scene has not been measured" reason, and the same film without its scene on the blueprint theme is not refused.
 - No assertion, tolerance, threshold, bar or golden is loosened or removed.
 
 ## Fix attempts

@@ -384,7 +384,7 @@ differ per format.
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
-rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, the paper-grain theme texture (`paper-fibers`; the blueprint grid and the dot matrix are drawn since P2.4a), legacy (non-library)
+rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, the paper-grain theme texture (`paper-fibers`; the blueprint grid and the dot matrix are drawn since P2.4a, for node-graph films only: a scene film on those themes is refused), legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
@@ -761,7 +761,9 @@ with bilinear sampling) rather than redrawing it, so a top-level underlay group 
 choice for both formats of `test_fixtures/packages/node-graph-blueprint` and `node-graph-dots` (node-graph-flat on each
 theme; native must be chosen) and compares 21 frames of each (20, 45, 150, 255, 345, 435, 525, 570, 600 and the end card's
 660 and 749 long, 645 reel) with Remotion's stills at the stage bar 0.995, none left out. `paper-fibers` (turbulence and
-lighting) is still refused (P2.4b).
+lighting) is still refused (P2.4b). The textures are drawn for node-graph films only: a film with a scene (an SVG scene film, a Three
+stage or a character film) on one of these themes is refused ("the texture over a scene has not been measured against Remotion
+yet") until a journey measures the texture together with a scene.
 
 ### P2.1 SVG filters: glow and drop shadow
 
