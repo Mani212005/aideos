@@ -1,4 +1,4 @@
-//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Opt-in seeded particles and SkSL transitions are evaluated per sample. The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Drawing depends only on the IR, assets and frame number.
+//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Opt-in seeded particles and SkSL transitions are evaluated per sample. The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Translucent fills and every compositing layer's restore blend in floating point and round, as the reference Chrome's GPU raster does (Skia's 8-bit legacy blitters truncate). Drawing depends only on the IR, assets and frame number.
 //! Inputs and outputs: a canvas, the loaded film (`Loaded`), a format, a frame number and the frame size -> pixels on the canvas.
 //! Used by: crate::renderer (CPU raster and the optional GPU surface).
 
@@ -165,6 +165,23 @@ pub(crate) fn exact_colour(colour: skia_safe::Color) -> Option<skia_safe::Shader
     SOLID_COLOUR.with(|effect| effect.as_ref().and_then(|e| e.make_shader(skia_safe::Data::new_copy(&uniform), &[], None)))
 }
 
+thread_local! {
+    /// The identity colour filter `rounding_layer_paint` puts on a layer's restore (compiled once per thread).
+    static IDENTITY_FILTER: Option<skia_safe::RuntimeEffect> = skia_safe::RuntimeEffect::make_for_color_filter("half4 main(half4 c) { return c; }", None).ok();
+}
+
+/// The paint a compositing layer is restored with at `alpha`. Skia restores a plain layer through its legacy 8-bit sprite
+/// blitter, which truncates (`(d * (256 - a)) >> 8`); the reference Chrome (swangle, GPU raster) blends a layer in floating
+/// point and rounds. An identity runtime colour filter sends the restore through the float pipeline, which rounds as it does.
+pub(crate) fn rounding_layer_paint(alpha: f32) -> skia_safe::Paint {
+    let mut paint = skia_safe::Paint::default();
+    paint.set_alpha_f(alpha);
+    if let Some(filter) = IDENTITY_FILTER.with(|e| e.as_ref().and_then(|e| e.make_color_filter(skia_safe::Data::new_empty(), None))) {
+        paint.set_color_filter(filter);
+    }
+    paint
+}
+
 /// Stage siblings in drawing order: by svg or image `layer` (groups count as layer 0), document order breaking ties.
 fn stage_order(nodes: &[Node]) -> Vec<&Node> {
     let mut ordered: Vec<&Node> = nodes.iter().collect();
@@ -189,7 +206,7 @@ fn with_opacity(canvas: &Canvas, opacity: f64, body: impl FnOnce()) {
         return;
     }
     if opacity < 1.0 {
-        canvas.save_layer_alpha_f(None, opacity as f32);
+        canvas.save_layer(&skia_safe::canvas::SaveLayerRec::default().paint(&rounding_layer_paint(opacity as f32)));
         body();
         canvas.restore();
     } else {
