@@ -120,13 +120,12 @@ const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body"]);
 /** The shared IR identifier rule applied to generated asset and node identifiers. */
 const IR_ID = new RegExp(ID_PATTERN);
 
-/** The characters whose line breaks were measured against Chrome: ASCII letters, digits, white space and . , ; : ' " ! ? ( ) &. */
-const MEASURED_BODY_CHARS = /^[A-Za-z0-9 \t\r\n.,;:'"!?()&]*$/;
+/** The word shapes whose line breaks were measured against Chrome: optional opening mark, a lone & or letters and digits with internal . , ' groups, optional closing mark, optional one trailing . , ; : ! ?. */
+const MEASURED_BODY_WORD = /^[("']?(?:&|[A-Za-z0-9]+(?:[.,'][A-Za-z0-9]+)*)[)"']?[.,;:!?]?$/;
 
-/** The first character of Body copy outside the measured set (one Chrome's UAX 14 breaker may break at), or undefined when all are measured. */
-function firstUnmeasuredBodyChar(text: string): string | undefined {
-  if (MEASURED_BODY_CHARS.test(text)) return undefined;
-  return Array.from(text).find((ch) => !MEASURED_BODY_CHARS.test(ch));
+/** The first white-space separated word of Body copy outside the measured shapes (one Chrome's UAX 14 breaker may break inside), or undefined when all are measured. */
+function firstUnmeasuredBodyWord(text: string): string | undefined {
+  return text.split(/[ \t\r\n]+/).find((word) => word !== "" && !MEASURED_BODY_WORD.test(word));
 }
 
 /**
@@ -197,9 +196,9 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       if (!SUPPORTED_BLOCKS.has(block.c)) reasons.push(`shot ${shot.id}: ${block.c} blocks are Phase 2`);
       const size = block.c === "Body" && FORMAT_SIZE[format] ? bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)) : undefined;
       if (size && size.advance === undefined) reasons.push(`shot ${shot.id}: Body copy at ${size.fs} px has no measured Chrome advance size`);
-      const unmeasured = block.c === "Body" ? firstUnmeasuredBodyChar(block.text) : undefined;
+      const unmeasured = block.c === "Body" ? firstUnmeasuredBodyWord(block.text) : undefined;
       if (unmeasured !== undefined) {
-        reasons.push(`shot ${shot.id}: Body copy contains ${JSON.stringify(unmeasured)} (U+${unmeasured.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}); only white-space line breaks are measured against Chrome, so copy outside ASCII letters, digits, white space and . , ; : ' " ! ? ( ) & is refused`);
+        reasons.push(`shot ${shot.id}: Body copy word ${JSON.stringify(unmeasured)} is not a measured word shape; only white-space line breaks between measured word shapes (letters and digits, with an optional opening or closing ( ) " ' mark, internal . , ' groups and one trailing . , ; : ! ?) are measured against Chrome`);
       }
     }
     if (shot.needsFootage) reasons.push(`shot ${shot.id}: footage is Phase 2`);

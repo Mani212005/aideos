@@ -805,11 +805,14 @@ has three cards: copy the pretty pass re-breaks in both formats, a wrapping head
 copy. Measured against Remotion (swangle), 86 frames over both formats (every 10th frame across the cards, the shots around
 them and the end card): all at or above 0.995, lowest 0.99848. The journey `backend/journeys/text_cards.journey.ts` pins native
 selection and 27 of those frames. A `Body` on its own, other block pairs and other primitives stay refused. Only white-space
-line breaks are measured: a `Body` whose text has any character outside ASCII letters, digits, white space and
-`. , ; : ' " ! ? ( ) &` (a hyphen, slash, dash, soft hyphen, zero-width space, non-breaking space, any other break
-opportunity of Chrome's UAX 14 breaker) is refused with a reason naming the shot and the first such character, and the film
-stays with Remotion. That set was measured with a second differential of 400 generated sentences with digits and the
-punctuation (397 carrying at least one): every word-prefix width within 1/64 px and the same line breaks in both formats.
+line breaks between measured word shapes are drawn: each word (the copy split at white space) must be an optional opening `(`,
+`"` or `'`, then a lone `&` or ASCII letters and digits with optional internal groups of one `.`, `,` or `'` followed by more
+letters or digits (`1,000`, `3.5`, `model's`), then an optional closing `)`, `"` or `'`, then an optional single trailing
+`. , ; : ! ?`. A `Body` with any other word (a hyphen, slash, dash, soft hyphen, zero-width space or non-breaking space, or
+punctuation glued to the next word, any other break opportunity of Chrome's UAX 14 breaker) is refused with a reason naming
+the shot and the first such word, and the film stays with Remotion. Those shapes are what two differentials measured (400
+generated sentences of letters, and 400 more with digits and the punctuation, 397 carrying at least one): every word-prefix
+width within 1/64 px and the same line breaks in both formats.
 
 ### P2.6a the inset panel
 

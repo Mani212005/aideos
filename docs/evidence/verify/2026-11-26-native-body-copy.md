@@ -28,7 +28,7 @@ which needs a native video decode path and a Render IR version (`/8`, moving the
 - Character-set differential (the same probe, 400 more generated sentences with digits (1, 12, 2048, 3.5, 1,000, 2026, 0.5) and the
   punctuation `; : ' " ! ? ( ) &`, 397 of 400 containing at least one): every word-prefix width within 1/64 px at the measured
   sizes (2722 prefixes long, 4756 reel) and the same lines for all 400 in both formats; the pretty pass changes 48 (long) and
-  22 (reel) of them. This backs the character set `nativeSupport` accepts for a `Body`.
+  22 (reel) of them. This backs the word shapes `nativeSupport` accepts for a `Body`.
 
 ## Parity: native against Remotion (swangle), stage SSIM by ffmpeg
 
@@ -62,9 +62,12 @@ reel and long): 86 frames, none under 0.995; lowest long 240 0.99848.
 ## Still refused (planned)
 
 - A `Body` on its own, any other block pair, the other primitives (P2.5), and a body size with no measured Chrome advance size.
-- A `Body` whose text has a character outside ASCII letters, digits, white space and `. , ; : ' " ! ? ( ) &` (a hyphen, slash,
-  dash, soft hyphen, zero-width space, non-breaking space or any other break opportunity of Chrome's UAX 14 line breaker): only
-  white-space breaks are measured, so `nativeSupport` names the shot and the first such character and the film stays with Remotion.
+- A `Body` with a word (the copy split at white space) outside the measured shape: an optional opening `(`, `"` or `'`, then a
+  lone `&` or ASCII letters and digits with optional internal groups of one `.`, `,` or `'` followed by more letters or digits
+  (`1,000`, `3.5`, `model's`), then an optional closing `)`, `"` or `'`, then an optional single trailing `. , ; : ! ?`. A
+  hyphen, slash, dash, soft hyphen, zero-width space, non-breaking space or punctuation glued to the next word adds a break
+  opportunity of Chrome's UAX 14 line breaker that was not measured, so `nativeSupport` names the shot and the first such word
+  and the film stays with Remotion.
 
 ## Test changes
 
