@@ -13,6 +13,7 @@ import type { CompiledFrame, CompiledEntity } from "./compile";
 import { PALETTE, useTokens } from "../tokens";
 import { useAccent } from "../accent";
 import { parseSvgDocument, type SvgDocument } from "./svgDocument";
+import { createDocumentCache } from "./documentCache";
 import { renderSvgNodes } from "./svgReact";
 import { rasterBox, rasterElementIds } from "./raster";
 
@@ -66,22 +67,14 @@ function rasterDocument(entity: CompiledEntity, href: string): SvgDocument["chil
 
 // Maps semantic token to active hex color
 
-/** Parsed-document cache keyed by source text, so a repeated asset parses once per process. */
-const parsedDocumentCache = new Map<string, SvgDocument | null>();
-
-/** Parses an asset's SVG source, memoized, returning null when the source will not parse. */
-function getParsedDocument(source: string): SvgDocument | null {
-  const cached = parsedDocumentCache.get(source);
-  if (cached !== undefined) return cached;
-  let doc: SvgDocument | null = null;
+/** Parses each recently used SVG once, including invalid sources. */
+const getParsedDocument = createDocumentCache((source) => {
   try {
-    doc = parseSvgDocument(source);
+    return parseSvgDocument(source);
   } catch {
-    doc = null;
+    return null;
   }
-  parsedDocumentCache.set(source, doc);
-  return doc;
-}
+}, 128);
 
 /**
  * Pure React SVG component that renders a compiled scene frame.
@@ -98,13 +91,8 @@ export const SceneView: React.FC<SceneViewProps> = ({
   onMountEntityRef,
 }) => {
   const palette = useTokens();
-  let accentColor = accent || PALETTE.accent;
-  try {
-    const ctxAccent = useAccent();
-    if (ctxAccent) accentColor = ctxAccent;
-  } catch {
-    // fallback
-  }
+  const ctxAccent = useAccent();
+  const accentColor = ctxAccent || accent || PALETTE.accent;
 
   // Renders one environment asset from its own SVG document, or the placeholder when it has none.
   const renderEnvironmentAsset = (entity: CompiledEntity) => {
