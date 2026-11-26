@@ -780,9 +780,14 @@ fn filter_ref(attrs: &BTreeMap<String, String>) -> Result<Option<String>, SvgErr
     match attrs.get("filter").map(|s| s.trim()) {
         None | Some("none") => Ok(None),
         Some(v) => match v.strip_prefix("url(") {
-            Some(_) => match paint(v, "filter")? {
-                Paint::Url(id) => Ok(Some(id)),
-                _ => err(format!("filter: {v:?} is not a url(#id) reference")),
+            Some(rest) => match rest.split_once(')') {
+                Some((_, tail)) if !tail.trim().is_empty() => err(format!(
+                    "filter: {v:?} has trailing text after the url(#id) reference (a filter list is not supported)"
+                )),
+                _ => match paint(v, "filter")? {
+                    Paint::Url(id) => Ok(Some(id)),
+                    _ => err(format!("filter: {v:?} is not a url(#id) reference")),
+                },
             },
             None => err(format!(
                 "filter: {v:?} is not supported (only a url(#id) reference to a <filter> is)"
