@@ -691,7 +691,7 @@ boxes keep their fractional height (`1.2` at 18 px is 21.6) while each glyph bas
 painted box (the tag chip) is snapped to whole pixels, `box-shadow` is a Gaussian of deviation blur / 2 (fitted 20.25 for a
 40 px shadow and 13.75 for 28 px against Remotion's Chrome), an outer shadow is cut out of the box and an inset one kept in
 the padding box, and `backdrop-filter: blur(12px)` is a blurred copy (deviation 12) of what lies behind the card, the
-canvas colour and the edges that pass under it, cut to the card (a lit card is 6 to 18% opaque, so it shows). The chip
+canvas colour and the edges that pass under it, cut to the card (a lit card is 6 to 18% opaque, so it shows; since P2.2c only what is inside the card, mirrored at its edges, see below). The chip
 asks for JetBrains Mono 600, which `tokens.ts` does not load, so Chrome draws 700 and so does the canvas. Remotion's
 `interpolateColors` (channels rounded, alpha to three decimals) is reproduced, one hold keyframe per change.
 
@@ -713,12 +713,23 @@ canvas draws what Remotion draws, and changing the card is a design decision out
 `nativeSupport` accepts a node-graph film (no `film.scene`) whose camera angle is `flat` or `top-down` in every shot; the
 other angles stay refused until P2.3, and everything else `nativeSupport` checks still applies (only the `smooth-dark`
 theme has no texture, so it is the one node-graph theme drawn natively; panels other than `frame` and `none`, blocks
-other than TextReveal and StatCounter, several blocks in a shot and footage stay refused). The journey
-`backend/journeys/node_graph_native.journey.ts` asks the renderer choice for both formats of
-`test_fixtures/packages/node-graph-flat` (native must be chosen) and compares 28 frames (20, 45, 60, 100, 150, 250, 255,
-330, 345, 420, 435, 520, 525 and an end-card frame, long and reel) with Remotion's stills at the stage bar 0.995, none
-left out. Every 15th frame of the whole delivered video, long and reel (0 to 735, and 749), was measured too: all at or
-above 0.995 against swangle, lowest long 270 at 0.99565.
+other than TextReveal and StatCounter, several blocks in a shot and footage stay refused). Cards that overlap (the lit
+card's 2% lift included) are refused too: Chrome's `backdrop-filter` blurs the card behind into the card in front, which
+the canvas does not draw (measured 0.990). The journey `backend/journeys/node_graph_native.journey.ts` asks the renderer
+choice for both formats of two fixtures (native must be chosen) and compares their frames with Remotion's stills at the
+stage bar 0.995, none left out: `test_fixtures/packages/node-graph-flat` at 20, 45, 60, 100, 150, 250, 255, 330, 345, 420,
+435, 520, 525 and an end-card frame, and `test_fixtures/packages/node-graph-cases` (a bright amber accent, small nodes at
+a zoom of 9.3, cards 46 units apart, a StatCounter over the canvas) at every shot's midpoint, its lowest sweep frames and
+an end-card frame. Every 15th frame of each whole delivered video, long and reel, was measured too: all at or above
+0.995 against swangle (node-graph-flat: 95 frames, lowest long 270 at 0.99541; node-graph-cases: 88 frames, lowest long
+345 at 0.99510).
+
+A card's backdrop is drawn as Chrome draws it: Chrome blurs only what lies inside the card's border box, with mirrored
+edges (measured: light just outside a card never reaches its backdrop, and a bar 6 to 12 px inside the edge reads 79 at
+the edge, as a mirror gives, where a clamp would give 47). The canvas copies what is behind the card (the canvas colour
+and the edges passing under it), clips the copy to the box, adds its mirror images across each edge and corner, blurs
+that and clips it to the rounded box. SVG `feGaussianBlur` itself ignores `edgeMode` in Chrome (none, mirror and
+duplicate draw the same), so the native SVG subset still refuses it and the mirror is built from plain SVG.
 
 What closed the gap was not the blur. The reference is Remotion's Chrome with `AIDEOS_GL=swangle` (CI and the goldens),
 whose GPU raster blends a layer in floating point and rounds: native layer restores were truncating (fixed in #324), and

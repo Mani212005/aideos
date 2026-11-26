@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "node-graph-cases",
+  "title": "Node graph coverage: bright accent, small nodes above the shadow cap zoom, adjacent cards, StatCounter over the canvas (synthetic test fixture)",
+  "fps": 30,
+  "accent": "#F59E0B",
+  "theme": {
+    "background": "smooth-dark",
+    "fontFamily": "geist",
+    "cameraAngle": "flat",
+    "accent": "#F59E0B"
+  },
+  "chapters": [
+    "Counts",
+    "Overlap"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "tiny-a",
+        "label": "Tokens",
+        "sub": "Input",
+        "x": -300,
+        "y": -120,
+        "w": 120,
+        "h": 48
+      },
+      {
+        "id": "tiny-b",
+        "label": "Heads",
+        "sub": "Split",
+        "x": -140,
+        "y": -120,
+        "w": 120,
+        "h": 48
+      },
+      {
+        "id": "back",
+        "label": "Encoder",
+        "sub": "Twelve Layers",
+        "x": 40,
+        "y": 40,
+        "w": 220,
+        "h": 64
+      },
+      {
+        "id": "front",
+        "label": "Decoder",
+        "sub": "Cross Attention",
+        "x": 150,
+        "y": 150,
+        "w": 220,
+        "h": 64
+      },
+      {
+        "id": "result",
+        "label": "Output",
+        "sub": "Logits",
+        "x": -200,
+        "y": 200,
+        "w": 200,
+        "h": 64
+      }
+    ],
+    "edges": [
+      {
+        "from": "tiny-a",
+        "to": "tiny-b"
+      },
+      {
+        "from": "tiny-b",
+        "to": "back"
+      },
+      {
+        "from": "back",
+        "to": "front",
+        "label": "feeds"
+      },
+      {
+        "from": "front",
+        "to": "result"
+      },
+      {
+        "from": "tiny-a",
+        "to": "result",
+        "dashed": true
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "count",
+      "dur": 3.0,
+      "stage": "frame",
+      "look": "tiny-a",
+      "move": "cut",
+      "drift": true,
+      "zoom": 1,
+      "scriptText": "Twelve thousand tokens go in.",
+      "blocks": [
+        {
+          "c": "StatCounter",
+          "to": 12000,
+          "label": "tokens per request",
+          "format": "plain"
+        }
+      ]
+    },
+    {
+      "id": "tiny",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "tiny-b",
+      "move": "zoom-in",
+      "drift": true,
+      "zoom": 1.2,
+      "scriptText": "They split across the heads.",
+      "blocks": []
+    },
+    {
+      "id": "overlap",
+      "dur": 3.0,
+      "stage": "none",
+      "look": [
+        "back",
+        "front"
+      ],
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "The encoder feeds the decoder.",
+      "blocks": []
+    },
+    {
+      "id": "front-lit",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "front",
+      "move": "zoom-in",
+      "drift": true,
+      "zoom": 1.1,
+      "scriptText": "The decoder attends across.",
+      "blocks": []
+    },
+    {
+      "id": "back-lit",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "back",
+      "move": "pan",
+      "drift": true,
+      "zoom": 1.1,
+      "scriptText": "The encoder holds the context.",
+      "blocks": []
+    },
+    {
+      "id": "end",
+      "dur": 3.0,
+      "stage": "frame",
+      "look": "all",
+      "move": "zoom-out",
+      "drift": true,
+      "zoom": 1,
+      "scriptText": "Twelve layers, one answer.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Twelve layers, one answer.",
+          "size": "headline",
+          "accentWord": "one"
+        }
+      ]
+    }
+  ]
+}

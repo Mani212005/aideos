@@ -1,5 +1,5 @@
 /**
- * File Description: Behavioural tests of the node-graph canvas emitter (native renderer Phase 2, P2.2b) through the public emitter: a flat node-graph film is drawn natively (P2.2c), and a 3D camera angle is refused; the flat fixture film emits a valid `aideos.render/5` document whose camera puts every card where `camera.ts`'s `projectBox` puts it on every story frame; a card is ghosted before its node arrives, lit (accent border, lit background, 2% lift) once its shot has held on it, and resting again after; and a label too wide for its card wraps onto a second line with its tag chip on whole units.
+ * File Description: Behavioural tests of the node-graph canvas emitter (native renderer Phase 2, P2.2b) through the public emitter: a flat node-graph film is drawn natively (P2.2c), and a 3D camera angle is refused; the flat fixture film emits a valid `aideos.render/5` document whose camera puts every card where `camera.ts`'s `projectBox` puts it on every story frame; a card is ghosted before its node arrives, lit (accent border, lit background, 2% lift) once its shot has held on it, and resting again after; overlapping cards are refused with both named (cards that only come close are drawn); and a label too wide for its card wraps onto a second line with its tag chip on whole units.
  * Inputs and outputs: test_fixtures/packages/node-graph-flat and the fake measurer -> asserted IR values and canvas SVG.
  * Used by: npm test (Node test runner).
  */
@@ -123,4 +123,16 @@ test("a label too wide for its card wraps onto a second line, and the tag chip s
   assert.ok(lines.every((m) => Number.isInteger(Number(m[1]))), "baselines on whole units");
   const chip = new RegExp(`<rect id="node-${index}-chip" x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"`).exec(svg.text);
   assert.ok(chip && chip.slice(1).every((v) => Number.isInteger(Number(v))), "the chip box is snapped to whole units");
+});
+
+// Firstmate's decision (P2.2c coverage): a case that cannot clear the 0.995 bar against Remotion is refused natively with a
+// clear reason. Overlapping cards measured 0.990 (a card's backdrop blur over another card), so they stay on Remotion.
+test("overlapping node-graph cards are refused with both cards named, and cards that only come close are drawn", () => {
+  const cases = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../test_fixtures/packages/node-graph-cases/film.json"), "utf8")) as Film;
+  assert.deepEqual(nativeSupport(cases, "long"), []);
+  const overlapped = { ...cases, canvas: { ...cases.canvas, nodes: cases.canvas.nodes.map((nd) => (nd.id === "front" ? { ...nd, y: 80 } : nd)) } } as Film;
+  for (const format of ["long", "reel"] as const) {
+    const reasons = nativeSupport(overlapped, format);
+    assert.deepEqual(reasons, ['the node-graph cards "back" and "front" overlap: a card\'s backdrop blur over another card is not drawn natively']);
+  }
 });

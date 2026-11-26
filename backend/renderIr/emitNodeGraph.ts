@@ -1,5 +1,5 @@
 /**
- * File Description: The node-graph canvas of the Render IR emitter (native renderer Phase 2, P2.2b): lowers `CanvasGraph.tsx` with the flat camera into one generated SVG asset in canvas units plus the tracks that animate it, and gives the camera `camAt` solves as IR camera keyframes. Every number is read from the modules the Remotion render reads (`camera.ts` for the timeline, camera, arrivals and edge paths, `motion.ts` for the entrance curve, `tokens.ts` for the accent and muted colours), and each piece of the component is drawn as Chrome draws it: a card is its 145 degree gradient under its border (Chrome draws the `1.5px` border at 1 px, centred on its own band so the rounded corners match), its CSS `box-shadow` list becomes SVG filter shadows (blur radius / 2 as the deviation, outer shadows cut out of the box, inset ones kept inside the padding box), its text is laid out as the flex column lays it out (packed from the top when it overflows, as Chrome does), and the live state, the entrance, the beacon pulse, the breathing glow and the travelling packets are element, colour and dash offset tracks sampled per frame. Remotion's `interpolateColors` rounding is reproduced so a border's colour matches frame for frame. The card's `backdrop-filter` is drawn as a blurred copy of what lies behind it (the canvas colour and the edges that pass under it) cut to its box.
+ * File Description: The node-graph canvas of the Render IR emitter (native renderer Phase 2, P2.2b): lowers `CanvasGraph.tsx` with the flat camera into one generated SVG asset in canvas units plus the tracks that animate it, and gives the camera `camAt` solves as IR camera keyframes. Every number is read from the modules the Remotion render reads (`camera.ts` for the timeline, camera, arrivals and edge paths, `motion.ts` for the entrance curve, `tokens.ts` for the accent and muted colours), and each piece of the component is drawn as Chrome draws it: a card is its 145 degree gradient under its border (Chrome draws the `1.5px` border at 1 px, centred on its own band so the rounded corners match), its CSS `box-shadow` list becomes SVG filter shadows (blur radius / 2 as the deviation, outer shadows cut out of the box, inset ones kept inside the padding box), its text is laid out as the flex column lays it out (packed from the top when it overflows, as Chrome does), and the live state, the entrance, the beacon pulse, the breathing glow and the travelling packets are element, colour and dash offset tracks sampled per frame. Remotion's `interpolateColors` rounding is reproduced so a border's colour matches frame for frame. The card's `backdrop-filter` is drawn as Chrome draws it: a copy of what lies behind it (the canvas colour and the edges that pass under it) clipped to its box and mirrored at the box's edges, blurred and cut to the rounded box. Cards that overlap are refused (`nodeGraphCanvasReasons`): a card's backdrop over another card is not drawn.
  * Inputs and outputs: a node-graph film, its timeline, a format, the text measurer and the frame clock -> the canvas SVG source, its element ids, element and colour tracks, the canvas opacity track and the camera keyframes.
  * Used by: backend/renderIr/emit.ts (build, for every node-graph film), backend/renderIr/emitNodeGraph.test.ts, backend/journeys/node_graph_native.journey.ts (through the emitter).
  */
@@ -302,16 +302,30 @@ export function emitNodeGraphCanvas(input: NodeGraphInput): NodeGraphCanvas {
     parts.push(`<rect id="${id(`${k}-shadow`)}" ${rect(box, RADIUS)} fill="#000000" filter="url(#${k}-shadow-f)"/>`);
     opacityTrack(`${k}-shadow`, (f) => (live(node.id, f) ? 0 : 1));
 
-    // The backdrop (`backdrop-filter: blur(12px)`): what lies behind the card, blurred and cut to its box. Behind a card
-    // on this canvas is the canvas colour and any edge passing under it; a card no edge reaches needs none (blurring a
-    // flat colour changes nothing). The filter runs before the clip, as Chrome applies a backdrop filter.
+    // The backdrop (`backdrop-filter: blur(12px)`): what lies behind the card, blurred and cut to its box. Chrome blurs only
+    // what is inside the card's border box, with mirrored edges (light just outside the box never reaches it, and the box's
+    // edge does not darken), so the copy is the content clipped to the box plus its mirror images across each edge and
+    // corner, blurred, then cut to the rounded box. Behind a card on this canvas is the canvas colour and any edge passing
+    // under it; a card no edge reaches needs none (blurring a flat colour changes nothing).
     const reach = 3 * BACKDROP_BLUR;
-    const region = { x0: box.x - reach, y0: box.y - reach, x1: box.x + box.w + reach, y1: box.y + box.h + reach };
-    const behind = edgeDraws.filter((e) => e.box.x0 < region.x1 && e.box.x1 > region.x0 && e.box.y0 < region.y1 && e.box.y1 > region.y0);
+    const behind = edgeDraws.filter((e) => e.box.x0 < box.x + box.w && e.box.x1 > box.x && e.box.y0 < box.y + box.h && e.box.y1 > box.y);
     if (behind.length) {
+      const region = { x0: box.x - reach, y0: box.y - reach, x1: box.x + box.w + reach, y1: box.y + box.h + reach };
       defs.push(`<clipPath id="${k}-clip"><rect ${rect(box, RADIUS)}/></clipPath>`);
+      defs.push(`<clipPath id="${k}-bd-box"><rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.w)}" height="${n(box.h)}"/></clipPath>`);
       defs.push(`<filter id="${k}-backdrop-f" filterUnits="userSpaceOnUse" x="${n(region.x0)}" y="${n(region.y0)}" width="${n(region.x1 - region.x0)}" height="${n(region.y1 - region.y0)}" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="${BACKDROP_BLUR}"/></filter>`);
-      parts.push(`<g clip-path="url(#${k}-clip)"><g filter="url(#${k}-backdrop-f)"><rect x="${n(region.x0)}" y="${n(region.y0)}" width="${n(region.x1 - region.x0)}" height="${n(region.y1 - region.y0)}" fill="${input.canvasColor}"/>${behind.map((e) => e.draw(`${k}-bd-`)).join("")}</g></g>`);
+      const inBox = (prefix: string) => `<g clip-path="url(#${k}-bd-box)"><rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.w)}" height="${n(box.h)}" fill="${input.canvasColor}"/>${behind.map((e) => e.draw(prefix)).join("")}</g>`;
+      // A reflection across the left or right edge (sx -1 or 1) and the top or bottom edge (sy -1 or 1); 0 keeps the axis.
+      const mirror = (sx: number, sy: number) => {
+        const ex = sx < 0 ? box.x : box.x + box.w;
+        const ey = sy < 0 ? box.y : box.y + box.h;
+        return `matrix(${sx ? -1 : 1} 0 0 ${sy ? -1 : 1} ${n(sx ? 2 * ex : 0)} ${n(sy ? 2 * ey : 0)})`;
+      };
+      const copies = [inBox(`${k}-bd-`)];
+      for (const [sx, sy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+        copies.push(`<g transform="${mirror(sx, sy)}">${inBox(`${k}-bd${sx + 1}${sy + 1}-`)}</g>`);
+      }
+      parts.push(`<g clip-path="url(#${k}-clip)"><g filter="url(#${k}-backdrop-f)">${copies.join("")}</g></g>`);
     }
 
     // The background, its 145 degree gradient: resting and lit.
@@ -433,5 +447,12 @@ export function nodeGraphCanvasReasons(film: Film): string[] {
   const angles = new Set([film.theme?.cameraAngle ?? "flat", ...film.shots.map((s) => s.cameraAngle ?? film.theme?.cameraAngle ?? "flat")]);
   for (const a of angles) if (a !== "flat" && a !== "top-down") reasons.push(`the node-graph camera angle "${a}" (a CSS 3D perspective) is Phase 2 step P2.3`);
   if (film.canvas.nodes.length === 0) reasons.push("a node-graph film with no nodes has no canvas to draw");
+  // A card over an earlier card: Chrome's backdrop-filter blurs that card into it, and the canvas's backdrop copy carries
+  // only the canvas colour and the edges (measured 0.990 against Remotion). The lit card's 2% lift counts as overlap.
+  const lifted = (nd: { x: number; y: number; w: number; h: number }) => ({ x0: nd.x - 0.01 * nd.w, y0: nd.y - 0.01 * nd.h, x1: nd.x + 1.01 * nd.w, y1: nd.y + 1.01 * nd.h });
+  film.canvas.nodes.forEach((a, i) => film.canvas.nodes.slice(i + 1).forEach((b) => {
+    const [p, q] = [lifted(a), lifted(b)];
+    if (p.x0 < q.x1 && q.x0 < p.x1 && p.y0 < q.y1 && q.y0 < p.y1) reasons.push(`the node-graph cards "${a.id}" and "${b.id}" overlap: a card's backdrop blur over another card is not drawn natively`);
+  }));
   return reasons;
 }
