@@ -116,7 +116,7 @@ export class NativeUnsupportedError extends Error {
 }
 
 /** Block kinds the emitter lays out (the text cards of Phase 1). */
-const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip"]);
+const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip", "LayerStack"]);
 /** The shared IR identifier rule applied to generated asset and node identifiers. */
 const IR_ID = new RegExp(ID_PATTERN);
 
@@ -186,12 +186,14 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       // the first shot, or a shot that opens on a camera move.
       if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
       if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
-      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter or a TokenStrip natively`);
+      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip" && b.c !== "LayerStack")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter, a TokenStrip or a LayerStack natively`);
     } else if (shot.stage !== "frame" && shot.stage !== "none") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
     // P2.5a and P2.5b: the measured columns are the compiler's text card (a headline then its support copy, design.ts
     // `buildTextBlocks`) and its device card (a headline then a TokenStrip, `buildBlocksForShotVisual`).
-    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip");
-    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body or a TokenStrip is)`);
+    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "LayerStack");
+    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body, a TokenStrip or a LayerStack is)`);
+    if (shot.blocks.length === 1 && shot.blocks[0].c === "LayerStack" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a LayerStack on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
+    if (shot.blocks.some((b) => b.c === "LayerStack" && b.prompt !== undefined)) reasons.push(`shot ${shot.id}: a LayerStack prompt is not measured against Remotion yet`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "Body") reasons.push(`shot ${shot.id}: a Body block on its own is not measured against Remotion yet (only under a TextReveal)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "TokenStrip" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a TokenStrip on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     const strip = shot.blocks.find((b) => b.c === "TokenStrip");
@@ -628,6 +630,137 @@ function tokenStripNodes(ctx: LayoutCtx, id: string, block: { tokens: string[]; 
   };
 }
 
+/** Blink's `line-height: normal` for a face: the rounded ascent plus the rounded descent (the vendored fonts have no line gap). */
+function blinkNormalLineHeight(m: LineMetrics): number {
+  return Math.round(m.ascent) + Math.round(m.descent);
+}
+
+/** A box's edges as Blink paints its background and border: each edge rounded to a whole pixel. */
+function snapBox(x: number, y: number, w: number, h: number): { x: number; y: number; w: number; h: number } {
+  const sx = Math.round(x);
+  const sy = Math.round(y);
+  return { x: sx, y: sy, w: Math.round(x + w) - sx, h: Math.round(y + h) - sy };
+}
+
+/**
+ * Lays out a LayerStack (devices.tsx `LayerStack`, P2.5c) in `box`, the height its column leaves it (`flex: 1`): a stack of
+ * equal bars (`flex: 1`, a 6 px gap and a 28 px minimum for named layers, 3 px and 3 px otherwise) as wide as 640 px (named) or
+ * 460 px, at most 80% or 60% of the box, beside a label column (the top label, the lit step as "k / n" in the accent, the bottom
+ * label) spread top to bottom, the two centred together with a 2.5-grid gap. A linear sweep over the shot (devices.tsx
+ * `useSweep`) lights one bar at a time (from the bottom for named layers, from the top otherwise), marked by a small accent tab
+ * to its left. Named bars carry their label and dimension in mono. Each bar is drawn unlit outside its lit step, lit within it.
+ */
+function layerStackNodes(ctx: LayoutCtx, id: string, block: { count?: number; bottomLabel?: string; topLabel?: string; layers?: Array<string | { label: string; dim?: string }> }, start: number, index: number, box: { x: number; y: number; w: number; h: number }, duration: number, span: { from: number; to: number }): Node {
+  const px = ctx.layout.px;
+  const g = ctx.layout.grid;
+  const named = (block.layers ?? []).map((e) => (typeof e === "string" ? { label: e, dim: undefined as string | undefined } : { label: e.label, dim: e.dim }));
+  const rows = named.length > 0 ? named.length : block.count ?? 32;
+  const shown = [...named].reverse();
+  const gapPx = px(named.length > 0 ? 6 : 3);
+  const minH = px(named.length > 0 ? 28 : 3);
+  // The label column: label-style mono, as wide as its widest line; empty labels take no height.
+  const labelSize = Number(ctx.layout.label().fontSize);
+  const font = monoId(400);
+  const labelLineH = blinkNormalLineHeight(ctx.metrics(font, labelSize));
+  const labelW = (text: string) => (text ? ctx.width_({ text, font, size: labelSize, letterSpacing: 0.14 * labelSize }) : 0);
+  const top = (block.topLabel ?? "").toUpperCase();
+  const bottom = (block.bottomLabel ?? "").toUpperCase();
+  const counterText = (k: number) => `${k} / ${rows}`;
+  const labelColW = Math.max(labelW(top), labelW(bottom), labelW(counterText(rows)));
+  const stackW = Math.min(px(named.length > 0 ? 640 : 460), (named.length > 0 ? 0.8 : 0.6) * box.w);
+  const rowGap = g * 2.5;
+  const left = box.x + (box.w - (stackW + rowGap + labelColW)) / 2;
+  const labelX = left + stackW + rowGap;
+  const rowH = Math.max(minH, (box.h - gapPx * (rows - 1)) / rows);
+  const stackH = box.h;
+  const barY = (i: number) => box.y + i * (rowH + gapPx);
+  // The sweep: the lit step, its displayed bar, and the frames each step holds.
+  const sweepFrom = start + frames(MS.enter, ctx.fps);
+  const sweepSpan = Math.max(1, duration - frames(MS.enter + MS.move, ctx.fps));
+  const stepAt = (f: number) => Math.min(rows - 1, Math.floor(Math.max(0, Math.min(1, (f - sweepFrom) / sweepSpan)) * rows));
+  const litBar = (step: number) => (named.length > 0 ? rows - 1 - step : step);
+  const steps: Array<{ step: number; from: number; to: number }> = [];
+  for (let f = span.from; f < span.to; f++) {
+    const step = stepAt(f);
+    const last = steps[steps.length - 1];
+    if (last && last.step === step) last.to = f + 1;
+    else steps.push({ step, from: f, to: f + 1 });
+  }
+  const barSize = ctx.layout.type("body").fontSize * 0.85;
+  const barM = ctx.metrics(font, barSize);
+  const barLineH = blinkNormalLineHeight(barM);
+  const accent = ctx.accent;
+  const radius = px(2);
+  // One bar in one state: its fill, its 1 px border and, for a named layer, its label and dimension.
+  const bar = (key: string, i: number, lit: boolean): Node[] => {
+    const b = snapBox(left, barY(i), stackW, rowH);
+    const nodes: Node[] = [
+      { kind: "rect", id: `${key}-fill`, fill: lit ? hexAlpha(accent, 0.3) : cssColor(ctx.tokens.inkAt(0.03)), radius, tracks: [], placement: { [ctx.format]: b } },
+      { kind: "rect", id: `${key}-border`, radius: radius - 0.5, tracks: [], stroke: { color: lit ? accent : cssColor(ctx.tokens.rule()), width: 1 }, placement: { [ctx.format]: { x: b.x + 0.5, y: b.y + 0.5, w: b.w - 1, h: b.h - 1 } } },
+    ];
+    const part = shown[i];
+    if (part) {
+      const textY = barY(i) + 1 + (rowH - 2 - barLineH) / 2;
+      const labelWidth = ctx.width_({ text: part.label, font, size: barSize, letterSpacing: 0 });
+      nodes.push({
+        kind: "text", id: `${key}-label`, text: part.label, font, color: rgbHex(lit ? ctx.tokens.ink : ctx.tokens.muted), align: "left", lineHeight: barLineH / barSize, letterSpacing: 0, tracks: [],
+        placement: { [ctx.format]: { x: left + 1 + 1.5 * g, y: textY, w: labelWidth + barSize, h: barLineH, fontSize: barSize } },
+      });
+      if (part.dim) {
+        const dimW = ctx.width_({ text: part.dim, font, size: barSize, letterSpacing: 0 });
+        nodes.push({
+          kind: "text", id: `${key}-dim`, text: part.dim, font, color: lit ? accent : rgbHex(ctx.tokens.muted), align: "left", lineHeight: barLineH / barSize, letterSpacing: 0, tracks: [],
+          placement: { [ctx.format]: { x: left + stackW - 1 - 1.5 * g - dimW, y: textY, w: dimW + barSize, h: barLineH, fontSize: barSize } },
+        });
+      }
+    }
+    return nodes;
+  };
+  const group = (key: string, from: number, to: number, children: Node[]): Node => ({ kind: "group", id: key, visible: { fromFrame: from, toFrame: to }, x: 0, y: 0, scale: 1, rotation: 0, tracks: [], children });
+  const children: Node[] = [];
+  for (let i = 0; i < rows; i++) {
+    // Each bar is lit over the steps that light it (one run of frames) and unlit before and after.
+    const litSteps = steps.filter((s) => litBar(s.step) === i);
+    const litFrom = litSteps.length ? litSteps[0].from : span.to;
+    const litTo = litSteps.length ? litSteps[litSteps.length - 1].to : span.to;
+    if (litFrom > span.from) children.push(group(`${id}-r${i}-a`, span.from, litFrom, bar(`${id}-r${i}-a`, i, false)));
+    if (litTo > litFrom) children.push(group(`${id}-r${i}-lit`, litFrom, litTo, bar(`${id}-r${i}-lit`, i, true)));
+    if (litTo < span.to) children.push(group(`${id}-r${i}-b`, litTo, span.to, bar(`${id}-r${i}-b`, i, false)));
+  }
+  // The label column: items spread with space-between over the stack's height.
+  const items = [
+    { key: "top", text: top, color: rgbHex(ctx.tokens.muted) },
+    { key: "counter", text: "", color: accent },
+    { key: "bottom", text: bottom, color: rgbHex(ctx.tokens.muted) },
+  ];
+  const heights = items.map((it) => (it.key === "counter" || it.text ? labelLineH : 0));
+  const free = stackH - heights.reduce((a, b) => a + b, 0);
+  const itemTop = (k: number) => box.y + heights.slice(0, k).reduce((a, b) => a + b, 0) + (free / 2) * k;
+  const labelText = (key: string, text: string, color: string, y: number): Node => ({
+    kind: "text", id: key, text, font, color, align: "left", lineHeight: labelLineH / labelSize, letterSpacing: 0.14, tracks: [],
+    placement: { [ctx.format]: { x: labelX, y, w: labelW(text) + labelSize, h: labelLineH, fontSize: labelSize } },
+  });
+  if (top) children.push(labelText(`${id}-top`, top, items[0].color, itemTop(0)));
+  if (bottom) children.push(labelText(`${id}-bottom`, bottom, items[2].color, itemTop(2)));
+  for (const s of steps) {
+    const k = named.length > 0 ? s.step + 1 : litBar(s.step) + 1;
+    const lit = litBar(s.step);
+    children.push(group(`${id}-s${s.from}`, s.from, s.to, [
+      labelText(`${id}-s${s.from}-counter`, counterText(k), accent, itemTop(1)),
+      { kind: "rect", id: `${id}-s${s.from}-tab`, fill: accent, radius: px(1), tracks: [], placement: { [ctx.format]: { x: left - px(14), y: box.y + (lit / rows) * stackH, w: px(5), h: px(10) } } },
+    ]));
+  }
+  const from = start + frames(MS.stagger * index, ctx.fps);
+  const enterFrames = frames(MS.enter, ctx.fps);
+  const rise = ctx.layout.px(12);
+  const enter = (f: number) => progressAt(f, from, enterFrames);
+  return {
+    kind: "group", id, x: 0, y: 0, scale: 1, rotation: 0,
+    tracks: [motionTrack("opacity", enter, from, from + enterFrames), motionTrack("y", (f) => (1 - enter(f)) * rise, from, from + enterFrames)],
+    children,
+  };
+}
+
 /** A TextReveal block's type, measured words and greedy flex-wrapped rows, shared by its nodes and its height in a column. */
 function textRevealLayout(ctx: LayoutCtx, block: { text: string; size?: "display" | "headline" | "subhead"; accentWord?: string }) {
   const type = ctx.layout.type(block.size ?? "headline");
@@ -831,8 +964,16 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
     const contentStart = motion ? motion.contentStart : t.from;
     // A headline and its support copy stack in the panel's centred column (Film.tsx: `gap` 2.5 grid, `justify-content: center`).
     const column = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip") ? columnTops(ctx, shot.blocks[0], shot.blocks[1]) : undefined;
+    // A LayerStack grows (`flex: 1`) into all the height its column leaves, so the column has no free space to centre: a
+    // headline sits at the top and the stack fills the rest below the 2.5-grid gap.
+    const fillTop = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && shot.blocks[1].c === "LayerStack" ? stageRect(ctx).y : undefined;
     shot.blocks.forEach((block, i) => {
-      if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i, column?.[i]));
+      if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i, column?.[i] ?? fillTop));
+      else if (block.c === "LayerStack") {
+        const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
+        const above = fillTop !== undefined && shot.blocks[0].c === "TextReveal" ? textRevealLayout(ctx, shot.blocks[0]).blockH + ctx.layout.grid * 2.5 : 0;
+        content.push(layerStackNodes(ctx, `${id}-b${i}`, block, contentStart, i, { x: rect.x, y: rect.y + above, w: rect.w, h: rect.h - above }, t.to - t.from, span));
+      }
       else if (block.c === "Body" && column) content.push(bodyNodes(ctx, `${id}-b${i}`, block, contentStart, i, column[i]));
       else if (block.c === "TokenStrip") {
         const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
