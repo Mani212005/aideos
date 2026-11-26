@@ -34,6 +34,7 @@ import { validateRenderIr } from "./validate";
 import { cssColor, hexAlpha, linearKeyframes, rgbHex } from "./irValues";
 import { prettyLines, type WordPosition } from "./bodyWrap";
 import { plotAsset, PLOT_HEIGHT, PLOT_WIDTH, type PlotBlock } from "./emitPlot";
+import { scaleBarAsset, SCALE_BAR_HEIGHT, SCALE_BAR_WIDTH, type ScaleBarBlock } from "./emitScaleBar";
 
 export { cssColor, hexAlpha, linearKeyframes };
 import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
@@ -117,7 +118,7 @@ export class NativeUnsupportedError extends Error {
 }
 
 /** Block kinds the emitter lays out (the text cards of Phase 1). */
-const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip", "LayerStack", "Plot"]);
+const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip", "LayerStack", "Plot", "ScaleBar"]);
 /** The shared IR identifier rule applied to generated asset and node identifiers. */
 const IR_ID = new RegExp(ID_PATTERN);
 
@@ -196,12 +197,13 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       // the first shot, or a shot that opens on a camera move.
       if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
       if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
-      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip" && b.c !== "LayerStack" && b.c !== "Plot")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter, a TokenStrip, a LayerStack or a Plot natively`);
+      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip" && b.c !== "LayerStack" && b.c !== "Plot" && b.c !== "ScaleBar")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter, a TokenStrip, a LayerStack, a Plot or a ScaleBar natively`);
     } else if (shot.stage !== "frame") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
     // P2.5a and P2.5b: the measured columns are the compiler's text card (a headline then its support copy, design.ts
     // `buildTextBlocks`) and its device card (a headline then a TokenStrip, `buildBlocksForShotVisual`).
-    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot");
-    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body, a TokenStrip, a LayerStack or a Plot is)`);
+    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot" || shot.blocks[1].c === "ScaleBar");
+    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body, a TokenStrip, a LayerStack, a Plot or a ScaleBar is)`);
+    if (shot.blocks.length === 1 && shot.blocks[0].c === "ScaleBar" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a ScaleBar on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "Plot" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a Plot on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "LayerStack" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a LayerStack on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.some((b) => b.c === "LayerStack" && b.prompt !== undefined)) reasons.push(`shot ${shot.id}: a LayerStack prompt is not measured against Remotion yet`);
@@ -434,7 +436,7 @@ function columnTops(ctx: LayoutCtx, headline: { text: string; size?: "display" |
   const rect = stageRect(ctx);
   const first = textRevealLayout(ctx, headline).blockH;
   const gap = ctx.layout.grid * 2.5;
-  const secondH = second.c === "Body" ? bodyLayout(ctx, second).height : second.c === "TokenStrip" ? tokenStripLayout(ctx, second, rect).height : 0;
+  const secondH = second.c === "Body" ? bodyLayout(ctx, second).height : second.c === "TokenStrip" ? tokenStripLayout(ctx, second, rect).height : second.c === "ScaleBar" ? scaleBarHeight(ctx, rect.h - first - gap) : 0;
   const total = first + gap + secondH;
   const top = rect.y + (rect.h - total) / 2;
   return [top, top + first + gap];
@@ -530,6 +532,36 @@ function bodyNodes(ctx: LayoutCtx, id: string, block: { text: string }, start: n
   };
 }
 
+/** The meet fit of a device's own units (`w` x `h`) in a box: its scale and its centred top left, as `preserveAspectRatio` meet places an svg's viewBox. */
+function meetFit(laid: { x: number; y: number; w: number; h: number }, w: number, h: number) {
+  // Blink paints a replaced element (the svg) at its pixel-snapped box, each edge rounded to a whole pixel.
+  const box = snapBox(laid.x, laid.y, laid.w, laid.h);
+  const scale = Math.min(box.w / w, box.h / h);
+  const x = box.x + (box.w - w * scale) / 2;
+  const y = box.y + (box.h - h * scale) / 2;
+  // The svg element's own box, in the device's units: Chrome clips the device's content to it.
+  return { scale, x, y, viewport: { x: (box.x - x) / scale, y: (box.y - y) / scale, w: box.w / scale, h: box.h / scale } };
+}
+
+/**
+ * Places a device drawn as its own generated SVG in a card: registers the asset and its package file and returns the block's
+ * group (entering as one, from `from`) holding the svg node at the fitted scale and offset, with the device's element tracks.
+ */
+function svgDeviceNode(ctx: LayoutCtx, id: string, from: number, fit: { scale: number; x: number; y: number }, asset: { svg: string; elementIds: string[]; tracks: Array<{ target: string; property: string; keyframes: Keyframe[] }> }): Node {
+  const assetId = `svg-${id}`;
+  const path = `visuals/${id}.svg`;
+  ctx.extras.assets.push({ kind: "svg", id: assetId, path, elementIds: asset.elementIds });
+  ctx.extras.files.push({ path, text: asset.svg });
+  const enterFrames = frames(MS.enter, ctx.fps);
+  const rise = ctx.layout.px(12);
+  const enter = (f: number) => progressAt(f, from, enterFrames);
+  return {
+    kind: "group", id, x: 0, y: 0, scale: 1, rotation: 0,
+    tracks: [motionTrack("opacity", enter, from, from + enterFrames), motionTrack("y", (f) => (1 - enter(f)) * rise, from, from + enterFrames)],
+    children: [{ kind: "svg", id: `${id}-svg`, asset: assetId, x: fit.x, y: fit.y, scale: fit.scale, rotation: 0, layer: 0, tracks: [], elementTracks: asset.tracks as Extract<Node, { kind: "svg" }>["elementTracks"] }],
+  };
+}
+
 /**
  * Lays out a Plot (primitives.tsx `Plot`, P2.8a) in `box`, the height its column leaves it (`flex: 1`): its SVG (520 x 300
  * units) fills the box as `preserveAspectRatio` meet does, scaled to the smaller fit and centred, drawn on by its own progress
@@ -537,27 +569,32 @@ function bodyNodes(ctx: LayoutCtx, id: string, block: { text: string }, start: n
  * (backend/renderIr/emitPlot.ts) and placed as an svg node in the card; the block enters as one.
  */
 function plotNodes(ctx: LayoutCtx, id: string, block: PlotBlock, start: number, index: number, box: { x: number; y: number; w: number; h: number }, span: { from: number; to: number }): Node {
-  const scale = Math.min(box.w / PLOT_WIDTH, box.h / PLOT_HEIGHT);
-  const x = box.x + (box.w - PLOT_WIDTH * scale) / 2;
-  const y = box.y + (box.h - PLOT_HEIGHT * scale) / 2;
+  const fit = meetFit(box, PLOT_WIDTH, PLOT_HEIGHT);
   const from = start + frames(MS.stagger * index, ctx.fps);
   const progress = (f: number) => progressAt(f, from, frames(2600, ctx.fps));
   const colours = { grid: ctx.tokens.rule(0.6), axes: ctx.tokens.rule(2), accent: ctx.accent, label: ctx.tokens.faint, font: "JetBrains Mono" };
-  // The svg element's own box (the whole of `box`), in plot units: Chrome clips the plot's content to it.
-  const viewport = { x: (box.x - x) / scale, y: (box.y - y) / scale, w: box.w / scale, h: box.h / scale };
-  const plot = plotAsset(block, colours, progress, span.from, span.to, viewport);
-  const assetId = `svg-${id}`;
-  const path = `visuals/${id}.svg`;
-  ctx.extras.assets.push({ kind: "svg", id: assetId, path, elementIds: plot.elementIds });
-  ctx.extras.files.push({ path, text: plot.svg });
-  const enterFrames = frames(MS.enter, ctx.fps);
-  const rise = ctx.layout.px(12);
-  const enter = (f: number) => progressAt(f, from, enterFrames);
-  return {
-    kind: "group", id, x: 0, y: 0, scale: 1, rotation: 0,
-    tracks: [motionTrack("opacity", enter, from, from + enterFrames), motionTrack("y", (f) => (1 - enter(f)) * rise, from, from + enterFrames)],
-    children: [{ kind: "svg", id: `${id}-svg`, asset: assetId, x, y, scale, rotation: 0, layer: 0, tracks: [], elementTracks: plot.tracks }],
-  };
+  return svgDeviceNode(ctx, id, from, fit, plotAsset(block, colours, progress, span.from, span.to, fit.viewport));
+}
+
+/** A ScaleBar's height in its column: `flex: 1` up to its 260 px `max-height`, never more than the column leaves. */
+function scaleBarHeight(ctx: LayoutCtx, available: number): number {
+  return Math.min(ctx.layout.px(260), available);
+}
+
+/**
+ * Lays out a ScaleBar (devices.tsx `ScaleBar`, P2.8b) in `box` (the column's width, its capped height): its SVG (520 x 150
+ * units) fits the box as `preserveAspectRatio` meet does; its bar grows with the shot's sweep (devices.tsx `useSweep`: linear
+ * from the entrance's end to a camera move before the shot's end) times its value. The asset is generated here
+ * (backend/renderIr/emitScaleBar.ts); the block enters as one.
+ */
+function scaleBarNodes(ctx: LayoutCtx, id: string, block: ScaleBarBlock, start: number, index: number, box: { x: number; y: number; w: number; h: number }, duration: number, span: { from: number; to: number }): Node {
+  const fit = meetFit(box, SCALE_BAR_WIDTH, SCALE_BAR_HEIGHT);
+  const from = start + frames(MS.stagger * index, ctx.fps);
+  const sweepFrom = start + frames(MS.enter, ctx.fps);
+  const sweepSpan = Math.max(1, duration - frames(MS.enter + MS.move, ctx.fps));
+  const grow = (f: number) => Math.max(0, Math.min(1, (f - sweepFrom) / sweepSpan)) * block.value;
+  const colours = { rule: ctx.tokens.rule(2), accent: ctx.accent, tick: ctx.tokens.faint, font: "JetBrains Mono" };
+  return svgDeviceNode(ctx, id, from, fit, scaleBarAsset(block, colours, grow, span.from, span.to, fit.viewport));
 }
 
 /** JetBrains Mono's advance for every Latin glyph, in em (600 of 1000 units): a mono run's width needs no measuring. */
@@ -1089,13 +1126,19 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
     const content: Node[] = [];
     const contentStart = motion ? motion.contentStart : t.from;
     // A headline and its support copy stack in the panel's centred column (Film.tsx: `gap` 2.5 grid, `justify-content: center`).
-    const column = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip") ? columnTops(ctx, shot.blocks[0], shot.blocks[1]) : undefined;
+    const column = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "ScaleBar") ? columnTops(ctx, shot.blocks[0], shot.blocks[1]) : undefined;
     // A LayerStack grows (`flex: 1`) into all the height its column leaves, so the column has no free space to centre: a
     // headline sits at the top and the stack fills the rest below the 2.5-grid gap.
     const fillTop = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot") ? stageRect(ctx).y : undefined;
     shot.blocks.forEach((block, i) => {
       if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i, column?.[i] ?? fillTop));
-      else if (block.c === "Plot") {
+      else if (block.c === "ScaleBar") {
+        // A ScaleBar grows up to its 260 px cap and the column centres it (with its headline, if any).
+        const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
+        const top = column ? column[i] : rect.y + (rect.h - scaleBarHeight(ctx, rect.h)) / 2;
+        const h = column ? scaleBarHeight(ctx, rect.y + rect.h - top) : scaleBarHeight(ctx, rect.h);
+        content.push(scaleBarNodes(ctx, `${id}-b${i}`, block, contentStart, i, { x: rect.x, y: top, w: rect.w, h }, t.to - t.from, span));
+      } else if (block.c === "Plot") {
         // A Plot grows (`flex: 1`) into the height its column leaves, like a LayerStack.
         const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
         const above = fillTop !== undefined && shot.blocks[0].c === "TextReveal" ? textRevealLayout(ctx, shot.blocks[0]).blockH + ctx.layout.grid * 2.5 : 0;
