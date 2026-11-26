@@ -308,6 +308,33 @@ test("a film the native renderer cannot draw is refused with every reason", () =
   assert.equal(PROBE_SVG_SOURCE.startsWith("videos/"), true);
 });
 
+// Builds the measured inset form (scene film, counter shot 2 as an inset on a cut) and applies one change to the inset shot.
+function insetFilm(change: (shot: Record<string, unknown>) => void, noScene = false) {
+  const film = nativeSceneFilm();
+  const shots = film.shots.map((s) => ({ ...s })) as unknown as Record<string, unknown>[];
+  shots[2].stage = "inset";
+  change(shots[2]);
+  const out = { ...film, shots: shots as unknown as typeof film.shots };
+  if (noScene) delete (out as { scene?: unknown }).scene;
+  return out;
+}
+
+test("an inset panel is drawn natively only in the measured form, every other form is refused by name (P2.6a)", () => {
+  assert.deepEqual(nativeSupport(insetFilm(() => {}), "long"), []);
+  const first = nativeSceneFilm();
+  const firstShots = first.shots.map((s) => ({ ...s })) as unknown as Record<string, unknown>[];
+  firstShots[0].stage = "inset";
+  firstShots[0].blocks = [{ c: "StatCounter", to: 22, label: "transmitter power", format: "plain", suffix: " watts" }];
+  const firstReasons = nativeSupport({ ...first, shots: firstShots as unknown as typeof first.shots }, "long");
+  assert.ok(firstReasons.some((r) => r.includes('stage "inset"') && r.includes("first shot")), firstReasons.join("\n"));
+  const emptyReasons = nativeSupport(insetFilm((s) => { s.blocks = []; }), "long");
+  assert.ok(emptyReasons.some((r) => r.includes('stage "inset"') && r.includes("no block")), emptyReasons.join("\n"));
+  const graphReasons = nativeSupport(insetFilm(() => {}, true), "long");
+  assert.ok(graphReasons.some((r) => r.includes('stage "inset"') && r.includes("node-graph film")), graphReasons.join("\n"));
+  const moveReasons = nativeSupport(insetFilm((s) => { s.move = "pan"; }), "long");
+  assert.ok(moveReasons.some((r) => r.includes('stage "inset"') && r.includes('"pan" move')), moveReasons.join("\n"));
+});
+
 test("picture animation support agrees with the emitted IR validator for every scene property", () => {
   const film = nativeSceneFilm();
   const asset = film.scene!.props[0];

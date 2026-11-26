@@ -4,8 +4,8 @@
 
 - **Date**: 2026-11-26
 - **Branch / PR**: `fm/aideos-native-p26a-inset`
-- **Scope**: `backend/renderIr/emit.ts` (`nativeSupport` accepts an `inset` shot holding one StatCounter or nothing on a cut or first shot; `insetPanel`, `insetContentRect`; `statCounterNodes` takes the rect it centres in), the journey `backend/journeys/inset_panel.journey.ts`, its weight in `scripts/ciJourneyShards.ts`, docs. No Render IR change, no renderer change, no fixture change. Feature Map rows: Export & Rendering (native renderer, Render IR emitter), Parity gates.
-- **Risk tier**: Medium (scene and node-graph films whose inset panels hold one counter on a cut now render natively in `auto`).
+- **Scope**: `backend/renderIr/emit.ts` (`nativeSupport` accepts only the measured inset form: a scene film, a shot that is not the first, a `cut` move, exactly one StatCounter; `insetPanel`, `insetContentRect`; `statCounterNodes` takes the rect it centres in), the journey `backend/journeys/inset_panel.journey.ts`, its weight in `scripts/ciJourneyShards.ts`, docs. No Render IR change, no renderer change, no fixture change. Feature Map rows: Export & Rendering (native renderer, Render IR emitter), Parity gates.
+- **Risk tier**: Medium (scene films whose inset panel holds one counter on a later cut shot now render natively in `auto`).
 
 ## Why this slice
 
@@ -16,7 +16,7 @@ prescribes `stage: "inset"` with exactly one device or counter for a scene film,
 
 `Film.tsx`'s `Stage` puts an inset shot's panel in `getInsetRegion` (long 1152, 96, 672 x 703.2): the theme's surface
 colour, a 1 px hairline border, the card radius, no shadow, and a centred column padded by 3 grid. A shot whose move is a
-`cut` (or the first shot) is drawn without the open and close animation. The panel is border-box in the render: its border
+`cut` is drawn without the open and close animation. The panel is border-box in the render: its border
 box is exactly the region (Chrome's panel spans x 1152 to 1823). A first native pass that read the markup as content-box
 drew the panel 2 px wider and the counter 25 px low (long frames 0.98683); border-box puts the counter where Chrome does
 (the number's top at y 404 in both) and the frames at 0.9985.
@@ -55,10 +55,13 @@ Every 15th frame of the delivered video (0 to 375 long and reel, long 390 to 479
 - An inset panel that opens on a camera move (Film.tsx's open and close animation and the content's delayed entrance are not
   measured yet).
 - An inset holding anything but one StatCounter (the devices of P2.6).
+- An inset on the first shot, an inset with no block, and an inset in a node-graph film (no scene): each is accepted by no
+  journey frame, so each is refused with its own reason naming `stage "inset"` (Firstmate decision A, 2026-11-26).
 
 ## Test changes
 
 - New journey `backend/journeys/inset_panel.journey.ts` (weight 40 s in `scripts/ciJourneyShards.ts`).
+- New test in `backend/renderIr/emit.test.ts`: the measured inset form is accepted and the first-shot, empty, node-graph and camera-move insets are each refused by their reason (Firstmate decision, 2026-11-26).
 - No assertion, tolerance, threshold, bar or golden is edited, loosened or removed.
 
 ## Fix attempts

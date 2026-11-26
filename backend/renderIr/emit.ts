@@ -173,9 +173,12 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   if ((soundtrack.sections.length || soundtrack.sfx.length) && !usesSectionMixer(soundtrack)) reasons.push("path-only legacy soundtrack sections are not mixed natively (library soundtracks are)");
   for (const shot of film.shots) {
     if (shot.stage === "inset") {
-      // P2.6a: an inset panel holding one counter (or nothing), on a shot Film.tsx draws without its open and close animation.
+      // P2.6a: only the measured inset form is drawn: a scene film, a later shot on a cut, holding exactly one StatCounter.
+      if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
+      if (film.shots[0] === shot) reasons.push(`shot ${shot.id}: a stage "inset" panel on the first shot is not measured against Remotion yet`);
+      if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
       if (shot.blocks.some((b) => b.c !== "StatCounter")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter natively`);
-      if (shot.move !== "cut" && film.shots[0] !== shot) reasons.push(`shot ${shot.id}: stage "inset" panels that open on a "${shot.move}" move are not drawn natively yet (their open and close animation is not measured)`);
+      if (shot.move !== "cut") reasons.push(`shot ${shot.id}: stage "inset" panels that open on a "${shot.move}" move are not drawn natively yet (their open and close animation is not measured)`);
     } else if (shot.stage !== "frame" && shot.stage !== "none") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
     if (shot.blocks.length > 1) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively`);
     for (const block of shot.blocks) {
