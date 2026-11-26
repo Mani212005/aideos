@@ -44,6 +44,9 @@ pub struct RenderIr {
     pub assets: Vec<Asset>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub camera: Option<Camera>,
+    /// `/7`: frame-space nodes drawn after the background and before the stage (svg, image and group nodes).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub underlay: Option<Vec<Node>>,
     pub stage: Vec<Node>,
     pub overlay: Vec<Node>,
     pub audio: Vec<AudioClip>,

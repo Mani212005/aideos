@@ -384,7 +384,7 @@ differ per format.
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
-rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, legacy (non-library)
+rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, the paper-grain theme texture (`paper-fibers`; the blueprint grid and the dot matrix are drawn since P2.4a), legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
@@ -674,7 +674,8 @@ the fallback for everything not yet native:
 | P2.2b | the node-graph canvas in the emitter, flat camera (`backend/renderIr/emitNodeGraph.ts`): `CanvasGraph` lowered to one generated SVG (cards with their 145 degree gradients, border, `box-shadow` list and `backdrop-filter` on the P2.1 filters, edges with the P2.1 glow, labels as SVG text laid out as the flex column lays them out) under the camera `camAt` solves, with arrival, activeness, the beacon pulse, the breathing glow and the travelling packets as element, colour and dash offset tracks ([P2.2b](#p22b-the-node-graph-canvas)); opt-in only (`nodeGraphCanvas`), so node-graph films stay on Remotion | done: nothing changes for users |
 | P2.2c | `nativeSupport` accepts node-graph films with the flat camera (and `top-down`), behind the parity journey `backend/journeys/node_graph_native.journey.ts` at 0.995 on every measured frame against Remotion's Chrome (swangle); the gap it closed was not the blur but the layer composite (#324) and the TextReveal underline (#322) ([P2.2c](#p22c-node-graph-films-drawn-natively)) | done |
 | P2.3 | the node-graph camera angles other than `flat` (`getCameraPerspective`: CSS 3D perspective), a 4 x 4 perspective transform on the stage | planned |
-| P2.4 | the textured themes (`paper-fibers` turbulence, `blueprint-grid` and `subtle-dots` patterns) | planned |
+| P2.4a | the `blueprint-grid` and `subtle-dots` theme textures, lowered to explicit shapes in the `aideos.render/7` underlay (frame space, under the stage), behind a parity journey ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
+| P2.4b | the `paper-fibers` texture (`feTurbulence` and `feDiffuseLighting` under the canvas) | planned |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), several blocks per shot, panels other than `frame` | planned |
 | P2.6 | devices and the inset stage | planned |
 | P2.7 | imported footage and overlay clips (ffmpeg decode with accurate seek) | planned |
@@ -743,6 +744,24 @@ artwork filters draw (P2.1), so a GPU-shaped Gaussian and the 128 px cap are lef
 A default Remotion render (`AIDEOS_GL` unset, `angle`) on a host without a GPU falls back to Chrome's software raster,
 which paints shadows and layers with Skia's truncating 8-bit blitters; native matches the swangle reference, not that
 fallback.
+
+### P2.4a the pattern theme textures
+
+`Film.tsx` draws the theme texture under the canvas, at the texture layer's opacity (`blueprint-grid` 0.45, `subtle-dots`
+0.35), scaled with the canvas by the end card's push but not by the shot drift. The emitter lowers each pattern to
+explicit shapes in one frame-sized SVG (`backend/renderIr/emitThemeTexture.ts`) and places it in the `aideos.render/7`
+underlay, so the native renderer draws it between the background colour and the stage. A pattern tile in Chrome draws only
+what lies inside the tile: a stroke centred on the tile's top and left edges keeps its inner half, so the blueprint
+grid's 0.5 px minor lines are 0.25 px wide and its 1 px major lines 0.5 px wide, starting on the tile edge. Measured
+alone against Remotion's Chrome (swangle), a whole frame of each texture: blueprint SSIM 0.99997, dots 0.99994, no
+pixel more than one level apart. Under the end card's slow push Chrome resamples the texture layer (rastered once, scaled
+with bilinear sampling) rather than redrawing it, so a top-level underlay group is drawn the same way (see
+[RENDER_IR.md](RENDER_IR.md#the-underlay-aideosrender7)); before that the end-card frames of the blueprint fixture measured
+0.990 to 0.995, after it 0.997 and above. The journey `backend/journeys/theme_textures.journey.ts` asks the renderer
+choice for both formats of `test_fixtures/packages/node-graph-blueprint` and `node-graph-dots` (node-graph-flat on each
+theme; native must be chosen) and compares 21 frames of each (20, 45, 150, 255, 345, 435, 525, 570, 600 and the end card's
+660 and 749 long, 645 reel) with Remotion's stills at the stage bar 0.995, none left out. `paper-fibers` (turbulence and
+lighting) is still refused (P2.4b).
 
 ### P2.1 SVG filters: glow and drop shadow
 

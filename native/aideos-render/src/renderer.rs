@@ -346,6 +346,9 @@ impl Renderer {
             None => {
                 let mut stage_nodes = Vec::new();
                 walk(&ir.stage, &mut stage_nodes);
+                if let Some(underlay) = &ir.underlay {
+                    walk(underlay, &mut stage_nodes);
+                }
                 let mut images: BTreeMap<String, Image> = BTreeMap::new();
                 for node in stage_nodes {
                     let Node::Image(n) = node else { continue };

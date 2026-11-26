@@ -1,0 +1,158 @@
+{
+  "schema": "aideos.render/6",
+  "film": {
+    "id": "v6-underlay",
+    "fps": 30,
+    "durationFrames": 90
+  },
+  "scene": {
+    "width": 1920,
+    "height": 1920
+  },
+  "formats": {
+    "long": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "background": "#0B0D10",
+  "assets": [
+    {
+      "kind": "svg",
+      "id": "art",
+      "path": "visuals/art.svg",
+      "elementIds": [
+        "card",
+        "label",
+        "packets"
+      ]
+    },
+    {
+      "kind": "svg",
+      "id": "texture",
+      "path": "visuals/texture.svg",
+      "elementIds": [
+        "grid"
+      ]
+    }
+  ],
+  "underlay": [
+    {
+      "kind": "group",
+      "id": "texture-hold",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "tracks": [
+        {
+          "property": "scale",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 1,
+              "ease": "linear"
+            },
+            {
+              "frame": 90,
+              "value": 1.01
+            }
+          ]
+        }
+      ],
+      "children": [
+        {
+          "kind": "svg",
+          "id": "texture-grid",
+          "asset": "texture",
+          "x": 0,
+          "y": 0,
+          "scale": 1,
+          "rotation": 0,
+          "layer": 0,
+          "tracks": [
+            {
+              "property": "opacity",
+              "keyframes": [
+                {
+                  "frame": 0,
+                  "value": 0.45
+                }
+              ]
+            }
+          ],
+          "elementTracks": []
+        }
+      ]
+    }
+  ],
+  "stage": [
+    {
+      "kind": "svg",
+      "id": "stage",
+      "asset": "art",
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "rotation": 0,
+      "layer": 0,
+      "tracks": [],
+      "elementTracks": [
+        {
+          "target": "packets",
+          "property": "dashOffset",
+          "keyframes": [
+            {
+              "frame": 0,
+              "value": 0,
+              "ease": "linear"
+            },
+            {
+              "frame": 90,
+              "value": -315
+            }
+          ]
+        }
+      ],
+      "colorTracks": [
+        {
+          "target": "card",
+          "property": "stroke",
+          "keyframes": [
+            {
+              "frame": 0,
+              "color": "#FFFFFF14",
+              "ease": "linear"
+            },
+            {
+              "frame": 12,
+              "color": "#FFFFFF29",
+              "ease": "hold"
+            },
+            {
+              "frame": 30,
+              "color": "#635BFF"
+            }
+          ]
+        },
+        {
+          "target": "label",
+          "property": "fill",
+          "keyframes": [
+            {
+              "frame": 0,
+              "color": "#8E8E98",
+              "ease": "linear"
+            },
+            {
+              "frame": 18,
+              "color": "#E2E8F0"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "overlay": [],
+  "audio": []
+}

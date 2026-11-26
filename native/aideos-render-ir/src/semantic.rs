@@ -12,6 +12,7 @@ use crate::Issue;
 enum Space {
     Stage,
     Overlay,
+    Underlay,
 }
 
 impl Space {
@@ -20,6 +21,7 @@ impl Space {
         match self {
             Space::Stage => "stage",
             Space::Overlay => "overlay",
+            Space::Underlay => "underlay",
         }
     }
 }
@@ -168,7 +170,7 @@ impl<'a> Checker<'a> {
             }
             let allowed = match (node, space) {
                 (Node::Stage3d(_), _) => space == Space::Stage && top,
-                (_, Space::Stage) => matches!(node, Node::Svg(_) | Node::Image(_) | Node::Group(_)),
+                (_, Space::Stage | Space::Underlay) => matches!(node, Node::Svg(_) | Node::Image(_) | Node::Group(_)),
                 (_, Space::Overlay) => !matches!(node, Node::Svg(_) | Node::Image(_)),
             };
             if !allowed {
@@ -602,6 +604,7 @@ pub fn check(ir: &RenderIr) -> Vec<Issue> {
             chrome_seen |= chrome;
         }
     }
+    c.walk(ir.underlay.as_deref().unwrap_or(&[]), "/underlay", Space::Underlay, true);
     c.walk(&ir.stage, "/stage", Space::Stage, true);
     c.walk(&ir.overlay, "/overlay", Space::Overlay, true);
 

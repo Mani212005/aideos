@@ -1,8 +1,8 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/6` (Three stage, pictures, 2D effects, colour and dash offset tracks, native transitions and particles): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, the `/6` transition and particles, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
+File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/7` (Three stage, pictures, 2D effects, colour and dash offset tracks, native transitions and particles, the underlay): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, the `/6` transition and particles, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
-# Render IR (`aideos.render/1` through `aideos.render/6`)
+# Render IR (`aideos.render/1` through `aideos.render/7`)
 
 The Render IR is the document boundary between the authoring layer (`film.json`, `design.json`,
 the scene compiler, the layout modules) and the native renderer. It carries everything a frame depends
@@ -41,6 +41,10 @@ flat node-graph films natively since P2.2c); every other film is written as befo
 particles may appear in one document. No emitter writes `/6` either. See
 [Native transitions and particles](#native-transitions-and-particles-aideosrender6).
 
+P2.4a of Phase 2 added `aideos.render/7`: a strict superset of `/6` that adds the `underlay`, frame-space nodes drawn
+between the background and the stage. The emitter writes `/7` only for a film whose theme has a texture it lowers there
+(the `blueprint-grid` and `subtle-dots` patterns); every other film is written as before. See [The underlay](#the-underlay-aideosrender7).
+
 ## Where things live
 
 | Piece | Path |
@@ -48,10 +52,11 @@ particles may appear in one document. No emitter writes `/6` either. See
 | Structural contract (zod, the single source, every version) | `backend/renderIr/schema.ts` |
 | TypeScript load, version gate and cross-reference rules | `backend/renderIr/validate.ts` |
 | JSON Schema generator | `backend/renderIr/jsonSchema.ts`, `scripts/render_ir_schema.ts` |
-| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json`, `aideos.render.3.schema.json`, `aideos.render.4.schema.json`, `aideos.render.5.schema.json`, `aideos.render.6.schema.json` |
+| Committed JSON Schemas (embedded by the Rust crate) | `native/aideos-render-ir/schema/aideos.render.1.schema.json`, `aideos.render.2.schema.json`, `aideos.render.3.schema.json`, `aideos.render.4.schema.json`, `aideos.render.5.schema.json`, `aideos.render.6.schema.json`, `aideos.render.7.schema.json` |
 | Rust workspace and loader crate | `native/Cargo.toml`, `native/aideos-render-ir/` |
 | Mesh file codec (triangle, points and lines parts) | `backend/renderIr/mesh.ts` (write and read), `native/aideos-render-ir/src/mesh.rs` (read) |
 | Node-graph canvas emitter (`/5`) | `backend/renderIr/emitNodeGraph.ts` |
+| Theme texture emitter (the `/7` underlay) | `backend/renderIr/emitThemeTexture.ts` |
 | Stage3d emitter and reference pose | `backend/renderIr/emitStage3d.ts`, `backend/renderIr/stage3d.ts` |
 | Shared fixtures and their expected verdicts | `native/aideos-render-ir/fixtures/` (`valid/`, `invalid/`, `expectations.json`, `mesh/`) |
 | TypeScript tests | `backend/renderIr/renderIr.test.ts`, `mesh.test.ts`, `stage3d.test.ts`, `dots.test.ts` (dots-v1, P4.4) |
@@ -62,19 +67,19 @@ particles may appear in one document. No emitter writes `/6` either. See
 
 ## Versioning and rejection
 
-A document starts with a supported `schema` from `aideos.render/1` through `aideos.render/6`.
+A document starts with a supported `schema` from `aideos.render/1` through `aideos.render/7`.
 The loader reads that field first:
 
 1. Not JSON: refused as `not_json`.
 2. Not an object, or no string `schema` field: refused as `invalid_document` with a `schema` issue.
-3. A string other than exactly `aideos.render/1`, `aideos.render/2`, `aideos.render/3`, `aideos.render/4`, `aideos.render/5` or `aideos.render/6`
-   (including `aideos.render/7`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the
-   string found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6`),
+3. A string other than exactly `aideos.render/1`, `aideos.render/2`, `aideos.render/3`, `aideos.render/4`, `aideos.render/5`, `aideos.render/6` or `aideos.render/7`
+   (including `aideos.render/8`, `aideos.render/1.1` or a different case): refused as `unsupported_version` carrying the
+   string found and the versions this build reads (`supported`: `aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6, aideos.render/7`),
    **before** the rest of the document is read, because a later version may have a different shape.
 4. Right version, wrong shape (a missing or unknown field, a wrong type, a bad colour, a frame that is
    not a whole number): refused as `invalid_document`, every issue listed. Each version is checked against
    its own schema, so a `/1` document that uses a `stage3d` node or a `mesh` asset, a `/2` document that uses
-   an `image` node, or a `/3` or `/4` document that uses `colorTracks` or a `dashOffset` track, is refused here.
+   an `image` node, a `/3` or `/4` document that uses `colorTracks` or a `dashOffset` track, or a document before `/7` with an `underlay`, is refused here.
 5. Right shape, broken references or ranges: refused as `invalid_document`, every issue listed.
 
 The shape is closed: an unknown field is an error, never ignored. There are no defaults in the wire
@@ -441,3 +446,23 @@ are uniformly staggered across a lifetime; each repeats after its lifetime. Seed
 determine velocity, while closed-form position uses age, velocity and gravity. Evaluating a frame never
 depends on previous frames. Fractional shutter samples evaluate the same formulas. Existing emitters
 and editor previews do not write or preview these fields.
+
+## The underlay (`aideos.render/7`)
+
+`underlay` is a list of nodes drawn in frame space (render pixels, no camera and no cover fit), after the background
+colour and before the stage, in order. It holds what the stage holds except the Three stage: `svg`, `image` and `group`
+nodes, with their tracks; a `stage3d` node or an overlay kind (`rect`, `text`, chrome) there is refused as
+`node_not_allowed` at `/underlay/<i>/kind`. Node ids are unique across the underlay, the stage and the overlay. An
+earlier version with an `underlay` field is refused by its schema.
+
+A top-level `group` of the underlay is a compositing layer, drawn as Chrome composites a layer it does not re-raster when
+it scales: its children are drawn in frame pixels without the group's own transform, and the result is placed through
+that transform (scale, x, y, rotation) with bilinear sampling at the group's opacity. At the identity transform this is
+the same as drawing the children in place. Under the end card's 1% push, redrawing a texture's 0.25 px lines at the new
+scale measured SSIM 0.960 against Chrome, resampling it 0.996.
+
+The emitter puts a theme's texture there (`backend/renderIr/emitThemeTexture.ts`): `Film.tsx` draws the `blueprint-grid`
+and `subtle-dots` patterns under the canvas, pushed by the end card with the canvas but not drifted with it, so the
+texture is a frame-sized SVG asset (`visuals/theme-texture.svg`) inside a group whose `scale`, `x` and `y` tracks are the
+end card's push about the frame centre, at the texture layer's opacity. Fixtures: `valid/underlay.json`,
+`invalid/v6-underlay.json` (the field in `/6`), `invalid/underlay-space.json` (a `rect` in the underlay).

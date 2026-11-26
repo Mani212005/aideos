@@ -1,0 +1,219 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "node-graph-dots",
+  "title": "Node graph, flat camera, dot-grid theme texture (synthetic test fixture)",
+  "fps": 30,
+  "accent": "#635BFF",
+  "theme": {
+    "background": "dot-grid",
+    "fontFamily": "geist",
+    "cameraAngle": "flat",
+    "accent": "#635BFF"
+  },
+  "chapters": [
+    "The Hook",
+    "The Swap"
+  ],
+  "canvas": {
+    "nodes": [
+      {
+        "id": "intro",
+        "label": "The Hook",
+        "sub": "U-Net Era: 2022",
+        "x": -360,
+        "y": -140,
+        "w": 200,
+        "h": 64
+      },
+      {
+        "id": "unet-conv",
+        "label": "U-Net Backbone",
+        "sub": "Local Convolutions",
+        "x": -360,
+        "y": 40,
+        "w": 210,
+        "h": 64
+      },
+      {
+        "id": "unet-bottleneck",
+        "label": "Multiscale Bottleneck",
+        "sub": "Downsample / Upsample",
+        "x": -140,
+        "y": 180,
+        "w": 220,
+        "h": 64
+      },
+      {
+        "id": "dit-patchify",
+        "label": "Patchify",
+        "sub": "Latents -> Visual Tokens",
+        "x": 80,
+        "y": 40,
+        "w": 210,
+        "h": 64
+      },
+      {
+        "id": "vit-attention",
+        "label": "ViT Self-Attention",
+        "sub": "Global Token Relations",
+        "x": 300,
+        "y": -100,
+        "w": 220,
+        "h": 64
+      },
+      {
+        "id": "adaln-zero",
+        "label": "AdaLN-Zero",
+        "sub": "Zero-Init Gated Conditioning",
+        "x": 300,
+        "y": 100,
+        "w": 220,
+        "h": 64
+      },
+      {
+        "id": "scaling-law",
+        "label": "Scaling Law",
+        "sub": "More Compute -> Lower FID",
+        "x": 80,
+        "y": 260,
+        "w": 210,
+        "h": 64
+      },
+      {
+        "id": "payoff",
+        "label": "The New Standard",
+        "sub": "Sora - Flux - SD3 - Movie Gen",
+        "x": -140,
+        "y": 340,
+        "w": 230,
+        "h": 64
+      }
+    ],
+    "edges": [
+      {
+        "from": "intro",
+        "to": "unet-conv"
+      },
+      {
+        "from": "unet-conv",
+        "to": "unet-bottleneck"
+      },
+      {
+        "from": "unet-bottleneck",
+        "to": "dit-patchify",
+        "label": "replaced by"
+      },
+      {
+        "from": "dit-patchify",
+        "to": "vit-attention"
+      },
+      {
+        "from": "vit-attention",
+        "to": "adaln-zero"
+      },
+      {
+        "from": "adaln-zero",
+        "to": "scaling-law"
+      },
+      {
+        "from": "scaling-law",
+        "to": "payoff"
+      },
+      {
+        "from": "intro",
+        "to": "payoff",
+        "dashed": true,
+        "label": "today"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "id": "hook",
+      "dur": 3.0,
+      "stage": "frame",
+      "look": "intro",
+      "move": "cut",
+      "drift": true,
+      "zoom": 1,
+      "scriptText": "Every image model just swapped its brain.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Every image model just swapped its brain.",
+          "size": "display",
+          "accentWord": "swapped"
+        }
+      ]
+    },
+    {
+      "id": "unet",
+      "dur": 4.0,
+      "stage": "none",
+      "look": [
+        "intro",
+        "unet-conv",
+        "unet-bottleneck"
+      ],
+      "move": "pan",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "It used to be a U-Net of local convolutions.",
+      "blocks": []
+    },
+    {
+      "id": "bottleneck",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "unet-bottleneck",
+      "move": "zoom-in",
+      "drift": true,
+      "zoom": 1.1,
+      "scriptText": "Everything squeezed through one bottleneck.",
+      "blocks": []
+    },
+    {
+      "id": "swap",
+      "dur": 3.0,
+      "stage": "none",
+      "look": [
+        "unet-bottleneck",
+        "dit-patchify"
+      ],
+      "move": "cut",
+      "drift": false,
+      "zoom": 1,
+      "scriptText": "Then it was replaced by patches.",
+      "blocks": []
+    },
+    {
+      "id": "attention",
+      "dur": 3.0,
+      "stage": "frame",
+      "look": "vit-attention",
+      "move": "pan",
+      "drift": true,
+      "zoom": 1,
+      "scriptText": "Attention relates every token to every other.",
+      "blocks": [
+        {
+          "c": "TextReveal",
+          "text": "Every token sees every token.",
+          "size": "headline",
+          "accentWord": "every"
+        }
+      ]
+    },
+    {
+      "id": "payoff",
+      "dur": 3.0,
+      "stage": "none",
+      "look": "all",
+      "move": "zoom-out",
+      "drift": true,
+      "zoom": 1,
+      "scriptText": "That is the new standard.",
+      "blocks": []
+    }
+  ]
+}
