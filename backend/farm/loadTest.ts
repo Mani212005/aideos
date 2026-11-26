@@ -199,6 +199,8 @@ export async function runLoadTest(options: LoadTestOptions): Promise<LoadTestRep
       killLeftBytes += directoryBytes(path.join(paths.workRoot, lease.worker));
       children.delete(lease.worker);
       spawnWorker(`${lease.worker}-r${spawned}`);
+      // The lease list is a snapshot: a worker can finish its task between the read and the kill, and that kill interrupted nothing and forces no second attempt.
+      if ((await queue.get(lease.taskId))?.state === "done") continue;
       count++;
     }
     return count;
