@@ -1,5 +1,6 @@
 # File Description: Per-repo no-mistakes configuration defining the lint verification gate; delegates to scripts/ci.ts so the local gate runs exactly the commands CI runs.
-# Inputs and outputs: repository source -> lint exit code.
+# Inputs and outputs: repository source, bun on PATH or not -> lint exit code.
 # Used by: no-mistakes CLI during automated verification runs.
 commands:
-  lint: '(test -d node_modules || npm ci) && (test -d editor/node_modules || npm --prefix editor ci) && npm run ci -- static'
+  # bun is the default toolchain (scripts/toolchain.ts); a machine without bun runs the same static job on the npm path and says so.
+  lint: 'if command -v bun >/dev/null 2>&1; then (test -d node_modules || bun install --frozen-lockfile) && (test -d editor/node_modules || bun install --cwd editor --frozen-lockfile) && bun scripts/ci.ts static; else echo "no-mistakes lint: bun is not installed, running the npm path (AIDEOS_TOOLCHAIN=npm)" >&2 && (test -d node_modules || npm ci) && (test -d editor/node_modules || npm --prefix editor ci) && AIDEOS_TOOLCHAIN=npm npx tsx scripts/ci.ts static; fi'

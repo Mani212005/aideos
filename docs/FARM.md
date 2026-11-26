@@ -3,7 +3,7 @@
 Phase 2 of the code-driven film stack plan (section 5, SCALE): a persisted queue, stateless workers, a content-addressed
 store and a janitor, so 50 to 100 films render concurrently and as a queue on one machine or a few workers. It reuses
 `RenderJob` ([RENDER_JOB.md](RENDER_JOB.md)) for every render. All code is in `backend/farm/` (Node only; the editor
-bundle never reaches it). The command is `npm run farm -- <command>`.
+bundle never reaches it). The command is `bun run farm -- <command>`.
 
 Not in this phase: an object store, GPU pools, autoscaling, shot-level segments (the unit is one film in one format),
 token buckets for model calls, a Postgres adapter (the `TaskQueue` interface is asynchronous so one can follow), and the
@@ -87,12 +87,12 @@ entries and unfinished store or cache puts older than 10 minutes go. The pass ba
 ## Commands
 
 ```bash
-npm run farm -- worker [--root DIR] [--executor native|stub] [--lease-ms N] [--poll-ms N] [--sweep-ms N] [--ttl-days N]
-npm run farm -- submit <slug> [--format long|reel|both] [--profile final] [--class batch_final] [--owner NAME]
-npm run farm -- status [--json]       # queue depth and age, seconds per state, retries, cache hit rate, free disk, dead letters
-npm run farm -- sweep                 # the janitor
-npm run farm -- gc [--ttl-days N]     # mark and sweep the store
-npm run farm -- load-test --films 100 --workers 4
+bun run farm -- worker [--root DIR] [--executor native|stub] [--lease-ms N] [--poll-ms N] [--sweep-ms N] [--ttl-days N]
+bun run farm -- submit <slug> [--format long|reel|both] [--profile final] [--class batch_final] [--owner NAME]
+bun run farm -- status [--json]       # queue depth and age, seconds per state, retries, cache hit rate, free disk, dead letters
+bun run farm -- sweep                 # the janitor
+bun run farm -- gc [--ttl-days N]     # mark and sweep the store
+bun run farm -- load-test --films 100 --workers 4
 ```
 
 `SIGTERM` finishes the current task and stops; a second signal gives the running task back. The farm root is `--root`,

@@ -58,7 +58,7 @@ Aideos solves this with **Video as Pure Data**:
 - **Soundtrack Mixing & Voice Activity Ducking**: Multi-track audio mixer uses a shared voice activity timeline for music ducking and review measurements. Audio assets and sound effects are cached and hash-locked (`aideos audio fetch`, `aideos audio verify`). See [soundtrack mixing](docs/AUDIO_LIBRARY.md#2-soundtrack-mixing).
 - **Configurable End Cards**: Automatically appends a branded like-and-subscribe card (6 seconds on Long, 3 seconds on Reel; handles and copy set in `aideos.config.json`). The end card is compulsory and cannot be turned off for a film.
 - **Condensed Reel Cut Delivery**: When long-form narration exceeds the 179-second vertical delivery limit, Aideos builds a condensed narration cut with kept shots, locked phrases, and motion floors (`aideos reel brief`, `aideos reel check`, `aideos reel build`).
-- **Automated Quality Review**: Deterministic video review measuring cuts, stillness, caption coverage, contrast, and layout persistence (`npm run review`), paired with optional Gemini 3.8 Flash multimodal review (`aideos gemini-review`) and automated repair loops (`aideos all-check`).
+- **Automated Quality Review**: Deterministic video review measuring cuts, stillness, caption coverage, contrast, and layout persistence (`bun run review`), paired with optional Gemini 3.8 Flash multimodal review (`aideos gemini-review`) and automated repair loops (`aideos all-check`).
 - **Local Stable & Updating Channels**: Independent local checkouts keep stable production separate from active development, as documented in [docs/RELEASES.md](docs/RELEASES.md).
 
 ---
@@ -102,7 +102,8 @@ Aideos solves this with **Video as Pure Data**:
 ## Quick Start
 
 ### 1. Prerequisites
-- **Node.js**: v22.5 or higher (required for `node:sqlite`)
+- **Bun**: the version in `.bun-version` (the default toolchain: installs, scripts and tests, see [docs/CI.md](docs/CI.md#toolchain-switch-bun-or-npm))
+- **Node.js**: v22.5 or higher (required for `node:sqlite`; the studio server, Remotion and the `aideos` launcher run on Node)
 - **FFmpeg**: Required for audio normalization, waveform extraction, and video mastering
 - **Operating System**: Linux or macOS
 
@@ -111,14 +112,16 @@ Clone the repository and install root and editor dependencies:
 ```bash
 git clone https://github.com/Mani212005/aideos.git
 cd aideos
-npm install
+bun install
 ```
-The repository skips onnxruntime-node's Linux CUDA download because Aideos runs Kokoro on the CPU. To opt in during installation, set `npm_config_onnxruntime_node_install_cuda=true`.
+`bun install` reads `package-lock.json` and `editor/package-lock.json` (the only lockfiles) and installs editor/ too. Run scripts with `bun run <script>`; the tests are `bun run test` (plain `bun test` is Bun's own runner and skips the aideos test setup). The runner picks the toolchain: `bun run` takes the Bun path and `npm run` the npm path, and `AIDEOS_TOOLCHAIN` overrides. The npm path still works: `npm ci`, then `npm run ci -- <job>`.
+
+Aideos runs Kokoro on the CPU, so no CUDA runtime is downloaded: bun does not run onnxruntime-node's install script, and npm skips its Linux CUDA download (`.npmrc`). To opt in on the npm path, set `npm_config_onnxruntime_node_install_cuda=true`.
 
 ### 3. Launch Aideos Studio
 Start the interactive web editor:
 ```bash
-npm run editor
+bun run editor
 ```
 Open [http://localhost:3001](http://localhost:3001) in your browser. The editor lets you inspect scenes, scrub the timeline, reposition captions, and review films.
 
@@ -129,10 +132,10 @@ Films are narrated with your cloned voice (the voice of choice). Start the local
 Render the active video package to MP4:
 ```bash
 # Render 16:9 landscape explainer film (videos/<slug>/renders/long.mp4)
-npm run render
+bun run render
 
 # Render 9:16 vertical companion reel (videos/<slug>/renders/reel.mp4)
-npm run render:reel
+bun run render:reel
 ```
 
 In the studio, clicking Export opens the export dialog (Start, real frame progress, Cancel, and an explicit Download button).
@@ -153,7 +156,7 @@ aideos direct "Why attention scales quadratically in transformers" --broll --for
 ### 7. Run Production from an Existing Screenplay
 If you have written a script in `videos/<slug>/script.md`:
 ```bash
-npm run backend -- film \
+bun run backend -- film \
   --script-file videos/my-video/script.md \
   --title "My Video Title" \
   --slug my-video \
@@ -173,7 +176,7 @@ aideos audio verify
 Run deterministic quality checks against the Good Video rubric:
 ```bash
 # Deterministic rubric review (checks persistence, contrast, pacing, captions)
-npm run review -- my-video
+bun run review -- my-video
 
 # Multimodal video evaluation with Gemini 3.8 Flash (9.0+ quality bar)
 aideos gemini-review videos/my-video/renders/long.mp4
@@ -206,7 +209,7 @@ Aideos supports a dual-channel release architecture to protect valuable producti
 
 To promote a release from dev into stable, run:
 ```bash
-npm run release -- 0.5.0 --acceptance /path/to/prepared-film
+bun run release -- 0.5.0 --acceptance /path/to/prepared-film
 ```
 Promotion requires passing full CI, dual-format production, measured rubric reviews, Gemini evaluation, and an interactive human watch confirmation. See [docs/RELEASES.md](docs/RELEASES.md) for detailed setup and rollback workflows.
 
@@ -246,7 +249,7 @@ Yes. Speech synthesis defaults to your local cloned voice (`vcd` on `127.0.0.1:8
 The synthesized narration audio track serves as the master clock for the film. Total shot durations must sum to the voiceover length within +-50ms. When dialogue changes, narration is stored per line by content fingerprint (`voiceover_lines/`) so only changed lines are re-recorded. The synthesizer updates the audio spine, measures exact word boundaries, and retimes all camera transitions and subtitle reveals accordingly.
 
 #### Can I edit the video visually instead of editing code?
-Yes. Launch `npm run editor` to open Aideos Studio. You can drag concept nodes on the 2D spatial canvas, reposition caption cards directly in the video preview, scrub and trim clips on the multi-track timeline, adjust themes, and check the 6 hard gates and export in the browser.
+Yes. Launch `bun run editor` to open Aideos Studio. You can drag concept nodes on the 2D spatial canvas, reposition caption cards directly in the video preview, scrub and trim clips on the multi-track timeline, adjust themes, and check the 6 hard gates and export in the browser.
 
 ---
 

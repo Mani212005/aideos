@@ -17,7 +17,7 @@ captions. It is a Rust crate with a library API and a CLI, driving `ffmpeg` and 
 ## Commands
 
 ```bash
-cargo test --locked --manifest-path native/Cargo.toml          # all native crates (also run by `npm run ci -- unit`)
+cargo test --locked --manifest-path native/Cargo.toml          # all native crates (also run by `bun run ci -- unit`)
 cargo build --release --manifest-path native/Cargo.toml        # native/target/release/aideos-encode
 
 # PNG directory plus narration and music, final export (x264 CRF 16)

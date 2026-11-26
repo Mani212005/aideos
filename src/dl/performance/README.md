@@ -48,11 +48,11 @@ The standalone browser adapter remains an isolated verification tool.
 ## Validation
 
 ```sh
-npm run performance:check
-npm test
-npm run lint
-npm run smoke:studio
-npm run performance:filmstrip
+bun run performance:check
+bun run test
+bun run lint
+bun run smoke:studio
+bun run performance:filmstrip
 python3 -m http.server 8781 --directory .frames/iona-performance
 ```
 
@@ -61,7 +61,7 @@ and fixed camera. Its left side uses unchanged approved source by default. To co
 against the actual approved MP4 restored from the art-proof archive:
 
 ```sh
-npm run performance:filmstrip -- --reference-clip <restored-cel.mp4>
+bun run performance:filmstrip -- --reference-clip <restored-cel.mp4>
 ```
 
 FFmpeg extracts exact numbered frames; previously captured frames of the same clip bytes

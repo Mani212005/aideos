@@ -20,7 +20,7 @@ lossless intermediates, H.264 CRF 16, limited-range yuv420p and AAC at 320 kbps.
 renderer consumes this data directly ([NATIVE_ENCODE.md](NATIVE_ENCODE.md)). The Remotion adapter expresses that policy for every caller
 through `FINAL_ENCODE_FLAGS` in `backend/pipeline/render.ts` (PNG frames, h264, CRF 16, yuv420p,
 AAC 320k), so its sidecar reports `profileSettingsApplied` true for each setting, alongside the
-actual probed stream facts. Extra arguments passed to `npm run render` follow those flags and can
+actual probed stream facts. Extra arguments passed to `bun run render` follow those flags and can
 override them without the sidecar noticing.
 
 The `Renderer` interface accepts film data, a format, output path, profile and optional frame range.

@@ -115,7 +115,7 @@ Verify by probing duration/size rather than trusting exit codes:
 
 ```bash
 export WAN_GPU_PASSWORD=<box password>   # only needed when no SSH key is installed
-npm run backend -- engine-test "<prompt>" --engine ssh-wangp --seconds 5
+bun run backend -- engine-test "<prompt>" --engine ssh-wangp --seconds 5
 # lands in out/gpu-test/aideos-<id>.mp4
 ```
 
@@ -128,7 +128,7 @@ npm run backend -- engine-test "<prompt>" --engine ssh-wangp --seconds 5
       "totalFrames": 144, "delayFrames": 30, "fullScreenHero": true }`
 3. `public/gpu_robot_arm/` is gitignored (repo convention for frame sequences);
    the frames stay local, the film data references them.
-4. `npm run validate` then `npx remotion render Long videos/<slug>/renders/long.mp4 --gl=angle`
+4. `bun run validate` then `npx remotion render Long videos/<slug>/renders/long.mp4 --gl=angle`
    (the `--gl=angle` flag avoids a flaky SwiftShader WebGL context failure on macOS).
 
 ## Politeness and disk hygiene

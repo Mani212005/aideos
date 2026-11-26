@@ -3,7 +3,7 @@
 # Stay on npm, do not switch to bun
 
 - **Date**: 2026-11-21
-- **Status**: In force
+- **Status**: Superseded by [2026-11-26-bun-default-toolchain.md](2026-11-26-bun-default-toolchain.md)
 - **Decided by**: owner, after an evaluation by an agent that recommended it (option A of four)
 - **Pull requests**: none for the decision itself (it changes nothing in the repository). A separate task to find and fix the slow `npm ci` on CI is in flight with no pull request yet.
 

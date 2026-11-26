@@ -65,9 +65,9 @@ assets. Packages must contain regular files and directories, without symlinks. C
 that exercises the changes being released, not a short excerpt or a tone-only test fixture.
 
 ```sh
-npm run release -- 0.5.0 --acceptance /absolute/path/to/prepared-film --dry-run
+bun run release -- 0.5.0 --acceptance /absolute/path/to/prepared-film --dry-run
 # After inspecting the dry run, run the same acceptance gates for the real promotion:
-npm run release -- 0.5.0 --acceptance /absolute/path/to/prepared-film
+bun run release -- 0.5.0 --acceptance /absolute/path/to/prepared-film
 ```
 
 The command fetches refs and checks version/fast-forward eligibility, then:
@@ -124,7 +124,7 @@ the evidence files with their sha256. Writing it changes nothing about the relea
 you ask:
 
 ```sh
-npm run release -- 0.5.1 --acceptance /absolute/path/to/prepared-film --resume-gates /tmp/aideos-release-0.5.1-AbC123
+bun run release -- 0.5.1 --acceptance /absolute/path/to/prepared-film --resume-gates /tmp/aideos-release-0.5.1-AbC123
 ```
 
 `--resume-gates` takes the evidence directory an earlier attempt of the **same version** printed
@@ -171,9 +171,9 @@ the accepted tag into stable, `git merge --ff-only vX.Y.Z`, and rerun `npm ci` t
 Run from the updating clone after the first approved release has been published:
 
 ```sh
-npm run release:setup -- --path "$HOME/aideos-stable"
+bun run release:setup -- --path "$HOME/aideos-stable"
 # Prints the clone/install plan and the exact ln -sfn commands without changing anything.
-npm run release:setup -- --path "$HOME/aideos-stable" --apply
+bun run release:setup -- --path "$HOME/aideos-stable" --apply
 ```
 
 The default path is `~/aideos-stable`; `--bin-dir` defaults to `~/.local/bin`. Setup refuses an
