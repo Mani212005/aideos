@@ -535,7 +535,12 @@ function tokenStripLayout(ctx: LayoutCtx, block: { tokens: string[]; caption?: s
   const labelM = ctx.metrics(font, labelSize);
   const caption = block.caption ? block.caption.toUpperCase() : "";
   const captionW = caption ? ctx.width_({ text: caption, font, size: labelSize, letterSpacing: 0.14 * labelSize }) : 0;
-  const rowMax = chips.reduce((sum, c, i) => sum + c.w + (i ? g : 0), 0);
+  let rowMax = 0;
+  let rowX = 0;
+  for (const c of chips) {
+    rowMax = rowX + c.w;
+    rowX += c.w + g;
+  }
   const width = Math.min(Math.max(rowMax, captionW), rect.w);
   const placed: Array<{ text: string; textW: number; w: number; x: number; y: number }> = [];
   let x = 0;
