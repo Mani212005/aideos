@@ -385,7 +385,7 @@ differ per format.
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
-music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter on a cut shot that is not the first, in a film with a scene, P2.6a), more than one block per shot and blocks other than
+music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter in a film with a scene, P2.6a and P2.6b), more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
@@ -678,7 +678,8 @@ the fallback for everything not yet native:
 | P2.4b | the `paper-fibers` texture of `paper-white`, `parchment` and `charcoal`: Chrome draws it as a flat darkening (the filter's `multiply` blend with the rect's black fill leaves no grain), lowered to that in the `/7` underlay, and a card's backdrop starts from the darkened canvas ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), several blocks per shot, panels other than `frame` | planned |
 | P2.6a | the `inset` panel holding exactly one StatCounter on a cut shot that is not the first, in a film with a scene, behind a parity journey ([P2.6a](#p26a-the-inset-panel)) | done |
-| P2.6 | devices in the inset, and an inset that opens on a camera move | planned |
+| P2.6b | the `inset` panel on the first shot, and one that opens on a camera move (its open and close fade, its content's delayed fade and entrance), behind the same journey ([P2.6b](#p26b-the-inset-panel-on-a-camera-move)) | done |
+| P2.6 | devices in the inset, an inset with no block, an inset in a node-graph film | planned |
 | P2.7 | imported footage and overlay clips (ffmpeg decode with accurate seek) | planned |
 
 The paper-rip transition every node-graph film names by default is a retired no-op (`PaperRip.tsx`), so it needs no
@@ -785,13 +786,29 @@ The render sizes the panel border-box (measured: its border box is exactly the r
 centres the counter in the region; treating it as content-box drew the counter 25 px low and the panel 2 px wide (0.987).
 The emitter draws the panel as two rects (the fill over the border box, the hairline on its band) and lays the
 StatCounter out in the column's content box (the region less the border and the padding on every side). It is drawn on a
-measured form only: a film with a scene, a shot that is not the first, whose move is `cut`, holding exactly one block, a
-StatCounter. Every other inset form is refused with a reason naming `stage "inset"`: an inset on the first shot, an inset with
-no block, an inset in a node-graph film (no scene), an inset that opens on a camera move, and an inset holding anything but a
-StatCounter (none of these is measured against Remotion yet). The journey `backend/journeys/inset_panel.journey.ts` asks
+measured form only: a film with a scene, holding exactly one block, a StatCounter. P2.6a measured it on a shot that is
+not the first and whose move is `cut`; [P2.6b](#p26b-the-inset-panel-on-a-camera-move) added the first shot and the camera
+move. Every other inset form is refused with a reason naming `stage "inset"`: an inset with no block, an inset in a
+node-graph film (no scene), and an inset holding anything but a StatCounter (none of these is measured against Remotion
+yet). The journey `backend/journeys/inset_panel.journey.ts` asks
 the renderer choice for both formats of `test_fixtures/packages/inset-stage` (native must be chosen) and compares 21 frames
 (the shot before, the counter shot counting and landed, the shot after and the end card) with Remotion's stills at 0.995,
 none left out. Every 15th frame of the delivered video, long and reel (59 frames): all at or above 0.995, lowest 0.99847.
+
+### P2.6b the inset panel on a camera move
+
+A compiled film opens every inset shot on a `pan` unless it starts a chapter, so the cut form of P2.6a alone rarely applies.
+`Film.tsx` draws a panel on a shot that is not a cut and not the first with an opacity of `min(1, 1.4 * open) * (1 - close)`,
+`open` the ease-out-expo over the camera move (900 ms) from the shot's start and `close` the same ease over its last 420 ms; its
+content column fades in linearly from 55% of the move to its end, and the blocks start their own entrance when that fade
+starts. The first shot is drawn still, as a cut. The emitter gives the card group the panel's opacity as a dense track (held at
+the shot's last frame under the end card) and the blocks a content group with the column's fade, both composited as rounded
+layers the way Chrome composites nested opacity; a cut keeps the P2.6a document byte for byte. The fixture
+`test_fixtures/packages/inset-moves` holds a first-shot inset on a cut and an inset on a `pan` that opens, counts and closes.
+Measured against Remotion (swangle), 76 frames over both formats (every second frame of the open and the close, a spread and
+the end card): all at or above 0.995, lowest 0.99847; mid-fade pixels agree exactly (the panel at 152: 15, 15, 17 in both).
+The journey `backend/journeys/inset_panel.journey.ts` adds the fixture with 33 frames. An inset with no block, an inset in a
+node-graph film and an inset holding anything but one StatCounter stay refused.
 
 ### P2.1 SVG filters: glow and drop shadow
 
@@ -861,7 +878,7 @@ as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-g
 
 ## Not yet native
 
-Node-graph films, the other primitives, devices, inset forms other than the measured one ([P2.6a](#p26a-the-inset-panel)), panel stages and footage (Phase 2; its first steps, P2.1
+Node-graph films, the other primitives, devices, inset forms other than the measured ones ([P2.6a](#p26a-the-inset-panel), [P2.6b](#p26b-the-inset-panel-on-a-camera-move)), panel stages and footage (Phase 2; its first steps, P2.1
 and P2.2a, draw the SVG filter subset of glows and drop shadows and the colour and dash offset tracks of `aideos.render/5`; P2.2b emits the flat-camera node-graph canvas and P2.2c draws flat node-graph films natively, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and nothing of the Three stage any more: the cel stage with any number of performers is carried by
