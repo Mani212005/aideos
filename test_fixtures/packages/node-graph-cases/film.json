@@ -96,7 +96,7 @@
       "move": "cut",
       "drift": true,
       "zoom": 1,
-      "scriptText": "Twelve thousand tokens go in.",
+      "scriptText": "12,000 tokens go in.",
       "blocks": [
         {
           "c": "StatCounter",
