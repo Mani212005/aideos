@@ -173,9 +173,10 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   if (film.overlayClips?.length) reasons.push("standalone overlay clips are Phase 2");
   const theme = BACKGROUND_THEMES[film.theme?.background ?? "paper-white"] ?? BACKGROUND_THEMES["paper-white"];
   // Every theme texture (the blueprint grid and the dot matrix since P2.4a, the paper grain since P2.4b) is lowered into the
-  // `/7` underlay for node-graph films only, which is what was measured; over a scene it is not measured yet.
-  if (film.scene && theme.gridType !== "none") {
-    reasons.push(`the ${theme.id} theme's ${theme.gridType} texture over a scene has not been measured against Remotion yet`);
+  // `/7` underlay, under the stage as Film.tsx draws it: measured for node-graph films and, since P2.4c, for vector scene
+  // films; over a Three stage it is not measured yet.
+  if (film.scene?.renderer === "three" && theme.gridType !== "none") {
+    reasons.push(`the ${theme.id} theme's ${theme.gridType} texture over a Three stage has not been measured against Remotion yet`);
   }
   if (film.music || film.audio || film.sfx?.length || film.audioClips?.length) reasons.push("legacy music, effects and timeline audio clips are not mixed natively (library soundtracks are)");
   const soundtrack = normalizeFilmSoundtrack(film);
@@ -1279,9 +1280,10 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
     placement: { [format]: { x: 0.5, y: 0.5, w: width - 1, h: height - 1 } },
   });
 
-  // The theme texture under the canvas (Film.tsx draws it under the stage, pushed with it by the end card but not drifted), in the `/7` underlay; node-graph films only (nativeSupport refuses a textured scene film).
+  // The theme texture under the canvas or the scene (Film.tsx draws it under the stage, pushed with it by the end card but not
+  // drifted), in the `/7` underlay; not over a Three stage (nativeSupport refuses that).
   const holdScale = (f: number) => (card && f >= card.from ? 1 + 0.01 * Math.min(1, (f - card.from) / Math.max(1, card.durationInFrames)) : 1);
-  const texture = film.videoClips?.length || film.scene ? null : themeTexture(theme, width, height, holdScale, last);
+  const texture = film.videoClips?.length || film.scene?.renderer === "three" ? null : themeTexture(theme, width, height, holdScale, last);
 
   const audio = resolveAudio(film, delivery);
   const ir: RenderIr = {

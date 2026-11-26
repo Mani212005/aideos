@@ -42,8 +42,8 @@ particles may appear in one document. No emitter writes `/6` either. See
 [Native transitions and particles](#native-transitions-and-particles-aideosrender6).
 
 P2.4a of Phase 2 added `aideos.render/7`: a strict superset of `/6` that adds the `underlay`, frame-space nodes drawn
-between the background and the stage. The emitter writes `/7` only for a node-graph film whose theme has a texture it lowers there
-(the `blueprint-grid` and `subtle-dots` patterns, and since P2.4b the `paper-fibers` grain, which Chrome draws as a flat darkening; a scene film on a textured theme is refused until it is measured); every other film is written as before. See [The underlay](#the-underlay-aideosrender7).
+between the background and the stage. The emitter writes `/7` only for a node-graph or vector scene film whose theme has a texture it lowers there
+(the `blueprint-grid` and `subtle-dots` patterns, and since P2.4b the `paper-fibers` grain, which Chrome draws as a flat darkening; vector scene films since P2.4c; a Three stage or character film on a textured theme is refused until it is measured); every other film is written as before. See [The underlay](#the-underlay-aideosrender7).
 
 ## Where things live
 
@@ -461,7 +461,7 @@ that transform (scale, x, y, rotation) with bilinear sampling at the group's opa
 the same as drawing the children in place. Under the end card's 1% push, redrawing a texture's 0.25 px lines at the new
 scale measured SSIM 0.960 against Chrome, resampling it 0.996.
 
-The emitter puts a node-graph film's theme texture there (`backend/renderIr/emitThemeTexture.ts`): `Film.tsx` draws the `blueprint-grid`
+The emitter puts a node-graph or vector scene film's theme texture there (`backend/renderIr/emitThemeTexture.ts`): `Film.tsx` draws the `blueprint-grid`
 and `subtle-dots` patterns and the `paper-fibers` grain (a flat darkening in Chrome, see NATIVE_RENDERER.md) under the canvas, pushed by the end card with the canvas but not drifted with it, so the
 texture is a frame-sized SVG asset (`visuals/theme-texture.svg`) inside a group whose `scale`, `x` and `y` tracks are the
 end card's push about the frame centre, at the texture layer's opacity. Fixtures: `valid/underlay.json`,

@@ -19,6 +19,7 @@ import { quantize, SVG_ANIMATABLE_PROPERTIES } from "../../src/dl/scene/svgAnima
 import { emitRenderIr, nativeSupport, sampleTrack, NativeUnsupportedError, type NativeFormat } from "./emit";
 import type { Keyframe, Node, RenderIr } from "./schema";
 import { fakeMeasurer, nativeSceneFilm, NATIVE_SVG_SOURCES, PROBE_SVG_SOURCE } from "../testSupport/nativeSceneFilm";
+import { readFilm } from "../pipeline/filmStore";
 import type { Film } from "../../src/dl/schema";
 import { captionWordsForFilm } from "../../src/dl/captionsParser";
 import { deliveryTimeline } from "../../src/dl/delivery";
@@ -296,9 +297,14 @@ test("a film the native renderer cannot draw is refused with every reason", () =
   assert.deepEqual(nativeSupport(nodeGraph, "reel"), []);
   const perspective = { ...nodeGraph, theme: { ...nodeGraph.theme, cameraAngle: "isometric" } } as typeof nodeGraph;
   assert.ok(nativeSupport(perspective, "reel").some((r) => r.includes("node-graph camera angle")));
-  // The pattern textures are measured over node-graph films only: the same film on the blueprint theme is refused with a scene and drawn without one.
+  // The textures are measured over node-graph films (P2.4a, P2.4b) and vector scene films (P2.4c): the same film on the blueprint
+  // theme is drawn with its scene and without one; over a Three stage the texture is still refused.
   const blueprintScene = nativeSceneFilm({ theme: { ...base.theme, background: "blueprint" } });
-  assert.ok(nativeSupport(blueprintScene, "long").some((r) => r.includes("blueprint-grid texture over a scene has not been measured")));
+  assert.deepEqual(nativeSupport(blueprintScene, "long"), []);
+  const threeFilm = readFilm("legacy-iona-p0");
+  assert.ok(threeFilm && threeFilm.scene?.renderer === "three", "the legacy-iona-p0 fixture is a Three-stage film");
+  const blueprintThree = nativeSupport({ ...threeFilm, theme: { ...threeFilm.theme, background: "blueprint" } }, "long");
+  assert.ok(blueprintThree.some((r) => r.includes("blueprint-grid texture over a Three stage has not been measured")), blueprintThree.join("\n"));
   const blueprintGraph = nativeSceneFilm({ theme: { ...base.theme, background: "blueprint" } });
   delete (blueprintGraph as { scene?: unknown }).scene;
   assert.deepEqual(nativeSupport(blueprintGraph, "long"), []);
