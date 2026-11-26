@@ -1,6 +1,6 @@
 /**
- * File Description: Journey for Phase 2 step P2.2c of the native renderer: a node-graph film (no scene, the flat camera) is drawn natively instead of falling back to Remotion, and looks the same. For each node-graph fixture the renderer choice in `auto` must pick native in both formats, and its native frames must match the Remotion frames on the stage at the SSIM bar of the native parity reports on every measured frame, none left out. node-graph-flat: the frames 20, 60, 100, 150, 250, 330, 420 and 520, every shot's midpoint (45, 255, 345, 435, 525) and one end-card frame. node-graph-cases (the cases node-graph-flat does not reach: a bright accent, small nodes at a zoom above 9, cards close together, a StatCounter over the canvas): every shot's midpoint, the frames that measured lowest in a sweep of every 15th frame, and one end-card frame.
- * Inputs and outputs: test_fixtures/packages/node-graph-flat and node-graph-cases, the release binary and Remotion -> pass, or a failure naming every film, format and frame under the bar with both frames saved under .ci-artifacts/.
+ * File Description: Journey for Phase 2 step P2.2c of the native renderer: a node-graph film (no scene, the flat camera) is drawn natively instead of falling back to Remotion, and looks the same. For each node-graph fixture the renderer choice in `auto` must pick native in both formats, and its native frames must match the Remotion frames on the stage at the SSIM bar of the native parity reports on every measured frame, none left out. node-graph-flat: the frames 20, 60, 100, 150, 250, 330, 420 and 520, every shot's midpoint (45, 255, 345, 435, 525) and one end-card frame. node-graph-cases (the cases node-graph-flat does not reach: a bright accent, small nodes at a zoom above 9, cards close together, a StatCounter over the canvas): every shot's midpoint, the frames that measured lowest in a sweep of every 15th frame, and one end-card frame. node-graph-quiet-blocks (P2.5e: CodeBlock, ProgressBar, Kicker, Divider and IconLabel blocks on `none` shots, which Film.tsx never draws, no longer send the film to Remotion): each such shot's midpoint, the sweep's lowest frames and one end-card frame.
+ * Inputs and outputs: test_fixtures/packages/node-graph-flat, node-graph-cases and node-graph-quiet-blocks, the release binary and Remotion -> pass, or a failure naming every film, format and frame under the bar with both frames saved under .ci-artifacts/.
  * Used by: npm run test:journeys and the CI journeys job (which builds the binary first). Skips when the binary is not built unless CI or AIDEOS_NATIVE_TESTS_REQUIRED=1.
  */
 
@@ -21,6 +21,9 @@ const FIXTURES: Array<{ slug: string; frames: Record<NativeFormat, number[]> }> 
   { slug: "node-graph-flat", frames: { long: [20, 45, 60, 100, 150, 250, 255, 330, 345, 420, 435, 520, 525, 700], reel: [20, 45, 60, 100, 150, 250, 255, 330, 345, 420, 435, 520, 525, 640] } },
   // Every shot's midpoint (45, 135, 225, 315, 405, 495), the lowest frames of the sweep, and one frame of the end card.
   { slug: "node-graph-cases", frames: { long: [20, 45, 120, 135, 225, 285, 315, 330, 345, 405, 495, 690], reel: [20, 45, 120, 135, 225, 285, 315, 330, 345, 405, 495, 600] } },
+  // node-graph-flat with primitive blocks left on its `none` shots (P2.5e: Film.tsx never draws them): each such shot's
+  // midpoint (165, 255, 525), the lowest frames of a sweep of every 15th frame, and one frame of the end card.
+  { slug: "node-graph-quiet-blocks", frames: { long: [90, 165, 240, 255, 270, 285, 525, 645], reel: [90, 165, 240, 255, 270, 285, 525, 645] } },
 ];
 
 const problem = nativeJourneyProblem();
