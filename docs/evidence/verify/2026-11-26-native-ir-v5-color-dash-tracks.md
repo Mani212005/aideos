@@ -55,3 +55,20 @@
 ## Artifacts and links
 
 - Differential harness and frames (outside the repo): `/home/mani/aideos-linux-home/data/aideos-native-phase2-nodegraph/parity/p22a/`.
+
+## Round 2 (2026-11-26): merged main with Render IR `/4` (type effects)
+
+- Merged `origin/main` (51002855, `aideos.render/4`) into the branch with a merge commit; no published history rewritten.
+- `/5` is now a strict superset of `/4`: `/4`'s nodes (text with glyph tracks) with the `/5` svg node, and `/4`'s
+  optional shutter. Colour tracks sample at fractional frame times like every other track.
+- The unsupported-version example stays `aideos.render/6`, asserted as before. New fixture `invalid/v4-color-and-dash.json`:
+  a `/4` document carrying the `/5` additions is refused structurally, as the `/3` ones are.
+- The `/1` to `/4` JSON Schemas regenerate byte-identical to main.
+- Reran: `npx tsx scripts/render_ir_schema.ts --check`, the renderIr, nativeRenderer and rendererSelection tests (61 pass),
+  `npx tsc --noEmit -p .`, `npx tsc -b editor/tsconfig.node.json`, eslint on the changed TS files, and
+  `cargo test --locked --manifest-path native/Cargo.toml` (every crate passes). Clippy reports two warnings in
+  `native/aideos-render/src/raster/mod.rs` that come from main's `/4` change, not from this branch.
+- Test changes added by the merge: the expected `supported` text lists `/1` to `/5`.
+- The pipeline's CI repair (060e3b13, `backend/farm/loadTest.ts`) is a farm load-test harness change outside this
+  slice: a kill whose task had already finished is no longer counted as a mid-render kill. Its cause was inferred from
+  one CI log, not reproduced; the check still requires at least one counted kill and a repeat for each.
