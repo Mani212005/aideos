@@ -50,7 +50,7 @@ P2.5b measured (pixel-snapped boxes, Blink's `line-height: normal`) and matched 
 
 ## Still refused (planned)
 
-- A LayerStack alone on the frame stage, under anything but a headline, or with a `prompt`; the other devices.
+- A LayerStack alone on the frame stage, under anything but a headline, or with a `prompt`; one whose stack, gap and label column do not fit the column (Remotion shrinks the stack); a named bar whose label and dimension do not fit one line in the bar; the other devices.
 
 ## Test changes
 

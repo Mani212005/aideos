@@ -201,6 +201,11 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       const wide = tokenStripTooWide(strip, layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme), format, shot.stage === "inset", film.subtitles !== false && film.captions !== "off");
       if (wide) reasons.push(`shot ${shot.id}: ${wide}`);
     }
+    const stack = shot.blocks.find((b) => b.c === "LayerStack");
+    if (stack?.c === "LayerStack" && FORMAT_SIZE[format]) {
+      const wide = layerStackTooWide(stack, layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme), format, shot.stage === "inset", film.subtitles !== false && film.captions !== "off");
+      if (wide) reasons.push(`shot ${shot.id}: ${wide}`);
+    }
     for (const block of shot.blocks) {
       if (!SUPPORTED_BLOCKS.has(block.c)) reasons.push(`shot ${shot.id}: ${block.c} blocks are Phase 2`);
       const size = block.c === "Body" && FORMAT_SIZE[format] ? bodySizes(layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme)) : undefined;
@@ -512,6 +517,34 @@ function tokenStripTooWide(block: { caption?: string }, layout: DLLayout, format
   const size = Number(layout.label().fontSize);
   const captionW = block.caption.length * (MONO_ADVANCE_EM + 0.14) * size;
   return captionW > available ? `a TokenStrip caption ${Math.round(captionW)} px wide wraps in its ${Math.round(available)} px column, which is not measured against Remotion yet` : undefined;
+}
+
+/**
+ * Why a LayerStack cannot be laid out natively in its panel, or undefined: the stack plus the 2.5-grid gap and its label column
+ * must fit the column (else Remotion shrinks the stack), and a named bar's label and dimension must fit one line in the bar
+ * (else the text overflows or wraps). Neither is measured, so both are refused. Uses the mono advance, so it runs before any measuring.
+ */
+function layerStackTooWide(block: { count?: number; bottomLabel?: string; topLabel?: string; layers?: Array<string | { label: string; dim?: string }> }, layout: DLLayout, format: NativeFormat, inset: boolean, captions: boolean): string | undefined {
+  const { width, height } = FORMAT_SIZE[format];
+  const region = inset ? getInsetRegion(format, width, height) : getStageCardRect(format, width, height, layout.margin, captions);
+  const available = inset ? region.w - 2 - 6 * layout.grid : region.w;
+  const named = block.layers ?? [];
+  const rows = named.length > 0 ? named.length : block.count ?? 32;
+  const stackW = Math.min(layout.px(named.length > 0 ? 640 : 460), (named.length > 0 ? 0.8 : 0.6) * available);
+  const labelSize = Number(layout.label().fontSize);
+  const labelEm = MONO_ADVANCE_EM + 0.14;
+  const labelColW = Math.max((block.topLabel ?? "").length, (block.bottomLabel ?? "").length, `${rows} / ${rows}`.length) * labelEm * labelSize;
+  const needed = stackW + layout.grid * 2.5 + labelColW;
+  if (needed > available) return `a LayerStack ${Math.round(needed)} px wide (stack, gap and label column) does not fit its ${Math.round(available)} px column, so Remotion shrinks it, which is not measured against Remotion yet`;
+  const barSize = layout.type("body").fontSize * 0.85;
+  const barContentW = stackW - 2 - 3 * layout.grid;
+  for (const layer of named) {
+    const label = typeof layer === "string" ? layer : layer.label;
+    const dim = typeof layer === "string" ? undefined : layer.dim;
+    const textW = (label.length + (dim ? dim.length : 0)) * MONO_ADVANCE_EM * barSize + (dim ? layout.grid : 0);
+    if (textW > barContentW) return `a LayerStack bar ${JSON.stringify(label)} has text ${Math.round(textW)} px wide in a ${Math.round(barContentW)} px bar, which overflows or wraps and is not measured against Remotion yet`;
+  }
+  return undefined;
 }
 
 /**

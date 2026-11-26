@@ -386,7 +386,7 @@ Text is measured with `aideos-render measure`, so layout and drawing share one s
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
 music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter, TokenStrip or LayerStack in a film with a scene, P2.6a, P2.6b, P2.5b and P2.5c), more than one block per shot (except a `TextReveal` followed by a `Body`, a `TokenStrip` or a `LayerStack`, P2.5a to P2.5c) and blocks other than
-`TextReveal`, `StatCounter`, `Body`, `TokenStrip` and `LayerStack` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt). Those stay on Remotion until their phase.
+`TextReveal`, `StatCounter`, `Body`, `TokenStrip` and `LayerStack` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
 carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid
@@ -854,7 +854,11 @@ measured. The fixture `test_fixtures/packages/layer-stacks` (a scene film) has f
 on a pan and a headline over an anonymous eight-bar stack. Measured against Remotion (swangle), 114 frames over both formats
 (every 6th frame through both stacks, the shots around them and the end card): all at or above 0.995, lowest 0.99840. The
 journey `backend/journeys/layer_stacks.journey.ts` pins native selection and 33 of those frames. A LayerStack alone on the frame
-stage, with a block other than a headline, or with a `prompt` stays refused.
+stage, with a block other than a headline, or with a `prompt` stays refused. So does a LayerStack whose stack, 2.5-grid gap
+and label column (the widest of the top label, the bottom label and the "n / n" counter, mono at the label size plus 0.14 em
+letter spacing) exceed the column, because Remotion then shrinks the stack, and one with a named bar whose label, a grid and
+its dimension (mono at 0.85 of the body size) exceed the bar's content width, because the text overflows or wraps; neither is
+measured against Remotion.
 
 ### P2.6a the inset panel
 
