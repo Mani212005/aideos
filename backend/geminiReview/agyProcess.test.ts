@@ -57,6 +57,35 @@ async function until(check: () => boolean): Promise<void> {
   assert.fail("fixture process state did not converge within three seconds");
 }
 
+// Waits for a set of fixture markers without fixed-delay polling.
+function watchForFiles(dir: string, names: string[]): { promise: Promise<void>; close: () => void } {
+  let resolveFiles: () => void = () => {};
+  let rejectFiles: (error: Error) => void = () => {};
+  const promise = new Promise<void>((resolve, reject) => {
+    resolveFiles = resolve;
+    rejectFiles = reject;
+  });
+  // Resolves once all fixture files exist.
+  const check = () => {
+    try {
+      if (names.every((name) => fs.existsSync(path.join(dir, name)))) {
+        watcher?.close();
+        resolveFiles();
+      }
+    } catch (error) {
+      watcher?.close();
+      rejectFiles(error as Error);
+    }
+  };
+  const watcher = fs.watch(dir, check);
+  watcher.once("error", (error) => {
+    watcher?.close();
+    rejectFiles(error);
+  });
+  check();
+  return { promise, close: () => watcher?.close() };
+}
+
 const stubbornTree = `
 const fs = require('node:fs');
 const path = require('node:path');
@@ -164,17 +193,91 @@ test("agy runner lets a quiet model request continue by default", async (t) => {
 
 for (const activity of ["stdout", "CPU"]) {
   test(`agy idle watchdog allows continuing ${activity} progress`, { skip: process.platform === "win32" }, async (t) => {
-    const script = activity === "stdout"
-      ? `const timer = setInterval(() => process.stdout.write(' '), 50); setTimeout(() => {clearInterval(timer); console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));}, 2000);`
-      : `const end = Date.now() + 2000; while (Date.now() < end) {} console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));`;
-    fakeAgy(t, script);
+    let dir: string | undefined;
+    if (activity === "CPU") {
+      const cpuWorker = `
+const fs = require('node:fs');
+const path = require('node:path');
+const dir = process.argv[1];
+const stopFile = path.join(dir, 'stop');
+fs.writeFileSync(path.join(dir, 'child.pid'), String(process.pid));
+fs.writeFileSync(path.join(dir, 'ready'), 'ready');
+// Extra burner threads raise the CPU rate above one second per second, so whole-second ps time ticks well inside the idle window.
+const burnThreads = () => {
+  const { Worker } = require('node:worker_threads');
+  const body = "const fs = require('node:fs'); const stop = process.argv[1]; while (!fs.existsSync(stop)) process.cpuUsage();";
+  for (let n = 0; n < 3; n += 1) new Worker(body, { eval: true, argv: [stopFile] }).unref();
+};
+// Burns for two wall-clock seconds, then keeps burning until the test releases the worker.
+const burnUntilReleased = () => {
+  burnThreads();
+  const started = Date.now();
+  while (Date.now() - started < 2000 && !fs.existsSync(stopFile)) process.cpuUsage();
+  fs.writeFileSync(path.join(dir, 'burn-complete'), 'done');
+  while (!fs.existsSync(stopFile)) process.cpuUsage();
+  console.log(JSON.stringify({ status: 'SUCCESS', response: '{"rating":8}' }));
+};
+const watcher = fs.watch(dir, (_event, filename) => {
+  if (filename === 'start') { watcher.close(); burnUntilReleased(); }
+});
+if (fs.existsSync(path.join(dir, 'start'))) { watcher.close(); burnUntilReleased(); }
+`;
+      dir = fakeAgy(t, `
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+const dir = __dirname;
+fs.writeFileSync(path.join(dir, 'leader.pid'), String(process.pid));
+spawn(process.execPath, ['-e', ${JSON.stringify(cpuWorker)}, dir], { stdio: 'inherit' });
+// Keeps stdout busy only until the burn phase starts, so only CPU growth can satisfy the idle watchdog afterwards.
+const timer = setInterval(() => {
+  if (fs.existsSync(path.join(dir, 'start'))) clearInterval(timer);
+  else process.stdout.write(' ');
+}, 50);
+`);
+    } else {
+      fakeAgy(t, `const timer = setInterval(() => process.stdout.write(' '), 50); setTimeout(() => {clearInterval(timer); console.log(JSON.stringify({status: 'SUCCESS', response: '{"rating":8}'}));}, 2000);`);
+    }
     const savedIdle = process.env.AIDEOS_AGY_IDLE_TIMEOUT;
     process.env.AIDEOS_AGY_IDLE_TIMEOUT = "1";
     t.after(() => {
       if (savedIdle === undefined) delete process.env.AIDEOS_AGY_IDLE_TIMEOUT;
       else process.env.AIDEOS_AGY_IDLE_TIMEOUT = savedIdle;
     });
-    assert.equal(JSON.parse(await defaultAgyRunner("Review", { timeoutSeconds: 60 })).rating, 8);
+    const result = defaultAgyRunner("Review", { timeoutSeconds: 60 });
+    if (dir !== undefined) {
+      const runnerOutcome = result.then(
+        (stdout) => ({ kind: "resolved" as const, stdout }),
+        (error: unknown) => {
+          fs.writeFileSync(path.join(dir, "stop"), "watchdog-verdict");
+          return { kind: "rejected" as const, error };
+        },
+      );
+      const readyFiles = ["leader.pid", "child.pid", "ready"];
+      const readyWatcher = watchForFiles(dir, readyFiles);
+      const readyOutcome = await Promise.race([
+        readyWatcher.promise.then(() => ({ kind: "ready" as const })),
+        runnerOutcome,
+      ]);
+      readyWatcher.close();
+      assert.equal(readyOutcome.kind, "ready", readyOutcome.kind === "rejected" ? String(readyOutcome.error) : "runner returned before the process tree was ready");
+      fs.writeFileSync(path.join(dir, "start"), "start");
+      const burnFiles = ["burn-complete"];
+      const burnWatcher = watchForFiles(dir, burnFiles);
+      const burnOutcome = await Promise.race([
+        burnWatcher.promise
+          .then(() => ({ kind: "burn-complete" as const })),
+        runnerOutcome,
+      ]);
+      burnWatcher.close();
+      assert.equal(burnOutcome.kind, "burn-complete", burnOutcome.kind === "rejected" ? String(burnOutcome.error) : "runner returned before the CPU worker reached its milestone");
+      fs.writeFileSync(path.join(dir, "stop"), "stop");
+      const finalOutcome = await runnerOutcome;
+      assert.equal(finalOutcome.kind, "resolved", finalOutcome.kind === "rejected" ? String(finalOutcome.error) : "runner did not return");
+      if (finalOutcome.kind === "resolved") assert.equal(JSON.parse(finalOutcome.stdout).rating, 8);
+    } else {
+      assert.equal(JSON.parse(await result).rating, 8);
+    }
   });
 }
 
