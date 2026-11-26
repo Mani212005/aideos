@@ -374,7 +374,9 @@ function textRevealNodes(ctx: LayoutCtx, id: string, block: { text: string; size
     const [, core, tail] = t.accent ? (/^(.*?)([^\p{L}\p{N}]*)$/u.exec(t.word) ?? ["", t.word, ""]) : ["", t.word, ""];
     return { ...t, core, tail, width: measure(t.word), coreWidth: t.accent ? measure(core) : 0 };
   });
-  // Greedy flex wrap, each row centred (justify-content: center), the block centred in the stage.
+  // Greedy flex wrap. Rows start at the block's left (TextReveal's `justify-content` is `flex-start`: no panel provides a
+  // centred `AlignContext`), and the block, as wide as its widest content up to the stage, is centred in it (the panel's
+  // `align-items: center`), so a headline that wraps starts at the stage's left edge.
   const rows: Array<{ items: typeof words; width: number }> = [];
   for (const w of words) {
     const row = rows[rows.length - 1];
@@ -385,13 +387,18 @@ function textRevealNodes(ctx: LayoutCtx, id: string, block: { text: string; size
   }
   const blockH = rows.length * lineH + (rows.length - 1) * rowGap;
   const top = rect.y + (rect.h - blockH) / 2;
+  // The block's max-content width: every word on one row, summed exactly as a row's width is.
+  const maxContent = words.reduce((sum, w, i) => (i === 0 ? w.width : sum + (colGap + w.width)), 0);
+  const blockW = Math.min(maxContent, rect.w);
+  // Written as the single-row centring always was, so a headline on one row is placed bit for bit as before.
+  const blockX = rect.x + rect.w / 2 - blockW / 2;
   const base = start + frames(MS.stagger * index, ctx.fps);
   const enterFrames = frames(MS.enter, ctx.fps);
   const rise = ctx.layout.px(12);
   const nodes: Node[] = [];
   let wordIndex = 0;
   rows.forEach((row, r) => {
-    let x = rect.x + rect.w / 2 - row.width / 2;
+    let x = blockX;
     const y = top + r * (lineH + rowGap);
     for (const w of row.items) {
       const i = wordIndex++;
