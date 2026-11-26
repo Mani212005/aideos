@@ -443,6 +443,19 @@ function stageRect(ctx: LayoutCtx) {
  */
 const CHROME_BODY_ADVANCE_SIZE = new Map<number, number>([[24, 24], [33.599999999999994, 33.585]]);
 
+/**
+ * The font size whose shaped advances equal Chrome's for JetBrains Mono 400 at the label sizes (Remotion's Chrome, 300-glyph
+ * runs): 12 px advances as 12 px, but 16.8 px (the long frame's label size) advances as 16.7813 px, 0.09% narrower. Where a
+ * label's width decides a centred layout's pixel snapping (the LayerStack label column, P2.5d) its width is measured at this size;
+ * an unlisted size is measured as itself.
+ */
+const CHROME_MONO_ADVANCE_SIZE = new Map<number, number>([[12, 12], [16.799999999999997, 16.7813]]);
+
+/** The size to measure a mono run at so its width is Chrome's (see `CHROME_MONO_ADVANCE_SIZE`). */
+function chromeMonoAdvanceSize(size: number): number {
+  return CHROME_MONO_ADVANCE_SIZE.get(size) ?? size;
+}
+
 /** The body size of a format, and the size Chrome's advances at that size are measured at (nativeSupport refuses any other). */
 function bodySizes(layout: DLLayout): { fs: number; advance: number | undefined } {
   const fs = layout.type("body").fontSize;
@@ -524,8 +537,8 @@ function tokenStripTooWide(block: { caption?: string }, layout: DLLayout, format
 /**
  * Why a LayerStack cannot be laid out natively in its panel, or undefined: the stack plus the 2.5-grid gap and its label column
  * must fit the column (else Remotion shrinks the stack), and a named bar's label and dimension must fit one line in the bar
- * (else the text overflows or wraps), and the label column must keep one width over the sweep (a counter that gains a digit moves the
- * centred stack). None is measured, so all are refused. Uses the mono advance, so it runs before any measuring.
+ * (else the text overflows or wraps). Neither is measured, so both are refused. Uses the mono advance, so it runs before any measuring.
+ * (A counter that gains a digit, moving the centred stack, is drawn since P2.5d.)
  */
 function layerStackTooWide(block: { count?: number; bottomLabel?: string; topLabel?: string; layers?: Array<string | { label: string; dim?: string }> }, layout: DLLayout, format: NativeFormat, inset: boolean, captions: boolean): string | undefined {
   const { width, height } = FORMAT_SIZE[format];
@@ -539,9 +552,6 @@ function layerStackTooWide(block: { count?: number; bottomLabel?: string; topLab
   const labelColW = Math.max((block.topLabel ?? "").length, (block.bottomLabel ?? "").length, `${rows} / ${rows}`.length) * labelEm * labelSize;
   const needed = stackW + layout.grid * 2.5 + labelColW;
   if (needed > available) return `a LayerStack ${Math.round(needed)} px wide (stack, gap and label column) does not fit its ${Math.round(available)} px column, so Remotion shrinks it, which is not measured against Remotion yet`;
-  const counterLen = `${rows} / ${rows}`.length;
-  const widestLabel = Math.max((block.topLabel ?? "").toUpperCase().length, (block.bottomLabel ?? "").toUpperCase().length);
-  if (rows >= 10 && widestLabel < counterLen) return `a LayerStack of ${rows} bars has a label column whose width follows its "k / ${rows}" counter (k gains a digit at 10), so Remotion's centred stack shifts between steps, which is not measured against Remotion yet`;
   const barSize = layout.type("body").fontSize * 0.85;
   const barContentW = stackW - 2 - 3 * layout.grid;
   for (const layer of named) {
@@ -716,15 +726,13 @@ function layerStackNodes(ctx: LayoutCtx, id: string, block: { count?: number; bo
   const labelSize = Number(ctx.layout.label().fontSize);
   const font = monoId(400);
   const labelLineH = blinkNormalLineHeight(ctx.metrics(font, labelSize));
-  const labelW = (text: string) => (text ? ctx.width_({ text, font, size: labelSize, letterSpacing: 0.14 * labelSize }) : 0);
+  // Chrome's label advance (letter spacing stays 0.14 em of the real size): the column's width sets where the stack snaps.
+  const labelW = (text: string) => (text ? ctx.width_({ text, font, size: chromeMonoAdvanceSize(labelSize), letterSpacing: 0.14 * labelSize }) : 0);
   const top = (block.topLabel ?? "").toUpperCase();
   const bottom = (block.bottomLabel ?? "").toUpperCase();
   const counterText = (k: number) => `${k} / ${rows}`;
-  const labelColW = Math.max(labelW(top), labelW(bottom), labelW(counterText(rows)));
   const stackW = Math.min(px(named.length > 0 ? 640 : 460), (named.length > 0 ? 0.8 : 0.6) * box.w);
   const rowGap = g * 2.5;
-  const left = box.x + (box.w - (stackW + rowGap + labelColW)) / 2;
-  const labelX = left + stackW + rowGap;
   const rowH = Math.max(minH, (box.h - gapPx * (rows - 1)) / rows);
   const stackH = box.h;
   const barY = (i: number) => box.y + i * (rowH + gapPx);
@@ -733,6 +741,7 @@ function layerStackNodes(ctx: LayoutCtx, id: string, block: { count?: number; bo
   const sweepSpan = Math.max(1, duration - frames(MS.enter + MS.move, ctx.fps));
   const stepAt = (f: number) => Math.min(rows - 1, Math.floor(Math.max(0, Math.min(1, (f - sweepFrom) / sweepSpan)) * rows));
   const litBar = (step: number) => (named.length > 0 ? rows - 1 - step : step);
+  const counterOf = (step: number) => (named.length > 0 ? step + 1 : litBar(step) + 1);
   const steps: Array<{ step: number; from: number; to: number }> = [];
   for (let f = span.from; f < span.to; f++) {
     const step = stepAt(f);
@@ -740,47 +749,24 @@ function layerStackNodes(ctx: LayoutCtx, id: string, block: { count?: number; bo
     if (last && last.step === step) last.to = f + 1;
     else steps.push({ step, from: f, to: f + 1 });
   }
+  // The label column is as wide as its widest line at each step (`flex: none`), so a counter that gains a digit at 10 widens
+  // it and moves the centred stack (P2.5d): the stack is drawn once per column width, each over the frames that width holds.
+  const colW = (step: number) => Math.max(labelW(top), labelW(bottom), labelW(counterText(counterOf(step))));
+  const variants: Array<{ colW: number; from: number; to: number; steps: typeof steps }> = [];
+  for (const st of steps) {
+    const w = colW(st.step);
+    const last = variants[variants.length - 1];
+    if (last && last.colW === w) {
+      last.to = st.to;
+      last.steps.push(st);
+    } else variants.push({ colW: w, from: st.from, to: st.to, steps: [st] });
+  }
   const barSize = ctx.layout.type("body").fontSize * 0.85;
   const barM = ctx.metrics(font, barSize);
   const barLineH = blinkNormalLineHeight(barM);
   const accent = ctx.accent;
   const radius = px(2);
-  // One bar in one state: its fill, its 1 px border and, for a named layer, its label and dimension.
-  const bar = (key: string, i: number, lit: boolean): Node[] => {
-    const b = snapBox(left, barY(i), stackW, rowH);
-    const nodes: Node[] = [
-      { kind: "rect", id: `${key}-fill`, fill: lit ? hexAlpha(accent, 0.3) : cssColor(ctx.tokens.inkAt(0.03)), radius, tracks: [], placement: { [ctx.format]: b } },
-      { kind: "rect", id: `${key}-border`, radius: radius - 0.5, tracks: [], stroke: { color: lit ? accent : cssColor(ctx.tokens.rule()), width: 1 }, placement: { [ctx.format]: { x: b.x + 0.5, y: b.y + 0.5, w: b.w - 1, h: b.h - 1 } } },
-    ];
-    const part = shown[i];
-    if (part) {
-      const textY = barY(i) + 1 + (rowH - 2 - barLineH) / 2;
-      const labelWidth = ctx.width_({ text: part.label, font, size: barSize, letterSpacing: 0 });
-      nodes.push({
-        kind: "text", id: `${key}-label`, text: part.label, font, color: rgbHex(lit ? ctx.tokens.ink : ctx.tokens.muted), align: "left", lineHeight: barLineH / barSize, letterSpacing: 0, tracks: [],
-        placement: { [ctx.format]: { x: left + 1 + 1.5 * g, y: textY, w: labelWidth + barSize, h: barLineH, fontSize: barSize } },
-      });
-      if (part.dim) {
-        const dimW = ctx.width_({ text: part.dim, font, size: barSize, letterSpacing: 0 });
-        nodes.push({
-          kind: "text", id: `${key}-dim`, text: part.dim, font, color: lit ? accent : rgbHex(ctx.tokens.muted), align: "left", lineHeight: barLineH / barSize, letterSpacing: 0, tracks: [],
-          placement: { [ctx.format]: { x: left + stackW - 1 - 1.5 * g - dimW, y: textY, w: dimW + barSize, h: barLineH, fontSize: barSize } },
-        });
-      }
-    }
-    return nodes;
-  };
   const group = (key: string, from: number, to: number, children: Node[]): Node => ({ kind: "group", id: key, visible: { fromFrame: from, toFrame: to }, x: 0, y: 0, scale: 1, rotation: 0, tracks: [], children });
-  const children: Node[] = [];
-  for (let i = 0; i < rows; i++) {
-    // Each bar is lit over the steps that light it (one run of frames) and unlit before and after.
-    const litSteps = steps.filter((s) => litBar(s.step) === i);
-    const litFrom = litSteps.length ? litSteps[0].from : span.to;
-    const litTo = litSteps.length ? litSteps[litSteps.length - 1].to : span.to;
-    if (litFrom > span.from) children.push(group(`${id}-r${i}-a`, span.from, litFrom, bar(`${id}-r${i}-a`, i, false)));
-    if (litTo > litFrom) children.push(group(`${id}-r${i}-lit`, litFrom, litTo, bar(`${id}-r${i}-lit`, i, true)));
-    if (litTo < span.to) children.push(group(`${id}-r${i}-b`, litTo, span.to, bar(`${id}-r${i}-b`, i, false)));
-  }
   // The label column: items spread with space-between over the stack's height.
   const items = [
     { key: "top", text: top, color: rgbHex(ctx.tokens.muted) },
@@ -790,20 +776,63 @@ function layerStackNodes(ctx: LayoutCtx, id: string, block: { count?: number; bo
   const heights = items.map((it) => (it.key === "counter" || it.text ? labelLineH : 0));
   const free = stackH - heights.reduce((a, b) => a + b, 0);
   const itemTop = (k: number) => box.y + heights.slice(0, k).reduce((a, b) => a + b, 0) + (free / 2) * k;
-  const labelText = (key: string, text: string, color: string, y: number): Node => ({
-    kind: "text", id: key, text, font, color, align: "left", lineHeight: labelLineH / labelSize, letterSpacing: 0.14, tracks: [],
-    placement: { [ctx.format]: { x: labelX, y, w: labelW(text) + labelSize, h: labelLineH, fontSize: labelSize } },
+  const children: Node[] = [];
+  variants.forEach((v, n) => {
+    // One stack drawn at the left its label column width gives, over that width's frames (the id is unchanged with one width).
+    const pid = variants.length === 1 ? id : `${id}-v${n}`;
+    const left = box.x + (box.w - (stackW + rowGap + v.colW)) / 2;
+    const labelX = left + stackW + rowGap;
+    // One bar in one state: its fill, its 1 px border and, for a named layer, its label and dimension.
+    const bar = (key: string, i: number, lit: boolean): Node[] => {
+      const b = snapBox(left, barY(i), stackW, rowH);
+      const nodes: Node[] = [
+        { kind: "rect", id: `${key}-fill`, fill: lit ? hexAlpha(accent, 0.3) : cssColor(ctx.tokens.inkAt(0.03)), radius, tracks: [], placement: { [ctx.format]: b } },
+        { kind: "rect", id: `${key}-border`, radius: radius - 0.5, tracks: [], stroke: { color: lit ? accent : cssColor(ctx.tokens.rule()), width: 1 }, placement: { [ctx.format]: { x: b.x + 0.5, y: b.y + 0.5, w: b.w - 1, h: b.h - 1 } } },
+      ];
+      const part = shown[i];
+      if (part) {
+        const textY = barY(i) + 1 + (rowH - 2 - barLineH) / 2;
+        const labelWidth = ctx.width_({ text: part.label, font, size: barSize, letterSpacing: 0 });
+        nodes.push({
+          kind: "text", id: `${key}-label`, text: part.label, font, color: rgbHex(lit ? ctx.tokens.ink : ctx.tokens.muted), align: "left", lineHeight: barLineH / barSize, letterSpacing: 0, tracks: [],
+          placement: { [ctx.format]: { x: left + 1 + 1.5 * g, y: textY, w: labelWidth + barSize, h: barLineH, fontSize: barSize } },
+        });
+        if (part.dim) {
+          const dimW = ctx.width_({ text: part.dim, font, size: barSize, letterSpacing: 0 });
+          nodes.push({
+            kind: "text", id: `${key}-dim`, text: part.dim, font, color: lit ? accent : rgbHex(ctx.tokens.muted), align: "left", lineHeight: barLineH / barSize, letterSpacing: 0, tracks: [],
+            placement: { [ctx.format]: { x: left + stackW - 1 - 1.5 * g - dimW, y: textY, w: dimW + barSize, h: barLineH, fontSize: barSize } },
+          });
+        }
+      }
+      return nodes;
+    };
+    for (let i = 0; i < rows; i++) {
+      // Each bar is lit over the steps that light it (one run of frames) and unlit before and after, within this width's frames.
+      const litSteps = v.steps.filter((st) => litBar(st.step) === i);
+      const litFrom = litSteps.length ? litSteps[0].from : v.to;
+      const litTo = litSteps.length ? litSteps[litSteps.length - 1].to : v.to;
+      if (litFrom > v.from) children.push(group(`${pid}-r${i}-a`, v.from, litFrom, bar(`${pid}-r${i}-a`, i, false)));
+      if (litTo > litFrom) children.push(group(`${pid}-r${i}-lit`, litFrom, litTo, bar(`${pid}-r${i}-lit`, i, true)));
+      if (litTo < v.to) children.push(group(`${pid}-r${i}-b`, litTo, v.to, bar(`${pid}-r${i}-b`, i, false)));
+    }
+    const labelText = (key: string, text: string, color: string, y: number): Node => ({
+      kind: "text", id: key, text, font, color, align: "left", lineHeight: labelLineH / labelSize, letterSpacing: 0.14, tracks: [],
+      placement: { [ctx.format]: { x: labelX, y, w: labelW(text) + labelSize, h: labelLineH, fontSize: labelSize } },
+    });
+    const fixed: Node[] = [];
+    if (top) fixed.push(labelText(`${pid}-top`, top, items[0].color, itemTop(0)));
+    if (bottom) fixed.push(labelText(`${pid}-bottom`, bottom, items[2].color, itemTop(2)));
+    if (variants.length === 1) children.push(...fixed);
+    else if (fixed.length) children.push(group(`${pid}-labels`, v.from, v.to, fixed));
+    for (const st of v.steps) {
+      const lit = litBar(st.step);
+      children.push(group(`${id}-s${st.from}`, st.from, st.to, [
+        labelText(`${id}-s${st.from}-counter`, counterText(counterOf(st.step)), accent, itemTop(1)),
+        { kind: "rect", id: `${id}-s${st.from}-tab`, fill: accent, radius: px(1), tracks: [], placement: { [ctx.format]: { x: left - px(14), y: box.y + (lit / rows) * stackH, w: px(5), h: px(10) } } },
+      ]));
+    }
   });
-  if (top) children.push(labelText(`${id}-top`, top, items[0].color, itemTop(0)));
-  if (bottom) children.push(labelText(`${id}-bottom`, bottom, items[2].color, itemTop(2)));
-  for (const s of steps) {
-    const k = named.length > 0 ? s.step + 1 : litBar(s.step) + 1;
-    const lit = litBar(s.step);
-    children.push(group(`${id}-s${s.from}`, s.from, s.to, [
-      labelText(`${id}-s${s.from}-counter`, counterText(k), accent, itemTop(1)),
-      { kind: "rect", id: `${id}-s${s.from}-tab`, fill: accent, radius: px(1), tracks: [], placement: { [ctx.format]: { x: left - px(14), y: box.y + (lit / rows) * stackH, w: px(5), h: px(10) } } },
-    ]));
-  }
   const from = start + frames(MS.stagger * index, ctx.fps);
   const enterFrames = frames(MS.enter, ctx.fps);
   const rise = ctx.layout.px(12);

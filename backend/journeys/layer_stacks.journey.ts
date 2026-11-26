@@ -1,5 +1,5 @@
 /**
- * File Description: Journey for Phase 2 step P2.5c of the native renderer: a scene film whose devices are LayerStacks (named layers with dimensions, the one device of an inset panel that opens on a camera move; and a headline over an anonymous eight-bar stack on the frame stage, which grows into all the height the column leaves) is drawn natively instead of falling back to Remotion, and looks the same as the sweep lights one bar at a time. The renderer choice in `auto` must pick native for test_fixtures/packages/layer-stacks in both formats, and its native frames must match the Remotion frames on the stage at the SSIM bar of the native parity reports on every measured frame, none left out: the inset opening, its sweep and close, the device card entering and sweeping, the shots around them, and the end card.
+ * File Description: Journey for Phase 2 step P2.5c of the native renderer: a scene film whose devices are LayerStacks (named layers with dimensions, the one device of an inset panel that opens on a camera move; and a headline over an anonymous twelve-bar stack on the frame stage, which grows into all the height the column leaves and whose k / 12 counter gains a digit at 10, widening the label column and moving the centred stack, P2.5d) is drawn natively instead of falling back to Remotion, and looks the same as the sweep lights one bar at a time. The renderer choice in `auto` must pick native for test_fixtures/packages/layer-stacks in both formats, and its native frames must match the Remotion frames on the stage at the SSIM bar of the native parity reports on every measured frame, none left out: the inset opening, its sweep and close, the device card entering and sweeping, the shots around them, and the end card.
  * Inputs and outputs: test_fixtures/packages/layer-stacks, the release binary and Remotion -> pass, or a failure naming every format and frame under the bar with both frames saved under .ci-artifacts/.
  * Used by: npm run test:journeys and the CI journeys job (which builds the binary first). Skips when the binary is not built unless CI or AIDEOS_NATIVE_TESTS_REQUIRED=1.
  */
@@ -17,10 +17,10 @@ import type { Renderer } from "../renderJob";
 
 const SLUG = "layer-stacks";
 
-/** The measured frames: the shot before, the inset (90 to 240: opening, sweeping, closing), the shot between, the device card (330 to 480: entering, sweeping), the shot after, and the end card. */
+/** The measured frames: the shot before, the inset (90 to 240: opening, sweeping, closing), the shot between, the device card (330 to 480: entering, sweeping, its counter reaching 10 at 426), the shot after, and the end card. */
 const FRAMES: Record<NativeFormat, number[]> = {
-  long: [45, 98, 110, 140, 170, 200, 230, 239, 300, 332, 344, 380, 420, 470, 520, 600, 749],
-  reel: [45, 98, 110, 140, 170, 200, 230, 239, 300, 332, 344, 380, 420, 470, 520, 659],
+  long: [45, 98, 110, 140, 170, 200, 230, 239, 300, 332, 344, 380, 420, 426, 440, 460, 470, 520, 600, 749],
+  reel: [45, 98, 110, 140, 170, 200, 230, 239, 300, 332, 344, 380, 420, 426, 440, 460, 470, 520, 659],
 };
 
 const problem = nativeJourneyProblem();
