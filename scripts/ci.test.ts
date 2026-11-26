@@ -11,7 +11,8 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import YAML from "yaml";
-import { JOBS, PR_JOBS, knownGapNotices, notCoveredNotices, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
+import { JOBS, PR_JOBS, TOOLCHAIN, jobsFor, knownGapNotices, notCoveredNotices, notLinux, resolveRuff, runJobs, runStep, summaryTable } from "./ci";
+import { testCommand } from "./toolchain";
 
 const ROOT = path.resolve(__dirname, "..");
 const scripts = (JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
@@ -55,13 +56,13 @@ function hasWritePermission(permissions: unknown): boolean {
   return Object.values(permissions).some((permission) => permission === "write");
 }
 
-/** Extracts job IDs from a step's run command string when it invokes npm run ci. */
+/** Extracts job IDs from a step's run command string when it invokes npm run ci (or bun scripts/ci.ts on the bun path). */
 function extractCiJobIds(cmd: string): string[] {
   const ids: string[] = [];
   for (const line of cmd.split("\n")) {
     const trimmed = line.trim();
     if (trimmed.startsWith("#")) continue;
-    const match = trimmed.match(/^npm run ci\b(?:\s+--\s+([^\n|&]+))?/);
+    const match = trimmed.match(/^(?:npm run ci\b(?:\s+--)?|bun scripts\/ci\.ts)(?:\s+([^\n|&]+))?/);
     if (match) {
       // `--shard <i>/<n>` (the value may hold `${{ ... }}` expressions with spaces) is not a job name.
       const args = (match[1] ?? "").trim().replace(/--shard\s+(?:\$\{\{.*?\}\}|[^\s$])+/g, "").split(/\s+/).filter((a) => a && !a.startsWith("-"));
@@ -71,8 +72,14 @@ function extractCiJobIds(cmd: string): string[] {
   return ids;
 }
 
-test("every npm script a job runs exists in package.json", () => {
-  for (const job of JOBS) {
+test("every npm script a job runs exists in package.json, and every file a bun step runs exists", () => {
+  for (const job of jobsFor("bun")) {
+    for (const step of job.steps) {
+      if (step.cmd[0] !== "bun" || step.cmd[1] === "x") continue;
+      assert.ok(fs.existsSync(path.join(ROOT, step.cmd[1])), `${job.id} / ${step.name} runs "bun ${step.cmd[1]}", which does not exist`);
+    }
+  }
+  for (const job of jobsFor("npm")) {
     for (const step of job.steps) {
       if (step.cmd[0] !== "npm") continue;
       const prefixed = step.cmd[1] === "--prefix";
@@ -375,14 +382,16 @@ test("unfinished journey TODO events fail CI and reach the summary", async () =>
   fs.writeFileSync(second, `const { test } = require("node:test"); test("J8 duplicate cue", { todo: "ambiguity" }, () => {});`);
   const forwarded: string[] = [];
   const write = process.stdout.write;
-  process.stdout.write = ((chunk: string | Uint8Array) => {
+  // Records and still passes every write through: under node --test the file reports its results to the runner over
+  // stdout, and swallowing them here dropped the previous test's result from the run.
+  process.stdout.write = ((chunk: string | Uint8Array, ...rest: unknown[]) => {
     forwarded.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
-    return true;
+    return (write as (...args: unknown[]) => boolean).call(process.stdout, chunk, ...rest);
   }) as typeof process.stdout.write;
   try {
     const result = await runStep(job, {
       name: "journey tests",
-      cmd: [process.execPath, "--test", "--test-concurrency=1", first, second],
+      cmd: testCommand(TOOLCHAIN, [first, second]),
       env: { NODE_TEST_CONTEXT: undefined },
       todoCases: true,
     });
@@ -406,7 +415,7 @@ test("resolveRuff picks the first launcher that answers and returns null when no
 
 test("the legacy step reports NOT COVERED (exit 0), passed or failed from what the golden test wrote, and a silent exit 0 is a failure", async () => {
   const legacy = JOBS.find((j) => j.id === "legacy")!;
-  const real = legacy.steps[0];
+  const real = legacy.steps.find((step) => step.name === "golden frames")!;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-ci-verdict-"));
   const before = process.env.AIDEOS_CI_ARTIFACTS;
   process.env.AIDEOS_CI_ARTIFACTS = dir;
