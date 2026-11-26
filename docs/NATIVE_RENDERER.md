@@ -385,7 +385,7 @@ differ per format.
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a scene (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films only), legacy (non-library)
-music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
+music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter on a cut shot, P2.6a), more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
@@ -677,7 +677,8 @@ the fallback for everything not yet native:
 | P2.4a | the `blueprint-grid` and `subtle-dots` theme textures, lowered to explicit shapes in the `aideos.render/7` underlay (frame space, under the stage), behind a parity journey ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.4b | the `paper-fibers` texture of `paper-white`, `parchment` and `charcoal`: Chrome draws it as a flat darkening (the filter's `multiply` blend with the rect's black fill leaves no grain), lowered to that in the `/7` underlay, and a card's backdrop starts from the darkened canvas ([P2.4a](#p24a-the-pattern-theme-textures)) | done |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), several blocks per shot, panels other than `frame` | planned |
-| P2.6 | devices and the inset stage | planned |
+| P2.6a | the `inset` panel with a StatCounter (or nothing) on a shot Film.tsx draws without its open and close animation (a cut, or the first shot), behind a parity journey ([P2.6a](#p26a-the-inset-panel)) | done |
+| P2.6 | devices in the inset, and an inset that opens on a camera move | planned |
 | P2.7 | imported footage and overlay clips (ffmpeg decode with accurate seek) | planned |
 
 The paper-rip transition every node-graph film names by default is a retired no-op (`PaperRip.tsx`), so it needs no
@@ -775,6 +776,20 @@ all at or above 0.995 (lowest 0.99513 and 0.99559).
 The textures are drawn for node-graph films only: a film with a scene (an SVG scene film, a Three
 stage or a character film) on one of these themes is refused ("the texture over a scene has not been measured against Remotion
 yet") until a journey measures the texture together with a scene.
+
+### P2.6a the inset panel
+
+`Film.tsx` draws an `inset` shot's panel in the format's inset region (`getInsetRegion`): a box filled with the theme's
+surface colour, a 1 px hairline border, the card radius, no shadow, and its content centred in a column padded by 3 grid.
+The render sizes the panel border-box (measured: its border box is exactly the region, 1152 to 1823 on the long frame) and
+centres the counter in the region; treating it as content-box drew the counter 25 px low and the panel 2 px wide (0.987).
+The emitter draws the panel as two rects (the fill over the border box, the hairline on its band) and lays the
+StatCounter out in the column's content box (the region less the border and the padding on every side). It is drawn on a
+shot Film.tsx shows without its open and close animation (a `cut`, or the first shot); an inset that opens on a camera move
+and an inset holding anything but one StatCounter stay refused. The journey `backend/journeys/inset_panel.journey.ts` asks
+the renderer choice for both formats of `test_fixtures/packages/inset-stage` (native must be chosen) and compares 21 frames
+(the shot before, the counter shot counting and landed, the shot after and the end card) with Remotion's stills at 0.995,
+none left out. Every 15th frame of the delivered video, long and reel (59 frames): all at or above 0.995, lowest 0.99847.
 
 ### P2.1 SVG filters: glow and drop shadow
 
