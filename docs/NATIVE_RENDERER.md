@@ -922,7 +922,8 @@ plot's y label (drawn left of the axis, at x < 0 in plot units) was cut to "tenc
 asset clips its content to the element's box in plot units (a `clipPath`). The fixture `test_fixtures/packages/plots` (a scene
 film) has a Plot alone in an inset that opens on a pan and a headline over a Plot on the frame stage. Measured against Remotion
 (swangle), every 4th frame through both draw-ons plus the shots around them and the end card: all at or above 0.995, lowest
-0.99834. The journey `backend/journeys/plots.journey.ts` pins native selection and 39 frames. A Plot alone on the frame stage
+0.99831 (re-measured on 120 frames after P2.8b put the svg's box on a whole pixel, see [P2.8b](#p28b-the-scalebar-device); 0.99834
+before). The journey `backend/journeys/plots.journey.ts` pins native selection and 39 frames. A Plot alone on the frame stage
 or with another block stays refused.
 
 ### P2.8b the ScaleBar device
