@@ -50,10 +50,12 @@ P2.5b measured (pixel-snapped boxes, Blink's `line-height: normal`) and matched 
 
 ## Still refused (planned)
 
-- A LayerStack alone on the frame stage, under anything but a headline, or with a `prompt`; one whose stack, gap and label column do not fit the column (Remotion shrinks the stack); a named bar whose label and dimension do not fit one line in the bar; the other devices.
+- A LayerStack alone on the frame stage, under anything but a headline, or with a `prompt`; one whose stack, gap and label column do not fit the column (Remotion shrinks the stack); a named bar whose label and dimension do not fit one line in the bar; a named stack whose minimum bar heights exceed its inset's content height; a named stack under a headline on the frame stage; the other devices.
 
 ## Test changes
 
+- `backend/renderIr/emit.test.ts`: one new test asserting each height refusal by its reason (Firstmate decision 038: each
+  refusal asserted with a clear reason) and that the layer-stacks fixture shapes stay native.
 - New journey `backend/journeys/layer_stacks.journey.ts` (weight 50 s in `scripts/ciJourneyShards.ts`) and fixture
   `test_fixtures/packages/layer-stacks`.
 - No assertion, tolerance, threshold, bar or golden is edited, loosened or removed.

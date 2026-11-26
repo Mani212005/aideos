@@ -205,6 +205,8 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
     if (stack?.c === "LayerStack" && FORMAT_SIZE[format]) {
       const wide = layerStackTooWide(stack, layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme), format, shot.stage === "inset", film.subtitles !== false && film.captions !== "off");
       if (wide) reasons.push(`shot ${shot.id}: ${wide}`);
+      const tall = layerStackTooTall(stack, layoutFor(FORMAT_SIZE[format].width, FORMAT_SIZE[format].height, theme), format, shot.stage === "inset");
+      if (tall) reasons.push(`shot ${shot.id}: ${tall}`);
     }
     for (const block of shot.blocks) {
       if (!SUPPORTED_BLOCKS.has(block.c)) reasons.push(`shot ${shot.id}: ${block.c} blocks are Phase 2`);
@@ -545,6 +547,21 @@ function layerStackTooWide(block: { count?: number; bottomLabel?: string; topLab
     if (textW > barContentW) return `a LayerStack bar ${JSON.stringify(label)} has text ${Math.round(textW)} px wide in a ${Math.round(barContentW)} px bar, which overflows or wraps and is not measured against Remotion yet`;
   }
   return undefined;
+}
+
+/**
+ * Why a named LayerStack cannot be laid out natively by its height, or undefined: in an inset the bars' minimum heights (28 px
+ * with a 6 px gap) must fit the panel's content height (else the panel clips the overflow), and a named stack under a headline
+ * on the frame stage is not measured at all. An anonymous stack (3 px bars, 3 px gaps, at most 48 rows) always fits.
+ */
+function layerStackTooTall(block: { layers?: Array<string | { label: string; dim?: string }> }, layout: DLLayout, format: NativeFormat, inset: boolean): string | undefined {
+  const rows = (block.layers ?? []).length;
+  if (rows === 0) return undefined;
+  if (!inset) return "a named LayerStack under a headline on the frame stage is not measured against Remotion yet";
+  const { width, height } = FORMAT_SIZE[format];
+  const available = getInsetRegion(format, width, height).h - 2 - 6 * layout.grid;
+  const needed = rows * layout.px(28) + (rows - 1) * layout.px(6);
+  return needed > available ? `a LayerStack of ${rows} named bars needs ${Math.round(needed)} px of height but its inset panel leaves ${Math.round(available)} px, so Remotion clips the overflow, which is not measured against Remotion yet` : undefined;
 }
 
 /**
