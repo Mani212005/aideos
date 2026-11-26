@@ -29,6 +29,7 @@ import { measureLoudness } from "./review/media";
 import { getRetimedAudioFilename, getRetimedAudioRelPath } from "../src/dl/audio/retime";
 import { decodeWav, encodeWav } from "./pcm";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
+import { forAll, pick, randInt } from "./testSupport/propertyTest";
 
 const fixtureDir = path.resolve(process.cwd(), "test_fixtures");
 const testAudioPath = path.join(fixtureDir, "test_audio.wav");
@@ -278,25 +279,62 @@ test("retimeAudioSync retimes audio across 0.8x, 1.2x, 1.5x, 2.0x speeds with WS
   }
 });
 
-test("retimeAudioSync caches results so subsequent calls return immediately from disk", () => {
-  const sourcePath = testAudioPath;
-  const first = retimeAudioSync(sourcePath, 1.5);
-  const start = Date.now();
-  const second = retimeAudioSync(sourcePath, 1.5);
-  const elapsed = Date.now() - start;
+test("retimeAudioSync reuses its disk cache for generated speeds", () => {
+  const cacheDir = fsSync.mkdtempSync(path.join(os.tmpdir(), "aideos-retime-cache-property-"));
+  try {
+    forAll("retime cache key reuses the same file", (rand) => randInt(rand, 1100, 2400) / 1000, (speed) => {
+      const first = retimeAudioSync(testAudioPath, speed, { cacheDir });
+      const before = fsSync.statSync(first.filePath, { bigint: true });
+      const second = retimeAudioSync(testAudioPath, speed, { cacheDir });
+      const after = fsSync.statSync(second.filePath, { bigint: true });
 
-  assert.equal(first.filePath, second.filePath);
-  assert.equal(first.durationSec, second.durationSec);
-  // Cache lookup should take less than 100ms
-  assert.ok(elapsed < 100, `Expected cached lookup under 100ms, took ${elapsed}ms`);
+      assert.equal(second.filePath, first.filePath);
+      assert.equal(second.durationSec, first.durationSec);
+      assert.equal(after.mtimeNs, before.mtimeNs, "a cache hit must not rewrite the retimed file");
+      assert.equal(after.size, before.size);
+    }, { cases: 8 });
+  } finally {
+    fsSync.rmSync(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("retime cache key is stable and distinguishes exactly what the ffmpeg filter distinguishes", () => {
+  const sources = ["videos/a/voiceover.wav", "videos/b/voiceover.wav", "videos/a/music.wav"];
+  forAll(
+    "retime cache key tracks the atempo filter",
+    (rand) => {
+      const a = randInt(rand, 300000, 4000000) / 1000000;
+      const offset = randInt(rand, -150, 150) / 100000;
+      return { src: pick(rand, sources), other: pick(rand, sources), a, b: a + offset };
+    },
+    ({ src, other, a, b }) => {
+      assert.equal(getRetimedAudioFilename(src, a), getRetimedAudioFilename(src, a), "same inputs, same key");
+      assert.equal(
+        getRetimedAudioFilename(src, a) === getRetimedAudioFilename(src, b),
+        buildAtempoFilter(a) === buildAtempoFilter(b),
+        `speeds ${a} and ${b} must share a key exactly when they share a filter`
+      );
+      if (src !== other) {
+        assert.notEqual(getRetimedAudioFilename(src, a), getRetimedAudioFilename(other, a), "different sources, different keys");
+      }
+    }
+  );
+});
+
+test("retime cache key separates speeds that differ only at the 4th decimal or inside a chained filter", () => {
+  const src = "videos/test-film/voiceover.wav";
+  assert.notEqual(getRetimedAudioFilename(src, 1.5001), getRetimedAudioFilename(src, 1.5004));
+  assert.notEqual(buildAtempoFilter(1.5001), buildAtempoFilter(1.5004));
+  assert.notEqual(getRetimedAudioFilename(src, 3.00005), getRetimedAudioFilename(src, 3.00014));
+  assert.notEqual(buildAtempoFilter(3.00005), buildAtempoFilter(3.00014));
 });
 
 test("getRetimedAudioFilename and getRetimedAudioRelPath produce deterministic public paths", () => {
   const filename = getRetimedAudioFilename("videos/test-film/voiceover.wav", 1.25);
-  assert.equal(filename, "retimed_videos_test-film_voiceover_wav_1_250x.wav");
+  assert.equal(filename, "retimed_videos_test-film_voiceover_wav_atempo_1_2500.wav");
 
   const relPath = getRetimedAudioRelPath("videos/test-film/voiceover.wav", 1.25);
-  assert.equal(relPath, ".tmp_audio/retimed_videos_test-film_voiceover_wav_1_250x.wav");
+  assert.equal(relPath, ".tmp_audio/retimed_videos_test-film_voiceover_wav_atempo_1_2500.wav");
 });
 
 test("ensureRetimedAudio pre-renders retimed audio for static Remotion CLI resolution", () => {

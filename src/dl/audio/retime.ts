@@ -11,11 +11,30 @@ export function sanitizeAudioName(src: string): string {
   return clean.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-/** Compute the deterministic filename for a retimed audio track. */
+/** Build an FFmpeg atempo filter chain supporting arbitrary playback speed factors. */
+export function buildAtempoFilter(speed: number): string {
+  if (speed <= 0) {
+    throw new Error(`Invalid speed: ${speed}. Speed must be positive.`);
+  }
+  const filters: string[] = [];
+  let s = speed;
+  while (s > 2.0) {
+    filters.push("atempo=2.0");
+    s /= 2.0;
+  }
+  while (s < 0.5) {
+    filters.push("atempo=0.5");
+    s /= 0.5;
+  }
+  filters.push(`atempo=${s.toFixed(4)}`);
+  return filters.join(",");
+}
+
+/** Compute the deterministic filename for a retimed audio track, keyed on the exact atempo filter chain ffmpeg runs. */
 export function getRetimedAudioFilename(src: string, speed: number): string {
   const base = sanitizeAudioName(src);
-  const speedStr = speed.toFixed(3).replace(".", "_");
-  return `retimed_${base}_${speedStr}x.wav`;
+  const filterKey = buildAtempoFilter(speed).replace(/[^a-zA-Z0-9]/g, "_");
+  return `retimed_${base}_${filterKey}.wav`;
 }
 
 /** Compute the relative path for a retimed audio track. */

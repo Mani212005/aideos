@@ -21,7 +21,7 @@ import { callerWorkingDirectory, REPO_ROOT as repositoryRoot } from "./paths";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { type Film, parseFilm } from "../src/dl/schema";
-import { getRetimedAudioFilename } from "../src/dl/audio/retime";
+import { buildAtempoFilter, getRetimedAudioFilename } from "../src/dl/audio/retime";
 import { assertScriptReadyForSynthesis, detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags, plainTextToTaggedScript } from "./scriptIntake";
 import type { ScriptIssue } from "./screenplayLines";
 import { pacedVoiceKey, synthesizeLines } from "./voiceLines";
@@ -575,6 +575,8 @@ import { generateRelationshipAwareCanvas, type ConceptEntity } from "./ideation/
 import { getVideosDir } from "../src/dl/videoPackageLoader";
 import { execFileSyncBounded } from "./proc";
 
+export { buildAtempoFilter };
+
 /**
  * The part of a narration result a film is built from: the spoken segments and their
  * durations. Narrowed from ProduceAudioResult so callers (and tests) can construct a film
@@ -664,25 +666,6 @@ export function buildFilmFromAudioResult(
 export interface RetimedAudioResult {
   filePath: string;
   durationSec: number;
-}
-
-/** Build an FFmpeg atempo filter chain supporting arbitrary playback speed factors. */
-export function buildAtempoFilter(speed: number): string {
-  if (speed <= 0) {
-    throw new Error(`Invalid speed: ${speed}. Speed must be positive.`);
-  }
-  const filters: string[] = [];
-  let s = speed;
-  while (s > 2.0) {
-    filters.push("atempo=2.0");
-    s /= 2.0;
-  }
-  while (s < 0.5) {
-    filters.push("atempo=0.5");
-    s /= 0.5;
-  }
-  filters.push(`atempo=${s.toFixed(4)}`);
-  return filters.join(",");
 }
 
 /**
