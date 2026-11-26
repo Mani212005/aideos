@@ -290,9 +290,12 @@ test("a film the native renderer cannot draw is refused with every reason", () =
     () => emitRenderIr({ film: unsupported, format: "long", svgSources: NATIVE_SVG_SOURCES, measure: fakeMeasurer(), resolvePath: (p) => p }),
     (e: unknown) => e instanceof NativeUnsupportedError && e.reasons.length === reasons.length,
   );
+  // Since Phase 2 step P2.2c a node-graph film (no scene) is drawn natively with the flat camera; a CSS 3D angle is still refused.
   const nodeGraph = nativeSceneFilm();
   delete (nodeGraph as { scene?: unknown }).scene;
-  assert.ok(nativeSupport(nodeGraph, "reel").some((r) => r.includes("node-graph")));
+  assert.deepEqual(nativeSupport(nodeGraph, "reel"), []);
+  const perspective = { ...nodeGraph, theme: { ...nodeGraph.theme, cameraAngle: "isometric" } } as typeof nodeGraph;
+  assert.ok(nativeSupport(perspective, "reel").some((r) => r.includes("node-graph camera angle")));
   const three = nativeSceneFilm();
   (three.scene as { renderer?: string }).renderer = "three";
   assert.ok(nativeSupport(three, "long").some((r) => r.includes("Three stage with no performances")));

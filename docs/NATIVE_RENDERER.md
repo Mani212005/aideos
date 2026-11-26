@@ -1,5 +1,5 @@
 <!--
-File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), opt-in 2D effects (`aideos.render/4`: glyph tracks and the shutter), Phase 2 (its steps; P2.1 draws the SVG filter subset of glows and drop shadows, with its parity; P2.2a carries colour and dash offset tracks in `aideos.render/5`, P2.2b emits the node-graph canvas opt-in), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
+File Description: Reference for the native renderer `native/aideos-render` (R2 and R4 of Phase 1 of the native renderer plan): what it draws, how a frame is evaluated, the semantics it gives the parts of the Render IR that the IR leaves open, the SVG subset it supports, whole-film rendering and text measurement, the TypeScript emitter and the renderer choice every render job makes (native for supported films, Remotion otherwise, the kill switch), the Three stage's Phase 4 steps (P4.1 carries it in `aideos.render/2`, P4.2 draws it for one performer in the cel treatment with the CPU rasterizer in `raster/stage3d/`, P4.3 draws several performers, Pip and Marlo, P4.4 draws the dots-v1 treatment), pictures (the illustrated stage, phase 1, `aideos.render/3`: drawing, the pin, the load check and fallback, parity and speed), opt-in 2D effects (`aideos.render/4`: glyph tracks and the shutter), Phase 2 (its steps; P2.1 draws the SVG filter subset of glows and drop shadows, with its parity; P2.2a carries colour and dash offset tracks in `aideos.render/5`, P2.2b emits the node-graph canvas, P2.2c draws flat node-graph films natively), determinism, the exact Skia dependency (pinned feature set, prebuilt binary, CI cache, source-build fallback) and the commands that build, test and run it.
 -->
 
 # Native renderer (`native/aideos-render`)
@@ -383,7 +383,7 @@ differ per format.
 | Narration, end-card line, library music sections, library effects | audio clips with gain 1 and the level as a per-frame linear envelope: `voiceLevel`'s ramps; `mixSections`, `sectionEnvelope` and `speechGain` (ducking under the measured speech); `effectGain` with `effectDuckGain` (transition effects are ducked under the same speech; other effects keep their cap) |
 
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
-refuses (with every reason, `nativeSupport`) a node-graph film, an actor scene, sub-group
+refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme, legacy (non-library)
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
@@ -672,7 +672,7 @@ the fallback for everything not yet native:
 | P2.1 | the SVG filter subset of glows and drop shadows (above), which the node-graph canvas uses for its live edges (`CanvasGraph.tsx`, `neonGlow`) and onto which a card's CSS `box-shadow` lowers; scene artwork with such a filter, refused by the loader before and so rendered on Remotion, is now drawn natively | done |
 | P2.2a | `aideos.render/5`: colour tracks (fill and stroke, mixed per channel as Remotion's `interpolateColors`) and the `dashOffset` element track on svg nodes, what the node-graph canvas animates (card borders and labels, the edges' travelling packets): schema, loaders and validators in TypeScript and Rust, the evaluator and the raster ([RENDER_IR.md](RENDER_IR.md#colour-and-dash-offset-aideosrender5)); the P2.2b emitter writes it, opt-in | done: nothing changes for users |
 | P2.2b | the node-graph canvas in the emitter, flat camera (`backend/renderIr/emitNodeGraph.ts`): `CanvasGraph` lowered to one generated SVG (cards with their 145 degree gradients, border, `box-shadow` list and `backdrop-filter` on the P2.1 filters, edges with the P2.1 glow, labels as SVG text laid out as the flex column lays them out) under the camera `camAt` solves, with arrival, activeness, the beacon pulse, the breathing glow and the travelling packets as element, colour and dash offset tracks ([P2.2b](#p22b-the-node-graph-canvas)); opt-in only (`nodeGraphCanvas`), so node-graph films stay on Remotion | done: nothing changes for users |
-| P2.2c | the native large-deviation blur matched to Chrome's (the remaining node-graph difference), then `nativeSupport` accepts flat node-graph films behind a parity journey at 0.995 over all measured frames | next |
+| P2.2c | `nativeSupport` accepts node-graph films with the flat camera (and `top-down`), behind the parity journey `backend/journeys/node_graph_native.journey.ts` at 0.995 on every measured frame against Remotion's Chrome (swangle); the gap it closed was not the blur but the layer composite (#324) and the TextReveal underline (#322) ([P2.2c](#p22c-node-graph-films-drawn-natively)) | done |
 | P2.3 | the node-graph camera angles other than `flat` (`getCameraPerspective`: CSS 3D perspective), a 4 x 4 perspective transform on the stage | planned |
 | P2.4 | the textured themes (`paper-fibers` turbulence, `blueprint-grid` and `subtle-dots` patterns) | planned |
 | P2.5 | the other five primitives (CodeBlock, Card, Divider, IconLabel, ProgressBar), several blocks per shot, panels other than `frame` | planned |
@@ -695,8 +695,7 @@ canvas colour and the edges that pass under it, cut to the card (a lit card is 6
 asks for JetBrains Mono 600, which `tokens.ts` does not load, so Chrome draws 700 and so does the canvas. Remotion's
 `interpolateColors` (channels rounded, alpha to three decimals) is reproduced, one hold keyframe per change.
 
-It is opt-in (`EmitInput.nodeGraphCanvas`): `nativeSupport` still refuses node-graph films until P2.2c turns them on
-with a journey at 0.995 over all frames and brings the large blur to Chrome's. Measured on
+Since P2.2c every render job uses it for a node-graph film with the flat camera (see below). Measured on
 `test_fixtures/packages/node-graph-flat` (the sample explainer's canvas with only frame and none stages and one
 TextReveal, so nothing else refuses it), native frames against Remotion's Chrome (swangle), SSIM by ffmpeg on the stage
 (above the caption band), frames 20, 60, 100, 150, 250, 330, 420, 520 and every shot's midpoint 45, 255, 345, 435, 525,
@@ -708,6 +707,30 @@ ground; one lit card's two shadows alone match at 0.9987.
 
 Remotion's own render overflows a two-line label out of its 64 px card (`Multiscale Bottleneck` spills below it); the
 canvas draws what Remotion draws, and changing the card is a design decision outside this renderer work.
+
+### P2.2c node-graph films drawn natively
+
+`nativeSupport` accepts a node-graph film (no `film.scene`) whose camera angle is `flat` or `top-down` in every shot; the
+other angles stay refused until P2.3, and everything else `nativeSupport` checks still applies (only the `smooth-dark`
+theme has no texture, so it is the one node-graph theme drawn natively; panels other than `frame` and `none`, blocks
+other than TextReveal and StatCounter, several blocks in a shot and footage stay refused). The journey
+`backend/journeys/node_graph_native.journey.ts` asks the renderer choice for both formats of
+`test_fixtures/packages/node-graph-flat` (native must be chosen) and compares 28 frames (20, 45, 60, 100, 150, 250, 255,
+330, 345, 420, 435, 520, 525 and an end-card frame, long and reel) with Remotion's stills at the stage bar 0.995, none
+left out. Every 15th frame of the whole delivered video, long and reel (0 to 735, and 749), was measured too: all at or
+above 0.995 against swangle, lowest long 270 at 0.99565.
+
+What closed the gap was not the blur. The reference is Remotion's Chrome with `AIDEOS_GL=swangle` (CI and the goldens),
+whose GPU raster blends a layer in floating point and rounds: native layer restores were truncating (fixed in #324), and
+the TextReveal underline is placed on whole pixels as Blink paints it (#322). Measured against swangle: a CSS
+`box-shadow` is an exact Gaussian of deviation blur / 2 with the deviation in device pixels capped at about 128 (a
+40 px shadow at a 6.9 zoom, nominal 138, fits 127.5); an SVG `feGaussianBlur` is an exact Gaussian with no cap (fitted
+138.0 for 138); native's CPU blur (Skia's three-box approximation) is slightly darker near the edge and lighter past
+1.5 deviations (at 2 deviations 0.0157 against 0.0228). Neither is needed for the bar, and both would change how scene
+artwork filters draw (P2.1), so a GPU-shaped Gaussian and the 128 px cap are left for a later step if a film needs them.
+A default Remotion render (`AIDEOS_GL` unset, `angle`) on a host without a GPU falls back to Chrome's software raster,
+which paints shadows and layers with Skia's truncating 8-bit blitters; native matches the swangle reference, not that
+fallback.
 
 ### P2.1 SVG filters: glow and drop shadow
 
@@ -778,7 +801,7 @@ as their oracle until a WASM preview exists ([P4.5 journeys](#p45-journeys-and-g
 ## Not yet native
 
 Node-graph films, the other primitives, devices, inset and panel stages and footage (Phase 2; its first steps, P2.1
-and P2.2a, draw the SVG filter subset of glows and drop shadows and the colour and dash offset tracks of `aideos.render/5`; P2.2b adds an opt-in flat-camera node-graph emitter that `nativeSupport` does not yet enable, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
+and P2.2a, draw the SVG filter subset of glows and drop shadows and the colour and dash offset tracks of `aideos.render/5`; P2.2b emits the flat-camera node-graph canvas and P2.2c draws flat node-graph films natively, see [Phase 2](#phase-2-node-graph-films-and-the-rest)), GPU encoding of
 whole films (the GPU path renders stills), the editor preview, the Node addon, effects such as the paper curl,
 and nothing of the Three stage any more: the cel stage with any number of performers is carried by
 `aideos.render/2` since P4.1 and drawn since P4.2 and P4.3, and dots-v1 is carried and drawn since P4.4. Pictures are
