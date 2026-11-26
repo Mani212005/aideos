@@ -147,7 +147,7 @@ Every typeface comes from a `font` asset of the IR (a vendored file in the packa
 through Skia's FreeType manager with **no system font scan**, and text layout (Skia textlayout: HarfBuzz
 shaping, ICU line breaking) runs with **font fallback disabled**, so a render never depends on the fonts
 installed on the host and never touches the network. Each face is registered under its asset id, so a text
-node's `font` names one exact file. Skia's paragraph painter always draws with slight hinting (turning hinting off in the paragraph style has no effect on it), while the Chrome render draws unhinted outlines, so `Text::paint` (`raster/text.rs`) reads the shaped runs back from the paragraph and draws the glyphs itself with hinting off, which is what makes a 45 px Geist capital 32 px tall as in Chrome (33 hinted). It also places text as Blink does: the font's ascent, descent and gap rounded to whole pixels, half the leading above the line rounded down, the baseline rounded to a whole pixel, a line's height the CSS line height (Skia rounds it up to a whole pixel), the letter spacing all after each glyph (Skia puts half before and half after) and CSS `text-shadow` order (the first shadow on top). SVG `<text>` keeps Skia's own unrounded baseline (`Text::paint_unsnapped`) but shares the unhinted glyphs and the letter spacing. Translucent colour is blended as Chrome's compositor blends it, rounding to the nearest level, where Skia's 8-bit CPU blend truncates (a 55% dim of the canvas colour over the canvas colour came out one level too dark, which costs 0.005 SSIM on a flat dark frame): every translucent solid colour (the chrome's fills and strokes, the end card's full-frame dim and SVG fills and strokes) is painted by a one-colour shader that Skia blends in floating point. A half-float frame surface did the same for every layer but cost a quarter more CPU time, and the shader dim costs about 5 ms a frame. SVG `<text>` resolves its `font-family` list against the
+node's `font` names one exact file. Skia's paragraph painter always draws with slight hinting (turning hinting off in the paragraph style has no effect on it), while the Chrome render draws unhinted outlines, so `Text::paint` (`raster/text.rs`) reads the shaped runs back from the paragraph and draws the glyphs itself with hinting off, which is what makes a 45 px Geist capital 32 px tall as in Chrome (33 hinted). It also places text as Blink does: the font's ascent, descent and gap rounded to whole pixels, half the leading above the line rounded down, the baseline rounded to a whole pixel, a line's height the CSS line height (Skia rounds it up to a whole pixel), the letter spacing all after each glyph whatever the alignment (Skia puts half of it before a line, and drops that half again on a right-aligned or centred line narrower than its box, so the correction is made per line), the optional ligatures (`liga`, `clig`) off when the letter spacing is not zero as Blink turns them off (Geist joins "tt" and "ti": a spaced "transmitting" is 2 px wider without them) and CSS `text-shadow` order (the first shadow on top). A caption row keeps its fractional offset below the card top and only its baseline is rounded. SVG `<text>` is drawn with its baseline exactly on its `y` (`Text::paint_on_baseline`, unrounded; Skia's run origin sits on its own rounded ascent, so placing it from `alphabetic_baseline` drew it up to 0.5 px high, a whole pixel at a 2.2 camera zoom) and shares the unhinted glyphs and the letter spacing. Glyph masks get Chrome's text contrast and gamma (Chromium builds Skia for Linux with `SK_GAMMA_CONTRAST=0.2` and `SK_GAMMA_EXPONENT=1.2`; Skia's own defaults, 0.5 and sRGB, drew light text on a dark ground about 4% heavier): every frame surface, CPU and GPU, is made with those surface properties (`frame_surface_props`, `renderer.rs`). Translucent colour is blended as Chrome's compositor blends it, rounding to the nearest level, where Skia's 8-bit CPU blend truncates (a 55% dim of the canvas colour over the canvas colour came out one level too dark, which costs 0.005 SSIM on a flat dark frame): every translucent solid colour (the chrome's fills and strokes, the end card's full-frame dim and SVG fills and strokes) is painted by a one-colour shader that Skia blends in floating point. A half-float frame surface did the same for every layer but cost a quarter more CPU time, and the shader dim costs about 5 ms a frame. SVG `<text>` resolves its `font-family` list against the
 IR's font assets (generic `monospace` picks a family named "Mono", other generic names the first family
 that is not); a family no asset provides is refused at load. On macOS Skia has no FreeType, so the platform
 manager loads the same files and glyph rasterization is CoreText's: byte identity holds per platform, and
@@ -360,6 +360,12 @@ rotation, a scene asset with no SVG source, a chapter with no shots, imported fo
 music and audio clips, panels other than `frame`, more than one block per shot and blocks other than
 `TextReveal` and `StatCounter`. Those stay on Remotion until their phase.
 
+The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
+carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid
+timeline may also fail in Remotion's scene compiler. The check does not read SVG source, evaluate Three-stage
+data, validate the generated IR, or call the native measurer. Rejections that need those inputs still surface
+during native preparation.
+
 ## The Three stage (Phase 4)
 
 The captain approved native rendering of the Three-stage character films ("Start B now"). This reverses his
@@ -565,12 +571,44 @@ reel has 0 of 390 (minimum 0.99540). The minimum of every other row is 0.99725 o
 is 0.99725 long and 0.99800 reel). Those still-talking frames carry the film's own artwork (soft gradients and star
 discs, blended through translucent SVG gradients and group opacity layers, where a half-float surface recovered most of
 the gap) and moving text cards; on its story frames 74% to 82% of the SSIM loss is outside the text, and the text cards'
-words sit about 0.9 px left of Chrome's with lighter stems (a text gamma of 1.2 with no extra contrast reproduces
-Chrome's total ink on frame 4621 to 0.1% where Skia's default is 4% heavier, but it moves no SSIM figure by more than
-0.0002, so it is not applied). The text card row layout in `emit.ts` is measured with Skia widths against Chrome's DOM
-widths, the likely source of the 0.9 px. A half-float frame surface closed most of the artwork gap (still-talking long
+words sat about 1 px off Chrome's with heavier stems. Both were later traced and fixed (Chrome's text gamma and the
+ligatures Blink turns off for letter-spaced text, [Fonts and text](#fonts-and-text)); the numbers in this table predate
+those fixes. A half-float frame surface closed most of the artwork gap (still-talking long
 50 frames under the bar, reel 0) but cost a quarter more CPU time, so it was not kept. Cost of the float-shader dim:
 about 5 ms a frame on end card frames only (end card frames about 10% slower, story frames unchanged).
+
+### Text parity follow-up (aideos-native-text-parity)
+
+Measured again on main after the reel caption safe zone (#251), which had moved the reel captions and stage and taken
+the reel story minimum of the character films from 0.9987 to 0.9971. Same method: every frame of both formats (still-talking:
+story frames 0-299 and the end card), ffmpeg `ssim` on the whole frame against a fresh Remotion PNG sequence, the IR
+emitted by each binary's own `measure`. Five text causes were measured and fixed (see [Fonts and text](#fonts-and-text)):
+
+| Cause (measured) | What Chrome does |
+| --- | --- |
+| right-aligned and centred letter-spaced text ls/2 left (the rail timestamp, 1.1 px) | all of the letter spacing after each glyph; Skia drops its half shift on those lines, so the correction is per line |
+| letter-spaced words up to 2 px narrow ("transmitting"), moving a whole text card row 1 px | Blink turns `liga` and `clig` off when the letter spacing is not zero |
+| light text 3% to 7% heavier, accent text 2% lighter | text contrast 0.2 and gamma 1.2 (Chromium's Linux Skia build) |
+| SVG text 1 px high at a 2.2 camera zoom | the baseline exactly on `y` |
+| a caption card's second row 1 px high | the row keeps its fractional offset; only the baseline is rounded |
+
+Whole-frame SSIM against Remotion, before > after (bar 0.995). No threshold, tolerance or Chrome golden changed; the
+native goldens were remade from the renderer at the same strict tolerance because their text moved toward Chrome.
+Evidence: `/home/mani/aideos-linux-home/data/aideos-native-text-parity/` (`before/`, `after/`, `handoff.md`).
+
+| Film, format | Story SSIM min | End card SSIM min | Frames under 0.995 |
+| --- | --- | --- | --- |
+| hello-scene, long / reel | 0.99725 > 0.99894 / 0.99612 > 0.99917 | 0.99856 > 0.99911 / 0.99859 > 0.99918 | 0 > 0 / 0 > 0 |
+| pixels-stage-pip, long / reel | 0.99820 > 0.99873 / 0.99707 > 0.99880 | 0.99887 > 0.99919 / 0.99850 > 0.99921 | 0 > 0 / 0 > 0 |
+| journey-j3-j4-dots, long / reel | 0.99836 > 0.99888 / 0.99721 > 0.99896 | 0.99779 > 0.99826 / 0.99577 > 0.99577 | 0 > 0 / 0 > 0 |
+| still-talking, long / reel | 0.99325 > 0.99383 / 0.99485 > 0.99515 | 0.99267 > 0.99617 / 0.99506 > 0.99660 | 69 > 49 / 2 > 0 |
+
+Means rose on every row (hello-scene story 0.99795 > 0.99939 long, 0.99737 > 0.99947 reel). What is left is not text:
+the 49 still-talking long frames (0 to 25 and 262 to 299) lose to the film's soft gradients and star discs (on its
+worst end card frame 94% of the loss lies outside the text, and with gradient dithering off the native frame moves
+further from Chrome, 0.99499 > 0.99362), and the dots reel end card minimum (frame 306) is the dots performer under the
+end card's fading dim. Two tries were measured and dropped: whole-pixel glyph positioning (hello-scene 0.998 > 0.992)
+and turning the gradient dither off.
 
 ### P4.5 journeys and goldens
 

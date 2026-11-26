@@ -1,0 +1,13 @@
+[
+  {"id":"plain-json","cleaned":"{\"status\":\"ok\",\"count\":3}","parsed":{"status":"ok","count":3}},
+  {
+    "id": "fenced-review-json",
+    "cleaned": "{\"verdict\":\"ACCEPT\",\"criteria\":[{\"name\":\"readability\",\"score\":9.2}]}",
+    "parsed": {"verdict":"ACCEPT","criteria":[{"name":"readability","score":9.2}]}
+  },
+  {
+    "id": "nested-json",
+    "cleaned": "{\"payload\":{\"items\":[{\"name\":\"alpha\",\"enabled\":true},{\"name\":\"beta\",\"enabled\":false}]}}",
+    "parsed": {"payload":{"items":[{"name":"alpha","enabled":true},{"name":"beta","enabled":false}]}}
+  }
+]

@@ -15,6 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { getVideosDir } from "../../src/dl/videoPackageLoader";
+import { expectFile, formatForReview } from "../testSupport/expectFile";
 import { parseFilm, type Film } from "../../src/dl/schema";
 import { evaluateCriteria, type ReviewInputs } from "./criteria";
 import { parseEbur128, parseSilences } from "./media";
@@ -727,6 +728,52 @@ test("review: a stable stage passes persistence, a stage replaced every beat fai
   assert.ok(frame && fs.existsSync(path.join(TMP, "out-cleared", frame)), `evidence frame ${frame}`);
   assert.ok(written.recommendations[0].startsWith("[gate] One persistent stage"));
   assert.ok(byKey(stable.criteria, "loudness").metrics.integratedLufs !== undefined);
+  type Measured = { key: string; score: number | null; summary: string; metrics: Record<string, unknown>; threshold: Record<string, unknown>; evidence: unknown[] };
+  const measuredKeys = ["persistent-stage", "pacing", "audio-sync", "loudness"];
+  const measured = (key: string) => written.criteria.find((c: Measured) => c.key === key) as Measured;
+  const inRange = (value: unknown, min: number, max: number, label: string) => assert.ok(typeof value === "number" && Number.isFinite(value) && value >= min && value <= max, `${label} ${String(value)} is outside ${min}..${max}`);
+  // Encoder-sensitive measurements (libx264 and aac output differs by ffmpeg build) are checked as plausible ranges and left out of the captured report.
+  for (const field of ["durationSec", "containerDurationSec", "audioDurationSec"]) inRange(written.video[field], 23.5, 24.5, `video.${field}`);
+  inRange(written.meanScore, 0, 4, "meanScore");
+  for (const key of measuredKeys) inRange(measured(key).score, 0, 4, `${key} score`);
+  const stage = measured("persistent-stage");
+  const stageMetrics = stage.metrics;
+  const stageLimits = stage.threshold as { layoutCorrelationMedianMin: number; stageClearsPer30sMax: number };
+  inRange(stageMetrics.layoutCorrelationMedian, -1, stageLimits.layoutCorrelationMedianMin - 1e-9, "layoutCorrelationMedian (the captured persistent-stage fail needs it under the threshold)");
+  inRange(stageMetrics.layoutCorrelationP10, -1, 1, "layoutCorrelationP10");
+  inRange(stageMetrics.stageClearEvents, 3, 24, "stageClearEvents");
+  inRange(stageMetrics.stageClearsPer30s, 0, 30, "stageClearsPer30s");
+  assert.ok(stage.evidence.length > 0, "the captured persistent-stage fail carries evidence");
+  const pacing = measured("pacing");
+  const pacingMetrics = pacing.metrics;
+  const pacingLimits = pacing.threshold as { staticRunMaxSec: number; hardCutsPerMinMax: number };
+  inRange(pacingMetrics.longestStaticSec, 0, 24, "longestStaticSec");
+  inRange(pacingMetrics.hardCuts, 0, 240, "hardCuts");
+  inRange(pacingMetrics.hardCutsPerMin, 0, 600, "hardCutsPerMin");
+  assert.ok((pacingMetrics.longestStaticSec as number) > pacingLimits.staticRunMaxSec || (pacingMetrics.hardCutsPerMin as number) > pacingLimits.hardCutsPerMinMax, "the captured pacing fail needs a hold or a cut rate over its threshold");
+  assert.ok(pacing.evidence.length > 0, "the captured pacing fail carries evidence");
+  const syncLimits = measured("audio-sync").threshold as { lengthToleranceSec: number };
+  inRange(measured("audio-sync").metrics.audioVideoLengthDiffSec, 0, syncLimits.lengthToleranceSec / 2, "audioVideoLengthDiffSec");
+  const loudness = measured("loudness");
+  const loudnessLimits = loudness.threshold as { lufsMin: number };
+  inRange(loudness.metrics.integratedLufs, -40, loudnessLimits.lufsMin - 1e-9, "integratedLufs (the captured loudness fail needs it under the window)");
+  inRange(loudness.metrics.truePeakDb, -30, 0, "truePeakDb");
+  const placeholder = (value: unknown) => (typeof value === "number" ? "<measured>" : value);
+  const deterministicMetrics = new Set(["deadAirStretches", "shotBoundariesChecked"]);
+  const captured = {
+    ...written,
+    subject: "synthetic-cleared.mp4",
+    createdAt: "<captured timestamp>",
+    video: { ...written.video, path: "synthetic-cleared.mp4", durationSec: "<measured>", containerDurationSec: "<measured>", audioDurationSec: "<measured>" },
+    criteria: written.criteria.map((c: Measured) =>
+      measuredKeys.includes(c.key)
+        ? { ...c, score: placeholder(c.score), summary: "<measured summary>", metrics: Object.fromEntries(Object.entries(c.metrics).map(([k, v]) => [k, deterministicMetrics.has(k) ? v : placeholder(v)])), evidence: c.evidence.length ? ["<measured evidence>"] : [] }
+        : c,
+    ),
+    meanScore: "<measured>",
+    outDir: "<review output directory>",
+  };
+  expectFile(formatForReview(captured), "review/review-report.json");
 });
 
 test("review: the CLI exits 0 when the gates pass, 1 when one fails, 2 when it cannot run", { skip: !HAVE_FFMPEG }, () => {

@@ -27,7 +27,7 @@ import {
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, effectDuckGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
-import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, ELEMENT_PROPERTIES, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
+import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, ELEMENT_PROPERTIES, IMAGE_ELEMENT_PROPERTIES, ID_PATTERN, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
 import { rasterElementIds } from "../../src/dl/scene/raster";
 import { validateRenderIr } from "./validate";
 import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
@@ -110,13 +110,17 @@ export class NativeUnsupportedError extends Error {
 
 /** Block kinds the emitter lays out (the text cards of Phase 1). */
 const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter"]);
+/** The shared IR identifier rule applied to generated asset and node identifiers. */
+const IR_ID = new RegExp(ID_PATTERN);
 
 /**
- * Lists every reason this film cannot be drawn natively in this format; empty means supported.
+ * Lists film-only reasons this film cannot be drawn natively in this format; empty means no known film-only refusal.
  * Phase 1 covers SVG scene films: the stage, the camera, `frame` text cards (TextReveal, StatCounter),
  * the chapter rail, the burned-in kinetic captions, the end card and the narration. Phase 4 adds the Three stage
  * (P4.1 carries it in the IR, P4.2 and P4.3 draw it in the cel treatment with any number of performers, P4.4 draws
  * the dots-v1 treatment too). Everything else stays with Remotion for now.
+ * This film-only check cannot predict failures that require SVG source, evaluated Three-stage data, generated IR,
+ * or the native measurer's response. Those failures still surface during preparation.
  */
 export function nativeSupport(film: Film, format: NativeFormat): string[] {
   const reasons: string[] = [];
@@ -125,9 +129,25 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   else {
     if (scene.renderer === "three") reasons.push(...stage3dCarryReasons(scene));
     if (scene.actors && scene.actors.length > 0) reasons.push("scene actors (character rigs) are not drawn natively");
+    const seenAssetIds = new Set<string>();
     for (const asset of [scene.background, ...scene.props].filter(Boolean) as EnvironmentAsset[]) {
+      if (seenAssetIds.has(asset.assetId)) reasons.push(`asset ${asset.assetId}: its id is used by more than one asset`);
+      seenAssetIds.add(asset.assetId);
       if (asset.subGroups && asset.subGroups.length > 0) reasons.push(`asset ${asset.assetId}: sub-group rotation is not drawn natively`);
       if (!asset.svgSource && !asset.raster) reasons.push(`asset ${asset.assetId} has no SVG source`);
+      if (!IR_ID.test(`asset-${asset.assetId}`)) reasons.push(`asset ${asset.assetId}: its id cannot be used in the native Render IR`);
+      if (asset.animation) {
+        const errors = validateSvgTimeline(asset.animation, {
+          durationFrames: scene.durationFrames,
+          ...(asset.raster ? { availableElementIds: rasterElementIds(asset) } : {}),
+        });
+        if (errors.length) reasons.push(`asset ${asset.assetId}: ${errors.map((e) => `[${e.clipId}] ${e.message}`).join("; ")}`);
+        for (const clip of asset.animation.clips) {
+          if (asset.raster && !(IMAGE_ELEMENT_PROPERTIES as readonly string[]).includes(clip.property)) {
+            reasons.push(`asset ${asset.assetId}: a picture's ${clip.property} cannot be animated; move, scale, rotate or fade it`);
+          }
+        }
+      }
     }
   }
   const uncovered = uncoveredChapters(film, buildTimeline(film));

@@ -377,13 +377,7 @@ fn draw_text(
         TextAnchor::Middle => x - width / 2.0,
         TextAnchor::End => x - width,
     };
-    paragraph.paint_unsnapped(
-        canvas,
-        Point::new(
-            left as f32,
-            (y - f64::from(paragraph.alphabetic_baseline())) as f32,
-        ),
-    );
+    paragraph.paint_on_baseline(canvas, Point::new(left as f32, y as f32));
 }
 
 /// Every text element's (font-family, font-weight) in a document, for checking at load that each resolves.

@@ -1,0 +1,194 @@
+{
+  "schema": "aideos.review/1",
+  "format": "long",
+  "subject": "synthetic-cleared.mp4",
+  "createdAt": "<captured timestamp>",
+  "video": {
+    "path": "synthetic-cleared.mp4",
+    "durationSec": "<measured>",
+    "containerDurationSec": "<measured>",
+    "width": 1920,
+    "height": 1080,
+    "fps": 10,
+    "hasAudio": true,
+    "audioDurationSec": "<measured>"
+  },
+  "sources": {"film":null,"words":null,"narrationTextOnly":false},
+  "criteria": [
+    {
+      "id": 1,
+      "key": "persistent-stage",
+      "name": "One persistent stage",
+      "gate": true,
+      "status": "fail",
+      "score": "<measured>",
+      "summary": "<measured summary>",
+      "metrics": {
+        "layoutCorrelationMedian": "<measured>",
+        "layoutCorrelationP10": "<measured>",
+        "stageClearEvents": "<measured>",
+        "stageClearsPer30s": "<measured>",
+        "boundaryKeptShare": null
+      },
+      "threshold": {"layoutCorrelationMedianMin":0.65,"stageClearsPer30sMax":2.2,"boundaryKeptShareMin":0.6},
+      "evidence": ["<measured evidence>"],
+      "fix": "Keep one stage up for the whole film: each beat should transform what is already on screen (move, scale, retag, shrink into a card) instead of clearing it and drawing a new panel."
+    },
+    {
+      "id": 2,
+      "key": "carry-over",
+      "name": "Carry-over with transformation",
+      "gate": false,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: needs aideos film data; pixel overlap in place measures stillness, not continuity",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 13,
+      "key": "plan-adherence",
+      "name": "Look plan adherence",
+      "gate": false,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: needs film data with a valid design/look.json",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 3,
+      "key": "cue-timing",
+      "name": "Cues aimed at spoken words",
+      "gate": false,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: needs a scene film with animation clips or evaluated performances",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 4,
+      "key": "camera",
+      "name": "Camera that does something",
+      "gate": true,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: camera is read from film data, not pixels; pass --film or review an aideos film",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 5,
+      "key": "captions",
+      "name": "Captions at placed position (default bottom)",
+      "gate": true,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: OCR was not run",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 6,
+      "key": "readability",
+      "name": "Readability",
+      "gate": true,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: OCR was not run",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 7,
+      "key": "overlap",
+      "name": "No overlap or clipping",
+      "gate": true,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: OCR was not run and there is no film data",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 8,
+      "key": "audio-sync",
+      "name": "Audio sync",
+      "gate": true,
+      "status": "pass",
+      "score": "<measured>",
+      "summary": "<measured summary>",
+      "metrics": {
+        "audioVideoLengthDiffSec": "<measured>",
+        "filmVideoLengthDiffSec": null,
+        "shotBoundariesChecked": 0,
+        "boundariesThroughWords": null
+      },
+      "threshold": {"lengthToleranceSec":0.1,"boundaryToleranceSec":0.12},
+      "evidence": []
+    },
+    {
+      "id": 9,
+      "key": "pacing",
+      "name": "Pacing",
+      "gate": false,
+      "status": "fail",
+      "score": "<measured>",
+      "summary": "<measured summary>",
+      "metrics": {
+        "longestStaticSec": "<measured>",
+        "hardCuts": "<measured>",
+        "hardCutsPerMin": "<measured>",
+        "deadAirStretches": 0,
+        "wordsPerMinute": null,
+        "meanBeatSec": null
+      },
+      "threshold": {"staticRunMaxSec":2.5,"hardCutsPerMinMax":2.4,"deadAirMaxSec":0.6,"wpmMin":145,"wpmMax":215,"meanBeatMaxSec":10},
+      "evidence": ["<measured evidence>"],
+      "fix": "Replace cuts with continuous transforms of the same stage, give every beat something that moves, trim pauses over 0.6 s, and split or merge narration lines so beats average at most 10 s."
+    },
+    {
+      "id": 11,
+      "key": "grounding",
+      "name": "Numbers grounded in narration",
+      "gate": false,
+      "status": "skipped",
+      "score": null,
+      "summary": "not measured: needs the narration (word timings or text)",
+      "metrics": {},
+      "threshold": {},
+      "evidence": []
+    },
+    {
+      "id": 12,
+      "key": "loudness",
+      "name": "Loudness and mix",
+      "gate": false,
+      "status": "fail",
+      "score": "<measured>",
+      "summary": "<measured summary>",
+      "metrics": {"integratedLufs":"<measured>","truePeakDb":"<measured>","musicMeasurement":"no film data"},
+      "threshold": {"lufsMin":-18,"lufsMax":-14,"truePeakMaxDb":-1,"musicUnderVoiceMinDb":12,"musicUnderVoiceTargetDb":18},
+      "evidence": [],
+      "fix": "Keep music at least 12 dB under speech (design target 18 dB). Normalise the mix to between -18 and -14 LUFS integrated with true peak at or below -1 dBFS."
+    }
+  ],
+  "gateFailures": ["persistent-stage"],
+  "softFailures": ["pacing","loudness"],
+  "passed": false,
+  "meanScore": "<measured>",
+  "recommendations": [
+    "[gate] One persistent stage: Keep one stage up for the whole film: each beat should transform what is already on screen (move, scale, retag, shrink into a card) instead of clearing it and drawing a new panel.",
+    "Pacing: Replace cuts with continuous transforms of the same stage, give every beat something that moves, trim pauses over 0.6 s, and split or merge narration lines so beats average at most 10 s.",
+    "Loudness and mix: Keep music at least 12 dB under speech (design target 18 dB). Normalise the mix to between -18 and -14 LUFS integrated with true peak at or below -1 dBFS."
+  ],
+  "outDir": "<review output directory>"
+}
