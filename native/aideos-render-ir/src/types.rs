@@ -1,4 +1,4 @@
-//! File Description: The serde types of the Render IR (`aideos.render/1` through `/5`: `/4` adds glyph tracks and the 2D shutter, `/5` colour tracks and the dash offset element track on svg nodes), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
+//! File Description: The serde types of the Render IR (`aideos.render/1` through `/6`: `/4` adds glyph tracks and the 2D shutter, `/5` colour tracks and the dash offset element track on svg nodes, `/6` the native transition and particles), mirroring backend/renderIr/schema.ts field for field (camelCase on the wire, unknown fields refused).
 //! Inputs and outputs: a JSON document that already passed the JSON Schema check -> a typed `RenderIr`; a `RenderIr` -> the same JSON again.
 //! Used by: crate::load, crate::semantic, and the native renderer crates that evaluate the IR.
 

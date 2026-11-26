@@ -1,5 +1,5 @@
 /**
- * File Description: Produces the JSON Schemas (draft 2020-12) of every Render IR version (`/1` through `/5`) from the zod schemas in schema.ts, and knows where the committed copies live. The committed copies are what the Rust loader embeds, so the two languages validate documents against one schema per version.
+ * File Description: Produces the JSON Schemas (draft 2020-12) of every Render IR version (`/1` through `/6`) from the zod schemas in schema.ts, and knows where the committed copies live. The committed copies are what the Rust loader embeds, so the two languages validate documents against one schema per version.
  * Inputs and outputs: the zod schemas -> JSON Schema objects and their canonical serialized text.
  * Used by: scripts/render_ir_schema.ts, backend/renderIr/renderIr.test.ts.
  */

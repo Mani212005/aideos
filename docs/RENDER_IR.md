@@ -1,5 +1,5 @@
 <!--
-File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/6` (Three stage, pictures, 2D effects, colour and dash offset tracks): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
+File Description: Reference for the Render IR `aideos.render/1`, its supersets through `aideos.render/6` (Three stage, pictures, 2D effects, colour and dash offset tracks, native transitions and particles): the versioned, data-only boundary for the native renderer - its model, versioning and rejection rules, the stage3d node, the mesh file and the reference pose, the image node, colour tracks and the dash offset track, the `/6` transition and particles, issue codes, shared fixtures, and commands for the TypeScript and Rust sides.
 -->
 
 # Render IR (`aideos.render/1` through `aideos.render/6`)
@@ -35,6 +35,10 @@ previous version; no editor or preview integration is provided in this slice. Se
 P2.2a of Phase 2 added `aideos.render/5`: a strict superset of `/4` that adds colour tracks and the `dashOffset`
 element track on svg nodes, what the node-graph canvas animates (see [Colour and dash offset](#colour-and-dash-offset-aideosrender5)).
 No emitter writes `/5` yet: every film is written as before.
+
+`aideos.render/6` is a strict superset of `/5` that adds a native-only transition and seeded particles; colour tracks and
+particles may appear in one document. No emitter writes `/6` either. See
+[Native transitions and particles](#native-transitions-and-particles-aideosrender6).
 
 ## Where things live
 
