@@ -385,8 +385,8 @@ differ per format.
 Text is measured with `aideos-render measure`, so layout and drawing share one set of metrics. The emitter
 refuses (with every reason, `nativeSupport`) a node-graph film with a CSS 3D camera angle (a flat one is drawn since P2.2c), an actor scene, sub-group
 rotation, a scene asset with no SVG source, a chapter with no shots, imported footage and overlay clips, a textured theme over a Three stage (the blueprint grid and the dot matrix since P2.4a and the paper grain since P2.4b are drawn for node-graph films, and over vector scene films since P2.4c), legacy (non-library)
-music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter, TokenStrip or LayerStack in a film with a scene, P2.6a, P2.6b, P2.5b and P2.5c), more than one block per shot (except a `TextReveal` followed by a `Body`, a `TokenStrip` or a `LayerStack`, P2.5a to P2.5c) and blocks other than
-`TextReveal`, `StatCounter`, `Body`, `TokenStrip` and `LayerStack` (a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Blocks on a `none` stage are not drawn by `Film.tsx` and do not count (P2.5e), except an `AnalogyInset`. Those stay on Remotion until their phase.
+music and audio clips, panels other than `frame` and `none` (except an `inset` panel holding one StatCounter, TokenStrip, LayerStack or Plot in a film with a scene, P2.6a, P2.6b, P2.5b, P2.5c and P2.8a), more than one block per shot (except a `TextReveal` followed by a `Body`, a `TokenStrip` or a `LayerStack`, P2.5a to P2.5c) and blocks other than
+`TextReveal`, `StatCounter`, `Body`, `TokenStrip`, `LayerStack` and `Plot` (a `Plot` only under a headline or alone in an inset; a `Body` only under a headline, at a measured body size, made of measured word shapes; a `TokenStrip` only under a headline or alone in an inset, with a caption that fits on one line; a `LayerStack` only under a headline or alone in an inset, with no prompt, a label column that fits beside the stack and bar text that fits one line). Blocks on a `none` stage are not drawn by `Film.tsx` and do not count (P2.5e), except an `AnalogyInset`. Those stay on Remotion until their phase.
 
 The film-only check also reports invalid scene animation timelines, picture animation properties the IR cannot
 carry, asset IDs that cannot form IR IDs, and asset IDs shared by more than one asset. A rejected invalid
@@ -686,6 +686,8 @@ the fallback for everything not yet native:
 | P2.6a | the `inset` panel holding exactly one StatCounter on a cut shot that is not the first, in a film with a scene, behind a parity journey ([P2.6a](#p26a-the-inset-panel)) | done |
 | P2.6b | the `inset` panel on the first shot, and one that opens on a camera move (its open and close fade, its content's delayed fade and entrance), behind the same journey ([P2.6b](#p26b-the-inset-panel-on-a-camera-move)) | done |
 | P2.6 | devices in the inset, an inset with no block, an inset in a node-graph film | planned |
+| P2.8a | Render IR `/8` (svg nodes in the overlay, a strict superset of `/7`) and the `Plot` device, alone in an inset and under a headline, behind a parity journey ([P2.8a](#p28a-render-ir-8-and-the-plot-device)) | done |
+| P2.8 | the other svg devices without the serif font (ScaleBar, AttentionArcs, VectorSpace, Distribution where it sets no serif), one PR per family; MatrixGrid, Math and the serif Distribution stay refused (the italic serif is the owner's design-language decision) | planned |
 | P2.7 | imported footage and overlay clips (ffmpeg decode with accurate seek) | planned |
 
 The paper-rip transition every node-graph film names by default is a retired no-op (`PaperRip.tsx`), so it needs no
@@ -901,6 +903,26 @@ frames directory is overlaid by `Film.tsx` on any stage) and footage. The fixtur
 is node-graph-flat with a CodeBlock, a ProgressBar, and a Kicker, Divider and IconLabel on its `none` shots. Measured against
 Remotion (swangle), every 15th frame of both formats through the end card (90 frames): all at or above 0.995, lowest 0.99541,
 as node-graph-flat itself measures. The journey `backend/journeys/node_graph_native.journey.ts` adds the fixture with 16 frames.
+
+### P2.8a Render IR /8 and the Plot device
+
+The svg devices (Plot, ScaleBar, AttentionArcs, VectorSpace, Distribution) are SVG elements inside a card or an inset, which
+the Render IR could not hold: svg nodes belonged to the stage. `aideos.render/8` (Firstmate decision 042) is `/7`'s structure
+with one rule changed: the overlay may also hold svg nodes, drawn in frame pixels where they sit in the overlay's order (see
+`docs/RENDER_IR.md`). The renderer draws them with the stage's svg drawing; the unsupported-version example moved to `/9`.
+
+`Plot` (primitives.tsx) is a 520 x 300 SVG: three quarter grid lines, the axes, a Catmull-Rom curve through the points (the
+spline moved to `src/dl/plotSpline.ts`, shared by the component and the emitter), dashed by its numeric length and drawn on
+by its dash offset over 2600 ms (ease-out-expo), a dot that travels along it, and mono labels at 11 units. It grows (`flex: 1`)
+into the height its column leaves, like a LayerStack, and the SVG scales to fit (`preserveAspectRatio` meet). The emitter
+generates its asset (`backend/renderIr/emitPlot.ts`) and places it as an svg node in the card, at the meet scale and offset,
+with dash offset, translate and opacity element tracks. Chrome clips an svg element's content to its own box: a width-limited
+plot's y label (drawn left of the axis, at x < 0 in plot units) was cut to "tency" in Chrome and drawn whole natively, so the
+asset clips its content to the element's box in plot units (a `clipPath`). The fixture `test_fixtures/packages/plots` (a scene
+film) has a Plot alone in an inset that opens on a pan and a headline over a Plot on the frame stage. Measured against Remotion
+(swangle), every 4th frame through both draw-ons plus the shots around them and the end card: all at or above 0.995, lowest
+0.99834. The journey `backend/journeys/plots.journey.ts` pins native selection and 39 frames. A Plot alone on the frame stage
+or with another block stays refused.
 
 ### P2.6a the inset panel
 

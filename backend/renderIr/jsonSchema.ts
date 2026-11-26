@@ -1,12 +1,12 @@
 /**
- * File Description: Produces the JSON Schemas (draft 2020-12) of every Render IR version (`/1` through `/6`) from the zod schemas in schema.ts, and knows where the committed copies live. The committed copies are what the Rust loader embeds, so the two languages validate documents against one schema per version.
+ * File Description: Produces the JSON Schemas (draft 2020-12) of every Render IR version (`/1` through `/8`) from the zod schemas in schema.ts, and knows where the committed copies live. The committed copies are what the Rust loader embeds, so the two languages validate documents against one schema per version.
  * Inputs and outputs: the zod schemas -> JSON Schema objects and their canonical serialized text.
  * Used by: scripts/render_ir_schema.ts, backend/renderIr/renderIr.test.ts.
  */
 
 import path from "node:path";
 import { z } from "zod";
-import { renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, renderIrSchemaEffects, renderIrSchemaV7, RENDER_IR_VERSION_EFFECTS, RENDER_IR_VERSION_7 } from "./schema";
+import { renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, renderIrSchemaEffects, renderIrSchemaV7, renderIrSchemaV8, RENDER_IR_VERSION_EFFECTS, RENDER_IR_VERSION_7, RENDER_IR_VERSION_8 } from "./schema";
 
 /** The committed `/1` schema file, shared with the Rust crate. */
 export const RENDER_IR_SCHEMA_PATH = path.resolve(__dirname, "../../native/aideos-render-ir/schema/aideos.render.1.schema.json");
@@ -119,4 +119,18 @@ export function renderIrJsonSchemaV7(): Record<string, unknown> {
 /** The canonical text of the `/7` schema file: two-space JSON with a trailing newline. */
 export function renderIrJsonSchemaV7Text(): string {
   return `${JSON.stringify(renderIrJsonSchemaV7(), null, 2)}\n`;
+}
+
+/** The committed `/8` schema file, shared with the Rust crate. */
+export const RENDER_IR_SCHEMA_V8_PATH = path.resolve(__dirname, "../../native/aideos-render-ir/schema/aideos.render.8.schema.json");
+
+/** Builds the JSON Schema of the `/8` Render IR from the zod source of truth. */
+export function renderIrJsonSchemaV8(): Record<string, unknown> {
+  const schema = z.toJSONSchema(renderIrSchemaV8, { target: "draft-2020-12", io: "input", unrepresentable: "throw" }) as Record<string, unknown>;
+  return { ...schema, $id: "urn:aideos:schema:render:8", title: `${RENDER_IR_VERSION_8} (Render IR)` };
+}
+
+/** The canonical text of the `/8` schema file: two-space JSON with a trailing newline. */
+export function renderIrJsonSchemaV8Text(): string {
+  return `${JSON.stringify(renderIrJsonSchemaV8(), null, 2)}\n`;
 }

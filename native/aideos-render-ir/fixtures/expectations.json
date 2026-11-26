@@ -13,7 +13,8 @@
     "valid/effects-empty.json",
     "valid/effects-type.json",
     "valid/effects-nested-type.json",
-    "valid/underlay.json"
+    "valid/underlay.json",
+    "valid/overlay-svg.json"
   ],
   "invalid": {
     "invalid/bad-colour.json": {
@@ -471,7 +472,7 @@
     },
     "invalid/unsupported-version.json": {
       "kind": "unsupported_version",
-      "found": "aideos.render/8"
+      "found": "aideos.render/9"
     },
     "invalid/wrong-type.json": {
       "kind": "invalid_document",
@@ -617,6 +618,15 @@
         {
           "code": "node_not_allowed",
           "path": "/underlay/0/kind"
+        }
+      ]
+    },
+    "invalid/v7-overlay-svg.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "node_not_allowed",
+          "path": "/overlay/0/children/0/kind"
         }
       ]
     }

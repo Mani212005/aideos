@@ -75,6 +75,8 @@ struct Checker<'a> {
     ids: HashSet<&'a str>,
     stage3d_count: usize,
     shutter: bool,
+    /// `/8`: the overlay may hold svg nodes.
+    overlay_svg: bool,
 }
 
 impl<'a> Checker<'a> {
@@ -171,7 +173,9 @@ impl<'a> Checker<'a> {
             let allowed = match (node, space) {
                 (Node::Stage3d(_), _) => space == Space::Stage && top,
                 (_, Space::Stage | Space::Underlay) => matches!(node, Node::Svg(_) | Node::Image(_) | Node::Group(_)),
-                (_, Space::Overlay) => !matches!(node, Node::Svg(_) | Node::Image(_)),
+                // From `/8` the overlay also holds svg nodes (a device drawn in a card, in frame space).
+                (Node::Svg(_), Space::Overlay) => self.overlay_svg,
+                (_, Space::Overlay) => !matches!(node, Node::Image(_)),
             };
             if !allowed {
                 let message = if matches!(node, Node::Stage3d(_)) {
@@ -542,6 +546,7 @@ pub fn check(ir: &RenderIr) -> Vec<Issue> {
         ids: HashSet::new(),
         stage3d_count: 0,
         shutter: ir.shutter.is_some(),
+        overlay_svg: ir.schema == crate::VERSION_8,
     };
     if !c.declared_long && !c.declared_reel {
         c.add("no_formats", "/formats".into(), "declare at least one of long or reel".into());

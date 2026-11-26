@@ -1,5 +1,5 @@
 /**
- * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 to P4.3 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts), or an `aideos.render/3` document when it places pictures (the illustrated stage: each raster asset becomes an image node over its pinned PNG). A node-graph film (no scene) has its canvas emitted as an `aideos.render/5` document (emitNodeGraph.ts, Phase 2 P2.2b, on for render jobs since P2.2c) under the flat camera; the CSS 3D camera angles are refused. Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
+ * File Description: The Render IR emitter (R4 of the native renderer plan, P4.1 to P4.3 for the Three stage): turns one format of a scene film (film.json, its scene and SVG artwork, the delivery timeline and the layout tokens) into an `aideos.render/1` document the native renderer draws, an `aideos.render/2` document when the film has a Three stage (its stage3d node and mesh file come from emitStage3d.ts), or an `aideos.render/3` document when it places pictures (the illustrated stage: each raster asset becomes an image node over its pinned PNG). A node-graph film (no scene) has its canvas emitted as an `aideos.render/5` document (emitNodeGraph.ts, Phase 2 P2.2b, on for render jobs since P2.2c) under the flat camera; the CSS 3D camera angles are refused. A film whose card draws a Plot is written as `aideos.render/8` (an svg node in the overlay, emitPlot.ts, P2.8a). Every number is resolved here from the same modules the Remotion render reads (scene compiler clip semantics, camera track, `layoutFor`, `getEndCardLayout`, `deliveryTimeline`, motion constants), so the native picture follows the authored film rather than a second description of it. Text is measured with the native renderer's own fonts through an injected measurer, so layout and drawing share one set of metrics. Films that use something the native renderer does not draw yet are refused with every reason listed (`nativeSupport`), which is what lets callers fall back to Remotion.
  * Inputs and outputs: a Film, a format, the scene's SVG sources and a text measurer -> a validated RenderIr plus the package files it references (fonts, artwork, audio) and the reasons a film is not supported.
  * Used by: backend/nativeRenderer.ts (prepare), backend/rendererSelection.ts (nativeSupport), backend/renderIr/emit.test.ts, backend/renderIr/emitNodeGraph.test.ts, backend/renderIr/stage3d.test.ts.
  */
@@ -28,11 +28,12 @@ import {
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, effectDuckGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
-import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_5, RENDER_IR_VERSION_7, ELEMENT_PROPERTIES, IMAGE_ELEMENT_PROPERTIES, ID_PATTERN, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
+import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_5, RENDER_IR_VERSION_7, RENDER_IR_VERSION_8, ELEMENT_PROPERTIES, IMAGE_ELEMENT_PROPERTIES, ID_PATTERN, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
 import { rasterElementIds } from "../../src/dl/scene/raster";
 import { validateRenderIr } from "./validate";
 import { cssColor, hexAlpha, linearKeyframes, rgbHex } from "./irValues";
 import { prettyLines, type WordPosition } from "./bodyWrap";
+import { plotAsset, PLOT_HEIGHT, PLOT_WIDTH, type PlotBlock } from "./emitPlot";
 
 export { cssColor, hexAlpha, linearKeyframes };
 import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
@@ -116,7 +117,7 @@ export class NativeUnsupportedError extends Error {
 }
 
 /** Block kinds the emitter lays out (the text cards of Phase 1). */
-const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip", "LayerStack"]);
+const SUPPORTED_BLOCKS = new Set(["TextReveal", "StatCounter", "Body", "TokenStrip", "LayerStack", "Plot"]);
 /** The shared IR identifier rule applied to generated asset and node identifiers. */
 const IR_ID = new RegExp(ID_PATTERN);
 
@@ -195,12 +196,13 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
       // the first shot, or a shot that opens on a camera move.
       if (!film.scene) reasons.push(`shot ${shot.id}: stage "inset" panels in a node-graph film (no scene) are not measured against Remotion yet`);
       if (shot.blocks.length === 0) reasons.push(`shot ${shot.id}: a stage "inset" panel with no block is not measured against Remotion yet`);
-      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip" && b.c !== "LayerStack")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter, a TokenStrip or a LayerStack natively`);
+      if (shot.blocks.some((b) => b.c !== "StatCounter" && b.c !== "TokenStrip" && b.c !== "LayerStack" && b.c !== "Plot")) reasons.push(`shot ${shot.id}: stage "inset" panels hold only a StatCounter, a TokenStrip, a LayerStack or a Plot natively`);
     } else if (shot.stage !== "frame") reasons.push(`shot ${shot.id}: stage "${shot.stage}" panels are Phase 2`);
     // P2.5a and P2.5b: the measured columns are the compiler's text card (a headline then its support copy, design.ts
     // `buildTextBlocks`) and its device card (a headline then a TokenStrip, `buildBlocksForShotVisual`).
-    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "LayerStack");
-    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body, a TokenStrip or a LayerStack is)`);
+    const headlinePair = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip" || shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot");
+    if (shot.blocks.length > 1 && !headlinePair) reasons.push(`shot ${shot.id}: more than one block in a shot is not laid out natively (only a TextReveal followed by a Body, a TokenStrip, a LayerStack or a Plot is)`);
+    if (shot.blocks.length === 1 && shot.blocks[0].c === "Plot" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a Plot on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "LayerStack" && shot.stage !== "inset") reasons.push(`shot ${shot.id}: a LayerStack on its own outside an inset panel is not measured against Remotion yet (only under a TextReveal, or in an inset)`);
     if (shot.blocks.some((b) => b.c === "LayerStack" && b.prompt !== undefined)) reasons.push(`shot ${shot.id}: a LayerStack prompt is not measured against Remotion yet`);
     if (shot.blocks.length === 1 && shot.blocks[0].c === "Body") reasons.push(`shot ${shot.id}: a Body block on its own is not measured against Remotion yet (only under a TextReveal)`);
@@ -349,6 +351,8 @@ interface LayoutCtx {
   fps: number;
   width_: (run: MeasureRun) => number;
   metrics: (font: string, size: number) => LineMetrics;
+  /** Assets and package files a card generates (a device drawn as its own SVG); collected into the document. */
+  extras: { assets: Asset[]; files: PackageFile[] };
 }
 
 /** The font asset id of a family at a weight. */
@@ -523,6 +527,36 @@ function bodyNodes(ctx: LayoutCtx, id: string, block: { text: string }, start: n
     kind: "group", id, x: 0, y: 0, scale: 1, rotation: 0,
     tracks: [motionTrack("opacity", enter, from, from + enterFrames), motionTrack("y", (f) => (1 - enter(f)) * rise, from, from + enterFrames)],
     children,
+  };
+}
+
+/**
+ * Lays out a Plot (primitives.tsx `Plot`, P2.8a) in `box`, the height its column leaves it (`flex: 1`): its SVG (520 x 300
+ * units) fills the box as `preserveAspectRatio` meet does, scaled to the smaller fit and centred, drawn on by its own progress
+ * (ease-out-expo over 2600 ms from its start, staggered by its index). The plot's asset is generated here
+ * (backend/renderIr/emitPlot.ts) and placed as an svg node in the card; the block enters as one.
+ */
+function plotNodes(ctx: LayoutCtx, id: string, block: PlotBlock, start: number, index: number, box: { x: number; y: number; w: number; h: number }, span: { from: number; to: number }): Node {
+  const scale = Math.min(box.w / PLOT_WIDTH, box.h / PLOT_HEIGHT);
+  const x = box.x + (box.w - PLOT_WIDTH * scale) / 2;
+  const y = box.y + (box.h - PLOT_HEIGHT * scale) / 2;
+  const from = start + frames(MS.stagger * index, ctx.fps);
+  const progress = (f: number) => progressAt(f, from, frames(2600, ctx.fps));
+  const colours = { grid: ctx.tokens.rule(0.6), axes: ctx.tokens.rule(2), accent: ctx.accent, label: ctx.tokens.faint, font: "JetBrains Mono" };
+  // The svg element's own box (the whole of `box`), in plot units: Chrome clips the plot's content to it.
+  const viewport = { x: (box.x - x) / scale, y: (box.y - y) / scale, w: box.w / scale, h: box.h / scale };
+  const plot = plotAsset(block, colours, progress, span.from, span.to, viewport);
+  const assetId = `svg-${id}`;
+  const path = `visuals/${id}.svg`;
+  ctx.extras.assets.push({ kind: "svg", id: assetId, path, elementIds: plot.elementIds });
+  ctx.extras.files.push({ path, text: plot.svg });
+  const enterFrames = frames(MS.enter, ctx.fps);
+  const rise = ctx.layout.px(12);
+  const enter = (f: number) => progressAt(f, from, enterFrames);
+  return {
+    kind: "group", id, x: 0, y: 0, scale: 1, rotation: 0,
+    tracks: [motionTrack("opacity", enter, from, from + enterFrames), motionTrack("y", (f) => (1 - enter(f)) * rise, from, from + enterFrames)],
+    children: [{ kind: "svg", id: `${id}-svg`, asset: assetId, x, y, scale, rotation: 0, layer: 0, tracks: [], elementTracks: plot.tracks }],
   };
 }
 
@@ -1058,10 +1092,15 @@ function textCards(ctx: LayoutCtx, timeline: TimedShot[], storyFrames: number, t
     const column = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "Body" || shot.blocks[1].c === "TokenStrip") ? columnTops(ctx, shot.blocks[0], shot.blocks[1]) : undefined;
     // A LayerStack grows (`flex: 1`) into all the height its column leaves, so the column has no free space to centre: a
     // headline sits at the top and the stack fills the rest below the 2.5-grid gap.
-    const fillTop = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && shot.blocks[1].c === "LayerStack" ? stageRect(ctx).y : undefined;
+    const fillTop = shot.blocks.length === 2 && shot.blocks[0].c === "TextReveal" && (shot.blocks[1].c === "LayerStack" || shot.blocks[1].c === "Plot") ? stageRect(ctx).y : undefined;
     shot.blocks.forEach((block, i) => {
       if (block.c === "TextReveal") content.push(...textRevealNodes(ctx, `${id}-b${i}`, block, contentStart, i, column?.[i] ?? fillTop));
-      else if (block.c === "LayerStack") {
+      else if (block.c === "Plot") {
+        // A Plot grows (`flex: 1`) into the height its column leaves, like a LayerStack.
+        const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
+        const above = fillTop !== undefined && shot.blocks[0].c === "TextReveal" ? textRevealLayout(ctx, shot.blocks[0]).blockH + ctx.layout.grid * 2.5 : 0;
+        content.push(plotNodes(ctx, `${id}-b${i}`, block, contentStart, i, { x: rect.x, y: rect.y + above, w: rect.w, h: rect.h - above }, span));
+      } else if (block.c === "LayerStack") {
         const rect = inset ? insetContentRect(ctx) : stageRect(ctx);
         const above = fillTop !== undefined && shot.blocks[0].c === "TextReveal" ? textRevealLayout(ctx, shot.blocks[0]).blockH + ctx.layout.grid * 2.5 : 0;
         content.push(layerStackNodes(ctx, `${id}-b${i}`, block, contentStart, i, { x: rect.x, y: rect.y + above, w: rect.w, h: rect.h - above }, t.to - t.from, span));
@@ -1183,7 +1222,7 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
   // Through the end card the story holds its last frame.
   const storyLast = Math.max(0, storyFrames - 1);
   const frozen = (f: number) => Math.min(f, storyLast);
-  const ctx: LayoutCtx = { film, format, width, height, layout, tokens: { ...tokens, ink: rgbHex(tokens.ink), muted: rgbHex(tokens.muted), canvas: rgbHex(tokens.canvas) } as LayoutCtx["tokens"], accent, fps, width_, metrics };
+  const ctx: LayoutCtx = { film, format, width, height, layout, tokens: { ...tokens, ink: rgbHex(tokens.ink), muted: rgbHex(tokens.muted), canvas: rgbHex(tokens.canvas) } as LayoutCtx["tokens"], accent, fps, width_, metrics, extras: { assets: [], files: [] } };
 
   // The whole picture scales about the frame centre: a held shot's drift and the end card's slow push.
   const frameScale = (f: number) => {
@@ -1286,20 +1325,23 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
   const texture = film.videoClips?.length || film.scene?.renderer === "three" ? null : themeTexture(theme, width, height, holdScale, last);
 
   const audio = resolveAudio(film, delivery);
+  // A device drawn as its own SVG in a card puts an svg node in the overlay, which `/8` allows (a strict superset of `/7`).
+  const overlaySvg = ctx.extras.assets.length > 0;
   const ir: RenderIr = {
-    schema: texture ? RENDER_IR_VERSION_7 : stagePart.schema,
+    schema: overlaySvg ? RENDER_IR_VERSION_8 : texture ? RENDER_IR_VERSION_7 : stagePart.schema,
     film: { id: film.id, fps, durationFrames: total },
     scene: stagePart.sceneSize,
     formats: { [format]: { width, height } },
     background: ctx.tokens.canvas,
-    assets: [...stagePart.assets, ...(texture ? [texture.asset] : []), ...audio.assets],
+    assets: [...stagePart.assets, ...(texture ? [texture.asset] : []), ...ctx.extras.assets, ...audio.assets],
     camera: stagePart.camera,
-    ...(texture ? { underlay: [texture.node] } : {}),
+    // `/7` and `/8` documents always carry the underlay list (empty when there is no texture).
+    ...(texture ? { underlay: [texture.node] } : overlaySvg ? { underlay: [] } : {}),
     stage: stagePart.stage,
     overlay,
     audio: audio.clips,
   };
-  return { ir, files: [...stagePart.files, ...(texture ? [texture.file] : [])] };
+  return { ir, files: [...stagePart.files, ...(texture ? [texture.file] : []), ...ctx.extras.files] };
 }
 
 /** One build of a document, with the generated package files its stage needs (a node-graph film's canvas artwork). */

@@ -1,4 +1,4 @@
-//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the `/7` underlay (svg, image and group nodes in frame pixels, no camera), the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Opt-in seeded particles and SkSL transitions are evaluated per sample. The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Translucent fills and every compositing layer's restore blend in floating point and round, as the reference Chrome's GPU raster does (Skia's 8-bit legacy blitters truncate). Drawing depends only on the IR, assets and frame number.
+//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the `/7` underlay (svg, image and group nodes in frame pixels, no camera), the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, from `/8` svg nodes, and the chapter rail, kinetic captions and end card in `chrome`). Opt-in seeded particles and SkSL transitions are evaluated per sample. The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Translucent fills and every compositing layer's restore blend in floating point and round, as the reference Chrome's GPU raster does (Skia's 8-bit legacy blitters truncate). Drawing depends only on the IR, assets and frame number.
 //! Inputs and outputs: a canvas, the loaded film (`Loaded`), a format, a frame number and the frame size -> pixels on the canvas.
 //! Used by: crate::renderer (CPU raster and the optional GPU surface).
 
@@ -525,8 +525,10 @@ fn draw_overlay_node(canvas: &Canvas, ctx: &OverlayCtx, node: &Node) {
         Node::Rail(r) => chrome::draw_rail(canvas, ctx, r),
         Node::Captions(c) => chrome::draw_captions(canvas, ctx, c),
         Node::EndCard(e) => chrome::draw_end_card(canvas, ctx, e),
-        // The loader refuses svg, image and stage3d nodes in the overlay.
-        Node::Svg(_) | Node::Image(_) | Node::Stage3d(_) => {}
+        // From `/8` an svg node may sit in the overlay (a device drawn in a card), in frame pixels.
+        Node::Svg(n) => draw_svg_node(canvas, ctx.l, n, time),
+        // The loader refuses image and stage3d nodes in the overlay.
+        Node::Image(_) | Node::Stage3d(_) => {}
     }
 }
 
