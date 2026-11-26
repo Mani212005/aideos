@@ -27,7 +27,7 @@ import {
 import { getRetimedAudioRelPath } from "../../src/dl/audio/retime";
 import { buildVoiceTimeline } from "../../src/dl/audio/voiceActivity";
 import { dbGain, effectDuckGain, effectGain, mixSections, sectionEnvelope, soundtrackItem, soundtrackItemSrc, speechGain, usesSectionMixer } from "../../src/dl/audio/sectionMixer";
-import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_5, ELEMENT_PROPERTIES, IMAGE_ELEMENT_PROPERTIES, ID_PATTERN, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
+import { RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_5, RENDER_IR_VERSION_7, ELEMENT_PROPERTIES, IMAGE_ELEMENT_PROPERTIES, ID_PATTERN, type Keyframe, type Node, type RenderIr, type Asset } from "./schema";
 import { rasterElementIds } from "../../src/dl/scene/raster";
 import { validateRenderIr } from "./validate";
 import { cssColor, hexAlpha, linearKeyframes, rgbHex } from "./irValues";
@@ -35,6 +35,7 @@ import { cssColor, hexAlpha, linearKeyframes, rgbHex } from "./irValues";
 export { cssColor, hexAlpha, linearKeyframes };
 import { emitStage3d, stage3dCarryReasons, STAGE_MESH_PATH, type EmittedStage3d } from "./emitStage3d";
 import { emitNodeGraphCanvas, nodeGraphCanvasReasons } from "./emitNodeGraph";
+import { themeTexture } from "./emitThemeTexture";
 
 export type NativeFormat = "long" | "reel";
 
@@ -161,7 +162,11 @@ export function nativeSupport(film: Film, format: NativeFormat): string[] {
   if (film.videoClips?.length) reasons.push("imported video clips are Phase 2");
   if (film.overlayClips?.length) reasons.push("standalone overlay clips are Phase 2");
   const theme = BACKGROUND_THEMES[film.theme?.background ?? "paper-white"] ?? BACKGROUND_THEMES["paper-white"];
-  if (theme.gridType !== "none") reasons.push(`the ${theme.id} theme's ${theme.gridType} texture is not drawn natively`);
+  // The blueprint grid and the dot matrix are lowered into the `/7` underlay for node-graph films only (P2.4a, measured on those); the paper grain (turbulence and lighting) is not yet.
+  if (theme.gridType === "paper-fibers") reasons.push(`the ${theme.id} theme's ${theme.gridType} texture is not drawn natively`);
+  if (film.scene && (theme.gridType === "blueprint-grid" || theme.gridType === "subtle-dots")) {
+    reasons.push(`the ${theme.id} theme's ${theme.gridType} texture over a scene has not been measured against Remotion yet`);
+  }
   if (film.music || film.audio || film.sfx?.length || film.audioClips?.length) reasons.push("legacy music, effects and timeline audio clips are not mixed natively (library soundtracks are)");
   const soundtrack = normalizeFilmSoundtrack(film);
   if ((soundtrack.sections.length || soundtrack.sfx.length) && !usesSectionMixer(soundtrack)) reasons.push("path-only legacy soundtrack sections are not mixed natively (library soundtracks are)");
@@ -721,20 +726,25 @@ function build(input: EmitInput, width_: LayoutCtx["width_"], metrics: LayoutCtx
     placement: { [format]: { x: 0.5, y: 0.5, w: width - 1, h: height - 1 } },
   });
 
+  // The theme texture under the canvas (Film.tsx draws it under the stage, pushed with it by the end card but not drifted), in the `/7` underlay; node-graph films only (nativeSupport refuses a textured scene film).
+  const holdScale = (f: number) => (card && f >= card.from ? 1 + 0.01 * Math.min(1, (f - card.from) / Math.max(1, card.durationInFrames)) : 1);
+  const texture = film.videoClips?.length || film.scene ? null : themeTexture(theme, width, height, holdScale, last);
+
   const audio = resolveAudio(film, delivery);
   const ir: RenderIr = {
-    schema: stagePart.schema,
+    schema: texture ? RENDER_IR_VERSION_7 : stagePart.schema,
     film: { id: film.id, fps, durationFrames: total },
     scene: stagePart.sceneSize,
     formats: { [format]: { width, height } },
     background: ctx.tokens.canvas,
-    assets: [...stagePart.assets, ...audio.assets],
+    assets: [...stagePart.assets, ...(texture ? [texture.asset] : []), ...audio.assets],
     camera: stagePart.camera,
+    ...(texture ? { underlay: [texture.node] } : {}),
     stage: stagePart.stage,
     overlay,
     audio: audio.clips,
   };
-  return { ir, files: stagePart.files };
+  return { ir, files: [...stagePart.files, ...(texture ? [texture.file] : [])] };
 }
 
 /** One build of a document, with the generated package files its stage needs (a node-graph film's canvas artwork). */

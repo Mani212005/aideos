@@ -6,7 +6,7 @@
 
 import path from "node:path";
 import { z } from "zod";
-import { renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, renderIrSchemaEffects, RENDER_IR_VERSION_EFFECTS } from "./schema";
+import { renderIrSchema, renderIrSchemaV2, renderIrSchemaV3, renderIrSchemaV4, renderIrSchemaV5, renderIrSchemaEffects, renderIrSchemaV7, RENDER_IR_VERSION_EFFECTS, RENDER_IR_VERSION_7 } from "./schema";
 
 /** The committed `/1` schema file, shared with the Rust crate. */
 export const RENDER_IR_SCHEMA_PATH = path.resolve(__dirname, "../../native/aideos-render-ir/schema/aideos.render.1.schema.json");
@@ -105,4 +105,18 @@ export function renderIrJsonSchemaEffects(): Record<string, unknown> {
 /** The canonical text of the `/6` schema file: two-space JSON with a trailing newline. */
 export function renderIrJsonSchemaEffectsText(): string {
   return `${JSON.stringify(renderIrJsonSchemaEffects(), null, 2)}\n`;
+}
+
+/** The committed `/7` schema file, shared with the Rust crate. */
+export const RENDER_IR_SCHEMA_V7_PATH = path.resolve(__dirname, "../../native/aideos-render-ir/schema/aideos.render.7.schema.json");
+
+/** Builds the JSON Schema of the `/7` Render IR from the zod source of truth. */
+export function renderIrJsonSchemaV7(): Record<string, unknown> {
+  const schema = z.toJSONSchema(renderIrSchemaV7, { target: "draft-2020-12", io: "input", unrepresentable: "throw" }) as Record<string, unknown>;
+  return { ...schema, $id: "urn:aideos:schema:render:7", title: `${RENDER_IR_VERSION_7} (Render IR)` };
+}
+
+/** The canonical text of the `/7` schema file: two-space JSON with a trailing newline. */
+export function renderIrJsonSchemaV7Text(): string {
+  return `${JSON.stringify(renderIrJsonSchemaV7(), null, 2)}\n`;
 }

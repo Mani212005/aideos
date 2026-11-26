@@ -1,5 +1,5 @@
 /**
- * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) the strict superset `aideos.render/3` (adds a pinned picture), `aideos.render/4` (adds opt-in glyph tracks and a 2D shutter) its strict superset `aideos.render/5` (adds colour tracks and a stroke dash offset track on SVG elements, for the node-graph canvas of native Phase 2) and its strict superset `aideos.render/6` (adds a native-only transition and seeded particle emitters). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
+ * File Description: The structural contract of the Render IR, the versioned, data-only document between the TypeScript pipeline and the native renderer: `aideos.render/1` (SVG scene films), its strict superset `aideos.render/2` (adds the Three stage's `stage3d` node and the `mesh` asset) the strict superset `aideos.render/3` (adds a pinned picture), `aideos.render/4` (adds opt-in glyph tracks and a 2D shutter) its strict superset `aideos.render/5` (adds colour tracks and a stroke dash offset track on SVG elements, for the node-graph canvas of native Phase 2) its strict superset `aideos.render/6` (adds a native-only transition and seeded particle emitters) and its strict superset `aideos.render/7` (adds the `underlay`, frame-space nodes drawn between the background and the stage, for the theme textures of native Phase 2). These zod schemas are the single source: `npm run render-ir:schema` turns them into the committed JSON Schemas the Rust loader embeds, so the two sides cannot describe different documents. Browser-safe (no Node imports).
  * Inputs and outputs: nothing at import time -> zod schemas and the TypeScript types inferred from them.
  * Used by: backend/renderIr/validate.ts, backend/renderIr/jsonSchema.ts, backend/renderIr/renderIr.test.ts.
  */
@@ -18,8 +18,10 @@ export const RENDER_IR_VERSION_5 = "aideos.render/5";
 export const RENDER_IR_VERSION_4 = "aideos.render/4";
 /** The sixth version, a strict superset of the fifth: adds the native-only transition and seeded particles. */
 export const RENDER_IR_VERSION_EFFECTS = "aideos.render/6";
+/** The seventh version, a strict superset of the sixth: adds the `underlay` (frame-space nodes under the stage; native Phase 2, P2.4a). */
+export const RENDER_IR_VERSION_7 = "aideos.render/7";
 /** Every version the loaders read; any other value is rejected before the rest of the document is read. */
-export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSION_5, RENDER_IR_VERSION_EFFECTS] as const;
+export const RENDER_IR_VERSIONS = [RENDER_IR_VERSION, RENDER_IR_VERSION_2, RENDER_IR_VERSION_3, RENDER_IR_VERSION_4, RENDER_IR_VERSION_5, RENDER_IR_VERSION_EFFECTS, RENDER_IR_VERSION_7] as const;
 export type RenderIrVersion = (typeof RENDER_IR_VERSIONS)[number];
 
 /** Largest frame index or count a document may carry (about 10 days at 30 fps), so integers stay exact. */
@@ -298,8 +300,8 @@ export const renderIrSchema = z.strictObject({
   audio: z.array(audioClipSchema),
 });
 
-/** A loaded document of any version, typed as the `/6` superset (an older document never holds a later version's additions). */
-export type RenderIr = Omit<z.infer<typeof renderIrSchemaEffects>, "schema"> & { schema: RenderIrVersion };
+/** A loaded document of any version, typed as the `/7` superset (an older document never holds a later version's additions). */
+export type RenderIr = Omit<z.infer<typeof renderIrSchemaV7>, "schema" | "underlay"> & { schema: RenderIrVersion; underlay?: z.infer<typeof renderIrSchemaV7>["underlay"] };
 export type Asset = z.infer<typeof assetSchemaV2>;
 export type Keyframe = z.infer<typeof keyframeSchema>;
 export type FormatName = "long" | "reel";
@@ -774,4 +776,14 @@ export const renderIrSchemaEffects = renderIrSchemaV5.extend({
     spread: z.number().min(0).max(10000), gravity: z.number().min(-10000).max(10000),
     radius: z.number().gt(0).max(1000), color,
   })).max(16).optional(),
+});
+
+/**
+ * The whole `/7` document: `/6` plus the `underlay`, drawn in frame space (render pixels, no camera) after the background
+ * and before the stage, in order. It holds svg, image and group nodes; a theme texture that sits under the canvas (the
+ * `blueprint-grid` and `subtle-dots` patterns of `Film.tsx`) is drawn there.
+ */
+export const renderIrSchemaV7 = renderIrSchemaEffects.extend({
+  schema: z.literal(RENDER_IR_VERSION_7),
+  underlay: z.array(nodeSchemaV5),
 });

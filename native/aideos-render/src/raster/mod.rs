@@ -1,4 +1,4 @@
-//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Opt-in seeded particles and SkSL transitions are evaluated per sample. The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Translucent fills and every compositing layer's restore blend in floating point and round, as the reference Chrome's GPU raster does (Skia's 8-bit legacy blitters truncate). Drawing depends only on the IR, assets and frame number.
+//! File Description: Draws one evaluated frame of a Render IR onto a Skia canvas: the background, the `/7` underlay (svg, image and group nodes in frame pixels, no camera), the stage (SVG assets, pictures and groups in scene space, under the camera and the format's cover fit, as SceneStage and SceneView do), then the overlay in frame pixels (groups, rects, text, and the chapter rail, kinetic captions and end card in `chrome`). Opt-in seeded particles and SkSL transitions are evaluated per sample. The opt-in 2D shutter accumulates fractional samples and draws chrome once at the delivered frame. Translucent fills and every compositing layer's restore blend in floating point and round, as the reference Chrome's GPU raster does (Skia's 8-bit legacy blitters truncate). Drawing depends only on the IR, assets and frame number.
 //! Inputs and outputs: a canvas, the loaded film (`Loaded`), a format, a frame number and the frame size -> pixels on the canvas.
 //! Used by: crate::renderer (CPU raster and the optional GPU surface).
 
@@ -115,6 +115,15 @@ fn draw_frame_at(
     let pose = eval::camera_at(&l.ir, time);
     let view = StageView { width, height, pose };
     let fit = eval::cover_fit(&l.ir, width, height) as f32;
+    // `/7`: the underlay is drawn in frame pixels, with no camera, between the background and the stage.
+    if let Some(underlay) = &l.ir.underlay {
+        for node in stage_order(underlay) {
+            match node {
+                Node::Group(g) => draw_underlay_layer(canvas, l, g, time, frame, &view)?,
+                other => draw_stage_node(canvas, l, other, time, frame, &view)?,
+            }
+        }
+    }
     canvas.save();
     // Frame centre, cover fit, then the camera: rotate, zoom and bring its centre to the origin.
     canvas.translate((width as f32 / 2.0, height as f32 / 2.0));
@@ -250,6 +259,56 @@ fn draw_stage_node(
         // The loader refuses overlay kinds on the stage.
         _ => {}
     }
+    Ok(())
+}
+
+/// Draws a top-level `/7` underlay group as Chrome composites a layer it does not re-raster when it scales: the children
+/// are drawn in frame pixels without the group's transform, then the result is placed through the transform (scale, x, y,
+/// rotation) with bilinear sampling at the group's opacity. A theme texture under the end card's 1% push is drawn this way
+/// (redrawing its 0.25 px lines at the new scale measured SSIM 0.960 against Chrome, resampling 0.996). At the identity
+/// transform the children are drawn directly, which gives the same pixels.
+fn draw_underlay_layer(
+    canvas: &Canvas,
+    l: &Loaded,
+    g: &GroupNode,
+    time: f64,
+    frame: u32,
+    view: &StageView,
+) -> Result<(), RenderError> {
+    if !eval::is_visible_at(g.visible.as_ref(), time) {
+        return Ok(());
+    }
+    let t = group_transform(g, time, l.ir.film.duration_frames.0);
+    if t.opacity <= 0.0 {
+        return Ok(());
+    }
+    let identity = t.x == 0.0 && t.y == 0.0 && t.scale * t.scale_x == 1.0 && t.scale * t.scale_y == 1.0 && t.rotation == 0.0;
+    if identity {
+        let mut result = Ok(());
+        with_opacity(canvas, t.opacity, || {
+            for child in stage_order(&g.children) {
+                if let Err(e) = draw_stage_node(canvas, l, child, time, frame, view) {
+                    result = Err(e);
+                    break;
+                }
+            }
+        });
+        return result;
+    }
+    let info = skia_safe::ImageInfo::new_n32_premul((view.width as i32, view.height as i32), None);
+    let mut layer = canvas
+        .new_surface(&info, None)
+        .or_else(|| skia_safe::surfaces::raster(&info, None, None))
+        .ok_or_else(|| RenderError::Skia("cannot allocate the underlay layer".into()))?;
+    for child in stage_order(&g.children) {
+        draw_stage_node(layer.canvas(), l, child, time, frame, view)?;
+    }
+    let image = layer.image_snapshot();
+    canvas.save();
+    apply_placement(canvas, &t);
+    let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
+    canvas.draw_image_with_sampling_options(&image, (0.0, 0.0), sampling, Some(&rounding_layer_paint(t.opacity as f32)));
+    canvas.restore();
     Ok(())
 }
 

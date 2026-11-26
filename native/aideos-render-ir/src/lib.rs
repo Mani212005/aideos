@@ -1,4 +1,4 @@
-//! File Description: Loader and validator for the Render IR (`aideos.render/1`, its superset `aideos.render/2` and its supersets through `aideos.render/6`): parses a JSON document, refuses an unknown version, checks it against that version's committed JSON Schema, deserializes it into typed structs and runs the cross-reference rules; also decodes the `/2` binary mesh file. The TypeScript twins are backend/renderIr/validate.ts and backend/renderIr/mesh.ts.
+//! File Description: Loader and validator for the Render IR (`aideos.render/1`, its superset `aideos.render/2` and its supersets through `aideos.render/7`): parses a JSON document, refuses an unknown version, checks it against that version's committed JSON Schema, deserializes it into typed structs and runs the cross-reference rules; also decodes the `/2` binary mesh file. The TypeScript twins are backend/renderIr/validate.ts and backend/renderIr/mesh.ts.
 //! Inputs and outputs: a JSON file or string -> a `RenderIr`, or a `LoadError` (not JSON, unsupported version, invalid document with every issue, or an I/O error); mesh file bytes and their declared asset -> mesh parts or a `MeshError`.
 //! Used by: the native renderer crates and native/aideos-render-ir/tests/*.rs.
 
@@ -7,7 +7,7 @@ pub mod mesh;
 mod semantic;
 pub mod types;
 
-pub use load::{load_from_path, load_from_str, Issue, LoadError, SCHEMA_JSON, SCHEMA_V2_JSON, SCHEMA_V3_JSON, SCHEMA_V4_JSON, SCHEMA_V5_JSON, SCHEMA_EFFECTS_JSON};
+pub use load::{load_from_path, load_from_str, Issue, LoadError, SCHEMA_JSON, SCHEMA_V2_JSON, SCHEMA_V3_JSON, SCHEMA_V4_JSON, SCHEMA_V5_JSON, SCHEMA_EFFECTS_JSON, SCHEMA_V7_JSON};
 pub use semantic::is_safe_relative_path;
 pub use types::RenderIr;
 
@@ -23,7 +23,9 @@ pub const VERSION_4: &str = "aideos.render/4";
 pub const VERSION_5: &str = "aideos.render/5";
 /// Native transition and particle effects version.
 pub const VERSION_EFFECTS: &str = "aideos.render/6";
+/// The seventh version, a strict superset of the sixth: adds the `underlay`, frame-space nodes drawn under the stage.
+pub const VERSION_7: &str = "aideos.render/7";
 /// Every version this crate reads.
-pub const VERSIONS: [&str; 6] = [VERSION, VERSION_2, VERSION_3, VERSION_4, VERSION_5, VERSION_EFFECTS];
+pub const VERSIONS: [&str; 7] = [VERSION, VERSION_2, VERSION_3, VERSION_4, VERSION_5, VERSION_EFFECTS, VERSION_7];
 /// The versions this crate reads, as the `supported` text of an unsupported-version refusal.
-pub const SUPPORTED: &str = "aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6";
+pub const SUPPORTED: &str = "aideos.render/1, aideos.render/2, aideos.render/3, aideos.render/4, aideos.render/5, aideos.render/6, aideos.render/7";

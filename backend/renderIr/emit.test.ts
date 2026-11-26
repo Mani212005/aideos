@@ -296,6 +296,12 @@ test("a film the native renderer cannot draw is refused with every reason", () =
   assert.deepEqual(nativeSupport(nodeGraph, "reel"), []);
   const perspective = { ...nodeGraph, theme: { ...nodeGraph.theme, cameraAngle: "isometric" } } as typeof nodeGraph;
   assert.ok(nativeSupport(perspective, "reel").some((r) => r.includes("node-graph camera angle")));
+  // The pattern textures are measured over node-graph films only: the same film on the blueprint theme is refused with a scene and drawn without one.
+  const blueprintScene = nativeSceneFilm({ theme: { ...base.theme, background: "blueprint" } });
+  assert.ok(nativeSupport(blueprintScene, "long").some((r) => r.includes("blueprint-grid texture over a scene has not been measured")));
+  const blueprintGraph = nativeSceneFilm({ theme: { ...base.theme, background: "blueprint" } });
+  delete (blueprintGraph as { scene?: unknown }).scene;
+  assert.deepEqual(nativeSupport(blueprintGraph, "long"), []);
   const three = nativeSceneFilm();
   (three.scene as { renderer?: string }).renderer = "three";
   assert.ok(nativeSupport(three, "long").some((r) => r.includes("Three stage with no performances")));

@@ -12,7 +12,8 @@
     "valid/tiny-scene.json",
     "valid/effects-empty.json",
     "valid/effects-type.json",
-    "valid/effects-nested-type.json"
+    "valid/effects-nested-type.json",
+    "valid/underlay.json"
   ],
   "invalid": {
     "invalid/bad-colour.json": {
@@ -470,7 +471,7 @@
     },
     "invalid/unsupported-version.json": {
       "kind": "unsupported_version",
-      "found": "aideos.render/7"
+      "found": "aideos.render/8"
     },
     "invalid/wrong-type.json": {
       "kind": "invalid_document",
@@ -599,6 +600,23 @@
       "issues": [
         {
           "code": "schema"
+        }
+      ]
+    },
+    "invalid/v6-underlay.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "schema"
+        }
+      ]
+    },
+    "invalid/underlay-space.json": {
+      "kind": "invalid_document",
+      "issues": [
+        {
+          "code": "node_not_allowed",
+          "path": "/underlay/0/kind"
         }
       ]
     }
