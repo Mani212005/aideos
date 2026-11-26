@@ -169,6 +169,21 @@ export function jobsFor(toolchain: Toolchain): CiJob[] {
     }),
   };
 
+  /** Bun only: npm's `presmoke:studio` pre-hook regenerates the files the journey tests may have left changed; the bun path runs it as a step, in the shard that runs the smoke. */
+  const ensureGeneratedBeforeSmokeSteps: CiStep[] = toolchain === "bun"
+    ? [
+        {
+          name: "ensure generated files",
+          cmd: ["bun", "scripts/ensure_generated.ts"],
+          forShard: (plan) => ({
+            name: "ensure generated files",
+            cmd: ["bun", "scripts/ensure_generated.ts"],
+            skip: () => (plan.runsSmoke ? null : `runs in another shard (this is ${plan.shard.index}/${plan.shard.total})`),
+          }),
+        },
+      ]
+    : [];
+
   /** The editor build: one npm script on the npm path; on the bun path its two commands run on the Bun runtime in editor/ (no npm pre-hook). */
   const editorBuildSteps: CiStep[] = toolchain === "bun"
     ? [
@@ -242,6 +257,7 @@ export function jobsFor(toolchain: Toolchain): CiJob[] {
       steps: [
         warmChromeStep,
         journeyTestsStep,
+        ...ensureGeneratedBeforeSmokeSteps,
         studioSmokeStep,
       ],
     },
