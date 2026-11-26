@@ -195,7 +195,7 @@ File Description: This file defines the core guidelines, coding principles, and 
 ## Design check and design build
 
 - Run `aideos design check <film...>` on every film design. It is the single gate.
-- Use `bun run design:check -- <film> [--all] [--stills] [--json]` for the npm form.
+- Use `bun run design:check -- <film> [--all] [--stills] [--json]`; `npm run design:check` works too.
 - When the user chose the project theme (`theme.accentChosen`), keep that accent as the only accent.
 - Leave `easing` off camera keyframes.
 - Bespoke designs are data: `videos/<id>/design/design.json` plus SVGs in `visuals/`.
