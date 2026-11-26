@@ -277,11 +277,11 @@ if [ "$#" -gt 0 ]; then
       exit 0
       ;;
     test)
-      cd "$AIDEOS_DIR" && bun run test "$@"
+      cd "$AIDEOS_DIR" && npm test "$@"
       exit 0
       ;;
     lint)
-      cd "$AIDEOS_DIR" && bun run lint "$@"
+      cd "$AIDEOS_DIR" && npm run lint "$@"
       exit 0
       ;;
     produce|engine-test|film|direct|mcp|end-card)
