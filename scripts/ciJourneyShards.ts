@@ -22,7 +22,7 @@ export const DEFAULT_WEIGHT_SECONDS = 60;
 /**
  * Median seconds of each journey file on a GitHub runner, summed over its tests, from 8 journeys
  * jobs of 13 to 14 November 2026 (data: per-test `duration_ms` of the TAP log), except the P4.5 additions (the native determinism journey in
- * j1_pipeline, about 40 s, and native_character_goldens, about 40 s) the illustrated stage's pictures_stage (13 s on the Linux laptop, planned at 20 s) svg_filters (12 s on the Linux laptop, planned at 15 s) and node_graph_native (three node-graph fixtures: 130 s on the Linux laptop, planned at 175 s) and theme_textures (four theme fixtures: 204 s on the Linux laptop, planned at 230 s) and inset_panel (two fixtures: 57 s on the Linux laptop, planned at 75 s) and text_cards (32 s on the Linux laptop, planned at 45 s) and token_strips (36 s on the Linux laptop, planned at 50 s) and layer_stacks (42 s on the Linux laptop, planned at 55 s) and scene_textures (two fixtures: 71 s on the Linux laptop, planned at 90 s) and plots (42 s on the Linux laptop, planned at 55 s) and scale_bars (41 s on the Linux laptop, planned at 55 s), which are local measurements until a CI run replaces them. Keys are paths
+ * j1_pipeline, about 40 s, and native_character_goldens, about 40 s) the illustrated stage's pictures_stage (13 s on the Linux laptop, planned at 20 s) svg_filters (12 s on the Linux laptop, planned at 15 s) and node_graph_native (three node-graph fixtures: 130 s on the Linux laptop, planned at 175 s) and theme_textures (four theme fixtures: 204 s on the Linux laptop, planned at 230 s) and inset_panel (two fixtures: 57 s on the Linux laptop, planned at 75 s) and text_cards (32 s on the Linux laptop, planned at 45 s) and token_strips (36 s on the Linux laptop, planned at 50 s) and layer_stacks (42 s on the Linux laptop, planned at 55 s) and scene_textures (two fixtures: 71 s on the Linux laptop, planned at 90 s) and plots (42 s on the Linux laptop, planned at 55 s) and scale_bars (41 s on the Linux laptop, planned at 55 s) and attention_arcs (47 s on the Linux laptop, planned at 60 s), which are local measurements until a CI run replaces them. Keys are paths
  * relative to backend/journeys. The table only balances the shards: a stale or missing entry costs
  * balance, never coverage, because every file on disk is planned.
  */
@@ -39,6 +39,7 @@ export const JOURNEY_WEIGHTS_SECONDS: Readonly<Record<string, number>> = {
   "scene_textures.journey.ts": 90,
   "plots.journey.ts": 55,
   "scale_bars.journey.ts": 55,
+  "attention_arcs.journey.ts": 60,
   "j2_retime.journey.ts": 90,
   "j6_resume.journey.ts": 88,
   "j13_caption_placement.journey.ts": 79,
