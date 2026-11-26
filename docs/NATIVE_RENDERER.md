@@ -728,7 +728,8 @@ A card's backdrop is drawn as Chrome draws it: Chrome blurs only what lies insid
 edges (measured: light just outside a card never reaches its backdrop, and a bar 6 to 12 px inside the edge reads 79 at
 the edge, as a mirror gives, where a clamp would give 47). The canvas copies what is behind the card (the canvas colour
 and the edges passing under it), clips the copy to the box, adds its mirror images across each edge and corner, blurs
-that and clips it to the rounded box. SVG `feGaussianBlur` itself ignores `edgeMode` in Chrome (none, mirror and
+that and clips it to the rounded box. Each copy draws only the edges that can reach the blur's filter region through it
+(36 units, 3 x the 12 px deviation, from the box edge), so the many copies stay small and the pixels are the same. SVG `feGaussianBlur` itself ignores `edgeMode` in Chrome (none, mirror and
 duplicate draw the same), so the native SVG subset still refuses it and the mirror is built from plain SVG.
 
 What closed the gap was not the blur. The reference is Remotion's Chrome with `AIDEOS_GL=swangle` (CI and the goldens),
