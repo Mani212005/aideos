@@ -808,7 +808,8 @@ selection and 27 of those frames. A `Body` on its own, other block pairs and oth
 line breaks are measured: a `Body` whose text has any character outside ASCII letters, digits, white space and
 `. , ; : ' " ! ? ( ) &` (a hyphen, slash, dash, soft hyphen, zero-width space, non-breaking space, any other break
 opportunity of Chrome's UAX 14 breaker) is refused with a reason naming the shot and the first such character, and the film
-stays with Remotion.
+stays with Remotion. That set was measured with a second differential of 400 generated sentences with digits and the
+punctuation (397 carrying at least one): every word-prefix width within 1/64 px and the same line breaks in both formats.
 
 ### P2.6a the inset panel
 

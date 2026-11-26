@@ -25,6 +25,10 @@ which needs a native video decode path and a Render IR version (`/8`, moving the
   size is a table with only the two body sizes films use, and any other size is refused.
 - Line-break differential (probe page with the `Body` CSS and Remotion's flags, 400 generated sentences up to 170 characters):
   same lines for all 400 in both formats; the pretty pass changes 87 (long) and 42 (reel) of them.
+- Character-set differential (the same probe, 400 more generated sentences with digits (1, 12, 2048, 3.5, 1,000, 2026, 0.5) and the
+  punctuation `; : ' " ! ? ( ) &`, 397 of 400 containing at least one): every word-prefix width within 1/64 px at the measured
+  sizes (2722 prefixes long, 4756 reel) and the same lines for all 400 in both formats; the pretty pass changes 48 (long) and
+  22 (reel) of them. This backs the character set `nativeSupport` accepts for a `Body`.
 
 ## Parity: native against Remotion (swangle), stage SSIM by ffmpeg
 
@@ -37,7 +41,7 @@ reel and long): 86 frames, none under 0.995; lowest long 240 0.99848.
 | --- | --- | --- |
 | Real E2E run | PASS | `CI=true AIDEOS_GL=swangle npx tsx backend/journeys/text_cards.journey.ts`: native chosen for both formats; all 27 frames at or above 0.995 (32 s) |
 | Property test for new invariants | N/A | |
-| Differential test on replacement | PASS | the line-break differential and the frame sweep above (scratch, outside the repo) |
+| Differential test on replacement | PASS | the line-break and character-set differentials and the frame sweep above (scratch, outside the repo) |
 | Expect / golden test for complex output | PASS | no golden or expect change; films without a `Body` emit the same documents |
 | No sleeps in tests | PASS | none added |
 | No mocks of thing under test | PASS | real emitter, release binary and Remotion |
