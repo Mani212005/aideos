@@ -1,0 +1,38 @@
+Usage: aideos-backend [options] [command]
+
+Generate and render Aideos films from natural language
+
+Options:
+  -V, --version                                   output the version number
+  -h, --help                                      display help for command
+
+Commands:
+  reel                                            Write, check or build a separate condensed reel narration cut
+  pictures-status <film>                          List a film's declared pictures: fingerprint, and whether each is cached, pinned or still to make (with its prompt)
+  pictures-add [options] <film> <picture> <file>  Store a PNG made elsewhere as one of a film's declared pictures, byte for byte, with its record
+  produce [options]                               Produce an audio-first Aideos film from a narration script
+  film [options]                                  One call from a script to a draft film (narration, design, GPU b-roll); --final-export also renders and verifies the mp4s
+  end-card <slug> <state>                         The call to action end card is compulsory on every video; "on" re-stamps it, "off" is refused
+  direct [options] <prompt>                       Auto-prompt: an LLM director drafts a screenplay from your prompt, then produces a draft film; --final-export also renders the mp4s
+  mcp                                             Serve the production pipeline as an MCP server over stdio
+  engine-test [options] <prompt>                  Render one clip through a VideoEngine (smoke test for the GPU render loop)
+  look-brief <film>                               Write videos/<film>/design/LOOK_BRIEF.md: everything a designer needs to plan the film look
+  look-check [options] <film>                     Check videos/<film>/design/look.json against the look plan schema and semantic rules
+  design-brief <film>                             Write videos/<film>/design/BRIEF.md: everything a designer needs to design the film
+  design-build [options] <film>                   Compile videos/<film>/design/design.json into the film; writes it only when the design check passes, then completes the compulsory music and sound effects with the default soundtrack
+  design-check [options] [films...]               Check films against the design standard layer (schema, scene, art, palette, continuity, audio lock, honest data)
+  review [options] <target>                       Review a rendered video against the good-video rubric: measurable checks on the mp4 (and film data), evidence frames, exit 1 when a gate fails
+  gemini-review [options] <video>                 Review a rendered mp4 video or run pairwise comparison using Gemini 3.8 Flash against the 12-criterion quality rubric
+  all-check [options] <slug>                      Run the whole video check (render long and reel, measured review, Gemini review, fix, repeat). The agent session you run it from does the fixing; a replacement agent is started only when no session is running
+  all-check-round [options] <slug>                (all-check agent) Render and measure one round: measured review, Gemini review, cross-review, stills
+  all-check-frames [options] <slug>               (all-check agent) Record your frame check of a round: clean, or the issues you saw in the stills
+  all-check-finish <slug>                         (all-check agent) Close the run: verdict, final videos, report.md, result.json, notification
+  all-check-status <slug>                         Show the state of an all-check run and the rounds measured so far
+  all-check-wait [options] <slug>                 Wait for an all-check run to finish, then print its scores and final video paths
+  all-check-rollback [options] <slug>             (all-check agent) Restore film.json from the backup taken at the start of a round
+  character                                       Check, stamp and draw aideos.character/1 specs (characters are data; see characters/README.md)
+  audio                                           Manage and verify the shared background music and sound effects library
+  study [options] <references...>                 Measure local reference videos as numbers only and write a style bible plus a look seed proposal. Craft measurements only: cut cadence, camera speed, tone, caption cadence and pacing as numbers. No identity, likeness, script, voice, character or channel cloning. Reference videos are local files you are allowed to analyse; aideos does not download or scrape anything.
+  compare [options] <ours> <reference>            Compare one of our videos with a local reference as numbers only: a labelled contact sheet (REF left, OURS right) and a metric diff of the study measurements. Craft measurements only: cut cadence, camera speed, tone, caption cadence and pacing as numbers. No identity, likeness, script, voice, character or channel cloning. Reference videos are local files you are allowed to analyse; aideos does not download or scrape anything. A comparison states numbers only: it is not a verdict, not a score and not advice.
+  verdict [options] <slug> [decision]             Record or show the owner's watch verdict for a film (publish, fix, or reject) in videos/<slug>/owner-verdict.json; automated checks never mark a film owner-approved
+  help [command]                                  display help for command

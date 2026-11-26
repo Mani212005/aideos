@@ -79,8 +79,11 @@ The command fetches refs and checks version/fast-forward eligibility, then:
    are never rewritten.
 4. Runs `runProduction` with both formats, no frame window, and forced render and verify stages.
    Earlier stages resume when valid. A package's own narration (`voiceover.wav`, `voiceover_words.json`,
-   `narration.json`) is kept as is when it matches the script, so a recorded voice is never replaced
-   and the design's timed cues stay valid; only a package without narration is synthesized, with the owner's
+   `narration.json`) is kept as is when it matches the script, even when its saved run state names a
+   different synthesizer (acceptance sets `keepRecordedNarration`, see
+   [Production pipeline](PRODUCTION_PIPELINE.md#resuming)), so a recorded voice is never replaced
+   and the design's timed cues stay valid; "accepted" therefore means accepted with each film's own
+   recorded voice, not with a fresh synthesis. Only a package without narration is synthesized, with the owner's
    cloned voice (the voice of choice; the local `vcd` voice service must be running). If the
    pipeline needs a look, design or reel cut, the release stops: prepare the package with the
    printed next steps before retrying. Missing music in either format or production warnings block
