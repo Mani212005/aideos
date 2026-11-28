@@ -5,7 +5,7 @@
  * defaults; a film cannot opt out of the card. Pure and browser safe (no Node imports), so Remotion, the studio
  * preview, the pipeline, review and gemini facts all agree on one number.
  * Inputs and outputs: Film manifest, format and optional prebuilt timeline -> DeliveryTimeline (story frames, card span, total frames, card words).
- * Used by: src/Root.tsx, src/dl/runtime.ts, src/dl/Video.tsx, src/dl/Film.tsx, src/dl/EndCard.tsx, editor/src/screens/EditStage.tsx, editor/src/App.tsx, backend/aideosConfig.ts, backend/endCard/voice.ts, backend/pipeline/run.ts, backend/review/source.ts, backend/geminiReview/facts.ts, backend/deliveryGate.ts.
+ * Used by: src/dl/runtime.ts, src/dl/Film.tsx, src/dl/Soundtrack.tsx, src/dl/reviewAudio.tsx, src/dl/EndCard.tsx, editor/src/screens/EditStage.tsx, editor/src/App.tsx, backend/aideosConfig.ts, backend/endCard/voice.ts, backend/pipeline/run.ts, backend/review/source.ts, backend/geminiReview/facts.ts, backend/deliveryGate.ts.
  */
 
 import { z } from "zod";

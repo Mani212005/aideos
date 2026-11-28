@@ -9,7 +9,7 @@
  * reports (the same `{ todos, skipped }` JSON as scripts/ciTodoReporter.cjs).
  * Inputs and outputs: `[--report=<json>] [--junit-dir=<dir>] <file or glob>...` -> streamed test output, a summary,
  * the optional report file, the per-file JUnit reports kept in the optional directory, exit 0 when every file passed and 1 otherwise (a file that crashed or wrote no report counts as failed).
- * Used by: scripts/toolchain.ts testCommand (scripts/ci.ts unit, journeys and legacy steps on the bun path).
+ * Used by: scripts/toolchain.ts (BUN_TEST_RUNNER, behind testCommand for the ci unit, journeys and legacy steps on the bun path), scripts/bunTest.test.ts.
  */
 
 import { spawn } from "node:child_process";
