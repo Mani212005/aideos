@@ -17,7 +17,6 @@
  */
 
 import { callerWorkingDirectory, REPO_ROOT as repositoryRoot } from "./paths";
-import { environment } from "./env";
 
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -53,6 +52,7 @@ import {
 } from "./narrationPronunciation";
 import {
   applyNarrationCleanup,
+  NarrationCleanupError,
   type NarrationCleanupOptions,
   type NarrationCleanupReport,
 } from "./narrationCleanup";
@@ -67,6 +67,7 @@ import {
   timeStretch,
   DEFAULT_ASSEMBLE_OPTIONS,
   narrationWordTimings,
+  type AssembledSegment,
   type PcmChunk,
   type SegmentAudioInfo,
   type TimedWord,
@@ -182,12 +183,8 @@ export interface ProduceAudioOptions {
   compactInternalPauses?: boolean;
   /** Maximum silence (seconds) allowed strictly inside a sentence before the standing flow gate fails (default 0.35 s). */
   maxInSentenceGapSec?: number;
-  /** Optional transcriber for the standing pronunciation check (tests inject a deterministic stub; production uses offline Whisper). */
+  /** Optional transcriber for the standing pronunciation check (tests inject a deterministic stub; production uses offline Whisper; AIDEOS_PRONUNCIATION_CHECK=off turns the check off). */
   pronunciationTranscriber?: PronunciationTranscriber;
-  /** When true, fail if local speech recognition is unavailable when lexicon terms appear in the script. */
-  requirePronunciationAsr?: boolean;
-  /** Explicit opt-out for the standing ASR pronunciation check when no real speech backend is in use. */
-  skipPronunciationCheck?: boolean;
   /** Local post-synthesis voice cleanup options (defaults to ON via AIDEOS_NARRATION_CLEANUP_CMD / aideos.config.json; AIDEOS_NARRATION_CLEANUP=off disables). */
   cleanup?: NarrationCleanupOptions;
 }
@@ -492,6 +489,84 @@ function mergeShortSegments(
   return merged;
 }
 
+// Lists every sentence placement of an assembled narration as a flow-check span, in timeline order.
+export function narrationSentenceSpans(segments: AssembledSegment[]): SentenceSpan[] {
+  const spans: SentenceSpan[] = [];
+  segments.forEach((seg, segIdx) => {
+    const pieces = seg.chunks && seg.chunks.length > 0
+      ? seg.chunks
+      : [{ text: seg.text, startSec: seg.startSec, durationSec: seg.durationSec }];
+    for (const piece of pieces) {
+      spans.push({
+        text: piece.text,
+        startSec: piece.startSec,
+        endSec: piece.startSec + piece.durationSec,
+        segmentIndex: segIdx,
+        sentenceIndex: spans.length,
+      });
+    }
+  });
+  return spans;
+}
+
+/** True for a narration delivery failure (cleanup, in-sentence gap or pronunciation) whose message is meant to be shown to the user as is. */
+export function isNarrationDeliveryError(err: unknown): err is Error {
+  return (
+    err instanceof NarrationCleanupError ||
+    err instanceof NarrationFlowError ||
+    err instanceof PronunciationCheckError ||
+    err instanceof PronunciationAsrUnavailableError
+  );
+}
+
+/** Inputs for the shared last step that cleans, verifies and publishes a staged narration WAV. */
+export interface VerifyAndPublishNarrationInput {
+  /** Where the narration was written before it is allowed to become the voiceover (removed on any failure). */
+  stagedPath: string;
+  /** Where the cleaned and verified narration is published. */
+  publishPath: string;
+  /** The assembled segments the staged audio was built from (written text and exact sentence placements). */
+  segments: AssembledSegment[];
+  lexicon: readonly PronunciationEntry[];
+  cleanup?: NarrationCleanupOptions;
+  maxInSentenceGapSec?: number;
+  pronunciationTranscriber?: PronunciationTranscriber;
+  /** True when the synthesizer carries no speech (the tone placeholder). */
+  speechless?: boolean;
+}
+
+/**
+ * The one last step of narration delivery for the pipeline and the Studio: local voice cleanup, then the standing
+ * in-sentence gap check and pronunciation check on the FINAL cleaned audio, then publish. A narration that fails any
+ * step is never published and its staged file is removed.
+ */
+export async function verifyAndPublishNarration(
+  input: VerifyAndPublishNarrationInput,
+): Promise<{ cleanup: NarrationCleanupReport; flowCheck: NarrationFlowReport; pronunciationCheck: PronunciationCheckReport }> {
+  try {
+    const cleanup = await applyNarrationCleanup(input.stagedPath, input.cleanup, normalizeNarrationLoudness);
+
+    const finalWav = decodeWav(await fs.readFile(input.stagedPath));
+    const flowCheck = checkNarrationFlow(finalWav.samples, finalWav.sampleRate, narrationSentenceSpans(input.segments), {
+      maxGapSec: input.maxInSentenceGapSec ?? DEFAULT_MAX_IN_SENTENCE_GAP_SEC,
+    });
+    if (!flowCheck.passed) throw new NarrationFlowError(flowCheck);
+
+    const pronunciationCheck = await checkNarrationPronunciation(input.segments.map((s) => s.text).join(" "), input.stagedPath, {
+      lexicon: input.lexicon,
+      transcriber: input.pronunciationTranscriber,
+      speechless: input.speechless,
+    });
+    if (pronunciationCheck.status === "failed") throw new PronunciationCheckError(pronunciationCheck);
+
+    await fs.rename(input.stagedPath, input.publishPath);
+    return { cleanup, flowCheck, pronunciationCheck };
+  } catch (err) {
+    await fs.rm(input.stagedPath, { force: true });
+    throw err;
+  }
+}
+
 /**
  * Audio-first synthesis: script in, narration track plus the exact timing spine out.
  *
@@ -592,63 +667,31 @@ export async function produceAudioPipeline(
   const normalized = normalizePeak(assembled.samples);
 
   const voiceoverPath = path.join(outDir, "voiceover.wav");
-  await fs.writeFile(voiceoverPath, encodeWav(normalized, assembled.sampleRate));
-  const normalizedVoiceoverPath = `${voiceoverPath}.loudnorm.wav`;
+  const stagedPath = path.join(outDir, "voiceover.pending.wav");
+  const normalizedStagedPath = `${stagedPath}.loudnorm.wav`;
   try {
-    normalizeNarrationLoudness(voiceoverPath, normalizedVoiceoverPath);
-    await fs.rename(normalizedVoiceoverPath, voiceoverPath);
+    await fs.writeFile(stagedPath, encodeWav(normalized, assembled.sampleRate));
+    normalizeNarrationLoudness(stagedPath, normalizedStagedPath);
+    await fs.rename(normalizedStagedPath, stagedPath);
+  } catch (err) {
+    await fs.rm(stagedPath, { force: true });
+    throw err;
   } finally {
-    await fs.rm(normalizedVoiceoverPath, { force: true });
+    await fs.rm(normalizedStagedPath, { force: true });
   }
 
-  // Last audio processing step: apply local post-synthesis voice cleanup to the generated narration only
-  // (never to reference recordings; replaces voiceover.wav in place so no plain-and-cleaned pair is kept).
-  const cleanup = await applyNarrationCleanup(voiceoverPath, options?.cleanup, normalizeNarrationLoudness);
-
-  // Standing flow gate: measure the FINAL (post-cleanup) narration audio for unwanted silence gaps inside any sentence.
-  const finalWav = decodeWav(await fs.readFile(voiceoverPath));
-  const sentenceSpans: SentenceSpan[] = [];
-  assembled.segments.forEach((seg, segIdx) => {
-    const pieces = seg.chunks && seg.chunks.length > 0
-      ? seg.chunks
-      : [{ text: seg.text, startSec: seg.startSec, durationSec: seg.durationSec }];
-    for (const piece of pieces) {
-      sentenceSpans.push({
-        text: piece.text,
-        startSec: piece.startSec,
-        endSec: piece.startSec + piece.durationSec,
-        segmentIndex: segIdx,
-        sentenceIndex: sentenceSpans.length,
-      });
-    }
+  // Last audio processing step: local voice cleanup on the generated narration only (never reference recordings; no
+  // plain-and-cleaned pair), then the standing flow and pronunciation checks on the FINAL cleaned audio, then publish.
+  const { cleanup, flowCheck, pronunciationCheck } = await verifyAndPublishNarration({
+    stagedPath,
+    publishPath: voiceoverPath,
+    segments: assembled.segments,
+    lexicon,
+    cleanup: options?.cleanup,
+    maxInSentenceGapSec,
+    pronunciationTranscriber: options?.pronunciationTranscriber,
+    speechless: backend.name === "tone",
   });
-  const flowCheck = checkNarrationFlow(finalWav.samples, finalWav.sampleRate, sentenceSpans, { maxGapSec: maxInSentenceGapSec });
-  if (!flowCheck.passed) {
-    throw new NarrationFlowError(flowCheck);
-  }
-
-  // Standing pronunciation check: transcribe the FINAL (post-cleanup) narration offline when a real speech backend spoke
-  // (or when a test injects a transcriber), failing if any lexicon brand or technical name was misheard or altered.
-  let pronunciationCheck: PronunciationCheckReport | undefined;
-  const shouldRunPronunciationCheck =
-    options?.pronunciationTranscriber !== undefined ||
-    (!options?.skipPronunciationCheck && backend.name !== "tone" && !environment.NODE_TEST_CONTEXT);
-  if (shouldRunPronunciationCheck) {
-    const writtenScript = assembled.segments.map((s) => s.text).join(" ");
-    pronunciationCheck = await checkNarrationPronunciation(writtenScript, voiceoverPath, {
-      lexicon,
-      transcriber: options?.pronunciationTranscriber,
-    });
-    if (pronunciationCheck.status === "failed") {
-      throw new PronunciationCheckError(pronunciationCheck);
-    }
-    if (pronunciationCheck.status === "skipped") {
-      if (options?.requirePronunciationAsr) {
-        throw new PronunciationAsrUnavailableError(pronunciationCheck.reason ?? "local speech recognition unavailable");
-      }
-      console.error(`[narration] pronunciation check skipped (${pronunciationCheck.reason ?? "ASR unavailable"})`);
-    }
-  }
 
   // Shot durations run boundary to boundary so every shot starts exactly where its narration
   // does, and the final shot absorbs the tail. Summing them reproduces the audio length exactly.
@@ -678,7 +721,7 @@ export async function produceAudioPipeline(
     ...(lineCounts ? { lines: lineCounts } : {}),
     cleanup,
     flowCheck,
-    ...(pronunciationCheck ? { pronunciationCheck } : {}),
+    pronunciationCheck,
   };
 }
 

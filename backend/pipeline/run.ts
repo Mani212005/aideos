@@ -463,10 +463,13 @@ export async function runProduction(
           emit("narrate", "running", `flow check: ${result.flowCheck.summary}`);
         }
         if (result.pronunciationCheck) {
+          const check = result.pronunciationCheck;
           emit(
             "narrate",
             "running",
-            `pronunciation check (${result.pronunciationCheck.status}, ${result.pronunciationCheck.method}): ${result.pronunciationCheck.terms.length} lexicon term(s) checked`,
+            check.reason
+              ? `pronunciation check (${check.status}): ${check.reason}`
+              : `pronunciation check (${check.status}, ${check.method}): ${check.terms.length} lexicon term(s) checked`,
           );
         }
         // The end card's spoken line, once, in the voice the story was just narrated in.

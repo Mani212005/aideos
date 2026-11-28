@@ -43,14 +43,14 @@ export interface PronunciationTermResult {
 
 /** Result of checking produced narration against the pronunciation lexicon. */
 export interface PronunciationCheckReport {
-  status: "passed" | "failed" | "skipped";
+  status: "passed" | "failed" | "disabled" | "not_applicable";
   /** Plain description of how the check ran (speech recognition because no audio output exists on headless hosts). */
   method: string;
-  /** Transcript returned by speech recognition, or null when skipped or no lexicon terms appeared. */
+  /** Transcript returned by speech recognition, or null when the check did not run or no lexicon terms appeared. */
   transcript: string | null;
   terms: PronunciationTermResult[];
   failures: string[];
-  /** Present when status is "skipped", naming why verification could not run. */
+  /** Present when status is "disabled" or "not_applicable", plainly naming why no speech recognition ran. */
   reason?: string;
 }
 
@@ -76,9 +76,12 @@ export class PronunciationCheckError extends Error {
   }
 }
 
+/** Environment variable that turns the standing pronunciation check "off" (default "on"). */
+export const PRONUNCIATION_CHECK_ENV = "AIDEOS_PRONUNCIATION_CHECK";
+
 /** Error raised when no local speech-to-text engine is available to run the pronunciation check. */
 export class PronunciationAsrUnavailableError extends Error {
-  // Explains how to enable local speech-to-text verification without hiding the skip.
+  // Carries the plain message naming the missing engine and the setting that turns the check off.
   constructor(message: string) {
     super(message);
     this.name = "PronunciationAsrUnavailableError";
@@ -421,24 +424,39 @@ export function countLexiconTermsInScript(
   return [...counts.values()];
 }
 
-// Counts non-overlapping whole-phrase matches of any normalized variant inside normalized transcript text.
-function countNormalizedPhraseMatches(normalizedTranscript: string, variants: readonly string[]): number {
-  const cleaned = [...new Set(variants.map(normalizeForPronunciation).filter(Boolean))].sort((a, b) => b.length - a.length);
-  if (!normalizedTranscript || cleaned.length === 0) return 0;
-  const pattern = new RegExp(`(?<![a-z0-9])(?:${cleaned.map(escapeRegex).join("|")})(?![a-z0-9])`, "g");
-  let count = 0;
-  for (const _ of normalizedTranscript.matchAll(pattern)) count += 1;
-  return count;
+// Counts non-overlapping whole-phrase matches of every lexicon entry's accepted forms in one longest-first pass, so a phrase owned by a longer entry is never counted again by a shorter one.
+function countHeardByEntry(
+  normalizedTranscript: string,
+  lexicon: readonly PronunciationEntry[],
+): Map<PronunciationEntry, number> {
+  const owners = new Map<string, PronunciationEntry>();
+  const ordered = [...lexicon].sort((a, b) => b.written.length - a.written.length);
+  for (const entry of ordered) {
+    for (const variant of entry.acceptedHeard) {
+      const norm = normalizeForPronunciation(variant);
+      if (norm && !owners.has(norm)) owners.set(norm, entry);
+    }
+  }
+  const counts = new Map<PronunciationEntry, number>();
+  if (!normalizedTranscript || owners.size === 0) return counts;
+  const phrases = [...owners.keys()].sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`(?<![a-z0-9])(?:${phrases.map(escapeRegex).join("|")})(?![a-z0-9])`, "g");
+  for (const match of normalizedTranscript.matchAll(pattern)) {
+    const entry = owners.get(match[0]);
+    if (entry) counts.set(entry, (counts.get(entry) ?? 0) + 1);
+  }
+  return counts;
 }
 
-// Lists any rejected mispronunciation phrases present in the normalized transcript.
-function findRejectedHits(normalizedTranscript: string, rejected?: readonly string[]): string[] {
+// Lists rejected mispronunciation phrases present in the transcript, ignoring any phrase the script itself legitimately contains.
+function findRejectedHits(normalizedTranscript: string, normalizedScript: string, rejected?: readonly string[]): string[] {
   if (!normalizedTranscript || !rejected || rejected.length === 0) return [];
   const hits: string[] = [];
   for (const bad of rejected) {
     const norm = normalizeForPronunciation(bad);
     if (!norm) continue;
-    const pattern = new RegExp(`(?<![a-z0-9])${escapeRegex(norm)}(?![a-z0-9])`, "g");
+    const pattern = new RegExp(`(?<![a-z0-9])${escapeRegex(norm)}(?![a-z0-9])`);
+    if (pattern.test(normalizedScript)) continue;
     if (pattern.test(normalizedTranscript)) hits.push(bad);
   }
   return hits;
@@ -463,12 +481,14 @@ export function verifyPronunciationTranscript(
   }
 
   const normalizedTranscript = normalizeForPronunciation(transcriptText);
+  const normalizedScript = normalizeForPronunciation(stripSpokenMarkup(scriptText));
+  const heardByEntry = countHeardByEntry(normalizedTranscript, lexicon);
   const terms: PronunciationTermResult[] = [];
   const failures: string[] = [];
 
   for (const { entry, count } of expected) {
-    const heardCount = countNormalizedPhraseMatches(normalizedTranscript, entry.acceptedHeard);
-    const rejectedHits = findRejectedHits(normalizedTranscript, entry.rejectedHeard);
+    const heardCount = heardByEntry.get(entry) ?? 0;
+    const rejectedHits = findRejectedHits(normalizedTranscript, normalizedScript, entry.rejectedHeard);
     const passed = rejectedHits.length === 0 && heardCount >= count;
     terms.push({
       written: entry.written,
@@ -536,10 +556,24 @@ export function transcribeWavOffline(
 /** Options for running the standing pronunciation verification check on a narration WAV. */
 export interface CheckPronunciationOptions {
   lexicon?: readonly PronunciationEntry[];
-  /** Custom transcriber (tests inject a deterministic stub; production uses transcribeWavOffline). */
+  /** Custom transcriber (tests inject a deterministic stub; production uses transcribeWavOffline). An injected transcriber always runs, whatever the off switch says. */
   transcriber?: PronunciationTranscriber;
   /** Python binary with openai-whisper or faster-whisper installed (defaults to $AIDEOS_STT_PYTHON or python3). */
   pythonBin?: string;
+  /** Environment to read the off switch from (defaults to the process environment). */
+  env?: NodeJS.ProcessEnv;
+  /** True when the synthesizer carries no speech (the tone placeholder), so there is nothing to recognise. */
+  speechless?: boolean;
+}
+
+// Reads the AIDEOS_PRONUNCIATION_CHECK toggle: true when the check is turned off, throwing on an unrecognised value.
+function pronunciationCheckIsOff(env: NodeJS.ProcessEnv): boolean {
+  const raw = env[PRONUNCIATION_CHECK_ENV];
+  if (raw === undefined || raw.trim() === "") return false;
+  const norm = raw.trim().toLowerCase();
+  if (norm === "off" || norm === "0" || norm === "false" || norm === "no") return true;
+  if (norm === "on" || norm === "1" || norm === "true" || norm === "yes") return false;
+  throw new Error(`${PRONUNCIATION_CHECK_ENV}="${raw}" is not valid. Use "on" or "off" (default "on").`);
 }
 
 // Runs the standing pronunciation verification check on produced narration audio and returns its structured report.
@@ -549,6 +583,28 @@ export async function checkNarrationPronunciation(
   options: CheckPronunciationOptions = {},
 ): Promise<PronunciationCheckReport> {
   const lexicon = options.lexicon ?? DEFAULT_PRONUNCIATION_LEXICON;
+
+  if (options.speechless && !options.transcriber) {
+    return {
+      status: "not_applicable",
+      method: "pronunciation check not applicable",
+      transcript: null,
+      terms: [],
+      failures: [],
+      reason: "the synthesizer carries no speech (tone placeholder), so there is nothing to recognise",
+    };
+  }
+
+  if (!options.transcriber && pronunciationCheckIsOff(options.env ?? environment)) {
+    return {
+      status: "disabled",
+      method: "pronunciation check turned off",
+      transcript: null,
+      terms: [],
+      failures: [],
+      reason: `pronunciation check disabled (${PRONUNCIATION_CHECK_ENV}=off): no lexicon word was verified`,
+    };
+  }
   const expected = countLexiconTermsInScript(scriptText, lexicon);
   if (expected.length === 0) {
     return {
@@ -560,8 +616,8 @@ export async function checkNarrationPronunciation(
     };
   }
 
-  const runTranscriber: PronunciationTranscriber =
-    options.transcriber ?? ((file) => transcribeWavOffline(file, options.pythonBin));
+  const pythonBin = options.pythonBin ?? (environment.AIDEOS_STT_PYTHON || "python3");
+  const runTranscriber: PronunciationTranscriber = options.transcriber ?? ((file) => transcribeWavOffline(file, pythonBin));
 
   try {
     const heard = await runTranscriber(wavPath);
@@ -569,21 +625,10 @@ export async function checkNarrationPronunciation(
     return verifyPronunciationTranscript(scriptText, heard.transcript, lexicon, method);
   } catch (err) {
     if (err instanceof PronunciationAsrUnavailableError) {
-      return {
-        status: "skipped",
-        method: "offline speech recognition unavailable (no audio output on headless host)",
-        transcript: null,
-        terms: expected.map(({ entry, count }) => ({
-          written: entry.written,
-          spoken: entry.spoken,
-          expectedCount: count,
-          heardCount: 0,
-          rejectedHits: [],
-          passed: false,
-        })),
-        failures: [],
-        reason: err.message,
-      };
+      throw new PronunciationAsrUnavailableError(
+        `Pronunciation check needs a local speech-to-text engine but none is available (${err.message}). ` +
+          `Point AIDEOS_STT_PYTHON at a Python with openai-whisper or faster-whisper, or turn the check off explicitly with ${PRONUNCIATION_CHECK_ENV}=off.`,
+      );
     }
     throw err;
   }

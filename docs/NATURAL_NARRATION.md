@@ -45,8 +45,12 @@ only the samples one synthesizer returns for one line.
   `python3`) and fails with `PronunciationCheckError` when a lexicon word is missed or heard as a known mispronunciation
   (such as `"OpenEye"` for `OpenAI` or `"Entropic"` for `Anthropic`). Because headless build hosts have no audio output
   for manual listening, this offline speech-recognition check is the standing verification of every lexicon word before
-  delivery; when no local Whisper engine is installed, the check is reported as `skipped` (never as a pass) and can be
-  made hard-failing with `requirePronunciationAsr: true`.
+  delivery. It never skips silently: when a script contains lexicon words and no local Whisper engine is installed, the
+  run fails with `PronunciationAsrUnavailableError` naming the engine setting (`AIDEOS_STT_PYTHON`) and the off switch.
+  `AIDEOS_PRONUNCIATION_CHECK=off` turns the check off explicitly and the report then carries `status: "disabled"` with a
+  plain reason (mirroring `AIDEOS_NARRATION_CLEANUP=off`); the tone placeholder backend, which carries no speech, reports
+  `status: "not_applicable"`. A mispronunciation form (such as `cloud` for Claude) is ignored when the script itself
+  spells that word, and a longer entry (`DeepSeek-R1`) owns the words it contains so it never counts toward `DeepSeek`.
 - **Local post-synthesis voice cleanup (2026-11-28 decision):** `backend/narrationCleanup.ts` runs a configured local
   cleanup command (`AIDEOS_NARRATION_CLEANUP_CMD` or `narrationCleanup.command` in `aideos.config.json`, template taking
   `{in}` and `{out}` WAV paths) as the **last audio processing step** on the generated narration `voiceover.wav` only.
@@ -55,7 +59,11 @@ only the samples one synthesizer returns for one line.
   narration file is kept (no plain-and-cleaned pair). Cleanup never touches the owner's reference voice recordings,
   never trains or enrolls on enhanced audio, and never calls a hosted service. Both standing checks (`checkNarrationFlow`
   and `checkNarrationPronunciation`) run on the **final cleaned audio** after cleanup completes so cleanup cannot
-  reintroduce mid-sentence gaps or alter words.
+  reintroduce mid-sentence gaps or alter words. Cleanup must keep the narration length (within
+  `MAX_CLEANUP_DURATION_DRIFT_SEC`, 0.05 s) because captions, shot timing and the sentence spans are locked to it, and
+  the narration is staged as `voiceover.pending.wav` and published to `voiceover.wav` only after cleanup and both checks
+  pass (`verifyAndPublishNarration` in `backend/audio.ts`, shared by `produceAudioPipeline` and the Studio
+  `/api/generate-voiceover` route), so a failing narration never leaves an unverified `voiceover.wav`.
 
 ## The seam
 

@@ -25,7 +25,7 @@ import {
 import { loadAideosConfig } from "./aideosConfig";
 import { produceAudioPipeline } from "./audio";
 import { NarrationFlowError } from "./narrationFlow";
-import { PronunciationCheckError } from "./narrationPronunciation";
+import { PronunciationAsrUnavailableError, PronunciationCheckError } from "./narrationPronunciation";
 import { decodeWav, encodeWav } from "./pcm";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
 
@@ -206,6 +206,79 @@ test("produceAudioPipeline: runs fake local cleanup command on generated narrati
         return true;
       },
     );
+  } finally {
+    fs.rmSync(pkg, { recursive: true, force: true });
+  }
+});
+
+// Review finding: cleanup that changes the narration length breaks timings and the sentence checks, so it must fail plainly and publish nothing.
+test("produceAudioPipeline: a cleanup that changes the narration length, or a missing ASR engine, fails plainly and leaves no voiceover.wav", async () => {
+  const pkg = fs.mkdtempSync(path.join(os.tmpdir(), "aideos-cleanup-drift-"));
+  const backend: TtsBackend = {
+    name: "cleanup-test",
+    maxChars: 1800,
+    async synthesize() {
+      return steadyTone(2.4);
+    },
+  };
+  const line = "OpenAI and Anthropic build frontier models.";
+  const passingTranscriber = async () => ({ engine: "test-whisper", model: "small.en", transcript: "OpenAI and Anthropic build frontier models." });
+
+  try {
+    await assert.rejects(
+      () =>
+        produceAudioPipeline([line], pkg, {
+          ttsBackendInstance: backend,
+          narrationRate: 1,
+          cleanup: {
+            enabled: true,
+            command: "fake-trimmer {in} {out}",
+            env: {},
+            runner: (_cmd, inPath, outPath) => {
+              const decoded = decodeWav(fs.readFileSync(inPath));
+              const padded = new Float32Array(decoded.samples.length + Math.round(0.4 * decoded.sampleRate));
+              padded.set(decoded.samples);
+              fs.writeFileSync(outPath, encodeWav(padded, decoded.sampleRate));
+            },
+          },
+          pronunciationTranscriber: passingTranscriber,
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof NarrationCleanupError);
+        assert.equal(err.code, "invalid_output");
+        assert.match(err.message, /changed the narration length/);
+        assert.match(err.message, /AIDEOS_NARRATION_CLEANUP=off/);
+        return true;
+      },
+    );
+    assert.deepEqual(fs.readdirSync(pkg).filter((f) => f.endsWith(".wav")), [], "no uncleaned or unverified wav may be left behind");
+
+    await assert.rejects(
+      () =>
+        produceAudioPipeline([line], pkg, {
+          ttsBackendInstance: backend,
+          narrationRate: 1,
+          cleanup: { enabled: true, command: "cp {in} {out}", env: {} },
+          pronunciationTranscriber: async () => {
+            throw new PronunciationAsrUnavailableError("no local speech-to-text engine installed for python3");
+          },
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof PronunciationAsrUnavailableError);
+        assert.match(err.message, /AIDEOS_PRONUNCIATION_CHECK=off/);
+        return true;
+      },
+    );
+    assert.deepEqual(fs.readdirSync(pkg).filter((f) => f.endsWith(".wav")), [], "an unverified wav may not be published");
+
+    // The tone placeholder carries no speech: the report says so explicitly instead of staying silent.
+    const tone = await produceAudioPipeline([line], pkg, {
+      ttsBackendInstance: { ...backend, name: "tone" },
+      narrationRate: 1,
+      cleanup: { enabled: false, env: {} },
+    });
+    assert.equal(tone.pronunciationCheck?.status, "not_applicable");
+    assert.deepEqual(fs.readdirSync(pkg).filter((f) => f.endsWith(".wav")), ["voiceover.wav"]);
   } finally {
     fs.rmSync(pkg, { recursive: true, force: true });
   }

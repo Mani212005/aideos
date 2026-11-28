@@ -19,6 +19,7 @@ import {
   DEFAULT_PRONUNCIATION_LEXICON,
   lexiconFingerprint,
   mergePronunciationLexicon,
+  PRONUNCIATION_CHECK_ENV,
   PronunciationAsrUnavailableError,
   PronunciationCheckError,
   stripSpokenMarkup,
@@ -175,21 +176,54 @@ test("produceAudioPipeline: speaks lexicon spoken forms, preserves written capti
   }
 });
 
-// Missing local speech recognition is reported as skipped, never as a silent pass; strict mode rejects it.
-test("checkNarrationPronunciation: missing ASR engine is reported as skipped, never passed", async () => {
+// Owner policy 2026-11-28: a missing ASR engine fails plainly naming the engine and the off switch; it is never a silent skip.
+test("checkNarrationPronunciation: a missing ASR engine fails plainly, and only the explicit off switch records a visible disabled result", async () => {
   const script = "OpenAI and Anthropic build frontier models.";
-  const skipped = await checkNarrationPronunciation(script, "/tmp/unused.wav", {
-    transcriber: async () => {
-      throw new PronunciationAsrUnavailableError("no local speech-to-text engine installed");
+  const missing = async () => {
+    throw new PronunciationAsrUnavailableError("no local speech-to-text engine installed for python3");
+  };
+
+  await assert.rejects(
+    () => checkNarrationPronunciation(script, "/tmp/unused.wav", { transcriber: missing, env: {} }),
+    (err: unknown) => {
+      assert.ok(err instanceof PronunciationAsrUnavailableError);
+      assert.match(err.message, /no local speech-to-text engine installed/);
+      assert.match(err.message, /AIDEOS_STT_PYTHON/);
+      assert.match(err.message, /AIDEOS_PRONUNCIATION_CHECK=off/);
+      return true;
     },
+  );
+
+  // AIDEOS_PRONUNCIATION_CHECK=off records a visible disabled result and never starts speech recognition.
+  const disabled = await checkNarrationPronunciation(script, "/tmp/unused.wav", {
+    env: { [PRONUNCIATION_CHECK_ENV]: "off" },
+    pythonBin: "/nonexistent/python-that-must-not-run",
   });
-  assert.equal(skipped.status, "skipped");
-  assert.match(skipped.reason ?? "", /no local speech-to-text engine/);
-  assert.equal(skipped.terms.length, 2);
+  assert.equal(disabled.status, "disabled");
+  assert.match(disabled.reason ?? "", /AIDEOS_PRONUNCIATION_CHECK=off/);
+  assert.equal(disabled.transcript, null);
+
+  await assert.rejects(
+    () => checkNarrationPronunciation(script, "/tmp/unused.wav", { env: { [PRONUNCIATION_CHECK_ENV]: "maybe" } }),
+    /AIDEOS_PRONUNCIATION_CHECK="maybe" is not valid/,
+  );
+
+  // A synthesizer with no speech (the tone placeholder) reports an explicit not_applicable result.
+  const tone = await checkNarrationPronunciation(script, "/tmp/unused.wav", { env: {}, speechless: true });
+  assert.equal(tone.status, "not_applicable");
+  assert.match(tone.reason ?? "", /no speech/);
+
+  // An injected transcriber always runs, even with the switch off.
+  const injected = await checkNarrationPronunciation(script, "/tmp/unused.wav", {
+    env: { [PRONUNCIATION_CHECK_ENV]: "off" },
+    transcriber: async () => ({ engine: "test", model: "small", transcript: "OpenAI and Anthropic build frontier models." }),
+  });
+  assert.equal(injected.status, "passed");
 
   // Scripts with no lexicon terms pass immediately without calling ASR.
   let asrCalled = false;
   const plain = await checkNarrationPronunciation("The quick brown fox jumps over the lazy dog.", "/tmp/unused.wav", {
+    env: {},
     transcriber: async () => {
       asrCalled = true;
       return { engine: "test", model: "small", transcript: "" };
@@ -197,6 +231,29 @@ test("checkNarrationPronunciation: missing ASR engine is reported as skipped, ne
   });
   assert.equal(plain.status, "passed");
   assert.equal(asrCalled, false);
+});
+
+// A mispronunciation form that the script itself spells is a genuine word, and a longer lexicon entry owns the words it contains.
+test("verifyPronunciationTranscript: ignores rejected forms the script really contains and never double-counts a longer entry", () => {
+  const cloud = verifyPronunciationTranscript("Claude runs in the cloud.", "Claude runs in the cloud.");
+  assert.equal(cloud.status, "passed");
+  assert.deepEqual(cloud.terms.find((t) => t.written === "Claude")?.rejectedHits, []);
+
+  // Without "cloud" in the script, hearing it in place of Claude is still a mispronunciation.
+  const misheard = verifyPronunciationTranscript("Claude runs fast.", "Cloud runs fast.");
+  assert.equal(misheard.status, "failed");
+  assert.deepEqual(misheard.terms.find((t) => t.written === "Claude")?.rejectedHits, ["cloud"]);
+
+  // "deepseek r1" belongs to DeepSeek-R1 and must not mask a standalone DeepSeek that went unheard.
+  const script = "DeepSeek released DeepSeek-R1.";
+  const masked = verifyPronunciationTranscript(script, "Released deepseek r1.");
+  assert.equal(masked.status, "failed");
+  assert.equal(masked.terms.find((t) => t.written === "DeepSeek")?.heardCount, 0);
+  assert.equal(masked.terms.find((t) => t.written === "DeepSeek-R1")?.heardCount, 1);
+
+  const both = verifyPronunciationTranscript(script, "DeepSeek released DeepSeek R1.");
+  assert.equal(both.status, "passed");
+  assert.equal(both.terms.find((t) => t.written === "DeepSeek")?.heardCount, 1);
 });
 
 // Argument checks on narrationTranscribe.py stop immediately with a one-line message and no traceback (needs no whisper install).

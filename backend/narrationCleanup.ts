@@ -17,6 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import { environment } from "./env";
 import { loadAideosConfig, configPath, type NarrationCleanupConfig } from "./aideosConfig";
+import { decodeWav } from "./pcm";
 import { isProcTimeout, spawnSyncBounded } from "./proc";
 
 /** Environment variable that toggles voice cleanup on ("on"/"1"/"true") or off ("off"/"0"/"false"). Default: on. */
@@ -30,6 +31,9 @@ export const NARRATION_CLEANUP_TIMEOUT_ENV = "AIDEOS_NARRATION_CLEANUP_TIMEOUT_S
 
 /** Default timeout for one local CPU cleanup job (10 minutes). */
 export const DEFAULT_CLEANUP_TIMEOUT_MS = 10 * 60_000;
+
+/** Largest change in narration length (seconds) a cleanup may make before the film timing and sentence spans stop matching the audio. */
+export const MAX_CLEANUP_DURATION_DRIFT_SEC = 0.05;
 
 /** Resolved local voice-cleanup configuration. */
 export interface ResolvedNarrationCleanup {
@@ -254,6 +258,33 @@ function assertValidWavFile(filePath: string): void {
   }
 }
 
+// Reads a WAV file's duration in seconds, failing plainly when it cannot be decoded.
+function wavDurationSec(filePath: string): number {
+  try {
+    const wav = decodeWav(fs.readFileSync(filePath));
+    return wav.samples.length / Math.max(1, wav.channels) / wav.sampleRate;
+  } catch (err) {
+    throw new NarrationCleanupError(
+      "invalid_output",
+      `Could not read ${path.basename(filePath)} to check the narration length: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+// Fails when the cleaned narration is not the same length as the narration it replaces, since timings are locked to the original.
+function assertCleanupKeptDuration(originalPath: string, cleanedPath: string): void {
+  const before = wavDurationSec(originalPath);
+  const after = wavDurationSec(cleanedPath);
+  if (Math.abs(after - before) > MAX_CLEANUP_DURATION_DRIFT_SEC) {
+    throw new NarrationCleanupError(
+      "invalid_output",
+      `Local narration cleanup changed the narration length from ${before.toFixed(3)} s to ${after.toFixed(3)} s ` +
+        `(more than ${MAX_CLEANUP_DURATION_DRIFT_SEC} s), so captions, shot timing and the sentence checks would no longer match the audio. ` +
+        `Use a cleanup command that keeps the duration, or turn cleanup off with ${NARRATION_CLEANUP_ENV}=off.`,
+    );
+  }
+}
+
 // Serializes local cleanup jobs within this process so CPU-bound models never run concurrently.
 let activeCleanupQueue: Promise<void> = Promise.resolve();
 
@@ -285,14 +316,11 @@ export async function applyNarrationCleanup(
       fs.copyFileSync(voiceoverPath, stagedIn);
       await runner(cfg.command, stagedIn, stagedOut, cfg.timeoutMs);
       assertValidWavFile(stagedOut);
-      if (finalizeWav) {
-        finalizeWav(stagedOut, stagedFinal);
-        assertValidWavFile(stagedFinal);
-        fs.renameSync(stagedFinal, voiceoverPath);
-      } else {
-        fs.copyFileSync(stagedOut, stagedFinal);
-        fs.renameSync(stagedFinal, voiceoverPath);
-      }
+      if (finalizeWav) finalizeWav(stagedOut, stagedFinal);
+      else fs.copyFileSync(stagedOut, stagedFinal);
+      assertValidWavFile(stagedFinal);
+      assertCleanupKeptDuration(voiceoverPath, stagedFinal);
+      fs.renameSync(stagedFinal, voiceoverPath);
       return {
         status: "applied",
         commandHash: hash,

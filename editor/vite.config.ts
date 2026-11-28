@@ -38,7 +38,7 @@ import type { Film } from '../src/dl/schema.ts'
 import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { CorruptFilmError, readFilm, readStoredFilm, writeFilm as writeStoredFilm, type WriteFilmOptions } from '../backend/pipeline/filmStore.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../backend/videoPackageLoader.ts'
-import { applyNarrationCleanup, normalizeNarrationLoudness, splitSentencesForTTS, stripSpokenMarkup, toSpokenForm, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
+import { DEFAULT_PRONUNCIATION_LEXICON, isNarrationDeliveryError, verifyAndPublishNarration, splitSentencesForTTS, stripSpokenMarkup, toSpokenForm, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
@@ -1805,6 +1805,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             let generated = false;
             let synthesisError: VoiceSynthesisError | undefined;
             let vcdError: Error | undefined;
+            let narrationError: Error | undefined;
 
             const deepgramKey = environment.DEEPGRAM_API_KEY || '';
 
@@ -1888,35 +1889,28 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               }
 
               const rate = lineResult.lines[0].audio.sampleRate;
-              if (!isClonedVoice) {
-                const gap = new Float32Array(Math.round((rate * DEFAULT_ASSEMBLE_OPTIONS.segmentGapMs) / 1000));
-                const pieces: Float32Array[] = [];
-                lineResult.lines.forEach((line, index) => {
-                  if (index > 0) pieces.push(gap);
-                  for (const chunk of line.audio.chunks) pieces.push(resampleLinear(chunk.samples, line.audio.sampleRate, rate));
-                });
-                const merged = new Float32Array(pieces.reduce((sum, piece) => sum + piece.length, 0));
-                let at = 0;
-                for (const piece of pieces) {
-                  merged.set(piece, at);
-                  at += piece.length;
-                }
-                fs.writeFileSync(publicPath, encodeWav(merged, rate));
-              } else {
-                const segmentChunks = lineResult.lines.map((line) =>
-                  line.audio.chunks.map((chunk) => ({
-                    text: chunk.text,
-                    samples: resampleLinear(chunk.samples, line.audio.sampleRate, rate),
-                  })),
-                );
-                const assembled = assembleSegments(segmentChunks, {
-                  ...DEFAULT_ASSEMBLE_OPTIONS,
-                  sampleRate: rate,
-                });
-                const normalized = normalizePeak(assembled.samples);
-                fs.writeFileSync(publicPath, encodeWav(normalized, rate));
-                await applyNarrationCleanup(publicPath, undefined, normalizeNarrationLoudness);
+              const segmentChunks = lineResult.lines.map((line) =>
+                line.audio.chunks.map((chunk) => ({
+                  text: chunk.text,
+                  samples: resampleLinear(chunk.samples, line.audio.sampleRate, rate),
+                })),
+              );
+              const assembled = assembleSegments(segmentChunks, {
+                ...DEFAULT_ASSEMBLE_OPTIONS,
+                sampleRate: rate,
+              });
+              const normalized = normalizePeak(assembled.samples);
+              const stagedPath = path.join(pkgDir, 'voiceover.pending.wav');
+              fs.writeFileSync(stagedPath, encodeWav(normalized, rate));
+              // The same last step the production pipeline runs: cleanup, then the gap and pronunciation checks on the final audio, then publish.
+              await verifyAndPublishNarration({
+                stagedPath,
+                publishPath: publicPath,
+                segments: assembled.segments,
+                lexicon: DEFAULT_PRONUNCIATION_LEXICON,
+              });
 
+              if (isClonedVoice) {
                 // Write word timings, WebVTT captions, and narration metadata so the master clock,
                 // captions, and end card stay in sync with Studio-recorded audio.
                 const shotDurations = deriveShotDurations(assembled.segments, assembled.totalSec);
@@ -1955,7 +1949,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             } catch (err) {
               if (err instanceof VcdUnavailableError || err instanceof AideosConfigError) vcdError = err;
               else if (err instanceof VoiceSynthesisError) synthesisError = err;
-              console.warn('[TTS] synthesis failed:', err instanceof VcdUnavailableError || err instanceof AideosConfigError ? err.message : err);
+              else if (isNarrationDeliveryError(err)) narrationError = err;
+              console.warn('[TTS] synthesis failed:', err instanceof VcdUnavailableError || err instanceof AideosConfigError || isNarrationDeliveryError(err) ? err.message : err);
             }
 
             if (generated) {
@@ -2071,6 +2066,8 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 taskFile: `videos/${projectId}/director_task.md`,
                 dispatch,
               });
+            } else if (narrationError) {
+              sendJson(res, 503, { error: narrationError.message, code: narrationError.name });
             } else if (vcdError) {
               sendJson(res, 503, {
                 error: vcdError.message,

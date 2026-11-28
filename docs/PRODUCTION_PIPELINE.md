@@ -315,7 +315,10 @@ any silence strictly inside a sentence exceeds `0.35 s`, and (2) `checkNarration
 (`backend/narrationPronunciation.ts`, `backend/narrationTranscribe.py`) transcribes the final WAV offline with local
 Whisper (`$AIDEOS_STT_PYTHON` or `python3`; headless build hosts have no audio output, so offline speech recognition is
 how every lexicon word is verified before delivery) and fails with `PronunciationCheckError` if any lexicon word is
-misheard or missing (reported as `skipped`, never `passed`, when no local Whisper engine is installed). The
+misheard or missing (a missing local Whisper engine fails plainly naming `AIDEOS_STT_PYTHON`; `AIDEOS_PRONUNCIATION_CHECK=off`
+turns the check off and is recorded as `disabled`; the speechless tone backend is recorded as `not_applicable`). Cleanup that
+changes the narration length by more than 0.05 s fails, and the narration is published to `voiceover.wav` only after cleanup
+and both checks pass; the Studio `/api/generate-voiceover` route runs the same `verifyAndPublishNarration` step. The
 default pause is 170 ms between narration segments and 750 ms before a segment that opens a new
 chapter (the [house pace](GOOD_VIDEO.md#house-pace) gaps, `HOUSE_PACE` in `src/dl/pacingProfile.ts`). For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
 scene-film voiceover beats can provide chapter names explicitly. Both pause lengths and explicit
