@@ -6,7 +6,7 @@
  * Inputs and outputs: film.json contents or a Film, a base revision and the current revision -> a
  * revision string or a write/stale decision.
  * Used by: editor/vite.config.ts (save endpoint, file watcher), backend/agentBridge/traceBus.ts,
- * backend/pipeline/filmStore.ts, backend/filmRevision.test.ts. The editor treats a revision as an opaque string.
+ * backend/pipeline/filmStore.ts, backend/filmSyncMachine.test.ts. The editor treats a revision as an opaque string.
  */
 
 /**
