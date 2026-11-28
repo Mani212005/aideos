@@ -10,13 +10,8 @@
 
 import { environment } from "./env";
 
-import { VCD_DEFAULT_VOICE_KEY, VCD_HINDI_VOICE_KEY } from "./vcdClient";
-
 /** The one speech backend that speaks with the owner's cloned voice. */
 export const VOICE_OF_CHOICE_BACKEND = "vcd";
-
-/** Studio voice keys that select the voice of choice (English and Hindi or Hinglish). */
-export const VOICE_OF_CHOICE_STUDIO_KEYS: readonly string[] = [VCD_DEFAULT_VOICE_KEY, VCD_HINDI_VOICE_KEY];
 
 /** Environment switch that lets a run keep another narrator; only the captain may say to set it. */
 export const OTHER_VOICE_OVERRIDE_ENV = "AIDEOS_ALLOW_OTHER_VOICE";

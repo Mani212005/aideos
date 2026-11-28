@@ -12,11 +12,6 @@ export const MAX_RASTER_SIDE = 16_384;
 /** A lowercase hex sha256. */
 export const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
-/** True when an asset draws a picture rather than SVG artwork. */
-export function isRasterAsset(asset: Pick<EnvironmentAsset, "raster">): asset is { raster: RasterSource } {
-  return asset.raster !== undefined;
-}
-
 /** The element ids a picture asset declares: the picture itself, named by the asset id. */
 export function rasterElementIds(asset: Pick<EnvironmentAsset, "assetId">): string[] {
   return [asset.assetId];
