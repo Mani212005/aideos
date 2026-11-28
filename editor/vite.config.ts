@@ -38,7 +38,7 @@ import type { Film } from '../src/dl/schema.ts'
 import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { CorruptFilmError, readFilm, readStoredFilm, writeFilm as writeStoredFilm, type WriteFilmOptions } from '../backend/pipeline/filmStore.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../backend/videoPackageLoader.ts'
-import { chunkTextForTTS, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
+import { applyNarrationCleanup, normalizeNarrationLoudness, splitSentencesForTTS, stripSpokenMarkup, toSpokenForm, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
@@ -1842,25 +1842,37 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               // words and voice are unchanged is reused as is, so only edited or new lines are recorded again.
               // A line is stored under the voice that actually spoke it, so a fallback voice is never reused as the requested one.
               const recordLine = async (text: string): Promise<SpokenLine> => {
-                const spoken = await synthesizeVoiceover(
-                  {
-                    text,
-                    voice,
-                    ...(resolvedVcdUrl ? { vcdUrl: resolvedVcdUrl } : {}),
-                    ...(resolvedVcdVoiceId ? { vcdVoiceId: resolvedVcdVoiceId } : {}),
-                    ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}),
-                    deepgramKey,
-                    googleKey: environment.GOOGLE_API_KEY || '',
-                    chunk: chunkTextForTTS,
-                    trimSilence,
-                  },
-                  synthDeps,
-                );
-                const wav = decodeWav(spoken.wav);
-                // Studio voices have no speaking-rate setting here, so every line is re-paced to the house rate.
+                const sentences = splitSentencesForTTS(text, 1800);
+                const chunks: Array<{ text: string; samples: Float32Array }> = [];
+                let sampleRate = 24000;
+                let actualVoiceKey = cacheVoiceKey;
+                for (const sentence of sentences) {
+                  const spoken = await synthesizeVoiceover(
+                    {
+                      text: toSpokenForm(sentence),
+                      voice,
+                      ...(resolvedVcdUrl ? { vcdUrl: resolvedVcdUrl } : {}),
+                      ...(resolvedVcdVoiceId ? { vcdVoiceId: resolvedVcdVoiceId } : {}),
+                      ...(resolvedVcdLanguage ? { language: resolvedVcdLanguage } : {}),
+                      deepgramKey,
+                      googleKey: environment.GOOGLE_API_KEY || '',
+                      chunk: splitSentencesForTTS,
+                      trimSilence,
+                    },
+                    synthDeps,
+                  );
+                  const wav = decodeWav(spoken.wav);
+                  sampleRate = wav.sampleRate;
+                  actualVoiceKey = spoken.provider === 'vcd' ? cacheVoiceKey : spoken.voiceKey;
+                  // Studio voices have no speaking-rate setting here, so every sentence is re-paced to the house rate.
+                  chunks.push({
+                    text: stripSpokenMarkup(sentence),
+                    samples: timeStretch(wav.samples, NARRATION_RATE, wav.sampleRate),
+                  });
+                }
                 return {
-                  audio: { sampleRate: wav.sampleRate, chunks: [{ text, samples: timeStretch(wav.samples, NARRATION_RATE, wav.sampleRate) }] },
-                  voiceKey: pacedVoiceKey(spoken.provider === 'vcd' ? cacheVoiceKey : spoken.voiceKey, NARRATION_RATE),
+                  audio: { sampleRate, chunks },
+                  voiceKey: pacedVoiceKey(actualVoiceKey, NARRATION_RATE),
                 };
               };
               const requestedLineKey = pacedVoiceKey(cacheVoiceKey, NARRATION_RATE);
@@ -1903,6 +1915,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 });
                 const normalized = normalizePeak(assembled.samples);
                 fs.writeFileSync(publicPath, encodeWav(normalized, rate));
+                await applyNarrationCleanup(publicPath, undefined, normalizeNarrationLoudness);
 
                 // Write word timings, WebVTT captions, and narration metadata so the master clock,
                 // captions, and end card stay in sync with Studio-recorded audio.

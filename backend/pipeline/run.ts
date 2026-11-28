@@ -27,6 +27,8 @@ import fsp from "fs/promises";
 import path from "path";
 import type { Film } from "../../src/dl/schema";
 import { produceAudioPipeline, type ProduceAudioResult } from "../audio";
+import { DEFAULT_PRONUNCIATION_LEXICON, lexiconFingerprint } from "../narrationPronunciation";
+import { narrationCleanupFingerprint } from "../narrationCleanup";
 import { DEFAULT_KOKORO_SPEED } from "../tts";
 import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 import { DELIVERY_CONFIG } from "../../src/dl/delivery";
@@ -411,8 +413,10 @@ export async function runProduction(
       request.ttsBackend ?? "auto",
       request.voice ?? "default",
       request.speed ?? DEFAULT_KOKORO_SPEED,
-      // The house narration rate re-paces a synthesizer without its own speed setting, so it shapes the take too.
+      // The house narration rate, pronunciation lexicon and voice cleanup setting all shape the final narration.
       `rate:${HOUSE_PACE.narrationRate}`,
+      `lex:${lexiconFingerprint(DEFAULT_PRONUNCIATION_LEXICON)}`,
+      narrationCleanupFingerprint(),
       ...(request.language && request.language !== "auto" ? [request.language] : []),
     );
     const narrationCachePath = path.join(pkgDir, "narration.json");
@@ -452,6 +456,19 @@ export async function runProduction(
           "running",
           `${result.segments.length} segment(s), ${result.totalAudioDuration.toFixed(2)}s via ${result.ttsBackend}`,
         );
+        if (result.cleanup) {
+          emit("narrate", "running", `voice cleanup: ${result.cleanup.summary}`);
+        }
+        if (result.flowCheck) {
+          emit("narrate", "running", `flow check: ${result.flowCheck.summary}`);
+        }
+        if (result.pronunciationCheck) {
+          emit(
+            "narrate",
+            "running",
+            `pronunciation check (${result.pronunciationCheck.status}, ${result.pronunciationCheck.method}): ${result.pronunciationCheck.terms.length} lexicon term(s) checked`,
+          );
+        }
         // The end card's spoken line, once, in the voice the story was just narrated in.
         const line = DELIVERY_CONFIG.endCard.spokenLine.trim();
         const voice = narrationVoiceOf(result);

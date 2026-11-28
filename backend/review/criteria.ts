@@ -13,7 +13,23 @@ import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 import type { Loudness, Silence } from "./media";
 import type { RenderFacts } from "./renderFacts";
 import type { FilmFacts } from "./source";
-import { captionMatch, chanceNearWordStarts, cutsThroughWords, normalizeWord, pauses, phraseFrame, shareNearWordStarts, spokenNumbers, wordsPerMinute, type Narration } from "./speech";
+import {
+  captionMatch,
+  chanceNearWordStarts,
+  cutsThroughWords,
+  detectInSentenceSilences,
+  detectInSentenceWordGaps,
+  isSentenceEndingWord,
+  normalizeWord,
+  pauses,
+  phraseFrame,
+  sentenceSpansFromWords,
+  shareNearWordStarts,
+  spokenNumbers,
+  wordsPerMinute,
+  type InSentenceGap,
+  type Narration,
+} from "./speech";
 import type { MusicUnderVoice } from "./music";
 import { THRESHOLDS as T, type PacingProfileName } from "./thresholds";
 import { DELIVERY_CONFIG } from "../../src/dl/delivery";
@@ -576,8 +592,54 @@ function loudness(i: ReviewInputs): CriterionResult {
 export function evaluateCriteria(i: ReviewInputs): CriterionResult[] {
   const reel = (i.format ?? (i.video.width < i.video.height ? "reel" : "long")) === "reel";
   const criteria = [persistentStage(i), carryOver(i), planAdherence(i), cueTiming(i), camera(i), captions(i), readability(i), overlap(i), audioSync(i), pacing(i, reel ? i.pacingProfile ?? "default" : "default"), grounding(i), loudness(i)];
+  if (i.narration?.timed) criteria.push(narrationFlow(i));
   if (reel) criteria.push(reelLength(Math.max(i.video.durationSec, i.video.containerDurationSec ?? 0, i.video.audioDurationSec ?? 0)), reelHook(i.narration));
   return criteria;
+}
+
+// Criterion 16: standing narration flow gate - no unwanted mid-sentence silence gaps (owner feedback 2026-11-28).
+export function narrationFlow(i: ReviewInputs): CriterionResult {
+  const name = "Narration flow (no mid-sentence gaps)";
+  const { narration, silences } = i;
+  if (!narration?.timed || narration.words.length === 0) {
+    return skipped(16, "narration-flow", name, true, "needs timed narration words");
+  }
+  const sentences = sentenceSpansFromWords(narration.words);
+  if (sentences.length === 0) {
+    return skipped(16, "narration-flow", name, true, "the narration words carry no sentence punctuation, so sentence spans cannot be measured");
+  }
+  const maxGapSec = T.narrationFlow.maxInSentenceGapSec;
+  const wordGaps = detectInSentenceWordGaps(narration.words, maxGapSec);
+  const audioSilences = detectInSentenceSilences(narration.words, silences, maxGapSec);
+  // Combine acoustic and word-timing gaps, deduplicating overlapping detections of the same pause.
+  const combined: InSentenceGap[] = [...audioSilences];
+  for (const gap of wordGaps) {
+    const overlaps = combined.some((existing) => Math.min(existing.endSec, gap.endSec) > Math.max(existing.startSec, gap.startSec));
+    if (!overlaps) combined.push(gap);
+  }
+  combined.sort((a, b) => a.startSec - b.startSec);
+  const worstSec = combined.reduce((m, g) => Math.max(m, g.durationSec), 0);
+  const ok = combined.length === 0;
+  return {
+    id: 16,
+    key: "narration-flow",
+    name,
+    gate: true,
+    status: ok ? "pass" : "fail",
+    score: ok ? 4 : Math.round(clamp(4 - combined.length * 1.5, 0, 2) * 10) / 10,
+    summary: ok
+      ? `all ${sentences.length} sentences flow with no mid-sentence silence over ${maxGapSec} s`
+      : `${combined.length} unwanted silence gap(s) over ${maxGapSec} s inside a sentence (longest ${round(worstSec, 2)} s)`,
+    metrics: { sentencesChecked: sentences.length, inSentenceGaps: combined.length, longestInSentenceGapSec: round(worstSec, 3) },
+    threshold: { maxInSentenceGapSec: maxGapSec },
+    evidence: combined.slice(0, 4).map((g) => ({
+      t: g.startSec,
+      note: `${round(g.durationSec, 2)} s silence inside sentence: "${g.sentenceText.slice(0, 60)}"`,
+    })),
+    fix: ok
+      ? undefined
+      : `Synthesize and place each sentence whole, break pauses only at sentence and clause ends, and trim mid-sentence silences over ${maxGapSec} s in narration assembly.`,
+  };
 }
 
 /** Openers that greet or announce the video instead of stating a fact, matched on the lowercased first sentence. */
@@ -594,8 +656,7 @@ const GREETING_OPENERS: RegExp[] = [
 
 // True when a spoken word ends a sentence (. ! ? with optional closing quotes), not an abbreviation such as "U.S." or "Dr.".
 function endsSentence(word: string): boolean {
-  if (!/[.!?]["'\u2019\u201d)\]]*$/.test(word)) return false;
-  return !/^(?:[A-Za-z]\.){2,}["')\]]*$/.test(word) && !/^(?:mr|mrs|ms|dr|vs|st)\.$/i.test(word);
+  return isSentenceEndingWord(word);
 }
 
 // Criterion 15: the reel opens on a hook, measured on the narration's first word and first sentence (reel reviews only, non-gating).

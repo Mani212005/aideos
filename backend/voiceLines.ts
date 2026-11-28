@@ -53,8 +53,8 @@ export interface LineSynthesisResult {
   reused: number;
 }
 
-/** Bump to invalidate every stored recording when the stored format changes. */
-const STORE_VERSION = 1;
+/** Bump to invalidate every stored recording when the stored format or sentence-level synthesis layout changes. */
+const STORE_VERSION = 2;
 
 /** The directory a package keeps its per-line recordings in. */
 export function voiceLinesDir(pkgDir: string): string {

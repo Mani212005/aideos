@@ -49,6 +49,16 @@ export interface VideoModelPolicy {
   forbiddenGenerationModels: string[];
 }
 
+/** Local post-synthesis narration voice cleanup settings stored in aideos.config.json. */
+export interface NarrationCleanupConfig {
+  /** Whether local voice cleanup is enabled for AIDeos narration (default true). */
+  enabled: boolean;
+  /** Local command template with {in} and {out} placeholders (empty until configured for the host). */
+  command: string;
+  /** Timeout in seconds for one local cleanup run (default 600). */
+  timeoutSec: number;
+}
+
 /** The parsed config file. */
 export interface AideosConfig {
   schema: "aideos.config/1";
@@ -57,6 +67,8 @@ export interface AideosConfig {
   delivery: DeliveryConfig;
   /** Local cloned-voice (`vcd`) service settings (absent section takes loopback defaults). */
   voiceClone?: VoiceCloneConfig;
+  /** Local post-synthesis voice cleanup settings (absent section defaults to enabled: true, command: ""). */
+  narrationCleanup?: NarrationCleanupConfig;
 }
 
 /** An unusable config or a refused model, as one clear message. */
@@ -104,7 +116,32 @@ export function loadAideosConfig(file: string = configPath()): AideosConfig {
     },
     delivery: parseDelivery(raw),
     voiceClone: parseVoiceClone(raw),
+    narrationCleanup: parseNarrationCleanup(raw),
   };
+}
+
+// Validates the optional narrationCleanup section, defaulting to enabled: true and an empty command until configured.
+function parseNarrationCleanup(raw: unknown): NarrationCleanupConfig {
+  const section = (raw as { narrationCleanup?: Record<string, unknown> } | undefined)?.narrationCleanup;
+  if (section === undefined) {
+    return { enabled: true, command: "", timeoutSec: 600 };
+  }
+  if (!section || typeof section !== "object" || Array.isArray(section)) {
+    throw new AideosConfigError(`aideos.config.json: narrationCleanup must be an object`);
+  }
+  const enabled = section.enabled === undefined ? true : section.enabled;
+  if (typeof enabled !== "boolean") {
+    throw new AideosConfigError(`aideos.config.json: narrationCleanup.enabled must be a boolean`);
+  }
+  const command = section.command === undefined ? "" : section.command;
+  if (typeof command !== "string") {
+    throw new AideosConfigError(`aideos.config.json: narrationCleanup.command must be a string`);
+  }
+  const timeoutSec = section.timeoutSec === undefined ? 600 : section.timeoutSec;
+  if (typeof timeoutSec !== "number" || !Number.isFinite(timeoutSec) || timeoutSec <= 0 || timeoutSec > 86400) {
+    throw new AideosConfigError(`aideos.config.json: narrationCleanup.timeoutSec must be a positive number up to 86400`);
+  }
+  return { enabled, command: command.trim(), timeoutSec };
 }
 
 // Validates the optional voiceClone section, defaulting to the local loopback vcd endpoint.

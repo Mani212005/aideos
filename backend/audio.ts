@@ -17,6 +17,7 @@
  */
 
 import { callerWorkingDirectory, REPO_ROOT as repositoryRoot } from "./paths";
+import { environment } from "./env";
 
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -29,6 +30,32 @@ import { takesVoiceKey, withTakes, type TakeChoice, type TakeSelector, type Take
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import type { VcdLanguagePreference } from "./vcdClient";
 import { HOUSE_PACE } from "../src/dl/pacingProfile";
+import {
+  checkNarrationFlow,
+  DEFAULT_MAX_IN_SENTENCE_GAP_SEC,
+  NarrationFlowError,
+  splitSentencesForTTS,
+  type NarrationFlowReport,
+  type SentenceSpan,
+} from "./narrationFlow";
+import {
+  checkNarrationPronunciation,
+  DEFAULT_PRONUNCIATION_LEXICON,
+  lexiconFingerprint,
+  mergePronunciationLexicon,
+  PronunciationAsrUnavailableError,
+  PronunciationCheckError,
+  stripSpokenMarkup,
+  toSpokenForm,
+  type PronunciationCheckReport,
+  type PronunciationEntry,
+  type PronunciationTranscriber,
+} from "./narrationPronunciation";
+import {
+  applyNarrationCleanup,
+  type NarrationCleanupOptions,
+  type NarrationCleanupReport,
+} from "./narrationCleanup";
 import * as fsSync from "fs";
 import {
   assembleSegments,
@@ -48,6 +75,23 @@ import {
 
 export { trimSilence, CHAPTER_BREATH_GAP_MS } from "./pcm";
 export { detectChapterStartsFromScript } from "./scriptIntake";
+export { splitIntoSentences, splitSentencesForTTS, checkNarrationFlow, NarrationFlowError } from "./narrationFlow";
+export {
+  toSpokenForm,
+  stripSpokenMarkup,
+  checkNarrationPronunciation,
+  DEFAULT_PRONUNCIATION_LEXICON,
+  PronunciationCheckError,
+  PronunciationAsrUnavailableError,
+} from "./narrationPronunciation";
+export {
+  applyNarrationCleanup,
+  NarrationCleanupError,
+  narrationCleanupFingerprint,
+  resolveNarrationCleanupConfig,
+  NARRATION_CLEANUP_ENV,
+  NARRATION_CLEANUP_CMD_ENV,
+} from "./narrationCleanup";
 
 /** A narrated word with its offsets in seconds (the shared TimedWord). */
 export type WordInfo = TimedWord;
@@ -74,6 +118,12 @@ export interface ProduceAudioResult {
   timeStretch?: number;
   /** How many lines were recorded in this run and how many reused a stored recording. */
   lines?: { recorded: number; reused: number };
+  /** Standing measured check for unwanted silence gaps inside sentences on the joined narration. */
+  flowCheck?: NarrationFlowReport;
+  /** Standing offline ASR verification of brand and technical names in the pronunciation lexicon. */
+  pronunciationCheck?: PronunciationCheckReport;
+  /** Local post-synthesis voice cleanup outcome on the generated narration WAV. */
+  cleanup?: NarrationCleanupReport;
 }
 
 /** Knobs the production pipeline and the editor both drive the narration synthesis with. */
@@ -126,6 +176,20 @@ export interface ProduceAudioOptions {
    * are resolved directly from videos/<slug>/ via the public/videos symlink).
    */
   syncToPreview?: boolean;
+  /** Optional custom pronunciation entries merged over DEFAULT_PRONUNCIATION_LEXICON for spoken-form synthesis and checks. */
+  pronunciationLexicon?: readonly PronunciationEntry[];
+  /** Compact unwanted engine-inserted mid-sentence silences during assembly (default true). */
+  compactInternalPauses?: boolean;
+  /** Maximum silence (seconds) allowed strictly inside a sentence before the standing flow gate fails (default 0.35 s). */
+  maxInSentenceGapSec?: number;
+  /** Optional transcriber for the standing pronunciation check (tests inject a deterministic stub; production uses offline Whisper). */
+  pronunciationTranscriber?: PronunciationTranscriber;
+  /** When true, fail if local speech recognition is unavailable when lexicon terms appear in the script. */
+  requirePronunciationAsr?: boolean;
+  /** Explicit opt-out for the standing ASR pronunciation check when no real speech backend is in use. */
+  skipPronunciationCheck?: boolean;
+  /** Local post-synthesis voice cleanup options (defaults to ON via AIDEOS_NARRATION_CLEANUP_CMD / aideos.config.json; AIDEOS_NARRATION_CLEANUP=off disables). */
+  cleanup?: NarrationCleanupOptions;
 }
 
 /** Loudness target inside the measured review window, with safe true-peak headroom. */
@@ -280,12 +344,21 @@ export function lineStretchFor(backend: Pick<TtsBackend, "speed">, narrationRate
 }
 
 /**
- * The per-line cache key for one synthesizer setup. The time-stretch is part of it, so a line re-paced at another
- * rate is a different recording; an unstretched line keeps the key it had before stretching existed.
+ * The per-line cache key for one synthesizer setup. The time-stretch and active pronunciation lexicon are part
+ * of it, so a line re-paced at another rate or spoken under updated pronunciation rules is a different recording.
  */
-export function lineVoiceKey(backend: Pick<TtsBackend, "name" | "voice" | "speed" | "maxChars" | "synthesizeTake">, stretch: number, selector?: TakeSelector): string {
+export function lineVoiceKey(
+  backend: Pick<TtsBackend, "name" | "voice" | "speed" | "maxChars" | "synthesizeTake">,
+  stretch: number,
+  selector?: TakeSelector,
+  lexicon: readonly PronunciationEntry[] = DEFAULT_PRONUNCIATION_LEXICON,
+): string {
   const effective = selector ? effectiveTakeSelector(backend, selector) : undefined;
-  return pacedVoiceKey(takesVoiceKey(`${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}`, effective), stretch);
+  const lexTag = lexiconFingerprint(lexicon);
+  return pacedVoiceKey(
+    takesVoiceKey(`${backend.name}|${backend.voice ?? ""}|${backend.speed ?? ""}|${backend.maxChars}|${PCM_SAMPLE_RATE}|lex=${lexTag}`, effective),
+    stretch,
+  );
 }
 
 /**
@@ -297,42 +370,50 @@ export function effectiveTakeSelector(backend: Pick<TtsBackend, "synthesizeTake"
   return backend.synthesizeTake || selector.maxTakes === 1 ? selector : { ...selector, maxTakes: 1 };
 }
 
-/** Synthesizes one segment's text as its chunks, each within the backend's length limit, re-paced by `stretch`. */
-async function synthesizeChunks(text: string, backend: TtsBackend, stretch: number, onChunk?: (text: string) => void): Promise<PcmChunk[]> {
-  return (await synthesizeTakeChunks(text, backend, stretch, null, onChunk)).chunks;
+/** Synthesizes one segment's text sentence by sentence in spoken form, re-paced by `stretch`. */
+async function synthesizeChunks(
+  text: string,
+  backend: TtsBackend,
+  stretch: number,
+  lexicon: readonly PronunciationEntry[],
+  onChunk?: (text: string) => void,
+): Promise<PcmChunk[]> {
+  return (await synthesizeTakeChunks(text, backend, stretch, null, lexicon, onChunk)).chunks;
 }
 
 /**
- * Synthesizes one take of a segment as its chunks. `take` null speaks it the plain way (`backend.synthesize`);
- * a number speaks that take through `backend.synthesizeTake` when the backend has one. The take's reported
- * naturalness is the lowest of its chunks' (a line is as natural as its weakest chunk), or undefined when the
- * backend reports none.
+ * Synthesizes one take of a segment as whole sentences (falling back to clause boundaries only when a single
+ * sentence exceeds backend.maxChars). Spoken-form pronunciation rules are applied only to the text sent to TTS,
+ * while each returned PcmChunk retains the clean written text for captions and word timings.
  */
 async function synthesizeTakeChunks(
   text: string,
   backend: TtsBackend,
   stretch: number,
   take: number | null,
+  lexicon: readonly PronunciationEntry[],
   onChunk?: (text: string) => void,
 ): Promise<{ chunks: PcmChunk[]; reportedScore?: number }> {
   const synthesized: PcmChunk[] = [];
   let reportedScore: number | undefined;
-  for (const chunk of chunkTextForTTS(text, backend.maxChars)) {
+  for (const rawChunk of splitSentencesForTTS(text, backend.maxChars)) {
+    const writtenChunk = stripSpokenMarkup(rawChunk);
+    const spokenChunk = toSpokenForm(rawChunk, lexicon);
     let spoken: Float32Array;
     if (take !== null && backend.synthesizeTake) {
-      const result = await backend.synthesizeTake(chunk, take);
+      const result = await backend.synthesizeTake(spokenChunk, take);
       spoken = result.samples;
       if (typeof result.score === "number") reportedScore = reportedScore === undefined ? result.score : Math.min(reportedScore, result.score);
     } else {
-      spoken = await backend.synthesize(chunk);
+      spoken = await backend.synthesize(spokenChunk);
     }
     if (spoken.length === 0) {
-      throw new Error(`TTS backend "${backend.name}" returned no audio for: "${chunk.slice(0, 60)}..."`);
+      throw new Error(`TTS backend "${backend.name}" returned no audio for: "${writtenChunk.slice(0, 60)}..."`);
     }
     // Stretch the chunk with its own edge silence still on, so the frames at the first and last word are whole.
     const samples = Math.abs(stretch - 1) < 1e-6 ? spoken : timeStretch(spoken, stretch, PCM_SAMPLE_RATE);
-    synthesized.push({ text: chunk, samples });
-    onChunk?.(chunk);
+    synthesized.push({ text: writtenChunk, samples });
+    onChunk?.(writtenChunk);
   }
   return { chunks: synthesized, ...(reportedScore !== undefined ? { reportedScore } : {}) };
 }
@@ -345,19 +426,20 @@ function logDegradedTake(choice: TakeChoice): void {
 }
 
 /**
- * Synthesize every segment's chunks through the backend, reporting progress as it goes. With a line
- * store, a segment whose fingerprint (its words plus the voice, pace and chunk limit) already has a
+ * Synthesize every segment's sentences through the backend, reporting progress as it goes. With a line
+ * store, a segment whose fingerprint (its words plus the voice, pace, lexicon and chunk limit) already has a
  * recording is reused and the backend is not called for it.
  */
 async function synthesizeSegments(
   segmentTexts: string[],
   backend: TtsBackend,
   stretch: number,
+  lexicon: readonly PronunciationEntry[],
   onProgress?: ProduceAudioOptions["onProgress"],
   store?: { pkgDir: string },
   takes?: { selector: TakeSelector; onChoice?: (choice: TakeChoice) => void },
 ): Promise<{ chunks: PcmChunk[][]; lines?: { recorded: number; reused: number } }> {
-  const total = segmentTexts.reduce((sum, text) => sum + chunkTextForTTS(text, backend.maxChars).length, 0);
+  const total = segmentTexts.reduce((sum, text) => sum + splitSentencesForTTS(text, backend.maxChars).length, 0);
   let done = 0;
   const report = (text: string) => {
     done += 1;
@@ -366,17 +448,17 @@ async function synthesizeSegments(
 
   if (!store) {
     const out: PcmChunk[][] = [];
-    for (const text of segmentTexts) out.push(await synthesizeChunks(text, backend, stretch, report));
+    for (const text of segmentTexts) out.push(await synthesizeChunks(text, backend, stretch, lexicon, report));
     return { chunks: out };
   }
 
   const selector = takes ? effectiveTakeSelector(backend, takes.selector) : undefined;
-  const voiceKey = lineVoiceKey(backend, stretch, selector);
-  const synthesizeOne = async (text: string) => ({ sampleRate: PCM_SAMPLE_RATE, chunks: await synthesizeChunks(text, backend, stretch, report) });
+  const voiceKey = lineVoiceKey(backend, stretch, selector, lexicon);
+  const synthesizeOne = async (text: string) => ({ sampleRate: PCM_SAMPLE_RATE, chunks: await synthesizeChunks(text, backend, stretch, lexicon, report) });
   const synthesizeTake: TakeSynthesizer | null = takes
     ? async (text, take) => {
         // Only the first take reports progress: later takes are retries of a line already counted.
-        const spoken = await synthesizeTakeChunks(text, backend, stretch, take, take === 0 ? report : undefined);
+        const spoken = await synthesizeTakeChunks(text, backend, stretch, take, lexicon, take === 0 ? report : undefined);
         return { audio: { sampleRate: PCM_SAMPLE_RATE, chunks: spoken.chunks }, reportedScore: spoken.reportedScore };
       }
     : null;
@@ -386,7 +468,7 @@ async function synthesizeSegments(
     voiceKey,
     synthesize: takes && selector && synthesizeTake ? withTakes(synthesizeTake, selector, takes.onChoice) : synthesizeOne,
     onLine: (_n, _total, text, reused) => {
-      if (reused) for (const chunk of chunkTextForTTS(text, backend.maxChars)) report(chunk);
+      if (reused) for (const chunk of splitSentencesForTTS(text, backend.maxChars)) report(stripSpokenMarkup(chunk));
     },
   });
   return { chunks: result.lines.map((line) => line.audio.chunks), lines: { recorded: result.recorded, reused: result.reused } };
@@ -458,6 +540,10 @@ export async function produceAudioPipeline(
   }
   console.error(`[narration] synthesizing ${segmentTexts.length} segment(s) with ${backend.name}${stretch !== 1 ? ` at ${stretch}x (pitch-preserving stretch)` : ""}`);
 
+  const lexicon = mergePronunciationLexicon(options?.pronunciationLexicon);
+  const compactInternalPauses = options?.compactInternalPauses ?? DEFAULT_ASSEMBLE_OPTIONS.compactInternalPauses;
+  const maxInSentenceGapSec = options?.maxInSentenceGapSec ?? DEFAULT_MAX_IN_SENTENCE_GAP_SEC;
+
   let segmentChunks: PcmChunk[][];
   let lineCounts: { recorded: number; reused: number } | undefined;
   try {
@@ -465,6 +551,7 @@ export async function produceAudioPipeline(
       segmentTexts,
       backend,
       stretch,
+      lexicon,
       options?.onProgress,
       { pkgDir: outDir },
       options?.takeSelector ? { selector: options.takeSelector, onChoice: options.onTakeChoice ?? logDegradedTake } : undefined,
@@ -483,6 +570,7 @@ export async function produceAudioPipeline(
     chapterGapMs,
     isChapterStart: chapterStarts,
     chunkGapMs,
+    compactInternalPauses,
   };
 
   let assembled = assembleSegments(segmentChunks, assembleOptions);
@@ -513,6 +601,55 @@ export async function produceAudioPipeline(
     await fs.rm(normalizedVoiceoverPath, { force: true });
   }
 
+  // Last audio processing step: apply local post-synthesis voice cleanup to the generated narration only
+  // (never to reference recordings; replaces voiceover.wav in place so no plain-and-cleaned pair is kept).
+  const cleanup = await applyNarrationCleanup(voiceoverPath, options?.cleanup, normalizeNarrationLoudness);
+
+  // Standing flow gate: measure the FINAL (post-cleanup) narration audio for unwanted silence gaps inside any sentence.
+  const finalWav = decodeWav(await fs.readFile(voiceoverPath));
+  const sentenceSpans: SentenceSpan[] = [];
+  assembled.segments.forEach((seg, segIdx) => {
+    const pieces = seg.chunks && seg.chunks.length > 0
+      ? seg.chunks
+      : [{ text: seg.text, startSec: seg.startSec, durationSec: seg.durationSec }];
+    for (const piece of pieces) {
+      sentenceSpans.push({
+        text: piece.text,
+        startSec: piece.startSec,
+        endSec: piece.startSec + piece.durationSec,
+        segmentIndex: segIdx,
+        sentenceIndex: sentenceSpans.length,
+      });
+    }
+  });
+  const flowCheck = checkNarrationFlow(finalWav.samples, finalWav.sampleRate, sentenceSpans, { maxGapSec: maxInSentenceGapSec });
+  if (!flowCheck.passed) {
+    throw new NarrationFlowError(flowCheck);
+  }
+
+  // Standing pronunciation check: transcribe the FINAL (post-cleanup) narration offline when a real speech backend spoke
+  // (or when a test injects a transcriber), failing if any lexicon brand or technical name was misheard or altered.
+  let pronunciationCheck: PronunciationCheckReport | undefined;
+  const shouldRunPronunciationCheck =
+    options?.pronunciationTranscriber !== undefined ||
+    (!options?.skipPronunciationCheck && backend.name !== "tone" && !environment.NODE_TEST_CONTEXT);
+  if (shouldRunPronunciationCheck) {
+    const writtenScript = assembled.segments.map((s) => s.text).join(" ");
+    pronunciationCheck = await checkNarrationPronunciation(writtenScript, voiceoverPath, {
+      lexicon,
+      transcriber: options?.pronunciationTranscriber,
+    });
+    if (pronunciationCheck.status === "failed") {
+      throw new PronunciationCheckError(pronunciationCheck);
+    }
+    if (pronunciationCheck.status === "skipped") {
+      if (options?.requirePronunciationAsr) {
+        throw new PronunciationAsrUnavailableError(pronunciationCheck.reason ?? "local speech recognition unavailable");
+      }
+      console.error(`[narration] pronunciation check skipped (${pronunciationCheck.reason ?? "ASR unavailable"})`);
+    }
+  }
+
   // Shot durations run boundary to boundary so every shot starts exactly where its narration
   // does, and the final shot absorbs the tail. Summing them reproduces the audio length exactly.
   const shotDurations = deriveShotDurations(assembled.segments, assembled.totalSec);
@@ -539,6 +676,9 @@ export async function produceAudioPipeline(
     speed: backend.speed ?? null,
     ...(stretch !== 1 ? { timeStretch: stretch } : {}),
     ...(lineCounts ? { lines: lineCounts } : {}),
+    cleanup,
+    flowCheck,
+    ...(pronunciationCheck ? { pronunciationCheck } : {}),
   };
 }
 

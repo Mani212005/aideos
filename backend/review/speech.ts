@@ -11,6 +11,14 @@
 
 import fs from "node:fs";
 import type { ReviewWord } from "./types";
+export {
+  isSentenceEndingWord,
+  sentenceSpansFromWords,
+  detectInSentenceWordGaps,
+  detectInSentenceSilences,
+  type InSentenceGap,
+  type SentenceSpan,
+} from "../narrationFlow";
 
 /** Narration as the review got it: timed words, or only text. */
 export interface Narration {

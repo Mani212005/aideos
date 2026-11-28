@@ -52,6 +52,7 @@ moments behind each failed criterion. The schema is `ReviewReport` in `backend/r
 | 12 | Loudness and mix | `ebur128` on the delivered MP4; when film soundtrack data is available, isolated music and narration stems over 400 ms windows overlapping speech on the shared voice activity timeline | -18 to -14 LUFS, true peak <= -1 dBFS, and music at least 12 dB below narration (design target 18 dB) |
 | 14 | **Reel delivered length** | video container, audio stream and picture durations | <= 179 s including the end card (measured duration within DELIVERY_CONFIG.reel.maxSec); fails when ffprobe cannot measure the duration; evaluated on reel reviews |
 | 15 | Reel hook | timed narration words (`punctuated_word` for sentence ends) | first word starts under 0.25 s, first sentence is 10 to 16 words, no greeting or intro opener; evaluated on reel reviews, non-gating |
+| 16 | **Narration flow (no mid-sentence gaps)** | timed punctuated narration words plus acoustic silences (`silencedetect`) | zero silence gaps over 0.35 s strictly inside any sentence (inter-sentence and chapter pauses are allowed); evaluated when timed narration words are supplied, skipped when words carry no sentence punctuation |
 
 ### Stage timeline and stillness
 

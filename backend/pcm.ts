@@ -10,11 +10,26 @@
  */
 
 import { HOUSE_PACE } from "../src/dl/pacingProfile";
+import {
+  compactInternalPauses,
+  DEFAULT_MAX_CLAUSE_PAUSE_MS,
+  DEFAULT_MAX_MID_CLAUSE_PAUSE_MS,
+  DEFAULT_MID_CLAUSE_TRIGGER_MS,
+} from "./narrationFlow";
 
 /** One synthesized piece of narration and the text it speaks. */
 export interface PcmChunk {
   text: string;
   samples: Float32Array;
+}
+
+/** Exact placement of one synthesized sentence/chunk inside an assembled segment. */
+export interface AssembledChunk {
+  text: string;
+  startSample: number;
+  lengthSamples: number;
+  startSec: number;
+  durationSec: number;
 }
 
 /** Where one assembled segment landed on the concatenated timeline, in samples and seconds. */
@@ -24,6 +39,8 @@ export interface AssembledSegment {
   lengthSamples: number;
   startSec: number;
   durationSec: number;
+  /** Per-chunk (sentence) placements inside this segment when known. */
+  chunks?: AssembledChunk[];
 }
 
 /** The concatenated narration plus the exact placement of every segment inside it. */
@@ -220,12 +237,20 @@ export interface AssembleOptions {
   chapterGapMs?: number;
   /** Boolean flags indicating which segments open a new chapter. */
   isChapterStart?: boolean[];
-  /** Silence inserted between chunks that belong to the same segment. */
+  /** Silence inserted between chunks (sentences) that belong to the same segment. */
   chunkGapMs: number;
   /** Length of the ramp applied to each chunk's head and tail. */
   fadeMs: number;
   /** Amplitude below which a sample counts as silence for trimming. */
   silenceThreshold: number;
+  /** When true, compacts unwanted engine-inserted internal silences inside each sentence chunk. */
+  compactInternalPauses?: boolean;
+  /** Mid-clause silence duration (ms) above which internal pause compaction triggers. */
+  midClauseTriggerMs?: number;
+  /** Target pause length (ms) kept when compacting a mid-clause stall inside a sentence. */
+  maxMidClausePauseMs?: number;
+  /** Maximum pause length (ms) kept at a clause boundary inside a sentence. */
+  maxClausePauseMs?: number;
 }
 
 // Decision D4: narration breath at chapter cuts so music changes can land in a pause instead of under speech,
@@ -239,6 +264,10 @@ export const DEFAULT_ASSEMBLE_OPTIONS: Omit<AssembleOptions, "sampleRate"> = {
   chunkGapMs: HOUSE_PACE.chunkGapMs,
   fadeMs: 6,
   silenceThreshold: 0.005,
+  compactInternalPauses: true,
+  midClauseTriggerMs: DEFAULT_MID_CLAUSE_TRIGGER_MS,
+  maxMidClausePauseMs: DEFAULT_MAX_MID_CLAUSE_PAUSE_MS,
+  maxClausePauseMs: DEFAULT_MAX_CLAUSE_PAUSE_MS,
 };
 
 /**
@@ -252,7 +281,19 @@ export function assembleSegments(
   segmentChunks: PcmChunk[][],
   options: AssembleOptions,
 ): AssembledAudio {
-  const { sampleRate, segmentGapMs, chapterGapMs, isChapterStart, chunkGapMs, fadeMs, silenceThreshold } = options;
+  const {
+    sampleRate,
+    segmentGapMs,
+    chapterGapMs,
+    isChapterStart,
+    chunkGapMs,
+    fadeMs,
+    silenceThreshold,
+    compactInternalPauses: shouldCompact = false,
+    midClauseTriggerMs,
+    maxMidClausePauseMs,
+    maxClausePauseMs,
+  } = options;
   const standardGap = Math.round((segmentGapMs / 1000) * sampleRate);
   const chapterGap = Math.round(((chapterGapMs ?? segmentGapMs) / 1000) * sampleRate);
   const chunkGap = Math.round((chunkGapMs / 1000) * sampleRate);
@@ -263,18 +304,31 @@ export function assembleSegments(
     return isChapterStart[segIdx] ? chapterGap : standardGap;
   };
 
-  const prepared: Float32Array[][] = segmentChunks.map((chunks) =>
+  const prepared: Array<Array<{ text: string; buf: Float32Array }>> = segmentChunks.map((chunks) =>
     chunks
-      .map((chunk) => applyEdgeFades(trimSilence(chunk.samples, silenceThreshold), sampleRate, fadeMs))
-      .filter((buf) => buf.length > 0),
+      .map((chunk) => {
+        const trimmed = trimSilence(chunk.samples, silenceThreshold);
+        const compacted =
+          shouldCompact && trimmed.length > 0
+            ? compactInternalPauses(trimmed, sampleRate, {
+                sentenceText: chunk.text,
+                midClauseTriggerMs,
+                maxMidClausePauseMs,
+                maxClausePauseMs,
+                fadeMs,
+              })
+            : trimmed;
+        return { text: chunk.text, buf: applyEdgeFades(compacted, sampleRate, fadeMs) };
+      })
+      .filter((item) => item.buf.length > 0),
   );
 
   let total = 0;
   prepared.forEach((chunks, segIdx) => {
     if (segIdx > 0) total += getGapForSegment(segIdx);
-    chunks.forEach((buf, chunkIdx) => {
+    chunks.forEach((item, chunkIdx) => {
       if (chunkIdx > 0) total += chunkGap;
-      total += buf.length;
+      total += item.buf.length;
     });
   });
 
@@ -285,10 +339,19 @@ export function assembleSegments(
   prepared.forEach((chunks, segIdx) => {
     if (segIdx > 0) cursor += getGapForSegment(segIdx);
     const startSample = cursor;
-    chunks.forEach((buf, chunkIdx) => {
+    const placedChunks: AssembledChunk[] = [];
+    chunks.forEach((item, chunkIdx) => {
       if (chunkIdx > 0) cursor += chunkGap;
-      samples.set(buf, cursor);
-      cursor += buf.length;
+      const chunkStart = cursor;
+      samples.set(item.buf, cursor);
+      cursor += item.buf.length;
+      placedChunks.push({
+        text: item.text,
+        startSample: chunkStart,
+        lengthSamples: item.buf.length,
+        startSec: chunkStart / sampleRate,
+        durationSec: item.buf.length / sampleRate,
+      });
     });
     segments.push({
       text: segmentChunks[segIdx].map((c) => c.text).join(" "),
@@ -296,6 +359,7 @@ export function assembleSegments(
       lengthSamples: cursor - startSample,
       startSec: startSample / sampleRate,
       durationSec: (cursor - startSample) / sampleRate,
+      chunks: placedChunks,
     });
   });
 
@@ -408,7 +472,16 @@ export function distributeWordTimings(
 export function narrationWordTimings(segments: AssembledSegment[]): { words: PunctuatedWord[]; segments: SegmentAudioInfo[] } {
   const words: PunctuatedWord[] = [];
   const records = segments.map((seg): SegmentAudioInfo => {
-    const relativeWords = distributeWordTimings(seg.text, seg.durationSec);
+    let relativeWords: PunctuatedWord[];
+    if (seg.chunks && seg.chunks.length > 1) {
+      relativeWords = [];
+      for (const chunk of seg.chunks) {
+        const relStart = chunk.startSec - seg.startSec;
+        relativeWords.push(...distributeWordTimings(chunk.text, chunk.durationSec, relStart));
+      }
+    } else {
+      relativeWords = distributeWordTimings(seg.text, seg.durationSec);
+    }
     for (const w of relativeWords) {
       words.push({
         word: w.word,

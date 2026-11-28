@@ -58,11 +58,13 @@ export function compareStemLevels(
     minimumGapDb: Math.min(120, minimumGapDb), worstTimeSec, speechWindows };
 }
 
-// Compares 10 ms narration frame levels with 400 ms music levels, judging speech by the shared voice activity machine.
+// Compares 10 ms narration frame levels with 400 ms music levels, judging speech by the shared voice activity machine
+// and excluding silent pause windows whose rolled-up narration energy stays at or below the speech floor.
 export function compareStemFrames(narrationFrameDb: number[], musicDb: number[]): MusicUnderVoice {
   const voiceDb = rollupLevels(narrationFrameDb, WINDOW_SAMPLES / FRAME_SAMPLES);
   const timeline = buildVoiceTimeline(activeRunsFromLevels(narrationFrameDb, ACTIVITY_FRAME_SEC));
-  return compareStemLevels(voiceDb, musicDb, speechWindowFlags(timeline, WINDOW_SEC, voiceDb.length));
+  const flags = speechWindowFlags(timeline, WINDOW_SEC, voiceDb.length).map((flag, i) => flag && isActiveLevel(voiceDb[i]));
+  return compareStemLevels(voiceDb, musicDb, flags);
 }
 
 // Decodes one stem into time-aligned RMS frames of the given sample count using the actual stereo samples.
