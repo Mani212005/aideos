@@ -63,7 +63,6 @@ export function isRenderFile(file) {
   if (normalized.startsWith("backend/geminiReview/render")) return true;
   if (normalized === "scripts/render_active.ts") return true;
   if (normalized === "render.yaml") return true;
-  if (normalized.startsWith("src/dl/render/")) return true;
   // The native renderer and encoder draw and encode every render journey, so a change there is render code.
   if (normalized.startsWith("native/")) return true;
   return false;
@@ -73,9 +72,7 @@ export function isRenderFile(file) {
 export function isStageFile(file) {
   const normalized = file.trim().replace(/^\.\//, "").replace(/^\/+/, "");
   if (normalized === "src/dl/scene" || normalized.startsWith("src/dl/scene/")) return true;
-  if (normalized.startsWith("src/dl/Stage")) return true;
   if (normalized.startsWith("src/dl/Scene")) return true;
-  if (normalized === "backend/stage" || normalized.startsWith("backend/stage/")) return true;
   if (normalized === "test_fixtures/stillTalking" || normalized.startsWith("test_fixtures/stillTalking/")) return true;
   return false;
 }
