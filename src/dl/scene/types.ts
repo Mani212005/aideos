@@ -3,7 +3,7 @@
  * so a parsed film's `scene` is the very type the compiler and renderers take (no casts between two copies).
  * Covers the scene root, environment assets and pictures, asset tracks and rotating sub-groups (D1), and the camera track.
  * Inputs and outputs: Zod scene schemas -> TypeScript types for scenes, assets, tracks and cameras.
- * Used by: src/dl/scene/compile.ts, src/dl/SceneStage.tsx, backend/sceneKit/timeline.ts, backend/renderIr/emit.ts.
+ * Used by: src/dl/scene/compile.ts, src/dl/scene/SceneClip.tsx, backend/sceneKit/timeline.ts, backend/renderIr/emit.ts.
  */
 
 import type { z } from "zod";

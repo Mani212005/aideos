@@ -9,7 +9,7 @@
  * standalone overlays are written out to `videoClips` and `overlayClips`, which forward conversion
  * then treats as the authority for those channels.
  * Inputs and outputs: Film or LayeredFilm data structures -> bidirectional converted Film or LayeredFilm.
- * Used by: editor/src/state/useLayeredTimeline.ts, editor/vite.config.ts, backend/timeline/timeline.ts.
+ * Used by: editor/src/state/useLayeredTimeline.ts, editor/vite.config.ts, backend/editPlanner/interpreter.ts, backend/mcp/server.ts, backend/timeline/layerAssetCheck.ts.
  */
 
 import { DEFAULT_FPS } from "./defaults";

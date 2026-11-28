@@ -3,7 +3,7 @@
  * from the dev server. It stands in for the generated film modules the editor must not import
  * (they are gitignored, rewritten on every autosave, and would hot-reload the page mid-edit).
  * Inputs and outputs: none -> default initial Film project object for new sessions.
- * Used by: editor/src/state/useFilmProject.ts.
+ * Used by: editor/src/App.tsx.
  */
 
 import type { Film } from "../../../src/dl/schema";

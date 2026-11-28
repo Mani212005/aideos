@@ -1,7 +1,7 @@
 /**
  * File Description: 2D spatial camera and continuity solver for canvas graphs, framing nodes and computing expo-eased transitions across timeline shots.
  * Inputs and outputs: Film canvas nodes, shot specifications, and frame dimensions -> TimedShot timeline and Cam transforms.
- * Used by: src/dl/CanvasGraph.tsx, src/dl/Film.tsx, src/dl/runtime.ts, backend/pipeline/design.ts.
+ * Used by: src/dl/CanvasGraph.tsx, src/dl/Film.tsx, src/dl/runtime.ts, src/dl/delivery.ts, backend/stageTimeline.ts, backend/renderIr/emit.ts, editor/src/screens/EditStage.tsx.
  */
 
 import type { CanvasNode, Film, Shot, CameraAngle } from "./schema";

@@ -4,7 +4,7 @@
  * generated film shadows on that same runtime, so `bun install` never calls npm and `npm ci` never calls bun.
  * Inputs and outputs: npm_config_user_agent (set by bun install and npm ci) -> editor/node_modules installed and the
  * generated files written; exit code 1 when either command fails.
- * Used by: the postinstall script of package.json (bun install, npm ci, the Dockerfile, Vercel, scripts/release.ts).
+ * Used by: the postinstall script of package.json (bun install, npm ci, the Dockerfile, Vercel).
  */
 
 import { spawnSync } from "node:child_process";

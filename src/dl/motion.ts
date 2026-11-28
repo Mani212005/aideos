@@ -1,7 +1,7 @@
 /**
  * File Description: Motion grammar constants, cubic-bezier expo easing curves, and duration helpers for film animations.
  * Inputs and outputs: frame counts, durations, and progress values -> eased interpolation progress numbers.
- * Used by: src/dl/camera.ts, src/dl/Film.tsx, src/dl/Block.tsx, and dl visual primitives.
+ * Used by: src/dl/camera.ts, src/dl/Film.tsx, src/dl/CanvasGraph.tsx, src/dl/EndCard.tsx, src/dl/KineticSubtitles.tsx, src/dl/devices.tsx, src/dl/primitives.tsx.
  */
 
 import { createContext, useContext } from "react";

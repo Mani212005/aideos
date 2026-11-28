@@ -1,7 +1,7 @@
 /**
  * File Description: Implements sidechain audio ducking calculation for the music track under voiceover narration, reading the shared voice activity timeline.
  * Inputs and outputs: speech intervals or a voice timeline, current frame, and ducking options -> calculated music audio volume.
- * Used by: src/dl/Film.tsx, src/dl/Soundtrack.tsx, backend/sync.test.ts.
+ * Used by: src/dl/Soundtrack.tsx, backend/sync.test.ts, backend/voiceActivity.test.ts, backend/timeline/bug_audit_fixes.test.ts.
 */
 
 import { buildVoiceTimeline, voiceContextAt, type VoiceTimeline } from "./voiceActivity";

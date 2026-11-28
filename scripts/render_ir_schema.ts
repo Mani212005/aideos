@@ -1,7 +1,7 @@
 /**
  * File Description: Writes (or with --check verifies) the committed JSON Schemas of every Render IR version, so the Rust loader's embedded schemas are always the ones the zod source describes.
  * Inputs and outputs: optional --check flag -> rewrites native/aideos-render-ir/schema/aideos.render.{1,2,3,4,5,6,7,8}.schema.json, or exits 1 when any is out of date.
- * Used by: npm run render-ir:schema, backend/renderIr/renderIr.test.ts.
+ * Used by: npm run render-ir:schema.
  */
 
 import { callerWorkingDirectory } from "../backend/paths";

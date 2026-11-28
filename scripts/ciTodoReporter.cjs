@@ -1,7 +1,7 @@
 /**
  * File Description: Emits Node test TODO cases and skipped cases as machine-readable JSON for CI summaries.
  * Inputs and outputs: Node test event stream -> JSON object with todos and skipped test names.
- * Used by: scripts/ci.ts journey and unit test reporters.
+ * Used by: scripts/toolchain.ts withTestReport (the node --test reporter of the ci journey and unit steps).
  */
 
 /** Collects TODO and skipped test names from structured Node test events. */
