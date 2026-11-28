@@ -244,7 +244,7 @@ Where Node or npm stays, and why:
 | `scripts/release.ts`, `scripts/releaseGateInputs.ts` | `npm ci` in the stable clone, `npm run ci` as the release gate (which, through `scripts/run.mjs` and `activeToolchain`, runs the npm path on Node with no bun) | the publish step; the gate command is part of the recorded gate configuration (`ciInputs`), so changing it stops `--resume-gates` from reusing a CI gate an earlier attempt passed |
 | `bin/aideos` (product launcher), `editor/package.json` `dev` and `build` pre-hooks | the CLI with `tsx` on Node, `npm run validate`, `render`, `studio`, `backend` and the studio server through `npm run dev` | the product runtime, not the toolchain: the shipped CLI, the studio server and Remotion run on Node; `aideos test` and `aideos lint` run `npm test` and `npm run lint` (the scripts pick the toolchain from the runner) because the stable-channel and Docker installs use `npm ci` and may have no bun on PATH |
 | `backend/remotionRenderer.ts`, `backend/pipeline/render.ts`, `backend/review/music.ts`, the j14 journey | `npx remotion render` | the Remotion CLI renders on Node |
-| `scripts/studioDriver.ts` | `npx vite` (and `npm --prefix editor ci` when editor/ has no node_modules) | the studio smoke and journeys start the studio the way a user does, on Node |
+| `backend/testSupport/studioDriver.ts` | `npx vite` (and `npm --prefix editor ci` when editor/ has no node_modules) | the studio smoke and journeys start the studio the way a user does, on Node |
 | the `changes` job | `node scripts/ciChanges.mjs` | dependency free and needs no install; Node is on every runner |
 
 ## Changed files (shadow mode)
