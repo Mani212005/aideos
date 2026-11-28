@@ -123,6 +123,10 @@ export function installVoiceOfChoiceForTests(env: NodeJS.ProcessEnv = process.en
   env.AIDEOS_VCD_URL = DEFAULT_VCD_URL;
   env.AIDEOS_VCD_VOICE_ID = FAKE_OWNER_VOICE_ID;
   env.AIDEOS_VCD_LANGUAGE = "auto";
+  // Deterministic tests synthesize fake sine tones with no local cleanup weights; dedicated cleanup tests override this explicitly.
+  env.AIDEOS_NARRATION_CLEANUP = "off";
+  // The fake service speaks tones, not words, so there is nothing for offline speech recognition to verify; dedicated pronunciation tests inject a transcriber.
+  env.AIDEOS_PRONUNCIATION_CHECK = "off";
   for (const name of ["AIDEOS_TTS", "AIDEOS_TTS_VOICE", "AIDEOS_ALLOW_OTHER_VOICE"]) delete env[name];
   installFakeVoiceService();
 }

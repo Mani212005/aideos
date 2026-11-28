@@ -39,6 +39,7 @@ Every entry has this shape:
 | 2026-11-21 | [Purge recurring bad code habits in 16 small slices](2026-11-21-habits-purge-slicing.md) | owner | In force (slices 1 to 3 merged, slice 4 open) |
 | 2026-11-22 | [Owner video feedback for the next video (music, narrator, SVG with pictures)](2026-11-22-video-feedback-next-video.md) | owner | Decided, not yet on main |
 | 2026-11-26 | [Bun is the default toolchain, npm stays selectable](2026-11-26-bun-default-toolchain.md) | owner | Decided, not yet on main |
+| 2026-11-28 | [Narration sentence flow, brand-name pronunciation and local voice cleanup](2026-11-28-narration-flow-and-pronunciation.md) | owner | In force |
 
 ## Adding an entry
 

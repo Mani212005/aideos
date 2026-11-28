@@ -75,7 +75,8 @@ export type CriterionKey =
   | "grounding"
   | "loudness"
   | "reel-length"
-  | "hook";
+  | "hook"
+  | "narration-flow";
 
 /** One rubric criterion's result. */
 export interface CriterionResult {

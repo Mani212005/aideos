@@ -13,6 +13,7 @@ import { STORY_HOLD_MAX_SEC } from "../stageTimeline";
 import { HOUSE_PACE } from "../../src/dl/pacingProfile";
 import { VISIBLE_OPACITY_MIN } from "../../src/dl/scene/visibility";
 import { REEL_CAPTION_SAFE_ZONE } from "../../src/dl/fullScreenHeroLayout";
+import { DEFAULT_MAX_IN_SENTENCE_GAP_SEC } from "../narrationFlow";
 
 /** Calibrated on 2026-10-01 against references A, B and RAG (frames at 10 fps, 480x270, ink = 28 levels off the median). */
 export const THRESHOLDS = {
@@ -154,6 +155,10 @@ export const THRESHOLDS = {
   grounding: {
     /** On-screen numbers not said in the narration that still pass (the rubric allows zero). */
     ungroundedMax: 0,
+  },
+  narrationFlow: {
+    /** Maximum silence (seconds) allowed strictly inside a sentence before the standing flow gate fails (2026-11-28 decision). */
+    maxInSentenceGapSec: DEFAULT_MAX_IN_SENTENCE_GAP_SEC,
   },
 } as const;
 

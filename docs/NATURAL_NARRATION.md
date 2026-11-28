@@ -25,6 +25,45 @@ only the samples one synthesizer returns for one line.
   pitch-preserving stretch before the line is cached. Stretching can add artefacts, so a take is judged after it.
 - The assembled narration is normalized to -16 LUFS with -1 dB true peak (`NARRATION_LOUDNESS_TARGET`). Level against
   the music is the clarity-mix work, not this page.
+- **Sentence-whole flow and internal pause compaction (2026-11-28 decision):** each narration beat is split into whole
+  sentences before synthesis (`splitSentencesForTTS` in `backend/narrationFlow.ts`, breaking an over-long sentence only
+  at clause boundaries before word fallback), placed whole in sample-domain assembly so pauses land only at sentence and
+  clause ends, and compacted (`compactInternalPauses` in `backend/narrationFlow.ts`, invoked by `assembleSegments` in
+  `backend/pcm.ts`) so engine-inserted mid-sentence silences are shortened smoothly with edge ramps while brief clause
+  breaths stay natural. After assembly, `produceAudioPipeline` runs the standing `checkNarrationFlow` gate
+  (`DEFAULT_MAX_IN_SENTENCE_GAP_SEC = 0.35` s) on the joined narration audio and fails with `NarrationFlowError` if any
+  unwanted silence gap inside a sentence remains. `aideos review` enforces the same rule as gate criterion 16
+  (`narration-flow`) whenever timed punctuated narration words exist.
+- **Brand and technical-name pronunciation lexicon and ASR gate (2026-11-28 decision):** `backend/narrationPronunciation.ts`
+  maintains `DEFAULT_PRONUNCIATION_LEXICON` (OpenAI, Anthropic, DeepSeek, DeepSeek-R1, DeepSeek-V3, Llama, Codex, Claude,
+  Gemini, Epoch AI, GPU, H100, H800, 405B, LLM, API, Riemann, Euler, Dirichlet, Gauss, zeta, and similar) and converts
+  each sentence to spoken form (`toSpokenForm`, also honouring inline `{written|spoken}` annotations) only when sending
+  text to TTS, keeping captions and word timings in exact written spelling. The active lexicon digest is part of each
+  line's cache key (`lineVoiceKey`) and `runProduction`'s narrate fingerprint. After synthesis,
+  `checkNarrationPronunciation` transcribes the produced `voiceover.wav` offline through `backend/narrationTranscribe.py`
+  (reusing the locally cached Whisper stack: `openai-whisper` or `faster-whisper`, selected via `$AIDEOS_STT_PYTHON` or
+  `python3`) and fails with `PronunciationCheckError` when a lexicon word is missed or heard as a known mispronunciation
+  (such as `"OpenEye"` for `OpenAI` or `"Entropic"` for `Anthropic`). Because headless build hosts have no audio output
+  for manual listening, this offline speech-recognition check is the standing verification of every lexicon word before
+  delivery. It never skips silently: when a script contains lexicon words and no local Whisper engine is installed, the
+  run fails with `PronunciationAsrUnavailableError` naming the engine setting (`AIDEOS_STT_PYTHON`) and the off switch.
+  `AIDEOS_PRONUNCIATION_CHECK=off` turns the check off explicitly and the report then carries `status: "disabled"` with a
+  plain reason (mirroring `AIDEOS_NARRATION_CLEANUP=off`); the tone placeholder backend, which carries no speech, reports
+  `status: "not_applicable"`. A mispronunciation form (such as `cloud` for Claude) is ignored when the script itself
+  spells that word, and a longer entry (`DeepSeek-R1`) owns the words it contains so it never counts toward `DeepSeek`.
+- **Local post-synthesis voice cleanup (2026-11-28 decision):** `backend/narrationCleanup.ts` runs a configured local
+  cleanup command (`AIDEOS_NARRATION_CLEANUP_CMD` or `narrationCleanup.command` in `aideos.config.json`, template taking
+  `{in}` and `{out}` WAV paths) as the **last audio processing step** on the generated narration `voiceover.wav` only.
+  It is ON by default and fails plainly naming the setting when unconfigured rather than silently skipping; set
+  `AIDEOS_NARRATION_CLEANUP=off` (or `narrationCleanup.enabled: false`) to disable it explicitly. Only the single cleaned
+  narration file is kept (no plain-and-cleaned pair). Cleanup never touches the owner's reference voice recordings,
+  never trains or enrolls on enhanced audio, and never calls a hosted service. Both standing checks (`checkNarrationFlow`
+  and `checkNarrationPronunciation`) run on the **final cleaned audio** after cleanup completes so cleanup cannot
+  reintroduce mid-sentence gaps or alter words. Cleanup must keep the narration length (within
+  `MAX_CLEANUP_DURATION_DRIFT_SEC`, 0.05 s) because captions, shot timing and the sentence spans are locked to it, and
+  the narration is staged as `voiceover.pending.wav` and published to `voiceover.wav` only after cleanup and both checks
+  pass (`verifyAndPublishNarration` in `backend/audio.ts`, shared by `produceAudioPipeline` and the Studio
+  `/api/generate-voiceover` route), so a failing narration never leaves an unverified `voiceover.wav`.
 
 ## The seam
 

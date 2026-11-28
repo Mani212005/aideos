@@ -155,6 +155,27 @@ test("moving a voice to a stretch rate retires its older-rate recordings, other 
   }
 });
 
+test("a pronunciation lexicon edit retires the older lexicon's recordings of the same voice, other voices stay", async () => {
+  const pkg = scratch();
+  try {
+    const spoken: string[] = [];
+    const oldKey = pacedVoiceKey("voice-a|lex=11111111", 1.2);
+    const newKey = pacedVoiceKey("voice-a|lex=22222222", 1.2);
+    await synthesizeLines({ pkgDir: pkg, texts: ["Hello there."], voiceKey: oldKey, synthesize: countingSynth(spoken) });
+    await synthesizeLines({ pkgDir: pkg, texts: ["Other voice."], voiceKey: "voice-b|lex=11111111", synthesize: countingSynth(spoken) });
+    const oldF32 = path.join(voiceLinesDir(pkg), `${lineFingerprint("Hello there.", oldKey)}.f32`);
+    assert.ok(fs.existsSync(oldF32));
+
+    const run = await synthesizeLines({ pkgDir: pkg, texts: ["Hello there."], voiceKey: newKey, synthesize: countingSynth(spoken) });
+    assert.equal(run.recorded, 1, "a new lexicon digest is a new recording");
+    assert.equal(fs.existsSync(oldF32), false, "the old lexicon's recording is pruned");
+    assert.deepEqual(recordedStatus(pkg, ["Hello there."], newKey), [true]);
+    assert.deepEqual(recordedStatus(pkg, ["Other voice."], "voice-b|lex=11111111"), [true]);
+  } finally {
+    fs.rmSync(pkg, { recursive: true, force: true });
+  }
+});
+
 test("a corrupt stored recording is simply re-recorded", async () => {
   const pkg = scratch();
   try {

@@ -169,6 +169,53 @@ test("Studio /api/generate-voiceover writes the voice that spoke as narration.js
     assert.equal(response.status, 200);
     const narration = JSON.parse(fs.readFileSync(path.join(videosDir, "m6-narrator", "narration.json"), "utf8")) as { ttsBackend?: string };
     assert.equal(narration.ttsBackend, FAKE_OWNER_BACKEND_NAME, "every line was spoken by the owner voice, so it is the narrator of record");
+
+    // The checks that ran on the final audio are reported, including the explicit off switches the test host sets.
+    const body = (await response.json()) as { cleanup?: { status: string }; flowCheck?: { passed: boolean }; pronunciationCheck?: { status: string; reason?: string }; lines?: { recorded: number; reused: number } };
+    assert.equal(body.cleanup?.status, "disabled");
+    assert.equal(body.flowCheck?.passed, true);
+    assert.equal(body.pronunciationCheck?.status, "disabled");
+    assert.match(body.pronunciationCheck?.reason ?? "", /AIDEOS_PRONUNCIATION_CHECK=off/);
+    assert.equal(body.lines?.recorded, 2);
+    const persisted = JSON.parse(fs.readFileSync(path.join(videosDir, "m6-narrator", "narration.json"), "utf8")) as { pronunciationCheck?: { status: string }; cleanup?: { status: string } };
+    assert.equal(persisted.pronunciationCheck?.status, "disabled");
+    assert.equal(persisted.cleanup?.status, "disabled");
+
+    // A second request reuses both recordings: the lexicon-tagged line key is stable between runs.
+    const again = await fetch(new URL("/api/generate-voiceover", server.url), {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: new URL(server.url).origin },
+      body: JSON.stringify({ projectId: "m6-narrator", voice: "vcd-my-voice", spokenTextOverride: "First line of the story.\n\nSecond line of the story." }),
+    });
+    assert.equal(again.status, 200);
+    assert.deepEqual(((await again.json()) as { lines: { recorded: number; reused: number } }).lines, { total: 2, recorded: 0, reused: 2 });
+  } finally {
+    if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previousOptions;
+    server?.stop();
+    fs.rmSync(videosDir, { recursive: true, force: true });
+  }
+});
+
+test("Studio narration status still detects a Hindi project whose stored line key carries a lexicon digest", async () => {
+  const videosDir = path.resolve(".tmp", `hindi-detect-${process.pid}`);
+  const pkgDir = path.join(videosDir, "hindi-detect");
+  fs.mkdirSync(path.join(pkgDir, "voiceover_lines"), { recursive: true });
+  fs.writeFileSync(path.join(pkgDir, "script.md"), "A line of the story.\n", "utf8");
+  fs.writeFileSync(
+    path.join(pkgDir, "voiceover_lines", "0123456789abcdef.json"),
+    JSON.stringify({ voiceKey: `vcd:${FAKE_OWNER_VOICE_ID}:hi|lex=0123abcd|stretch=1.2` }),
+    "utf8",
+  );
+  const childEnv = voiceOfChoiceChildEnv();
+  const previousOptions = process.env.NODE_OPTIONS;
+  process.env.NODE_OPTIONS = childEnv.NODE_OPTIONS;
+  let server: Awaited<ReturnType<typeof startEditor>> | undefined;
+  try {
+    server = await startEditor(videosDir);
+    const response = await fetch(new URL("/api/narration/hindi-detect", server.url), { headers: { origin: new URL(server.url).origin } });
+    assert.equal(response.status, 200);
+    assert.equal(((await response.json()) as { projectVoice?: string }).projectVoice, "vcd-my-voice-hi");
   } finally {
     if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = previousOptions;
