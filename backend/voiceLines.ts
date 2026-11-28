@@ -73,10 +73,14 @@ export function pacedVoiceKey(voiceKey: string, stretch: number): string {
   return Math.abs(stretch - 1) < 1e-6 ? voiceKey : `${voiceKey}${STRETCH_KEY_MARK}${stretch}`;
 }
 
-/** The voice key a line was recorded with, without any re-pacing suffix (to recognise the voice itself). */
+/** Separates a voice key from the pronunciation lexicon digest it was recorded under. */
+export const LEXICON_KEY_MARK = "|lex=";
+
+/** The voice key a line was recorded with, without its re-pacing suffix or lexicon digest (to recognise the voice itself). */
 export function unpacedVoiceKey(voiceKey: string): string {
   const at = voiceKey.lastIndexOf(STRETCH_KEY_MARK);
-  return at < 0 ? voiceKey : voiceKey.slice(0, at);
+  const paced = at < 0 ? voiceKey : voiceKey.slice(0, at);
+  return paced.replace(/\|lex=[0-9a-f]+/, "");
 }
 
 /**
@@ -165,7 +169,7 @@ export function writeLine(pkgDir: string, fingerprint: string, voiceKey: string,
 
 /**
  * Deletes this voice's recordings that no current line uses, so edited-away lines and re-paced leftovers do not pile up on disk.
- * "This voice" means the same voice whatever stretch rate it was recorded at (unpacedVoiceKey equality), so switching the
+ * "This voice" means the same voice whatever stretch rate or pronunciation lexicon it was recorded at (unpacedVoiceKey equality), so switching the
  * stretch rate retires the recordings made at the other rate, including the plain-key ones made before stretching existed.
  * The cost: flipping back and forth between rates re-records the lines each time. Another voice, or the same voice under
  * another take selection, has another unpaced key and is never touched.

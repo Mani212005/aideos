@@ -196,3 +196,30 @@ test("Studio /api/generate-voiceover writes the voice that spoke as narration.js
     fs.rmSync(videosDir, { recursive: true, force: true });
   }
 });
+
+test("Studio narration status still detects a Hindi project whose stored line key carries a lexicon digest", async () => {
+  const videosDir = path.resolve(".tmp", `hindi-detect-${process.pid}`);
+  const pkgDir = path.join(videosDir, "hindi-detect");
+  fs.mkdirSync(path.join(pkgDir, "voiceover_lines"), { recursive: true });
+  fs.writeFileSync(path.join(pkgDir, "script.md"), "A line of the story.\n", "utf8");
+  fs.writeFileSync(
+    path.join(pkgDir, "voiceover_lines", "0123456789abcdef.json"),
+    JSON.stringify({ voiceKey: `vcd:${FAKE_OWNER_VOICE_ID}:hi|lex=0123abcd|stretch=1.2` }),
+    "utf8",
+  );
+  const childEnv = voiceOfChoiceChildEnv();
+  const previousOptions = process.env.NODE_OPTIONS;
+  process.env.NODE_OPTIONS = childEnv.NODE_OPTIONS;
+  let server: Awaited<ReturnType<typeof startEditor>> | undefined;
+  try {
+    server = await startEditor(videosDir);
+    const response = await fetch(new URL("/api/narration/hindi-detect", server.url), { headers: { origin: new URL(server.url).origin } });
+    assert.equal(response.status, 200);
+    assert.equal(((await response.json()) as { projectVoice?: string }).projectVoice, "vcd-my-voice-hi");
+  } finally {
+    if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previousOptions;
+    server?.stop();
+    fs.rmSync(videosDir, { recursive: true, force: true });
+  }
+});

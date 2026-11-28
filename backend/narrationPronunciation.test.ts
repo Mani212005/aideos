@@ -27,8 +27,8 @@ import {
   verifyPronunciationTranscript,
   type PronunciationEntry,
 } from "./narrationPronunciation";
-import { lexiconVoiceKey, lineVoiceKey, plainVoiceKey, produceAudioPipeline } from "./audio";
-import { pacedVoiceKey } from "./voiceLines";
+import { lexiconVoiceKey, lineVoiceKey, produceAudioPipeline } from "./audio";
+import { pacedVoiceKey, unpacedVoiceKey } from "./voiceLines";
 import { PCM_SAMPLE_RATE, type TtsBackend } from "./tts";
 import { spawnSyncBounded } from "./proc";
 
@@ -174,8 +174,8 @@ test("produceAudioPipeline: speaks lexicon spoken forms, preserves written capti
     assert.notEqual(lineVoiceKey(backend, 1), lineVoiceKey(backend, 1, undefined, merged));
     // The Studio keys its line recordings the same way and can still recover the plain voice from a recorded key.
     assert.notEqual(lexiconVoiceKey("vcd:v:auto", DEFAULT_PRONUNCIATION_LEXICON), lexiconVoiceKey("vcd:v:auto", merged));
-    assert.equal(plainVoiceKey(pacedVoiceKey(lexiconVoiceKey("vcd:v:auto", merged), 1.2)), "vcd:v:auto");
-    assert.equal(plainVoiceKey("vcd:v:auto"), "vcd:v:auto");
+    assert.equal(unpacedVoiceKey(pacedVoiceKey(lexiconVoiceKey("vcd:v:auto", merged), 1.2)), "vcd:v:auto");
+    assert.equal(unpacedVoiceKey("vcd:v:auto"), "vcd:v:auto");
   } finally {
     fs.rmSync(pkg, { recursive: true, force: true });
   }

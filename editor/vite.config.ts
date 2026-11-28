@@ -38,7 +38,7 @@ import type { Film } from '../src/dl/schema.ts'
 import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { CorruptFilmError, readFilm, readStoredFilm, writeFilm as writeStoredFilm, type WriteFilmOptions } from '../backend/pipeline/filmStore.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../backend/videoPackageLoader.ts'
-import { DEFAULT_PRONUNCIATION_LEXICON, isNarrationDeliveryError, lexiconVoiceKey, plainVoiceKey, verifyAndPublishNarration, splitSentencesForTTS, stripSpokenMarkup, toSpokenForm, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
+import { DEFAULT_PRONUNCIATION_LEXICON, isNarrationDeliveryError, lexiconVoiceKey, verifyAndPublishNarration, splitSentencesForTTS, stripSpokenMarkup, toSpokenForm, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
@@ -1883,7 +1883,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               // Lines another voice spoke because the requested one failed, so the studio can say so.
               for (const line of lineResult.lines) {
                 if (line.voiceKey === requestedLineKey) continue;
-                const voiceName = plainVoiceKey(line.voiceKey);
+                const voiceName = unpacedVoiceKey(line.voiceKey);
                 const entry = otherVoices.find((v) => v.voice === voiceName);
                 if (entry) entry.lines += 1;
                 else otherVoices.push({ voice: voiceName, lines: 1 });
@@ -1936,7 +1936,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                       words: absoluteWords,
                       wordsPath: path.join(pkgDir, 'voiceover_words.json'),
                       // The voice that actually spoke (not the requested one) is the narrator of record.
-                      ttsBackend: narratingVoiceKey(lineResult.lines.map((line) => ({ voiceKey: plainVoiceKey(line.voiceKey) })), cacheVoiceKey),
+                      ttsBackend: narratingVoiceKey(lineResult.lines, cacheVoiceKey),
                       voice: resolvedVcdVoiceId,
                       speed: null,
                       lines: { recorded: lineSummary.recorded, reused: lineSummary.reused },

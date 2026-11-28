@@ -24,7 +24,7 @@ import { type Film, parseFilm } from "../src/dl/schema";
 import { buildAtempoFilter, getRetimedAudioFilename } from "../src/dl/audio/retime";
 import { assertScriptReadyForSynthesis, detectChapterStartsFromScript, extractSpokenBlocks, hasScreenplayTags, plainTextToTaggedScript } from "./scriptIntake";
 import type { ScriptIssue } from "./screenplayLines";
-import { pacedVoiceKey, synthesizeLines, unpacedVoiceKey } from "./voiceLines";
+import { LEXICON_KEY_MARK, pacedVoiceKey, synthesizeLines } from "./voiceLines";
 import { takesVoiceKey, withTakes, type TakeChoice, type TakeSelector, type TakeSynthesizer } from "./narrationTakes";
 import { createTtsBackend, PCM_SAMPLE_RATE, type TtsBackend, type TtsBackendName } from "./tts";
 import type { VcdLanguagePreference } from "./vcdClient";
@@ -340,19 +340,9 @@ export function lineStretchFor(backend: Pick<TtsBackend, "speed">, narrationRate
   return backend.speed === undefined ? rate : 1;
 }
 
-/** Separates a voice key from the pronunciation lexicon digest it was recorded under. */
-const LEXICON_KEY_MARK = "|lex=";
-
 /** Tags a voice key with the active pronunciation lexicon digest, so a line spoken under other pronunciation rules is a different recording. */
 export function lexiconVoiceKey(voiceKey: string, lexicon: readonly PronunciationEntry[] = DEFAULT_PRONUNCIATION_LEXICON): string {
   return `${voiceKey}${LEXICON_KEY_MARK}${lexiconFingerprint(lexicon)}`;
-}
-
-/** The voice itself behind a recorded line key: no re-pacing suffix and no lexicon tag. */
-export function plainVoiceKey(voiceKey: string): string {
-  const bare = unpacedVoiceKey(voiceKey);
-  const at = bare.lastIndexOf(LEXICON_KEY_MARK);
-  return at < 0 ? bare : bare.slice(0, at);
 }
 
 /**
