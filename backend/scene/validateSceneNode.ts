@@ -25,16 +25,6 @@ function resolveAssetPath(svgSource: string): string {
   return resolveRepoAssetPath(svgSource);
 }
 
-/** Reads an asset's SVG off disk and returns the element ids it declares, or null if unreadable. */
-export function readAssetElementIds(svgSource: string): string[] | null {
-  try {
-    const content = fs.readFileSync(resolveAssetPath(svgSource), "utf8");
-    return collectSvgElementIds(parseSvgDocument(content));
-  } catch {
-    return null;
-  }
-}
-
 /** Validates a scene including every filesystem-backed check the pure validator cannot make. */
 export function validateSceneWithNodeAssets(sceneInput: Scene): ValidationResult {
   const result = pureValidateScene(sceneInput);

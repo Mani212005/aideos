@@ -1,6 +1,6 @@
 /**
  * File Description: Canonical JSON and content hash for character specs.
- * Inputs and outputs: parsed (defaulted) CharacterSpec -> canonical text, sha256 identity and stamped copy.
+ * Inputs and outputs: parsed (defaulted) CharacterSpec -> canonical text and sha256 identity.
  * Used by: character validation, the character CLI's --stamp, design compilation and stage verification.
  */
 import { sha256Hex } from "./sha256";
@@ -22,11 +22,6 @@ export function characterHash(spec: CharacterSpec): string {
   const { hash: _ignored, ...content } = spec;
   void _ignored;
   return sha256Hex(canonicalJson(content));
-}
-
-// Returns a copy of the spec carrying its current content hash.
-export function stampCharacter(spec: CharacterSpec): CharacterSpec {
-  return { ...spec, hash: characterHash(spec) };
 }
 
 // Names the rig a character exposes to actions: its id and version, e.g. "iona-v1".

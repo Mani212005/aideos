@@ -57,11 +57,6 @@ export function resolveMetric(spec: TwoMethodSpec): Metric {
   return { ...base, status: "unresolved", value: null, delta, seedEligible: false, reason: `the two methods disagree by ${delta} ${spec.unit} (${tolerance} allowed); both readings are kept, the metric is excluded from the seed` };
 }
 
-// Builds a metric only one method can measure: recorded for information, never seeds a look.
-export function singleMethodMetric(spec: { id: string; label: string; unit: string; reading: MethodReading; reason: string }): Metric {
-  return { id: spec.id, label: spec.label, unit: spec.unit, status: "single-method", value: spec.reading.value === null ? null : round(spec.reading.value), methods: [roundReading(spec.reading)], tolerance: null, delta: null, seedEligible: false, reason: spec.reason };
-}
-
 // Builds a metric read from container metadata or the audio track by one named method (no pixel claim), which may seed a look.
 export function notPixelMetric(spec: { id: string; label: string; unit: string; reading: MethodReading }): Metric {
   const ok = spec.reading.value !== null;
