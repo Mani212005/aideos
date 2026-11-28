@@ -1,7 +1,7 @@
 /**
  * File Description: Mark-and-sweep garbage collection of the content store. Mark: every object an unfinished task reads and the newest output of each film, format and profile (live films keep it, other films for a time limit); superseded outputs and the inputs of dead tasks are not marked. Sweep: remove every unmarked object not touched within a grace period, re-checking the object's time right before the removal so an object a submitter just reused is never lost. A live object is never removed.
  * Inputs and outputs: the store, the queue, the live films and the limits -> the removed objects and a report.
- * Used by: scripts/farm.ts, backend/farm/loadTest.ts and the farm tests.
+ * Used by: backend/farm/worker.ts, scripts/farm.ts and the farm tests.
  */
 
 import fs from "node:fs";

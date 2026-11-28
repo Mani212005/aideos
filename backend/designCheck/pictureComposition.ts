@@ -1,7 +1,7 @@
 /**
  * File Description: The design check's rules for SVG drawn together with pictures (the illustrated stage's composition): a callout (an SVG group marked `data-callout="<picture asset id>"`) must keep its anchor (the element marked `data-anchor="true"`) on that picture's visible, alpha-trimmed box whenever the picture shows, even while the picture moves; a callout's leader lines and arrows must keep non-text contrast against the picture under them; and a picture drawn above an SVG label or callout must not hide it. Geometry comes from the compiled scene (element states, layer order), pixels from the pinned picture files, the same way the label contrast rule measures them.
  * Inputs and outputs: a parsed film, its scene, the compiled scene and the formats to check -> design findings naming the asset, callout or label, the frame and the measured value.
- * Used by: backend/designCheck/designCheck.ts, backend/designCheck/pictureComposition.test.ts.
+ * Used by: backend/designCheck/designCheck.ts.
  */
 
 import { DEFAULT_FPS } from "../../src/dl/defaults";

@@ -6,8 +6,8 @@
  * detected silences for unwanted pauses inside a sentence.
  * Inputs and outputs: narration text, PCM samples, timed words and silence intervals -> sentence chunks,
  * compacted PCM samples, and NarrationFlowReport pass/fail results.
- * Used by: backend/audio.ts, backend/pcm.ts, backend/review/speech.ts, backend/review/criteria.ts,
- * editor/vite.config.ts, backend/narrationFlow.test.ts.
+ * Used by: backend/audio.ts, backend/pcm.ts, backend/review/speech.ts, backend/review/thresholds.ts,
+ * backend/narrationFlow.test.ts.
  */
 
 import { ACTIVITY_FRAME_SEC, SPEECH_FLOOR_DB, activeRunsFromLevels } from "../src/dl/audio/voiceActivity";

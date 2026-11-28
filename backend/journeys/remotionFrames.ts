@@ -1,7 +1,7 @@
 /**
  * File Description: Renders exact PNG frames of a film through Remotion's Node API (one bundle, one browser) so journeys and golden tests can compare lossless pixels instead of H.264. Offers a cold single-frame still and a concurrent image sequence, which is how a frame rendered out of order is checked against the same frame rendered alone.
  * Inputs and outputs: a film slug, composition (Long or Reel), frame numbers -> PNG files on disk; every temp bundle, public dir and browser is released by close().
- * Used by: backend/journeys/*.journey.ts, backend/journeys/legacy.golden.ts, scripts/nightly_budget.ts.
+ * Used by: backend/journeys/*.journey.ts, backend/journeys/legacy.golden.ts, backend/journeys/playerFrames.ts.
  */
 
 import fs from "node:fs";

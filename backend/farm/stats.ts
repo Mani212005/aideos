@@ -1,7 +1,7 @@
 /**
  * File Description: Small statistics helpers for farm metrics: nearest-rank percentiles and a distribution summary.
  * Inputs and outputs: a list of numbers -> a percentile or a Distribution (count, mean, p50, p95, max).
- * Used by: backend/farm/sqliteQueue.ts, backend/farm/loadTest.ts, backend/farm/metrics.ts.
+ * Used by: backend/farm/sqliteQueue.ts, backend/farm/loadTest.ts.
  */
 
 import type { Distribution } from "./queue";

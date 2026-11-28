@@ -8,7 +8,7 @@
  * browser bundle and Node agree. Node-only, with the file path injectable so tests never read the
  * real config.
  * Inputs and outputs: config file on disk or environment variables -> loaded AideosConfig object.
- * Used by: backend/modelClient.ts, backend/jev.ts, backend/geminiReview/geminiReview.ts, backend/designSpec/designer.ts.
+ * Used by: backend/geminiReview/geminiReview.ts, backend/designSpec/designer.ts, backend/allCheck/agent.ts, backend/reelCut/writer.ts, backend/narrationCleanup.ts, backend/tts.ts, backend/voiceSynthesis.ts, editor/vite.config.ts, scripts/releaseGateInputs.ts.
  */
 
 import { environment } from "./env";

@@ -1,7 +1,7 @@
 /**
  * File Description: The farm executor that renders one task with the existing RenderJob. It reads the stored film snapshot and Render IR, hands the native renderer the already staged package files instead of emitting again, and runs the shared lifecycle (preparing, rendering, mastering, probed, done) inside the worker's attempt directory. Delivery checks and audio retiming ran when the task was submitted, so they are off here.
  * Inputs and outputs: an ExecutionContext (task, attempt directory, local input paths) -> the rendered mp4 and its `.render.json` sidecar in the attempt directory.
- * Used by: scripts/farm.ts (worker command), backend/farm/loadTest.ts, backend/farm/farm.test.ts.
+ * Used by: scripts/farm.ts (worker command), backend/farm/farm.test.ts.
  */
 
 import fs from "node:fs";

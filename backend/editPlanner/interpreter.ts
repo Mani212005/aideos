@@ -5,7 +5,7 @@
  * adhering to Axiom 1 (pure data) and the single-commit undo contract.
  * Phase 3 additions: add_lower_third op for broadcast-style lower-third overlays.
  * Inputs and outputs: EditProgram and LayeredFilm -> applied edit operations or atomic rollback.
- * Used by: backend/editPlanner/index.ts, backend/mcp/server.ts.
+ * Used by: backend/editPlanner/index.ts, backend/editPlanner/validator.ts, editor/src/components/OnCanvasAiEditor.tsx.
  */
 
 import { DEFAULT_FPS } from "../../src/dl/defaults";

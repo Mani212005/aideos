@@ -5,7 +5,7 @@
  * with the asset path in the message when an asset is missing or will not parse.
  * Pictures (raster assets) are checked against their pinned file and given a file:// URL for still renders.
  * Inputs and outputs: asset directory and scene manifest -> loaded and validated SVG asset sources and picture URLs.
- * Used by: backend/pipeline/run.ts, backend/scene/renderStill.ts, backend/nativeRenderer.ts, still and preview callers.
+ * Used by: backend/nativeRenderer.ts, backend/visionJudge/sampler.ts, test_fixtures/stillTalking/buildFilm.ts and the scene tests.
  */
 
 import fs from "node:fs";

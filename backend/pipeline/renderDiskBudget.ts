@@ -1,7 +1,7 @@
 /**
  * File Description: The render disk guard. Remotion writes every frame of a format to the temp dir as a PNG before it stitches the mp4, so a long render can fill the disk. The guard renders real PNG frames of the actual film, measures their bytes, and refuses the render only when frames x the largest sample x a safety factor, plus the encoded output estimate, plus a 3 GiB reserve, would not fit in the free space. A render whose frames could not fill the disk even at the largest PNG a frame can be (a hard bound, not a sample) skips the measuring.
  * Inputs and outputs: the film, a frame range, directories to check and (injectable) a sampler and statfs -> nothing when the render fits, or a RenderDiskError (RENDER_DISK_LOW) naming the sample, the estimate, the free space and the reserve.
- * Used by: backend/remotionRenderer.ts (every Remotion render job), backend/journeys/harness.test.ts, backend/journeys/j12_render_disk.journey.ts, docs/CI.md.
+ * Used by: backend/remotionRenderer.ts (every Remotion render job), backend/journeys/j12_render_disk.journey.ts, docs/CI.md.
  */
 
 import { runRenderCommand } from "../renderProcess";

@@ -4,7 +4,7 @@
  * ids before it lands, so a malformed asset is caught at write time rather than as a missing prop
  * halfway through a render.
  * Inputs and outputs: asset files and target directory -> validated, written SVG asset files.
- * Used by: test_fixtures/stillTalking/writeAssets.ts.
+ * Used by: backend/sceneKit/index.ts (the kit barrel).
  */
 
 import * as fs from "fs";

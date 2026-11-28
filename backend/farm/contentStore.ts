@@ -1,7 +1,7 @@
 /**
  * File Description: The content-addressed store of the farm and the bounded worker cache built on it. Objects are read-only files named by the SHA-256 of their bytes (`objects/ab/<digest>`), written through `tmp/` and renamed into place, so a put is atomic and a repeat is a no-op. The cache fetches objects from any BlobSource (the seam for a future object store), verifies each digest on the way in and evicts least recently used objects above a byte bound.
  * Inputs and outputs: bytes, files and streams -> digests and object paths; a digest and a BlobSource -> a verified local file; a byte bound -> evicted objects.
- * Used by: backend/farm/worker.ts, backend/farm/gc.ts, backend/farm/janitor.ts, backend/farm/submit.ts, backend/farm/renderExecutor.ts, scripts/farm.ts.
+ * Used by: backend/farm/worker.ts, backend/farm/gc.ts, backend/farm/janitor.ts, backend/farm/submit.ts, backend/farm/loadTest.ts, backend/farm/metrics.ts, scripts/farm.ts.
  */
 
 import { createHash, randomBytes } from "node:crypto";

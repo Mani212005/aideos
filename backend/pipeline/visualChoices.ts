@@ -5,7 +5,7 @@
  * and whether the chart's data was authored or why it was refused. The studio reads it to explain
  * a shot ("why this visual") and to offer the runner-ups as swaps.
  * Inputs and outputs: shot visual selections and confidence metrics -> persisted visual-choices.json.
- * Used by: backend/pipeline/design.ts.
+ * Used by: backend/designSpec/build.ts, backend/designSpec/shotTools.ts, backend/lookPlan/contract.ts, backend/pipeline/run.ts.
  */
 
 import fs from "node:fs";

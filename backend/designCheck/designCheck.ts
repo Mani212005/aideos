@@ -12,7 +12,7 @@
  * composed with pictures: callout anchors on the picture, no label hidden under a picture, leader contrast (pictureComposition.ts),
  * and the voice of choice (a package narrated by another voice than the owner's cloned voice fails unless overridden).
  * Inputs and outputs: Film or Scene data -> standard-layer design rule violations and warnings.
- * Used by: backend/cli.ts, backend/pipeline/run.ts, backend/designSpec/build.ts, backend/reelCut/build.ts.
+ * Used by: backend/cli.ts, backend/designSpec/build.ts, backend/designSpec/brief.ts, backend/designSpec/soundtrackStudio.ts, backend/designCheck/captionPlacementDraft.ts, backend/mcp/designTools.ts, backend/reelCut/build.ts, backend/reelCut/motion.ts, editor/src/components/ReelPanel.tsx.
  */
 
 import { REPO_ROOT as repositoryRoot } from "../paths";

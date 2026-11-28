@@ -6,8 +6,7 @@
  * headless build machines have no audio output for manual listening.
  * Inputs and outputs: written narration text, optional custom lexicon, WAV path or injected transcriber ->
  * spoken-form text, cache key digest, and PronunciationCheckReport pass/fail/skipped verdict.
- * Used by: backend/audio.ts, backend/voiceLines.ts, backend/pipeline/run.ts, editor/vite.config.ts,
- * backend/narrationPronunciation.test.ts.
+ * Used by: backend/audio.ts, backend/pipeline/run.ts, backend/narrationPronunciation.test.ts.
  */
 
 import { createHash } from "node:crypto";

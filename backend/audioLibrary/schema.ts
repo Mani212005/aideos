@@ -1,7 +1,7 @@
 /**
  * File Description: Schema and type definitions for the committed aideos.audio-library/1 manifest.
  * Inputs and outputs: Raw JSON or manifest data -> validated AudioLibrary data structure.
- * Used by: backend/audioLibrary/library.ts, backend/audioLibrary/cli.ts, backend/cli.ts.
+ * Used by: backend/audioLibrary/library.ts, backend/audioLibrary/musicProfile.ts, backend/defaultSoundtrack.ts, backend/musicSelector.ts, backend/designCheck/types.ts, scripts/release.ts.
  */
 
 import { z } from "zod";
