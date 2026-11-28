@@ -38,7 +38,7 @@ import type { Film } from '../src/dl/schema.ts'
 import { decideSave, filmRevision, revisionOfFilm } from '../backend/filmRevision.ts';
 import { CorruptFilmError, readFilm, readStoredFilm, writeFilm as writeStoredFilm, type WriteFilmOptions } from '../backend/pipeline/filmStore.ts';
 import { getVideosDir, getExamplesDir, listVideoPackages, resolvePackageDir } from '../backend/videoPackageLoader.ts'
-import { DEFAULT_PRONUNCIATION_LEXICON, isNarrationDeliveryError, verifyAndPublishNarration, splitSentencesForTTS, stripSpokenMarkup, toSpokenForm, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
+import { DEFAULT_PRONUNCIATION_LEXICON, isNarrationDeliveryError, lexiconVoiceKey, plainVoiceKey, verifyAndPublishNarration, splitSentencesForTTS, stripSpokenMarkup, toSpokenForm, trimSilence, resolveAudioSourcePath, buildCaptionsVtt } from '../backend/audio.ts'
 import { setActiveFilm } from '../backend/pipeline/generatedFiles.ts';
 import { ensureEndCardVoice } from '../backend/endCard/voice.ts'
 import { createExportJobs } from '../backend/exportJobs.ts'
@@ -1197,7 +1197,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 );
               }
             }
-            const recorded = recordedStatus(pkgDir, lines, pacedVoiceKey(cacheVoiceKey, NARRATION_RATE));
+            const recorded = recordedStatus(pkgDir, lines, pacedVoiceKey(lexiconVoiceKey(cacheVoiceKey, DEFAULT_PRONUNCIATION_LEXICON), NARRATION_RATE));
             sendJson(res, 200, {
               ok: true,
               revision: createHash('sha1').update(text).digest('hex').slice(0, 12),
@@ -1816,6 +1816,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
             let resolvedVcdLanguage: VcdLanguagePreference | undefined;
             let cacheVoiceKey = requestedVoiceKey(voice);
             let assembledShotDurations: number[] | undefined;
+            let narrationChecks: Awaited<ReturnType<typeof verifyAndPublishNarration>> | undefined;
             const isClonedVoice = isVcdStudioVoice(voice);
 
             try {
@@ -1846,11 +1847,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 const sentences = splitSentencesForTTS(text, 1800);
                 const chunks: Array<{ text: string; samples: Float32Array }> = [];
                 let sampleRate = 24000;
-                let actualVoiceKey = cacheVoiceKey;
+                let actualVoiceKey = lexiconVoiceKey(cacheVoiceKey, DEFAULT_PRONUNCIATION_LEXICON);
                 for (const sentence of sentences) {
                   const spoken = await synthesizeVoiceover(
                     {
-                      text: toSpokenForm(sentence),
+                      text: toSpokenForm(sentence, DEFAULT_PRONUNCIATION_LEXICON),
                       voice,
                       ...(resolvedVcdUrl ? { vcdUrl: resolvedVcdUrl } : {}),
                       ...(resolvedVcdVoiceId ? { vcdVoiceId: resolvedVcdVoiceId } : {}),
@@ -1864,7 +1865,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   );
                   const wav = decodeWav(spoken.wav);
                   sampleRate = wav.sampleRate;
-                  actualVoiceKey = spoken.provider === 'vcd' ? cacheVoiceKey : spoken.voiceKey;
+                  actualVoiceKey = lexiconVoiceKey(spoken.provider === 'vcd' ? cacheVoiceKey : spoken.voiceKey, DEFAULT_PRONUNCIATION_LEXICON);
                   // Studio voices have no speaking-rate setting here, so every sentence is re-paced to the house rate.
                   chunks.push({
                     text: stripSpokenMarkup(sentence),
@@ -1876,13 +1877,13 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                   voiceKey: pacedVoiceKey(actualVoiceKey, NARRATION_RATE),
                 };
               };
-              const requestedLineKey = pacedVoiceKey(cacheVoiceKey, NARRATION_RATE);
+              const requestedLineKey = pacedVoiceKey(lexiconVoiceKey(cacheVoiceKey, DEFAULT_PRONUNCIATION_LEXICON), NARRATION_RATE);
               const lineResult = await synthesizeLines({ pkgDir, texts: narrationLinesToSpeak, voiceKey: requestedLineKey, synthesize: recordLine });
               lineSummary = { total: lineResult.lines.length, recorded: lineResult.recorded, reused: lineResult.reused };
               // Lines another voice spoke because the requested one failed, so the studio can say so.
               for (const line of lineResult.lines) {
                 if (line.voiceKey === requestedLineKey) continue;
-                const voiceName = unpacedVoiceKey(line.voiceKey);
+                const voiceName = plainVoiceKey(line.voiceKey);
                 const entry = otherVoices.find((v) => v.voice === voiceName);
                 if (entry) entry.lines += 1;
                 else otherVoices.push({ voice: voiceName, lines: 1 });
@@ -1903,12 +1904,15 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
               const stagedPath = path.join(pkgDir, 'voiceover.pending.wav');
               fs.writeFileSync(stagedPath, encodeWav(normalized, rate));
               // The same last step the production pipeline runs: cleanup, then the gap and pronunciation checks on the final audio, then publish.
-              await verifyAndPublishNarration({
+              narrationChecks = await verifyAndPublishNarration({
                 stagedPath,
                 publishPath: publicPath,
                 segments: assembled.segments,
                 lexicon: DEFAULT_PRONUNCIATION_LEXICON,
               });
+              console.log(`[TTS] voice cleanup: ${narrationChecks.cleanup.summary}`);
+              console.log(`[TTS] flow check: ${narrationChecks.flowCheck.summary}`);
+              console.log(`[TTS] pronunciation check (${narrationChecks.pronunciationCheck.status}): ${narrationChecks.pronunciationCheck.reason ?? narrationChecks.pronunciationCheck.method}`);
 
               if (isClonedVoice) {
                 // Write word timings, WebVTT captions, and narration metadata so the master clock,
@@ -1932,10 +1936,11 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                       words: absoluteWords,
                       wordsPath: path.join(pkgDir, 'voiceover_words.json'),
                       // The voice that actually spoke (not the requested one) is the narrator of record.
-                      ttsBackend: narratingVoiceKey(lineResult.lines, cacheVoiceKey),
+                      ttsBackend: narratingVoiceKey(lineResult.lines.map((line) => ({ voiceKey: plainVoiceKey(line.voiceKey) })), cacheVoiceKey),
                       voice: resolvedVcdVoiceId,
                       speed: null,
                       lines: { recorded: lineSummary.recorded, reused: lineSummary.reused },
+                      ...narrationChecks,
                     },
                     null,
                     2,
@@ -2057,6 +2062,7 @@ function setupApiMiddlewares(server: { middlewares: any }): void {
                 actualDurationSec: measuredDuration,
                 ...(isClonedVoice ? { voice, voiceKey: cacheVoiceKey } : {}),
                 lines: lineSummary,
+                ...narrationChecks,
                 otherVoices,
                 intakeNotices,
                 shots: updatedShots,
