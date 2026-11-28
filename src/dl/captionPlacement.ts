@@ -51,14 +51,6 @@ export const REEL_ACTION_ZONE = {
 import type { CaptionRect } from "./fullScreenHeroLayout";
 export type { CaptionRect } from "./fullScreenHeroLayout";
 export { captionCardHeight };
-// Returns the default caption placement for a format.
-export function defaultCaptionPlacement(format: CaptionFormat = "long"): CaptionPlacement {
-  return DEFAULT_CAPTION_PLACEMENT_BY_FORMAT[format];
-}
-// Returns the default caption envelope width fraction for a format.
-export function defaultCaptionPlacementWidth(format: CaptionFormat = "long"): number {
-  return DEFAULT_CAPTION_PLACEMENT_WIDTH_BY_FORMAT[format];
-}
 // Keeps absent widths content-sized while reserving the default envelope for editor and collision geometry.
 export function resolveCaptionCardWidth(
   placement: CaptionPlacement & { source?: ResolvedCaptionPlacement["source"] },

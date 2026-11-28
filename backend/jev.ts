@@ -166,11 +166,6 @@ export function setMockJevHandler(handler: typeof activeMockHandler): void {
   activeMockHandler = handler;
 }
 
-// Gets the active mock handler for Jev decisions.
-export function getMockJevHandler(): typeof activeMockHandler {
-  return activeMockHandler;
-}
-
 // Clears the active mock handler.
 export function clearMockJevHandler(): void {
   activeMockHandler = null;
@@ -690,11 +685,6 @@ let activeShotVisualMockHandler:
 // Sets a mock handler for shot-visual decisions in tests.
 export function setMockShotVisualHandler(handler: typeof activeShotVisualMockHandler): void {
   activeShotVisualMockHandler = handler;
-}
-
-// Gets the active mock handler for shot-visual decisions.
-export function getMockShotVisualHandler(): typeof activeShotVisualMockHandler {
-  return activeShotVisualMockHandler;
 }
 
 // Clears the active mock handler for shot-visual decisions.
@@ -1256,11 +1246,6 @@ function parseFrameVerdictAnswer(val: unknown, frameKey: string, suggestionKey: 
     }
   }
   return { choice: verdict.choice as FrameVerdict, confidence: verdict.confidence, probabilities: verdict.probabilities, suggestions };
-}
-
-// Parses the JSON response for a single frame-verdict request.
-export function parseFrameVerdictResponse(val: unknown, suggestionCount = 0): FrameVerdictAnswer {
-  return parseFrameVerdictAnswer(val, "frameVerdict", (j) => `suggestion${j}`, suggestionCount);
 }
 
 // Rates one suggestion deterministically: concrete text tied to a real defect is accepted, filler is rejected.

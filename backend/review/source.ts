@@ -502,9 +502,3 @@ export function loadFilmFacts(filmJson: string, viewport?: ReviewViewport): { fi
   }
   return { film, facts };
 }
-
-// Resolves a file next to a film's folder (voiceover words), or null when it is not there.
-export function siblingFile(filmJson: string, name: string): string | null {
-  const p = path.join(path.dirname(filmJson), name);
-  return fs.existsSync(p) ? p : null;
-}
