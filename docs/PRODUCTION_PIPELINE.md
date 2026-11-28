@@ -298,8 +298,8 @@ written spellings untouched in `captions.vtt`, `voiceover_words.json` and `narra
 stored under `videos/<slug>/voiceover_lines/` keyed by a content fingerprint (its words plus the voice, speed,
 pronunciation lexicon digest, chunk limit and sample rate; see `backend/voiceLines.ts`), so regenerating voice-over
 re-records only changed lines (or lines affected by a lexicon update) and reuses every other recording untouched.
-Recordings no current line uses are pruned for the same voice at any time-stretch rate, so switching the rate retires
-the other rate's recordings (and re-records the lines if you switch back). Trimming, engine mid-sentence pause
+Recordings no current line uses are pruned for the same voice at any time-stretch rate or lexicon digest, so switching the rate
+retires the other rate's recordings (and re-records the lines if you switch back). Trimming, engine mid-sentence pause
 compaction (`compactInternalPauses`), boundary fades, gap insertion and peak normalization all happen on samples rather
 than on encoded files, so the reported segment and sentence offsets are exact and nothing is stitched across a
 sample-rate or channel-layout mismatch. After loudness normalization, local post-synthesis voice cleanup (`applyNarrationCleanup` in
@@ -318,7 +318,8 @@ how every lexicon word is verified before delivery) and fails with `Pronunciatio
 misheard or missing (a missing local Whisper engine fails plainly naming `AIDEOS_STT_PYTHON`; `AIDEOS_PRONUNCIATION_CHECK=off`
 turns the check off and is recorded as `disabled`; the speechless tone backend is recorded as `not_applicable`). Cleanup that
 changes the narration length by more than 0.05 s fails, and the narration is published to `voiceover.wav` only after cleanup
-and both checks pass; the Studio `/api/generate-voiceover` route runs the same `verifyAndPublishNarration` step. The
+and both checks pass; the Studio `/api/generate-voiceover` route runs the same `verifyAndPublishNarration` step and returns its
+`cleanup`, `flowCheck` and `pronunciationCheck` reports in the 200 response (and in `narration.json` for the cloned voice). The
 default pause is 170 ms between narration segments and 750 ms before a segment that opens a new
 chapter (the [house pace](GOOD_VIDEO.md#house-pace) gaps, `HOUSE_PACE` in `src/dl/pacingProfile.ts`). For tagged screenplays, chapter boundaries are inferred from narration-bearing sections;
 scene-film voiceover beats can provide chapter names explicitly. Both pause lengths and explicit
