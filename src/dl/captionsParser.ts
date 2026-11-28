@@ -1,7 +1,7 @@
 /**
  * File Description: Synchronizes speech audio (.wav) and script (.vtt) with Remotion frame rates, generating word-level timestamps and kinetic display phrases.
  * Inputs and outputs: WebVTT caption string and FPS -> parsed CaptionWord list with frame-level timing.
- * Used by: src/dl/Film.tsx, backend/captionsParser.test.ts.
+ * Used by: src/dl/Video.tsx, src/dl/convertFilm.ts, backend/renderIr/emit.ts, backend/designCheck/captionPlacement.ts, backend/designSpec/compile.ts, editor/src/screens/EditStage.tsx, editor/src/components/captions/captionWordEdit.ts, backend/captionsParser.test.ts.
  */
 
 import { DEFAULT_FPS } from "./defaults";

@@ -4,7 +4,7 @@
  * with every studio API request, which is how the server knows a task may go to the owner's
  * connected agent. Installed once, as a fetch wrapper, so no call site has to remember it.
  * Inputs and outputs: owner key and studio fetch calls -> the key kept in localStorage and an X-Aideos-Owner header on every studio API request.
- * Used by: editor/src/App.tsx, editor/src/components/shell/AgentSheet.tsx.
+ * Used by: editor/src/main.tsx, editor/src/components/shell/AgentSheet.tsx, backend/agentLink/agentLink.test.ts.
  */
 
 const OWNER_KEY_STORAGE = "aideos.ownerKey";

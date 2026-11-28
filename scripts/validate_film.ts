@@ -4,7 +4,7 @@
  * prints its runsheet bar chart: one row per shot with its move, length, stage kind, device and look target.
  * Usage: tsx scripts/validate_film.ts [path/to/film.json | path/to/film.ts]
  * Inputs and outputs: optional film path -> validation verdict and formatted runsheet; exit 1 on an invalid film.
- * Used by: npm run validate, npm run validate:film, bin/aideos validate, backend/cli.ts.
+ * Used by: npm run validate, npm run validate:film, bin/aideos validate, scripts/ci.ts.
  */
 
 import { callerWorkingDirectory } from "../backend/paths";
