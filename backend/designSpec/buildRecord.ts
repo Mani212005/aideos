@@ -3,7 +3,7 @@
  * Design waiters accept a passing build that carries their request id; the input hash is recorded as
  * information, hashed from authored inputs only. A build on identical inputs can retain the previous request attribution. Look-plan delivery uses content digests for detection.
  * Inputs and outputs: film id and request kind -> request pointer, input hash, content digest.
- * Used by: backend/designSpec/build.ts, backend/designSpec/designer.ts, backend/designSpec/motionRequests.ts, backend/reelCut/writer.ts.
+ * Used by: backend/designSpec/build.ts, backend/designSpec/designer.ts, backend/designSpec/motionRequests.ts, backend/reelCut/build.ts.
  */
 
 import crypto from "node:crypto";

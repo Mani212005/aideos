@@ -16,8 +16,8 @@
  * ACCEPT alone, and one that averages 8.4 is REVISE alone, in both cases with a single scored draw.
  * Inputs and outputs: criteria evaluations or per-draw scores -> a draw score, whether a second draw is needed, the
  * combined score and verdict, and the plain-words description of how many draws ran.
- * Used by: backend/geminiReview/geminiReview.ts, backend/allCheck/round.ts, backend/allCheck/cli.ts, backend/allCheck/index.ts,
- * backend/allCheck/finish.ts, backend/filmAcceptance/machine.ts.
+ * Used by: backend/geminiReview/geminiReview.ts, backend/geminiReview/index.ts, backend/allCheck/cli.ts,
+ * backend/allCheck/index.ts, backend/allCheck/finish.ts, backend/filmAcceptance/checkView.ts, scripts/releaseGateInputs.ts.
  */
 
 import type { CriterionEvaluation } from "./types";

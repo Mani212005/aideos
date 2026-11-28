@@ -4,7 +4,7 @@
  * referenced entity integrity, and a dry-run simulation against validateLayeredFilm.
  * Enforces the "add the rule to the validator, not just the prompt" principle.
  * Inputs and outputs: EditProgram and LayeredFilm -> semantic validation result and diagnostics.
- * Used by: backend/editPlanner/planner.ts, backend/editPlanner/interpreter.ts.
+ * Used by: backend/editPlanner/planner.ts, backend/editPlanner/index.ts.
  */
 
 import { DEFAULT_FPS } from "../../src/dl/defaults";

@@ -7,7 +7,7 @@
  * clone. It is run by npm's postinstall and by the pre-hooks of every script that bundles them.
  * Deliberately free of the trace bus and the model clients so a bare install can run it.
  * Inputs and outputs: video package manifests and SVGs -> generated TypeScript shadow files.
- * Used by: scripts/ensure_generated.ts, backend/pipeline/run.ts, backend/pipeline/filmStore.ts, editor/vite.config.ts.
+ * Used by: scripts/ensure_generated.ts, scripts/render_active.ts, backend/pipeline/filmStore.ts, backend/reelCut/store.ts, backend/remotionRenderer.ts, backend/allCheck/best.ts, backend/lessons/verdict.ts, editor/vite.config.ts.
  */
 
 import { REPO_ROOT as repositoryRoot } from "../paths";

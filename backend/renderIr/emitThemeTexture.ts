@@ -1,7 +1,7 @@
 /**
  * File Description: The theme texture of the Render IR emitter (native renderer Phase 2, P2.4a): lowers the `blueprint-grid` and `subtle-dots` patterns `Film.tsx` draws under the canvas into one frame-sized SVG asset of explicit shapes, placed in the `aideos.render/7` underlay (frame space, under the stage) with the texture layer's opacity and the end card's slow push. A pattern tile in Chrome draws only what lies inside the tile, so a stroke centred on the tile's top and left edges keeps its inner half: the blueprint grid's 0.5 px minor lines are 0.25 px wide and its 1 px major lines 0.5 px wide, starting on the tile edge (measured against Chrome: SSIM 0.99997 over a whole frame, no pixel more than one level apart). The `paper-fibers` texture (P2.4b) is a turbulence lit by a distant light and then blended `multiply` with `SourceGraphic`, which is the rect's default black fill: black multiplied by anything is black, so Chrome draws no grain at all, only a black rect at the rect's 0.8 opacity in the 0.28 layer (measured: one flat colour over the whole frame on all three paper themes, 248,246,240 becoming 193,191,187); it is lowered to exactly that.
  * Inputs and outputs: a background theme, the frame size, the end card's push per frame and the last frame -> the texture's svg asset, its package file and its underlay node, or null for a theme without a lowered texture.
- * Used by: backend/renderIr/emit.ts (build), backend/journeys/theme_textures.journey.ts and scene_textures.journey.ts (through the emitter).
+ * Used by: backend/renderIr/emit.ts (build).
  */
 
 import type { BackgroundTheme } from "../../src/dl/tokens";

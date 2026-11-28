@@ -6,7 +6,7 @@
  * leaves it alone, and child renders and dev servers inherit it).
  * Inputs and outputs: AIDEOS_BUN_TEST_RUNNER and AIDEOS_BUN_TEST_NODE_ENV from scripts/bunTest.ts -> NODE_TEST_CONTEXT
  * and NODE_ENV of this test process (and of every child it spawns); the two marker variables are removed.
- * Used by: scripts/bunTest.ts (`bun test --preload`), before backend/testSupport/fixtureVideosDir.ts.
+ * Used by: scripts/bunTest.ts (`bun test --preload`, loaded ahead of the other preload).
  */
 
 // Loaded first on purpose: bun's node:test decides once, when it loads, whether to stream its events to a parent

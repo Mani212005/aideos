@@ -8,7 +8,7 @@
  * Writes only the single cleaned narration output (no plain-and-cleaned pair).
  * Inputs and outputs: generated narration WAV path, cleanup config/env -> cleaned WAV replacing input in place
  * (re-normalized to canonical PCM loudness), plus a structured NarrationCleanupReport.
- * Used by: backend/audio.ts, backend/pipeline/run.ts, editor/vite.config.ts, backend/narrationCleanup.test.ts.
+ * Used by: backend/audio.ts, backend/pipeline/run.ts, backend/narrationCleanup.test.ts.
  */
 
 import { createHash } from "node:crypto";

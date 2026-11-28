@@ -9,7 +9,7 @@
  *   just dropped, and ripples every other clip on the layer downstream.
  * - Transaction-grouped UpdateAction recording so one gesture is one undo step.
  * Inputs and outputs: LayeredFilm and layer edit actions -> updated LayeredFilm with rippled collision resolution.
- * Used by: backend/timeline/timeline.ts, editor/src/state/useLayeredTimeline.ts.
+ * Used by: editor/src/state/useLayeredTimeline.ts, editor/src/components/TimelineEditor.tsx, editor/src/components/ClipInspector.tsx, backend/editPlanner/interpreter.ts, backend/timeline/voiceover_engine.ts.
  */
 
 import { DEFAULT_FPS } from "../../src/dl/defaults";

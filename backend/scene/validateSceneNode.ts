@@ -5,7 +5,7 @@
  * still has its pinned sha256, and that every element id referenced by a rotating
  * sub-group (D1) or by a custom animation clip is actually declared in that SVG document.
  * Inputs and outputs: Scene data and asset directory -> filesystem existence checks and asset validation.
- * Used by: backend/pipeline/run.ts, backend/scene/loadSceneAssets.ts.
+ * Used by: backend/designCheck/designCheck.ts, test_fixtures/stillTalking/buildFilm.ts, backend/scene/scene.test.ts.
  */
 
 import fs from "fs";

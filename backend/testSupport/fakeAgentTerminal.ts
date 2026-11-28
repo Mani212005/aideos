@@ -4,7 +4,7 @@
  * UI is still folding the paste into its input), so the prompt sits unsent in the composer. Time is
  * virtual (`sleep` advances it) so a run is exact and instant.
  * Inputs and outputs: tmux argv from the dispatcher and a virtual clock -> tmux-like results plus a log of pastes, Enters and submissions.
- * Used by: backend/agentBridge/paneDelivery.test.ts, backend/agentBridge/agentBridge.test.ts.
+ * Used by: backend/agentBridge/paneDelivery.test.ts, backend/agentBridge/autoPrompt.test.ts.
  */
 
 import type { DispatchTmuxRun } from "../agentBridge/dispatcher";

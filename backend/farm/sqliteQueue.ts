@@ -1,7 +1,7 @@
 /**
  * File Description: The durable task queue on one SQLite file (WAL mode, `BEGIN IMMEDIATE` for every write), the one-machine implementation of TaskQueue. It holds state and queue in one transaction: leases with expiry, priorities (studio export, draft, review, batch final), fair share and a concurrency cap per owner, parking of batch work when the backlog is too old, three attempts with exponential backoff, dead-letter rows that carry the task log, and the counters behind the metrics.
  * Inputs and outputs: a database path and queue options -> a TaskQueue.
- * Used by: backend/farm/worker.ts, backend/farm/loadTest.ts, backend/farm/submit.ts, scripts/farm.ts and the farm tests.
+ * Used by: backend/farm/loadTest.ts, scripts/farm.ts and the farm tests.
  */
 
 import fs from "node:fs";

@@ -1,7 +1,7 @@
 /**
  * File Description: Audio library loader, item hashing, cache management, fetcher and verifier.
  * Inputs and outputs: audio/library.json and cache paths -> fetched and verified audio assets in .audio-library.
- * Used by: backend/audioLibrary/cli.ts, backend/cli.ts.
+ * Used by: backend/audioLibrary/cli.ts, backend/defaultSoundtrack.ts, backend/masterAudio.ts, backend/designCheck/soundtrack.ts, backend/designSpec/brief.ts, backend/designSpec/soundtrack.ts, backend/designSpec/soundtrackStudio.ts, editor/vite.config.ts, scripts/release.ts.
  */
 
 import { environment } from "../env";

@@ -1,7 +1,7 @@
 /**
  * File Description: The render task spec of the farm and its id. A task is one film in one format; its spec is the IR hash, the digest of every package asset, the format, the profile, the frame range and the renderer version. The task id is the SHA-256 of the canonical spec, so the same spec always has the same id and a repeat submission is a cache hit.
  * Inputs and outputs: a plain object -> a validated TaskSpec, its canonical JSON and its task id; priority class names -> ranks.
- * Used by: backend/farm/queue.ts, backend/farm/sqliteQueue.ts, backend/farm/submit.ts, backend/farm/worker.ts, backend/farm/renderExecutor.ts, scripts/farm.ts.
+ * Used by: backend/farm/queue.ts, backend/farm/sqliteQueue.ts, backend/farm/submit.ts, backend/farm/worker.ts, backend/farm/contentStore.ts, backend/farm/loadTest.ts, scripts/farm.ts.
  */
 
 import { createHash } from "node:crypto";

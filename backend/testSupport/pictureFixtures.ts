@@ -1,7 +1,7 @@
 /**
  * File Description: Tiny synthetic pictures for the illustrated stage's tests and its fixture packages, drawn pixel by pixel in code (never generated art, never an image service): a dark plate with a faint accent grid, an accent orb on a transparent background, a neutral chip, a lens (steel ring, dark glass, glowing core) for the worked example of SVG callouts on a picture, and the cases the picture rules must catch (strong colour off the accent, a busy plate, and the committed word picture for the no-text rule). `writePicturesStageFixture` and `writePictureCalloutsFixture` store each fixture film's pictures in a package through the real picture cache, with a fixed date so the files are byte for byte reproducible; run this file to rewrite test_fixtures/packages/pictures-stage/ and test_fixtures/packages/picture-callouts/ visuals/generated/.
  * Inputs and outputs: nothing, or a package directory -> RGBA images, PNG bytes and the stored records of the fixture pictures.
- * Used by: backend/pictures/*.test.ts, backend/designCheck/pictures.test.ts, backend/designCheck/pictureComposition.test.ts, backend/journeys/pictures_stage.journey.ts, and by hand to refresh the fixture packages.
+ * Used by: backend/pictures/*.test.ts, backend/designCheck/pictures.test.ts, backend/journeys/pictures_stage.journey.ts, and by hand to refresh the fixture packages.
  */
 
 import path from "node:path";

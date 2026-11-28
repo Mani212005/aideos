@@ -5,7 +5,7 @@
  * built-ins, and voiceover_engine.ts has to stay importable from the browser bundle. The editor
  * decodes waveforms in the browser instead (see editor/src/components/timeline/useAudioPeaks.ts).
  * Inputs and outputs: audio file path and target peak count -> normalized peak amplitude array.
- * Used by: editor/vite.config.ts, backend/timeline/bug_audit_fixes.test.ts.
+ * Used by: editor/vite.config.ts, backend/timeline/voiceover_editing.test.ts.
  */
 
 import fs from "fs";

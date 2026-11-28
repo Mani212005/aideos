@@ -7,7 +7,7 @@
  * frame it is spoken, with positions measured from real glyph advances so nothing overflows, and a
  * display token may cover several spoken words ("HNSW{4}" is four letters said one by one).
  * Inputs and outputs: kinetic typography text, stage coordinates, and timing -> assembled SVG elements and animation clips.
- * Used by: test_fixtures/stillTalking/scene.ts, backend/sceneKit/authoring.test.ts.
+ * Used by: backend/sceneKit/index.ts, backend/sceneKit/chrome.ts.
  */
 
 import type { SvgAnimatableProperty, SvgEasing } from "../../src/dl/scene/svgAnimation";
